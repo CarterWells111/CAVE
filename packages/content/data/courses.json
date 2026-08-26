@@ -1,0 +1,10 @@
+[
+  {
+    "id": "body-voice-basics",
+    "version": 1,
+    "title": "身体与声音基础",
+    "moduleIds": ["lesson-boundaries"],
+    "reviewStatus": "draft",
+    "sourceRefs": ["source-editorial-draft"]
+  }
+]

@@ -1,0 +1,16 @@
+{
+  "categories": [
+    {
+      "id": "guide-boundaries",
+      "title": "边界表达",
+      "reviewStatus": "draft",
+      "sourceRefs": ["source-editorial-draft"]
+    },
+    {
+      "id": "guide-next-steps",
+      "title": "商定下一步",
+      "reviewStatus": "draft",
+      "sourceRefs": ["source-editorial-draft"]
+    }
+  ]
+}
