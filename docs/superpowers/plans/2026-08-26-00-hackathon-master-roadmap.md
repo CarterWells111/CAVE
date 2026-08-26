@@ -12,6 +12,7 @@
 
 | 决策 | 固定值 |
 |---|---|
+| GitHub Repository | `https://github.com/CarterWells111/CAVE` |
 | 仓库结构 | pnpm workspace；不使用 Nx/Turborepo |
 | Package scope | `@hackathon/*` |
 | 移动端路径 | `apps/mobile` |
@@ -54,7 +55,7 @@ Plan 03 与 Plan 04 可在 Plan 02 完成后并行；其余均是顺序验收门
 
 | ID | 文件 | 负责人 | 工时 | 解锁条件 | 状态 | 输入 | 输出 | 验收证据 | Git commit |
 |---|---|---|---:|---|---|---|---|---|---|
-| 01 | `2026-08-26-01-repository-infrastructure-ios-build.md` | Engineer | 4h | 无 | `in_progress` | 空仓库、账号、iPhone | workspace、CI、dev build、`/health` | 命令输出、EAS URL、设备记录 | 文档基线提交后填写 |
+| 01 | `2026-08-26-01-repository-infrastructure-ios-build.md` | Engineer | 4h | 无 | `in_progress` | 空仓库、账号、iPhone | workspace、CI、dev build、`/health` | 命令输出、EAS URL、设备记录 | `674b443` docs baseline |
 | 02 | `2026-08-26-02-contracts-content-domain.md` | Engineer + Content | 3-4h | 01 complete | `not_started` | Package shells、内容草稿 | v1 contracts、内容校验、状态机 | tests、Golden fixtures | 执行后填写 |
 | 03 | `2026-08-26-03-ai-gateway-prompt-spec.md` | Engineer | 4-5h | 02 complete | `not_started` | v1 contracts、scenario fixtures | routes、providers、prompts | provider/route tests | 执行后填写 |
 | 04 | `2026-08-26-04-security-privacy-code-hardening.md` | Engineer + Content | 4h | 02 complete | `not_started` | v1 safety/storage shapes | encrypted repo、安全策略、CI security | device/log/scan evidence | 执行后填写 |
