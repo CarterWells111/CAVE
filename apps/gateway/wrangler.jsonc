@@ -1,0 +1,11 @@
+{
+  "$schema": "../../node_modules/wrangler/config-schema.json",
+  "name": "body-voice-gateway",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-08-26",
+  "vars": {
+    "MODEL_MODE": "mock",
+    "PROMPT_VERSION": "2026-08-26.1",
+    "POLICY_VERSION": "2026-08-26.1"
+  }
+}
