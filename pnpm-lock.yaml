@@ -129,7 +129,17 @@ importers:
         specifier: workspace:*
         version: link:../contracts
 
-  packages/test-fixtures: {}
+  packages/test-fixtures:
+    dependencies:
+      '@hackathon/content':
+        specifier: workspace:*
+        version: link:../content
+      '@hackathon/contracts':
+        specifier: workspace:*
+        version: link:../contracts
+      '@hackathon/scenario-engine':
+        specifier: workspace:*
+        version: link:../scenario-engine
 
 packages:
 
