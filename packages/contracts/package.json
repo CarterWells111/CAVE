@@ -2,5 +2,13 @@
   "name": "@hackathon/contracts",
   "version": "0.0.0",
   "private": true,
-  "scripts": {}
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src --max-warnings 0",
+    "test": "vitest run"
+  }
 }
