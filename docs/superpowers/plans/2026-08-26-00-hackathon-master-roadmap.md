@@ -55,8 +55,8 @@ Plan 03 与 Plan 04 可在 Plan 02 完成后并行；其余均是顺序验收门
 
 | ID | 文件 | 负责人 | 工时 | 解锁条件 | 状态 | 输入 | 输出 | 验收证据 | Git commit |
 |---|---|---|---:|---|---|---|---|---|---|
-| 01 | `2026-08-26-01-repository-infrastructure-ios-build.md` | Engineer | 4h | 无 | `in_progress` | 空仓库、账号、iPhone | workspace、CI、dev build、`/health` | 命令输出、EAS URL、设备记录 | `674b443` docs baseline |
-| 02 | `2026-08-26-02-contracts-content-domain.md` | Engineer + Content | 3-4h | 01 complete | `not_started` | Package shells、内容草稿 | v1 contracts、内容校验、状态机 | tests、Golden fixtures | 执行后填写 |
+| 01 | `2026-08-26-01-repository-infrastructure-ios-build.md` | Engineer | 4h | 无 | `blocked` | 空仓库、账号、iPhone | workspace、CI、dev build、`/health` | Gate 01A `pass`；Gate 01B `external_pending` | `17554bb`, `44a3609`, `f547cad`, `b21d9d8`, `03c1808`, `1fb7b44` |
+| 02 | `2026-08-26-02-contracts-content-domain.md` | Engineer + Content | 3-4h | Gate 01A pass | `in_progress` | Package shells、内容草稿 | v1 contracts、内容校验、状态机 | tests、Golden fixtures | 执行中 |
 | 03 | `2026-08-26-03-ai-gateway-prompt-spec.md` | Engineer | 4-5h | 02 complete | `not_started` | v1 contracts、scenario fixtures | routes、providers、prompts | provider/route tests | 执行后填写 |
 | 04 | `2026-08-26-04-security-privacy-code-hardening.md` | Engineer + Content | 4h | 02 complete | `not_started` | v1 safety/storage shapes | encrypted repo、安全策略、CI security | device/log/scan evidence | 执行后填写 |
 | 05 | `2026-08-26-05-mobile-mvp-integration.md` | Engineer | 6-7h | 03、04 complete | `not_started` | gateway、安全存储、内容 | 端到端移动闭环 | iPhone integration evidence | 执行后填写 |
@@ -188,6 +188,21 @@ Observed result:
 Artifacts/build URLs:
 Known non-blocking issues:
 Next plan unlocked:
+```
+
+## 执行证据
+
+### Plan 01 / Gate 01A（2026-08-26）
+
+```text
+Plan: 01 Repository/Infrastructure
+Commit: 1fb7b44 (with prerequisite commits 17554bb, 44a3609, f547cad, b21d9d8, 03c1808)
+Commands run: corepack pnpm -r list --depth -1; corepack pnpm verify:foundation; corepack pnpm --filter @hackathon/mobile expo:doctor; corepack pnpm --filter @hackathon/gateway test; corepack pnpm --filter @hackathon/gateway build; git diff --check; git status --short
+Expected result: all local commands exit 0
+Observed result: Gate 01A pass; 7 workspaces listed; foundation tests 9/9; Expo Doctor 21/21; gateway 1/1; dry-run build 62.70 KiB / gzip 15.40 KiB; clean status
+Artifacts/build URLs: none
+Known non-blocking issues: Gate 01B external_pending — EAS owner/project linking, Apple Team/device registration, iPhone install/offline launch, and GitHub CI authentication/remote run
+Next plan unlocked: Plan 02 local implementation
 ```
 
 ## P0 唯一归属
