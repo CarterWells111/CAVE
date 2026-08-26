@@ -56,7 +56,7 @@ Plan 03 与 Plan 04 可在 Plan 02 完成后并行；其余均是顺序验收门
 | ID | 文件 | 负责人 | 工时 | 解锁条件 | 状态 | 输入 | 输出 | 验收证据 | Git commit |
 |---|---|---|---:|---|---|---|---|---|---|
 | 01 | `2026-08-26-01-repository-infrastructure-ios-build.md` | Engineer | 4h | 无 | `blocked` | 空仓库、账号、iPhone | workspace、CI、dev build、`/health` | Gate 01A `pass`；Gate 01B `external_pending` | `17554bb`, `44a3609`, `f547cad`, `b21d9d8`, `03c1808`, `1fb7b44` |
-| 02 | `2026-08-26-02-contracts-content-domain.md` | Engineer + Content | 3-4h | Gate 01A pass | `in_progress` | Package shells、内容草稿 | v1 contracts、内容校验、状态机 | tests、Golden fixtures | 执行中 |
+| 02 | `2026-08-26-02-contracts-content-domain.md` | Engineer + Content | 3-4h | Gate 01A pass | `blocked` | Package shells、内容草稿 | v1 contracts、内容校验、状态机 | Gate 02A `pass`；Gate 02B `content_review_pending` | `9d48b68`, `73d28d2`, `a51a8a1`, `05ce733`, `ca6586b`, `cc1495e`, `32123c5` |
 | 03 | `2026-08-26-03-ai-gateway-prompt-spec.md` | Engineer | 4-5h | 02 complete | `not_started` | v1 contracts、scenario fixtures | routes、providers、prompts | provider/route tests | 执行后填写 |
 | 04 | `2026-08-26-04-security-privacy-code-hardening.md` | Engineer + Content | 4h | 02 complete | `not_started` | v1 safety/storage shapes | encrypted repo、安全策略、CI security | device/log/scan evidence | 执行后填写 |
 | 05 | `2026-08-26-05-mobile-mvp-integration.md` | Engineer | 6-7h | 03、04 complete | `not_started` | gateway、安全存储、内容 | 端到端移动闭环 | iPhone integration evidence | 执行后填写 |
@@ -203,6 +203,19 @@ Observed result: Gate 01A pass; 7 workspaces listed; foundation tests 9/9; Expo 
 Artifacts/build URLs: none
 Known non-blocking issues: Gate 01B external_pending — EAS owner/project linking, Apple Team/device registration, iPhone install/offline launch, and GitHub CI authentication/remote run
 Next plan unlocked: Plan 02 local implementation
+```
+
+### Plan 02 / Gate 02A—02B（2026-08-26）
+
+```text
+Plan: 02 Contracts/Content/Domain
+Commit: 32123c5 (with prerequisite commits 9d48b68, 73d28d2, a51a8a1, 05ce733, ca6586b, cc1495e)
+Commands run: corepack pnpm typecheck; corepack pnpm lint; corepack pnpm test:contracts; corepack pnpm test:content; corepack pnpm --filter @hackathon/scenario-engine test; corepack pnpm --filter @hackathon/test-fixtures test; corepack pnpm validate:content:draft; corepack pnpm validate:content
+Expected result: technical tests and draft validation pass; production validation blocks unreviewed content
+Observed result: Gate 02A pass — contracts 19/19, content 10/10, scenario engine 18/18, fixture/domain 11/11; 21-schema v1 public export inventory frozen; deep imports blocked; draft validation passed
+Artifacts/build URLs: none
+Known non-blocking issues: Gate 02B content_review_pending — production validation exits 1 for 7 draft entries; Golden set has no content-owner signature
+Next plan unlocked: none until content review completes and production validation passes
 ```
 
 ## P0 唯一归属
