@@ -123,7 +123,11 @@ importers:
         specifier: ^4.1.13
         version: 4.4.3
 
-  packages/scenario-engine: {}
+  packages/scenario-engine:
+    dependencies:
+      '@hackathon/contracts':
+        specifier: workspace:*
+        version: link:../contracts
 
   packages/test-fixtures: {}
 
