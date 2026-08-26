@@ -2,6 +2,8 @@ import { readFileSync } from "node:fs";
 
 import { describe, expect, it } from "vitest";
 
+import packageJson from "../package.json";
+
 describe("foundation CI workflow", () => {
   it("runs the complete foundation verification sequence", () => {
     const workflow = readFileSync(
@@ -18,5 +20,11 @@ describe("foundation CI workflow", () => {
     expect(workflow).toContain("pnpm lint");
     expect(workflow).toContain("pnpm test");
     expect(workflow).toContain("pnpm build:gateway");
+  });
+
+  it("defines the fixed root verification command", () => {
+    expect(packageJson.scripts.verify).toBe(
+      "pnpm typecheck && pnpm lint && pnpm test && pnpm validate:content && pnpm build:gateway"
+    );
   });
 });

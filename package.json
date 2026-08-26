@@ -18,7 +18,8 @@
     "validate:content": "pnpm --filter @hackathon/content validate:content",
     "validate:content:draft": "pnpm --filter @hackathon/content validate:content:draft",
     "build:gateway": "pnpm --filter @hackathon/gateway build",
-    "verify:foundation": "pnpm typecheck && pnpm lint && pnpm test && pnpm build:gateway"
+    "verify:foundation": "pnpm typecheck && pnpm lint && pnpm test && pnpm build:gateway",
+    "verify": "pnpm typecheck && pnpm lint && pnpm test && pnpm validate:content && pnpm build:gateway"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.2",
