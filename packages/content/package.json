@@ -10,8 +10,8 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint src --max-warnings 0",
     "test": "vitest run",
-    "validate:content": "tsx src/validate.ts --mode production",
-    "validate:content:draft": "tsx src/validate.ts --mode draft"
+    "validate:content": "tsx src/validate-cli.ts --mode production",
+    "validate:content:draft": "tsx src/validate-cli.ts --mode draft"
   },
   "dependencies": {
     "@hackathon/contracts": "workspace:*",

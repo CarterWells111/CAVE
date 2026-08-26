@@ -1,9 +1,7 @@
-import { pathToFileURL } from "node:url";
-
 import type { ReviewStatus, StopRuleCode } from "@hackathon/contracts";
 
 import type { ContentCatalog, GuideCategory } from "./catalog";
-import { ContentCatalogSchema, loadCatalog } from "./load";
+import { ContentCatalogSchema } from "./load";
 
 export type ContentValidationMode = "draft" | "production";
 
@@ -268,32 +266,4 @@ export function validateCatalog(
   }
 
   return catalog;
-}
-
-function readMode(): ContentValidationMode {
-  const modeIndex = process.argv.indexOf("--mode");
-  return process.argv[modeIndex + 1] === "draft" ? "draft" : "production";
-}
-
-function runCli() {
-  try {
-    const mode = readMode();
-    const catalog = validateCatalog(loadCatalog(), { mode });
-    console.log(
-      `content validation passed (${mode}): ${catalog.courses.length} course(s), ${catalog.lessons.length} lesson(s), ${catalog.scenarios.length} scenario(s)`
-    );
-  } catch (error) {
-    if (error instanceof ContentValidationError) {
-      for (const issue of error.issues) {
-        console.error(`${issue.code} ${issue.path}: ${issue.message}`);
-      }
-      process.exitCode = 1;
-      return;
-    }
-    throw error;
-  }
-}
-
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  runCli();
 }
