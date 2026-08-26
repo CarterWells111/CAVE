@@ -1,0 +1,14 @@
+node_modules/
+.expo/
+.wrangler/
+.eas/
+dist/
+coverage/
+.env*
+!.env.example
+*.mobileprovision
+*.p12
+outputs/
+work/
+.worktrees/
+

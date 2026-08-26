@@ -1,0 +1,27 @@
+# CAVE
+
+CAVE 是一个面向 18—24 岁女性的身体认识、关系边界与情境练习产品原型。本仓库当前处于四天黑客松的实施准备阶段。
+
+## 开工入口
+
+- [四天黑客松总路线图](docs/superpowers/plans/2026-08-26-00-hackathon-master-roadmap.md)
+- [01 仓库基础设施与 iOS 构建](docs/superpowers/plans/2026-08-26-01-repository-infrastructure-ios-build.md)
+- [02 共享契约、内容包与领域引擎](docs/superpowers/plans/2026-08-26-02-contracts-content-domain.md)
+- [03 AI 网关、Prompt 规范与模型适配](docs/superpowers/plans/2026-08-26-03-ai-gateway-prompt-spec.md)
+- [04 隐私、安全与代码加固](docs/superpowers/plans/2026-08-26-04-security-privacy-code-hardening.md)
+- [05 Expo 移动端核心闭环](docs/superpowers/plans/2026-08-26-05-mobile-mvp-integration.md)
+- [06 产品功能收口与体验完善](docs/superpowers/plans/2026-08-26-06-product-completion-ux.md)
+- [07 质量、性能与演示加固](docs/superpowers/plans/2026-08-26-07-quality-performance-demo-hardening.md)
+- [08 发布、演示与双命题提交](docs/superpowers/plans/2026-08-26-08-release-demo-submissions.md)
+
+## 固定技术决策
+
+- Expo SDK 57 + pnpm workspace；
+- Expo mobile app + Cloudflare Worker；
+- OpenAI-compatible HTTP model interface；
+- SQLCipher + SecureStore；
+- iOS 真实设备为主验收；
+- 萨福与 Eazo 共用代码，只分离提交材料。
+
+实际开发从 Plan 01 开始。跨计划接口变化必须先更新总路线图与接口所有者计划。
+

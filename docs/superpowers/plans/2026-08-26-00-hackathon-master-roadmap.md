@@ -1,0 +1,216 @@
+# 00 四天黑客松总路线图
+
+> 本文件是 01—08 的唯一总索引与变更入口。执行单份计划时逐项勾选，并把命令、产物和 commit 证据回填到本文件。
+
+**目标（Goal）：** 用一个共享的 Expo/Worker 产品完成五个批次，并从同一套代码生成萨福与 Eazo 两种提交叙事。
+
+**架构（Architecture）：** pnpm workspace 包含 Expo 移动端、无状态 Cloudflare Worker 网关，以及共享契约、内容与领域 Package。客户端 local-first；原始练习文本默认不持久化，只有用户逐次明确保存时才进入本地加密数据库，网关永不保存会话正文。
+
+**技术栈（Tech Stack）：** TypeScript、Node 22、pnpm 10、Expo SDK 57、Expo Router、Cloudflare Workers、Hono、Zod、SQLCipher SQLite、SecureStore、Vitest/Jest、Maestro、EAS Build/Update。
+
+## 不可随意修改的决策
+
+| 决策 | 固定值 |
+|---|---|
+| 仓库结构 | pnpm workspace；不使用 Nx/Turborepo |
+| Package scope | `@hackathon/*` |
+| 移动端路径 | `apps/mobile` |
+| 网关路径 | `apps/gateway` |
+| iOS Bundle ID | `com.shenicest.bodyvoice` |
+| Android package | `com.shenicest.bodyvoice` |
+| 主验收 | 使用 Apple Developer 凭证的真实 iPhone |
+| Android 验收 | 安装 + 核心路径 smoke test |
+| 模型协议 | 通过原生 `fetch` 调用 OpenAI-compatible HTTP |
+| AI 输出 | non-streaming structured JSON |
+| AI 限时 | 15 秒；一次网络重试；一次结构修复 |
+| 数据默认值 | 课程进度本地保存；原始 transcript 仅内存存在 |
+| 加密持久化 | SQLCipher；key 存入 SecureStore |
+| 发布目标 | EAS preview build + Cloudflare Worker |
+| 双命题 | 单一构建；只分离 `submissions/sappho` 与 `submissions/eazo` 素材 |
+
+若要改变任何固定决策，必须先修改本文件；涉及共享契约时再修改 Plan 02；最后修改所有消费者计划与测试。
+
+## 五批次依赖图
+
+```text
+01 Repository/Infrastructure
+        |
+02 Contracts/Content/Domain
+       / \
+03 AI Gateway   04 Security/Privacy
+       \ /
+05 Mobile Integration
+        |
+06 Product Completion
+        |
+07 Quality/Performance
+        |
+08 Release/Submissions
+```
+
+Plan 03 与 Plan 04 可在 Plan 02 完成后并行；其余均是顺序验收门槛，依赖图无循环。
+
+## 计划登记表
+
+| ID | 文件 | 负责人 | 工时 | 解锁条件 | 状态 | 输入 | 输出 | 验收证据 | Git commit |
+|---|---|---|---:|---|---|---|---|---|---|
+| 01 | `2026-08-26-01-repository-infrastructure-ios-build.md` | Engineer | 4h | 无 | `in_progress` | 空仓库、账号、iPhone | workspace、CI、dev build、`/health` | 命令输出、EAS URL、设备记录 | 文档基线提交后填写 |
+| 02 | `2026-08-26-02-contracts-content-domain.md` | Engineer + Content | 3-4h | 01 complete | `not_started` | Package shells、内容草稿 | v1 contracts、内容校验、状态机 | tests、Golden fixtures | 执行后填写 |
+| 03 | `2026-08-26-03-ai-gateway-prompt-spec.md` | Engineer | 4-5h | 02 complete | `not_started` | v1 contracts、scenario fixtures | routes、providers、prompts | provider/route tests | 执行后填写 |
+| 04 | `2026-08-26-04-security-privacy-code-hardening.md` | Engineer + Content | 4h | 02 complete | `not_started` | v1 safety/storage shapes | encrypted repo、安全策略、CI security | device/log/scan evidence | 执行后填写 |
+| 05 | `2026-08-26-05-mobile-mvp-integration.md` | Engineer | 6-7h | 03、04 complete | `not_started` | gateway、安全存储、内容 | 端到端移动闭环 | iPhone integration evidence | 执行后填写 |
+| 06 | `2026-08-26-06-product-completion-ux.md` | Both | 5h | 05 complete | `not_started` | 可运行闭环、最终内容 | 完整 UI、可访问性、披露 | state/accessibility matrix | 执行后填写 |
+| 07 | `2026-08-26-07-quality-performance-demo-hardening.md` | Both | 3-4h | 06 complete | `not_started` | feature-frozen build | RC、三轮彩排 | test/rehearsal matrix | 执行后填写 |
+| 08 | `2026-08-26-08-release-demo-submissions.md` | Both | 3h | 07 complete | `not_started` | verified RC | build、gateway、四层降级、双提交 | URLs、manifest、checklists | 执行后填写 |
+
+允许状态只有 `not_started`、`in_progress`、`blocked`、`complete`。工程总量为 32—36 小时；内容与提交工作由队友并行，不计入工程串行关键路径。
+
+## 两人分工
+
+### 全栈工程师
+
+- 负责仓库、Expo、Worker、共享契约、storage、model adapter、tests、CI/CD 与 builds。
+- 每个技术验收项必须提供 command output、device record 或 artifact URL。
+- Plan 02 完成时冻结 v1 公共契约；之后不得在消费者中复制或改写类型。
+
+### 内容与产品队友
+
+- 负责审核内容 fixture、scenario fixture、Golden conversation 期望、披露文案、可访问性文案和双命题叙事。
+- 未走变更流程不得修改共享 TypeScript contracts。
+- Plan 04 完成前审核 Golden set 的安全结果；Plan 06 完成前审核最终内容装配。
+
+## 四天进度
+
+| Day | 全栈工程师 | 内容与产品队友 | 当日硬门槛 |
+|---|---|---|---|
+| 1 | Plan 01—02 | 内容 fixture 与来源 metadata | iPhone dev build、`/health`、contract/domain tests |
+| 2 | Plan 03—04；启动 05 | Golden set、披露与 UI copy | Mock/Live provider contract、安全与 storage tests |
+| 3 | 完成 05；执行 06 | 最终内容与提交初稿 | iPhone 完整闭环、accessibility pass |
+| 4 | Plan 07—08 | demo/video/submission materials | installable build、四层降级、两套提交 |
+
+Day 4 只修 P0/P1 缺陷，不增加功能。
+
+## P0 / P1 / P2 范围
+
+### P0
+
+- 真实 iPhone Development/Preview Build。
+- 课程内容与进度离线可用。
+- 使用 `MockProvider` 完成一次完整练习闭环。
+- OpenAI-compatible `LiveProvider` 接口与 secret 隔离。
+- 状态机最终裁决、`safety_stop`、结构化 debrief。
+- 本地逐条删除/删除全部、网关不保存正文、key/bundle scan。
+- 萨福与 Eazo 两个提交目录及现场 Runbook。
+
+### P1
+
+- 多个 scenario fixture、保存 expression card、guide 内容。
+- SQLCipher 真机验证、Worker rate limit、Android smoke test。
+- Maestro core flow 与 EAS preview update。
+
+### P2
+
+- 额外动画、iOS E2E 自动化、crash service、高级 metrics。
+
+任一 P0 失败时立即停止 P1/P2。
+
+## 公共接口所有权
+
+**Plan 02 独占：** `Course`、`Lesson`、`LessonBlock`、`QuizQuestion`、`ScenarioConfig`、`ScenarioStage`、`StopRule`、`DebriefRubric`、`PracticeTurnRequest`、`PracticeTurnResponse`、`DebriefRequest`、`DebriefResponse`、`SafetyDecision`、`ApiErrorCode`、`ApiErrorResponse`。
+
+**Plan 03 独占：** `ModelProvider`、`ProviderTurnInput`、`ProviderDebriefInput`，以及 `/health`、`/v1/meta`、`/v1/practice/turn`、`/v1/practice/debrief`。
+
+**Plan 04 独占：** `LocalDataRepository`、`SecretRepository`、key lifecycle、safety policy 与 log allowlist。
+
+**Plan 05 独占：** Application Use Cases、移动端 Repository implementation 与 Gateway Client。
+
+**Plan 06 独占：** UI component contracts、design tokens 与 content assembly；不得改变领域/API 契约。
+
+**Plan 07—08：** 只验证和发布，不新增公共接口。
+
+## 固定环境变量
+
+| 名称 | 位置 | Secret | 用途 |
+|---|---|---:|---|
+| `EXPO_PUBLIC_GATEWAY_URL` | Mobile | No | Gateway base URL |
+| `EXPO_PUBLIC_MODEL_MODE` | Mobile | No | `mock` 或 `live` |
+| `MODEL_BASE_URL` | Worker | No | OpenAI-compatible base URL |
+| `MODEL_API_KEY` | Worker Secret | Yes | Provider credential |
+| `MODEL_NAME` | Worker | No | Provider model identifier |
+| `MODEL_MODE` | Worker | No | `mock` 或 `live` |
+| `PROMPT_VERSION` | Worker | No | Prompt release identifier |
+| `POLICY_VERSION` | Worker | No | Safety policy identifier |
+
+任何 AI credential 都不得使用 `EXPO_PUBLIC_` 前缀。
+
+## 固定根命令
+
+Plan 01 先创建基础 scripts；Plan 02 与 Plan 04 补齐内容和安全 scripts。进入 Plan 05 前，根 `package.json` 必须准确提供：
+
+```json
+{
+  "scripts": {
+    "dev:mobile": "pnpm --filter @hackathon/mobile start",
+    "dev:gateway": "pnpm --filter @hackathon/gateway dev",
+    "typecheck": "pnpm -r typecheck",
+    "lint": "pnpm -r lint",
+    "test": "pnpm -r test",
+    "test:contracts": "pnpm --filter @hackathon/contracts test",
+    "test:content": "pnpm --filter @hackathon/content test",
+    "test:safety": "pnpm --filter @hackathon/gateway test:safety",
+    "validate:content": "pnpm --filter @hackathon/content validate:content",
+    "security:audit": "pnpm audit --prod",
+    "security:scan-bundle": "node scripts/scan-bundle-secrets.mjs",
+    "build:gateway": "pnpm --filter @hackathon/gateway build",
+    "verify": "pnpm typecheck && pnpm lint && pnpm test && pnpm validate:content && pnpm build:gateway"
+  }
+}
+```
+
+## 跨计划变更流程
+
+- [ ] 在本文件记录 change request、原因与受影响的 acceptance criterion。
+- [ ] 类型、enum、route、error code 或 environment variable 变化时，先改 Plan 02 或 Plan 03。
+- [ ] safety policy 变化时，先改 Plan 04 与 Golden set，再改 Plan 03 或 Plan 05。
+- [ ] 先更新 contract tests，再更新实现测试与所有消费者计划。
+- [ ] 运行 `pnpm verify` 并把完整输出登记到受影响计划。
+- [ ] 以 `git commit -m "docs: update implementation contract"` 同时提交本索引和受影响计划。
+
+## 统一验收证据模板
+
+```text
+Plan:
+Commit:
+Commands run:
+Expected result:
+Observed result:
+Artifacts/build URLs:
+Known non-blocking issues:
+Next plan unlocked:
+```
+
+## P0 唯一归属
+
+| P0 结果 | 唯一负责计划 |
+|---|---|
+| 真实 iPhone build、workspace、CI、Worker health | 01 |
+| 公共契约、内容校验、确定性状态机 | 02 |
+| Mock/Live adapter、prompts、gateway routes、debrief evidence | 03 |
+| SQLCipher、SecureStore、safety policy、request/log/code security | 04 |
+| 移动端端到端集成、offline/error/delete flows | 05 |
+| 最终内容装配、完整状态、accessibility/disclosures | 06 |
+| release tests、performance/security recheck、三轮彩排 | 07 |
+| installed preview、deployed gateway、四层降级、双提交 | 08 |
+
+## 总体验收清单
+
+- [ ] Plan 01—08 无依赖循环，且每份可独立验收。
+- [ ] 每个 P0 恰好归属一份计划，不遗漏、不重复负责。
+- [ ] path、type、route、error code、environment variable 跨文档一致。
+- [ ] iPhone 签名与真机构建在 Plan 01 完成。
+- [ ] 无模型 API 时，`MockProvider` 仍覆盖完整演示。
+- [ ] 安全、隐私与删除契约在 Plan 05 前完成并测试。
+- [ ] Day 4 无新功能任务。
+- [ ] 萨福与 Eazo 共用 build、version 与 repository，只分离材料。
+- [ ] 工程总量保持 32—36 小时。
+- [ ] MVP 不包含 account、cloud sync、CMS、community、store 或生产化扩展。
