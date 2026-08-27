@@ -19,6 +19,7 @@ import {
   type ModelProvider,
   type ProviderDebriefInput
 } from "../providers/types";
+import type { OutputGuard } from "../security/output-guard";
 import { normalizeDebriefDimensions } from "./evidence";
 import type { ScenarioSource } from "./turn";
 
@@ -26,6 +27,7 @@ type DebriefServiceDependencies = {
   provider: ModelProvider;
   repairer?: JsonRepairer | undefined;
   scenarioSource: ScenarioSource;
+  outputGuard?: OutputGuard | undefined;
   promptVersion: string;
   policyVersion: string;
 };
@@ -103,6 +105,19 @@ export function createDebriefService(
       });
       if (candidate.requestId !== request.requestId) {
         throw new InvalidModelOutputError();
+      }
+      if (dependencies.outputGuard) {
+        const guarded = dependencies.outputGuard(
+          {
+            roleMessage: JSON.stringify(candidate),
+            nextStage: "debrief",
+            safety: { level: "safe", reasonCode: "none" }
+          },
+          "debrief"
+        );
+        if (!guarded.ok) {
+          throw new GatewayError("UNSAFE_CONTEXT", 502);
+        }
       }
 
       let dimensions;

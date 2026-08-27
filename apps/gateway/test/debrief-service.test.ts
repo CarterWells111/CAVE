@@ -83,4 +83,20 @@ describe("debrief service", () => {
       service.execute(VALID_DEBRIEF_REQUEST, new AbortController().signal)
     ).rejects.toMatchObject({ code: "INVALID_MODEL_OUTPUT" });
   });
+
+  it("rejects debrief text denied by the server output guard", async () => {
+    const service = createDebriefService({
+      provider: providerWith(candidate()),
+      scenarioSource,
+      outputGuard() {
+        return { ok: false, reason: "prompt_disclosure" };
+      },
+      promptVersion: "prompt-v1",
+      policyVersion: "policy-v1"
+    });
+
+    await expect(
+      service.execute(VALID_DEBRIEF_REQUEST, new AbortController().signal)
+    ).rejects.toMatchObject({ code: "UNSAFE_CONTEXT", status: 502 });
+  });
 });
