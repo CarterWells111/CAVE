@@ -98,4 +98,30 @@ describe("versioned content validation", () => {
       "MISSING_SOURCE_REFS"
     );
   });
+
+  it("rejects an unresolved source on any journey option", () => {
+    const catalog = loadCatalog();
+    const concern = catalog.journey.options.find(({ group }) => group === "concern")!;
+    concern.sourceIds = ["missing-source"];
+
+    expect(issueCodes(() => validateCatalog(catalog, { mode: "draft" }))).toContain(
+      "MISSING_SOURCE"
+    );
+  });
+
+  it.each([
+    ["duplicate response branch", (catalog: ReturnType<typeof loadCatalog>) => {
+      catalog.journey.practice.responses[1]!.branch = catalog.journey.practice.responses[0]!.branch;
+    }],
+    ["unsafe terminal response", (catalog: ReturnType<typeof loadCatalog>) => {
+      catalog.journey.practice.responses.find(({ branch }) => branch === "ignores-pause")!.safeTerminal = false;
+    }]
+  ])("rejects %s in the preset practice catalog", (_label, mutate) => {
+    const catalog = loadCatalog();
+    mutate(catalog);
+
+    expect(issueCodes(() => validateCatalog(catalog, { mode: "draft" }))).toContain(
+      "INVALID_PRACTICE_CATALOG"
+    );
+  });
 });

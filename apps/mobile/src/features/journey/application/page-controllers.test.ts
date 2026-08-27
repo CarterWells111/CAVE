@@ -9,6 +9,7 @@ function activeDraft(): JourneyDraft {
   const draft = {
     ...createJourneyDraft({ id: "journey-1", now: "now" }),
     ageConfirmed: true,
+    behaviorAttitudes: { "draft-kissing": "unsure" as const },
     sourceRevision: 1
   };
   return { ...draft, communicationCard: buildCommunicationCard(draft) };
@@ -105,6 +106,20 @@ test("runs Page 6 only through the scripted engine and records one versioned pra
     type: "record-point-event",
     key: "practice:draft-scenario:draft-v1"
   });
+});
+
+test("rejects practice for a behavior that is not selected in the active draft", async () => {
+  const { controller, practice, service } = harness();
+
+  await expect(controller.completePractice({
+    behaviorId: "draft-unselected",
+    intent: "slow-down",
+    phraseId: "draft-phrase-slow-down",
+    branch: "supportive"
+  })).rejects.toThrow("practice-behavior-not-selected");
+
+  expect(practice.start).not.toHaveBeenCalled();
+  expect(service.dispatch).not.toHaveBeenCalled();
 });
 
 test("updates Page 7 and explicitly saves or copies only the current visible Page 8 card", async () => {

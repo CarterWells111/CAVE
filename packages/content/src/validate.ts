@@ -80,11 +80,30 @@ function validateJourney(catalog: ContentCatalog, mode: ContentValidationMode, i
     }
   }
 
-  for (const item of [...catalog.journey.knowledge, ...catalog.journey.options.filter(({ group }) => group === "health")]) {
-    if (item.sourceIds.length === 0) addIssue(issues, "MISSING_SOURCE_REFS", `journey.${item.id}`, `${item.id} has no source ids`);
+  const sourceRequired = new Set([
+    ...catalog.journey.knowledge.map(({ id }) => id),
+    ...catalog.journey.options.filter(({ group }) => group === "health").map(({ id }) => id)
+  ]);
+  for (const item of [...catalog.journey.knowledge, ...catalog.journey.options]) {
+    if (sourceRequired.has(item.id) && item.sourceIds.length === 0) {
+      addIssue(issues, "MISSING_SOURCE_REFS", `journey.${item.id}`, `${item.id} has no source ids`);
+    }
     for (const sourceId of item.sourceIds) {
       if (!sourceIds.has(sourceId)) addIssue(issues, "MISSING_SOURCE", `journey.${item.id}.sourceIds`, `missing source ${sourceId}`);
     }
+  }
+
+  const expectedBranches = new Set(["supportive", "disappointed-follow-up", "ignores-pause"]);
+  const responseBranches = catalog.journey.practice.responses.map(({ branch }) => branch);
+  const branchSet = new Set(responseBranches);
+  if (responseBranches.length !== expectedBranches.size
+    || branchSet.size !== expectedBranches.size
+    || [...expectedBranches].some((branch) => !branchSet.has(branch))) {
+    addIssue(issues, "INVALID_PRACTICE_CATALOG", "journey.practice.responses", "practice requires one response for each supported branch");
+  }
+  const ignoresPause = catalog.journey.practice.responses.find(({ branch }) => branch === "ignores-pause");
+  if (ignoresPause?.safeTerminal !== true) {
+    addIssue(issues, "INVALID_PRACTICE_CATALOG", "journey.practice.responses", "ignores-pause must be a safe terminal response");
   }
 
   const reviewables = [

@@ -65,9 +65,13 @@ export class JourneyPageController {
     editedPhrase?: string;
     branch: PartnerResponseBranch;
   }) {
+    const draft = this.requireDraft();
+    const selected = Object.hasOwn(draft.behaviorAttitudes, input.behaviorId)
+      || draft.customBehaviors.some(({ id }) => id === input.behaviorId);
+    if (!selected) throw new Error("practice-behavior-not-selected");
     const started = this.dependencies.practice.start({ behaviorId: input.behaviorId, intent: input.intent });
-    const selected = this.dependencies.practice.selectPhrase(started, input.phraseId);
-    const completed = this.dependencies.practice.choosePartnerResponse(selected, input.branch);
+    const selectedPhrase = this.dependencies.practice.selectPhrase(started, input.phraseId);
+    const completed = this.dependencies.practice.choosePartnerResponse(selectedPhrase, input.branch);
     await this.dependencies.service.dispatch({
       type: "set-practice",
       practice: {
