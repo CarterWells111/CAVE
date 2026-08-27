@@ -100,8 +100,7 @@ test("restores an interrupted reflection and submits the complete local-only pay
     comfortClarity: "need-space",
     comfortNeedIds: ["comfort-no-pressure-after-pause"],
     comfortNote: "需要自己的空间",
-    journalPromptId: "journal-hesitation",
-    journalText: "我还想慢一点",
+    journalText: "",
     journalSaveChoice: "not-saved",
   });
 });
@@ -126,4 +125,84 @@ test("exposes visible loading and error states for the final local action", asyn
   fireEvent.press(screen.getByRole("button", { name: "带着这些发现去练习" }));
   expect(screen.getByText("正在保存这些发现…")).toBeTruthy();
   await waitFor(() => expect(screen.getByText("保存反思失败，请重试。")).toBeTruthy());
+});
+
+test("groups Page 4 answers in canonical attitude order and exposes real edit callbacks", () => {
+  const onEditBehaviorAttitude = jest.fn();
+  render(
+    <ReflectionPage
+      behaviorAnswers={[
+        { attitude: "not-this-time", behaviorId: "direct", behaviorLabel: "直接触摸" },
+        { attitude: "looking-forward", behaviorId: "hug", behaviorLabel: "拥抱或依偎" },
+        { attitude: "unsure", behaviorId: "kiss", behaviorLabel: "接吻" },
+      ]}
+      onComplete={jest.fn()}
+      onEditBehaviorAttitude={onEditBehaviorAttitude}
+    />,
+  );
+
+  expect(screen.getByText("这是你刚才留下的答案")).toBeTruthy();
+  expect(screen.getByText("我有些期待")).toBeTruthy();
+  expect(screen.getByText("我还没想清楚")).toBeTruthy();
+  expect(screen.getByText("这次我不希望发生")).toBeTruthy();
+  fireEvent.press(screen.getByRole("button", { name: "修改拥抱或依偎的答案" }));
+  expect(onEditBehaviorAttitude).toHaveBeenCalledWith("hug");
+});
+
+test("never submits journal content when the user chooses not to save it", () => {
+  const onComplete = jest.fn();
+  render(
+    <ReflectionPage
+      initialValue={{
+        journalPromptId: "journal-hesitation",
+        journalSaveChoice: "not-saved",
+        journalText: "不应离开本机表单",
+      }}
+      onComplete={onComplete}
+    />,
+  );
+
+  fireEvent.press(screen.getByRole("button", { name: "带着这些发现去练习" }));
+
+  expect(onComplete).toHaveBeenCalledWith(expect.objectContaining({
+    journalSaveChoice: "not-saved",
+    journalText: "",
+  }));
+  expect(onComplete.mock.calls[0]?.[0]).not.toHaveProperty("journalPromptId");
+});
+
+test("offers direct safety and expression branch actions through callbacks", () => {
+  const onOpenComfort = jest.fn();
+  const onOpenJournal = jest.fn();
+  const onUsePracticePhrase = jest.fn();
+  render(
+    <ReflectionPage
+      onComplete={jest.fn()}
+      onOpenComfort={onOpenComfort}
+      onOpenJournal={onOpenJournal}
+      onUsePracticePhrase={onUsePracticePhrase}
+    />,
+  );
+
+  fireEvent.press(screen.getByRole("radio", { name: "拒绝或离开：我担心对方会有不好的反应" }));
+  fireEvent.press(screen.getByRole("button", { name: "看看什么能让我更安心" }));
+  fireEvent.press(screen.getByRole("button", { name: "先回到我的记录里" }));
+  expect(onOpenComfort).toHaveBeenCalledTimes(1);
+  expect(onOpenJournal).toHaveBeenCalledTimes(1);
+
+  fireEvent.press(screen.getByRole("radio", { name: "表达变化：我现在还不太敢表达" }));
+  fireEvent.press(screen.getByRole("button", { name: "把这句话带到练习里" }));
+  expect(onUsePracticePhrase).toHaveBeenCalledWith("先停一下，我现在需要一点时间。");
+});
+
+test("offers the conditional slow-down phrase without overwriting Page 4 answers", () => {
+  const onUsePracticePhrase = jest.fn();
+  render(<ReflectionPage onComplete={jest.fn()} onUsePracticePhrase={onUsePracticePhrase} />);
+
+  fireEvent.press(screen.getByRole("checkbox", { name: "我不希望对方失望" }));
+  fireEvent.press(screen.getByRole("radio", { name: "如果不用担心失望：也许想，但希望慢一点" }));
+
+  expect(screen.getByText("我愿意试试看，但想慢慢来。我说“慢一点”或“停下”时，请马上停下来。")).toBeTruthy();
+  fireEvent.press(screen.getByRole("button", { name: "把这句慢下来带到练习里" }));
+  expect(onUsePracticePhrase).toHaveBeenCalledWith("我愿意试试看，但想慢慢来。我说“慢一点”或“停下”时，请马上停下来。");
 });

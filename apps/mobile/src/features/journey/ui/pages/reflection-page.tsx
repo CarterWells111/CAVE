@@ -5,6 +5,7 @@ import { theme } from "../../../../core/design/theme";
 import { Card } from "../../../../core/ui/Card";
 import { InfoCard } from "../../../../core/ui/info-card";
 import type { JournalSaveChoice } from "../../domain/types";
+import type { BehaviorAttitude } from "../../domain/types";
 import { loadJourneyContentCatalog } from "../../infrastructure/journey-content-catalog";
 import { JourneyAction } from "../components/JourneyAction";
 import { JourneyChoice } from "../components/JourneyChoice";
@@ -30,6 +31,11 @@ export type ReflectionValue = {
 
 export type ReflectionPageProps = {
   initialValue?: Partial<ReflectionValue>;
+  behaviorAnswers?: Array<{ behaviorId: string; behaviorLabel: string; attitude: BehaviorAttitude }>;
+  onEditBehaviorAttitude?(behaviorId: string): ReturnType<JourneyActionCallback>;
+  onOpenComfort?(): ReturnType<JourneyActionCallback>;
+  onOpenJournal?(): ReturnType<JourneyActionCallback>;
+  onUsePracticePhrase?(phrase: string): ReturnType<JourneyActionCallback>;
   onComplete(value: ReflectionValue): ReturnType<JourneyActionCallback>;
 };
 
@@ -42,6 +48,16 @@ const comfortOptions = content.options
   .sort((first, second) => first.order - second.order);
 const skipMotivationId = motivationOptions.find(({ exclusive }) => exclusive)?.id;
 const disappointmentMotivationId = "motivation-avoid-disappointment";
+const slowDownPhrase = "我愿意试试看，但想慢慢来。我说“慢一点”或“停下”时，请马上停下来。";
+const stopPhrase = "先停一下，我现在需要一点时间。";
+
+const reviewGroups: Array<{ attitude: BehaviorAttitude; label: string }> = [
+  { attitude: "looking-forward", label: "我有些期待" },
+  { attitude: "decide-in-moment", label: "我想留到当时再感受" },
+  { attitude: "unsure", label: "我还没想清楚" },
+  { attitude: "not-this-time", label: "这次我不希望发生" },
+  { attitude: "skip", label: "我暂时留白了" },
+];
 
 const pressureOptions: Array<{ value: PressureAnswer; label: string }> = [
   { value: "still-want", label: "我还是想靠近" },
@@ -91,7 +107,15 @@ function SupportingCopy({ children }: { children: string }) {
   return <Text selectable style={{ ...theme.typography.body, color: theme.color.textSecondary }}>{children}</Text>;
 }
 
-export function ReflectionPage({ initialValue = {}, onComplete }: ReflectionPageProps) {
+export function ReflectionPage({
+  initialValue = {},
+  behaviorAnswers = [],
+  onEditBehaviorAttitude,
+  onOpenComfort,
+  onOpenJournal,
+  onUsePracticePhrase,
+  onComplete,
+}: ReflectionPageProps) {
   const [motivationIds, setMotivationIds] = useState(() => [...(initialValue.motivationIds ?? [])]);
   const [pressureWithoutDisappointment, setPressureWithoutDisappointment] = useState<PressureAnswer | null>(
     initialValue.pressureWithoutDisappointment ?? null,
@@ -135,6 +159,19 @@ export function ReflectionPage({ initialValue = {}, onComplete }: ReflectionPage
     journalText,
     journalSaveChoice,
   };
+  const submissionValue: ReflectionValue = journalSaveChoice === "not-saved"
+    ? {
+        motivationIds,
+        pressureWithoutDisappointment,
+        refusalSafety,
+        expressionDifficulty,
+        comfortClarity,
+        comfortNeedIds,
+        comfortNote,
+        journalText: "",
+        journalSaveChoice,
+      }
+    : value;
   const showsRefusalSafety = refusalSafety === "fear-reaction" || refusalSafety === "cannot-refuse" || refusalSafety === "unsure";
 
   return (
@@ -145,6 +182,32 @@ export function ReflectionPage({ initialValue = {}, onComplete }: ReflectionPage
         </Text>
         <SupportingCopy>这些答案不需要整齐，也可以随时改变；这里不会生成分数或准备度结论。</SupportingCopy>
       </Card>
+
+      {behaviorAnswers.length > 0 ? (
+        <Card accessible={false}>
+          <SectionTitle>这是你刚才留下的答案</SectionTitle>
+          {reviewGroups.map((group) => {
+            const answers = behaviorAnswers.filter(({ attitude }) => attitude === group.attitude);
+            return answers.length > 0 ? (
+              <View key={group.attitude} style={{ gap: theme.space.sm }}>
+                <Text selectable style={{ ...theme.typography.cardTitle, color: theme.color.text }}>{group.label}</Text>
+                {answers.map((answer) => (
+                  <JourneyAction
+                    accessibilityLabel={`修改${answer.behaviorLabel}的答案`}
+                    key={answer.behaviorId}
+                    label={answer.behaviorLabel}
+                    loadingLabel="正在打开…"
+                    onAction={onEditBehaviorAttitude
+                      ? () => onEditBehaviorAttitude(answer.behaviorId)
+                      : undefined}
+                  />
+                ))}
+              </View>
+            ) : null;
+          })}
+          <SupportingCopy>这是你此刻的感受，不需要整齐，也可以随时改变。</SupportingCopy>
+        </Card>
+      ) : null}
 
       <Card accessible={false}>
         <SectionTitle>此刻，是什么在推动我靠近？</SectionTitle>
@@ -180,6 +243,23 @@ export function ReflectionPage({ initialValue = {}, onComplete }: ReflectionPage
             ))}
           </View>
           <SupportingCopy>这道题不会覆盖你之前对任何行为留下的答案。</SupportingCopy>
+          {pressureWithoutDisappointment === "still-want" || pressureWithoutDisappointment === "slow-down" ? (
+            <InfoCard variant="education">
+              <SupportingCopy>{slowDownPhrase}</SupportingCopy>
+              {onUsePracticePhrase ? (
+                <JourneyAction
+                  label="把这句慢下来带到练习里"
+                  loadingLabel="正在加入…"
+                  onAction={() => onUsePracticePhrase(slowDownPhrase)}
+                />
+              ) : null}
+            </InfoCard>
+          ) : null}
+          {pressureWithoutDisappointment === "less-want" ? (
+            <InfoCard variant="pause">
+              <SupportingCopy>我知道你可能有所期待，但我现在不想尝试这件事。</SupportingCopy>
+            </InfoCard>
+          ) : null}
         </Card>
       ) : null}
 
@@ -201,6 +281,20 @@ export function ReflectionPage({ initialValue = {}, onComplete }: ReflectionPage
           <InfoCard variant="safety">
             <SupportingCopy>如果说不、暂停或离开让你感到害怕，可以先把自己的安全和空间放在前面。你不需要马上作出关于亲密行为的决定。</SupportingCopy>
             <SupportingCopy>这不代表系统已经判断现实中正在发生危险。</SupportingCopy>
+            {onOpenComfort ? (
+              <JourneyAction
+                label="看看什么能让我更安心"
+                loadingLabel="正在打开…"
+                onAction={onOpenComfort}
+              />
+            ) : null}
+            {onOpenJournal ? (
+              <JourneyAction
+                label="先回到我的记录里"
+                loadingLabel="正在打开…"
+                onAction={onOpenJournal}
+              />
+            ) : null}
           </InfoCard>
         ) : null}
       </Card>
@@ -226,7 +320,19 @@ export function ReflectionPage({ initialValue = {}, onComplete }: ReflectionPage
         ) : null}
         {expressionDifficulty === "not-ready" ? (
           <InfoCard variant="pause">
-            <SupportingCopy>说不出口，不代表你的暂停不重要。可以先从一句很短的话开始：先停一下，我现在需要一点时间。</SupportingCopy>
+            <SupportingCopy>{`说不出口，不代表你的暂停不重要。可以先从一句很短的话开始：${stopPhrase}`}</SupportingCopy>
+            {onUsePracticePhrase ? (
+              <JourneyAction
+                label="把这句话带到练习里"
+                loadingLabel="正在加入…"
+                onAction={() => onUsePracticePhrase(stopPhrase)}
+              />
+            ) : null}
+            <JourneyAction
+              label="先不选择"
+              loadingLabel="正在收起…"
+              onAction={() => setExpressionDifficulty(null)}
+            />
           </InfoCard>
         ) : null}
       </Card>
@@ -348,7 +454,7 @@ export function ReflectionPage({ initialValue = {}, onComplete }: ReflectionPage
         errorMessage="保存反思失败，请重试。"
         label="带着这些发现去练习"
         loadingLabel="正在保存这些发现…"
-        onAction={() => onComplete(value)}
+        onAction={() => onComplete(submissionValue)}
       />
     </View>
   );
