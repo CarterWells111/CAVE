@@ -2,8 +2,11 @@ import { useState } from "react";
 import { Text, TextInput, View } from "react-native";
 
 import { theme } from "../../../../core/design/theme";
+import { BottomSheet } from "../../../../core/ui/bottom-sheet";
 import { Card } from "../../../../core/ui/Card";
 import { InfoCard } from "../../../../core/ui/info-card";
+import { SecondaryButton } from "../../../../core/ui/secondary-button";
+import { TextAction } from "../../../../core/ui/text-action";
 import type { JournalSaveChoice } from "../../domain/types";
 import type { BehaviorAttitude } from "../../domain/types";
 import { loadJourneyContentCatalog } from "../../infrastructure/journey-content-catalog";
@@ -130,8 +133,12 @@ export function ReflectionPage({
   const [journalPromptId, setJournalPromptId] = useState<string | undefined>(initialValue.journalPromptId);
   const [journalText, setJournalText] = useState(initialValue.journalText ?? "");
   const [journalSaveChoice, setJournalSaveChoice] = useState<JournalSaveChoice>(
-    initialValue.journalSaveChoice ?? "device",
+    initialValue.journalSaveChoice ?? "not-saved",
   );
+  const [journalDecisionMade, setJournalDecisionMade] = useState(
+    initialValue.journalSaveChoice !== undefined,
+  );
+  const [journalStorageOpen, setJournalStorageOpen] = useState(false);
 
   const toggleMotivation = (id: string) => {
     setMotivationIds((current) => {
@@ -427,27 +434,31 @@ export function ReflectionPage({
           }}
           value={journalText}
         />
+        <JourneyAction
+          label="保存这次记录"
+          loadingLabel="正在准备保存…"
+          onAction={() => {
+            setJournalStorageOpen(true);
+          }}
+        />
+        <TextAction
+          label="暂时不写"
+          onPress={() => {
+            setJournalSaveChoice("not-saved");
+            setJournalDecisionMade(true);
+          }}
+        />
       </Card>
 
-      <Card accessible={false}>
+      {journalDecisionMade ? <Card accessible={false}>
         <SectionTitle>这条记录要放在哪里？</SectionTitle>
-        <JourneyChoice
-          label="只保存在这台设备"
-          mode="single"
-          onSelect={() => setJournalSaveChoice("device")}
-          selected={journalSaveChoice === "device"}
-        />
+        {journalSaveChoice === "device" ? <SupportingCopy>只保存在这台设备</SupportingCopy> : null}
         <SupportingCopy>记录不会上传到云端。更换设备、删除 App 或清除数据后，可能无法找回。</SupportingCopy>
         <SupportingCopy>如果其他人能够打开你的设备和 CAVE，也可能看到这些记录。</SupportingCopy>
-        <JourneyChoice
-          label="暂时不保存"
-          mode="single"
-          onSelect={() => setJournalSaveChoice("not-saved")}
-          selected={journalSaveChoice === "not-saved"}
-        />
+        {journalSaveChoice === "not-saved" ? <SupportingCopy>这次不会保存记录正文。</SupportingCopy> : null}
         <JourneyAction disabled label="同时保存到云端｜后续版本" loadingLabel="正在保存…" />
         <SupportingCopy>云端保存尚未实现；这里不会模拟上传或成功状态。</SupportingCopy>
-      </Card>
+      </Card> : null}
 
       <JourneyAction
         accessibilityLabel="带着这些发现去练习"
@@ -456,6 +467,24 @@ export function ReflectionPage({
         loadingLabel="正在保存这些发现…"
         onAction={() => onComplete(submissionValue)}
       />
+
+      <BottomSheet
+        onClose={() => setJournalStorageOpen(false)}
+        title="记录会保存在哪里？"
+        visible={journalStorageOpen}
+      >
+        <SupportingCopy>记录不会上传到云端。更换设备、删除 App 或清除数据后，可能无法找回。</SupportingCopy>
+        <SupportingCopy>如果其他人能够打开你的设备和 CAVE，也可能看到这些记录。</SupportingCopy>
+        <SecondaryButton
+          label="确认只保存在这台设备"
+          onPress={() => {
+            setJournalSaveChoice("device");
+            setJournalDecisionMade(true);
+            setJournalStorageOpen(false);
+          }}
+        />
+        <TextAction label="返回修改" onPress={() => setJournalStorageOpen(false)} />
+      </BottomSheet>
     </View>
   );
 }

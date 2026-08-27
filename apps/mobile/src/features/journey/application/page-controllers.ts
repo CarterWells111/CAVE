@@ -141,7 +141,15 @@ export class JourneyPageController {
       reflection,
       journal,
     });
-    await this.dependencies.service.dispatch({ type: "record-point-event", key: "reflection:page-5:v1" });
+    const hasReflection = input.motivationIds.length > 0
+      || input.comfortNeedIds.length > 0
+      || Object.values(reflection).some((answer) => typeof answer === "string"
+        ? answer.trim().length > 0
+        : answer !== null)
+      || (journal.saveChoice === "device" && journal.text.trim().length > 0);
+    if (hasReflection) {
+      await this.dependencies.service.dispatch({ type: "record-point-event", key: "reflection:page-5:v1" });
+    }
   }
 
   async completePractice(input: LegacyPracticeInput | CanonicalPracticeInput) {

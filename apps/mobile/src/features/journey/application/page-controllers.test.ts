@@ -212,6 +212,27 @@ test("saves the complete Page 5 payload atomically and gives unsaved journals no
   });
 });
 
+test("does not award reflection participation for an entirely blank submission", async () => {
+  const { controller, service } = harness();
+
+  await controller.saveReflection({
+    motivationIds: [],
+    comfortNeedIds: [],
+    pressureWithoutDisappointment: null,
+    refusalSafety: null,
+    expressionDifficulty: null,
+    comfortClarity: null,
+    comfortNote: "   ",
+    journalText: "discarded text",
+    journalSaveChoice: "not-saved",
+  });
+
+  expect(service.dispatch).not.toHaveBeenCalledWith({
+    type: "record-point-event",
+    key: "reflection:page-5:v1",
+  });
+});
+
 test("persists the canonical Page 6 submission and awards only a valid participation key", async () => {
   const { controller, service } = harness();
 

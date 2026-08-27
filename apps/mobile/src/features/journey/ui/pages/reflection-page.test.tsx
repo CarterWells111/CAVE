@@ -50,16 +50,35 @@ test("captures expression difficulty, comfort clarity, selections, and a multili
   expect(screen.getByLabelText("安心条件补充")).toHaveProp("multiline", true);
 });
 
-test("states local journal limits honestly and keeps cloud visibly unavailable", () => {
+test("asks before saving a journal locally and keeps cloud visibly unavailable", () => {
   render(<ReflectionPage onComplete={jest.fn()} />);
 
-  expect(screen.getByText("只保存在这台设备")).toBeTruthy();
+  expect(screen.queryByText("只保存在这台设备")).toBeNull();
+  fireEvent.changeText(screen.getByLabelText("给此刻留一句话"), "我想记住这句话");
+  fireEvent.press(screen.getByRole("button", { name: "保存这次记录" }));
+  expect(screen.getByText("记录会保存在哪里？")).toBeTruthy();
   expect(screen.getByText("记录不会上传到云端。更换设备、删除 App 或清除数据后，可能无法找回。")).toBeTruthy();
   expect(screen.getByText("如果其他人能够打开你的设备和 CAVE，也可能看到这些记录。")).toBeTruthy();
+  fireEvent.press(screen.getByRole("button", { name: "确认只保存在这台设备" }));
+  expect(screen.getByText("只保存在这台设备")).toBeTruthy();
   expect(screen.getByRole("button", { name: "同时保存到云端｜后续版本" }))
     .toHaveProp("accessibilityState", expect.objectContaining({ disabled: true }));
   expect(screen.queryByText(/端到端加密|绝对私密|永久删除/u)).toBeNull();
   expect(screen.getByLabelText("给此刻留一句话")).toHaveProp("multiline", true);
+});
+
+test("lets the user explicitly skip the journal without persisting its text", () => {
+  const onComplete = jest.fn();
+  render(<ReflectionPage onComplete={onComplete} />);
+
+  fireEvent.changeText(screen.getByLabelText("给此刻留一句话"), "只留在当前表单");
+  fireEvent.press(screen.getByRole("button", { name: "暂时不写" }));
+  fireEvent.press(screen.getByRole("button", { name: "带着这些发现去练习" }));
+
+  expect(onComplete).toHaveBeenCalledWith(expect.objectContaining({
+    journalSaveChoice: "not-saved",
+    journalText: "",
+  }));
 });
 
 test("restores an interrupted reflection and submits the complete local-only payload", () => {
@@ -88,8 +107,7 @@ test("restores an interrupted reflection and submits the complete local-only pay
     .toHaveProp("accessibilityState", expect.objectContaining({ checked: true }));
   expect(screen.getByDisplayValue("需要自己的空间")).toBeTruthy();
   expect(screen.getByDisplayValue("我还想慢一点")).toBeTruthy();
-  expect(screen.getByRole("radio", { name: "暂时不保存" }))
-    .toHaveProp("accessibilityState", expect.objectContaining({ checked: true }));
+  expect(screen.getByText("这次不会保存记录正文。")).toBeTruthy();
 
   fireEvent.press(screen.getByRole("button", { name: "带着这些发现去练习" }));
   expect(onComplete).toHaveBeenCalledWith({
