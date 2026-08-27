@@ -1,6 +1,9 @@
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react-native";
-import { startTransition, Suspense, type ReactNode } from "react";
-import { StyleSheet } from "react-native";
+import { startTransition, Suspense, type ReactElement, type ReactNode } from "react";
+import { ScrollView, StyleSheet } from "react-native";
+
+import { brand } from "../../../../config/brand";
+import { theme } from "../../../../core/design/theme";
 
 import {
   BodyKnowledgePage,
@@ -100,11 +103,11 @@ test("Page 4 offers all five non-ranked attitudes per behavior", () => {
   const onSet = jest.fn();
   render(<BehaviorAttitudesPage behaviors={[{ id: "draft-kissing", label: "亲吻" }]} onSet={onSet} />);
 
-  expect(screen.getByText("期待")).toBeTruthy();
-  expect(screen.getByText("到时决定")).toBeTruthy();
-  expect(screen.getByText("不确定")).toBeTruthy();
-  expect(screen.getByText("这次不要")).toBeTruthy();
-  fireEvent.press(screen.getByText("暂时不回答"));
+  expect(screen.getByRole("radio", { name: "亲吻：期待" })).toBeTruthy();
+  expect(screen.getByRole("radio", { name: "亲吻：到时决定" })).toBeTruthy();
+  expect(screen.getByRole("radio", { name: "亲吻：不确定" })).toBeTruthy();
+  expect(screen.getByRole("radio", { name: "亲吻：这次不要" })).toBeTruthy();
+  fireEvent.press(screen.getByRole("radio", { name: "亲吻：暂时不回答" }));
   expect(onSet).toHaveBeenCalledWith("draft-kissing", "skip");
 });
 
@@ -223,7 +226,7 @@ test("Page 7 is an editable review rather than a pass/fail checklist", () => {
   />);
 
   expect(screen.getByText("这不是需要全部勾选的通关表")).toBeTruthy();
-  fireEvent.press(screen.getByText("已考虑"));
+  fireEvent.press(screen.getByRole("radio", { name: "表达支持：已考虑" }));
   expect(onUpdate).toHaveBeenCalledWith("checklist:expression", "considered", "");
 });
 
@@ -239,7 +242,7 @@ test("Page 7 hydrates and submits an editable user note", () => {
   expect(screen.getByLabelText("表达支持补充说明")).toBe(note);
   expect(screen.queryByLabelText(/checklist:/u)).toBeNull();
   fireEvent.changeText(note, "先告诉对方我要慢一点");
-  fireEvent.press(screen.getByText("已考虑"));
+  fireEvent.press(screen.getByRole("radio", { name: "表达支持：已考虑" }));
 
   expect(onUpdate).toHaveBeenCalledWith("checklist:expression", "considered", "先告诉对方我要慢一点");
 });
@@ -273,7 +276,7 @@ test("Page 7 retains a rejected status-and-note update for a finish retry", asyn
   />);
 
   fireEvent.changeText(screen.getByPlaceholderText("补充说明（可选）"), "失败后仍要保存");
-  fireEvent.press(screen.getByText("已考虑"));
+  fireEvent.press(screen.getByRole("radio", { name: "表达支持：已考虑" }));
   await waitFor(() => expect(onUpdate).toHaveBeenCalledTimes(1));
   expect(onFinish).not.toHaveBeenCalled();
 
@@ -454,8 +457,9 @@ test("Page 8 exposes a structured clipboard failure as an accessible status", ()
   />);
 
   const errorStatus = screen.getByRole("alert");
-  expect(errorStatus).toHaveTextContent("复制失败，请重试");
-  expect(errorStatus.props.accessibilityLiveRegion).toBe("polite");
+  expect(errorStatus).toHaveAccessibleName("× 复制失败，请重试");
+  expect(errorStatus).toHaveTextContent(/复制失败，请重试/u);
+  expect(errorStatus.props.accessibilityLiveRegion).toBe("assertive");
 });
 
 test("Page 8 shows clipboard pending state and disables duplicate copy actions", () => {
@@ -481,8 +485,7 @@ test("Page 8 shows clipboard success state", () => {
     onCopy={jest.fn()}
   />);
 
-  const successStatus = screen.getByLabelText("已复制");
-  expect(successStatus).toHaveTextContent("已复制");
+  const successStatus = screen.getByLabelText("✓ 已复制");
   expect(successStatus.props.accessibilityLiveRegion).toBe("polite");
 });
 
@@ -683,8 +686,8 @@ test("Page 8 auto-persists a field edit and keeps a safe visible failure", async
     pointTotal={0}
   />);
 
-  fireEvent.changeText(screen.getByLabelText("沟通卡字段：boundaries"), "请先得到我的同意");
-  expect(screen.getByLabelText("沟通卡字段：boundaries").props.value).toBe("请先得到我的同意");
+  fireEvent.changeText(screen.getByLabelText("沟通卡字段：不希望"), "请先得到我的同意");
+  expect(screen.getByLabelText("沟通卡字段：不希望").props.value).toBe("请先得到我的同意");
   expect(onEdit).toHaveBeenCalledTimes(1);
 
   expect(onEdit).toHaveBeenCalledWith("boundaries", "请先得到我的同意");
@@ -872,7 +875,7 @@ test("Page 8 page actions receive the latest visible fields", async () => {
     pointTotal={0}
   />);
 
-  fireEvent.changeText(screen.getByLabelText("沟通卡字段：boundaries"), "当前可见表达");
+  fireEvent.changeText(screen.getByLabelText("沟通卡字段：不希望"), "当前可见表达");
   const visibleFields = [{ id: "boundaries", needsReview: true, text: "当前可见表达" }];
   fireEvent.press(screen.getByRole("button", { name: "本机保存" }));
   await waitFor(() => expect(onSave).toHaveBeenCalledWith(visibleFields));
@@ -900,8 +903,8 @@ test("Page 8 serializes page actions behind a field commit and retries the dirty
     pointTotal={0}
   />);
 
-  fireEvent.changeText(screen.getByLabelText("沟通卡字段：boundaries"), "待提交表达");
-  fireEvent.press(screen.getByRole("button", { name: "保存字段：boundaries" }));
+  fireEvent.changeText(screen.getByLabelText("沟通卡字段：不希望"), "待提交表达");
+  fireEvent.press(screen.getByRole("button", { name: "保存字段：不希望" }));
   expect(screen.getByRole("button", { name: "本机保存" }).props.accessibilityState.disabled).toBe(false);
   expect(screen.getByRole("button", { name: "复制当前卡片" }).props.accessibilityState.disabled).toBe(false);
   expect(screen.getByRole("button", { name: "完成旅程" }).props.accessibilityState.disabled).toBe(false);
@@ -933,7 +936,7 @@ test("Page 8 reconciles canonical props around dirty and committed fields", asyn
     pointTotal={0}
   />);
 
-  fireEvent.changeText(screen.getByLabelText("沟通卡字段：boundaries"), "尚未提交的边界");
+  fireEvent.changeText(screen.getByLabelText("沟通卡字段：不希望"), "尚未提交的边界");
   rerender(<CommunicationCardPage
     fields={[
       { id: "boundaries", needsReview: false, text: "过时服务端边界" },
@@ -945,8 +948,8 @@ test("Page 8 reconciles canonical props around dirty and committed fields", asyn
     pointTotal={0}
   />);
 
-  expect(screen.getByLabelText("沟通卡字段：boundaries").props.value).toBe("尚未提交的边界");
-  expect(screen.getByLabelText("沟通卡字段：comfort").props.value).toBe("安心新值");
+  expect(screen.getByLabelText("沟通卡字段：不希望").props.value).toBe("尚未提交的边界");
+  expect(screen.getByLabelText("沟通卡字段：安心条件").props.value).toBe("安心新值");
 
   await act(async () => { edit.resolve(); });
   await waitFor(() => expect(onEdit).toHaveBeenCalledWith("boundaries", "尚未提交的边界"));
@@ -960,7 +963,7 @@ test("Page 8 reconciles canonical props around dirty and committed fields", asyn
     onSave={jest.fn()}
     pointTotal={0}
   />);
-  expect(screen.getByLabelText("沟通卡字段：boundaries").props.value).toBe("已确认服务端边界");
+  expect(screen.getByLabelText("沟通卡字段：不希望").props.value).toBe("已确认服务端边界");
 });
 
 test("Page 8 blocks fullscreen and preserves a field error while a field commit is pending", async () => {
@@ -973,7 +976,7 @@ test("Page 8 blocks fullscreen and preserves a field error while a field commit 
     pointTotal={0}
   />);
 
-  fireEvent.press(screen.getByRole("button", { name: "保存字段：boundaries" }));
+  fireEvent.press(screen.getByRole("button", { name: "保存字段：不希望" }));
   expect(screen.getByRole("button", { name: "现场展示" }).props.accessibilityState.disabled).toBe(true);
   fireEvent.press(screen.getByRole("button", { name: "现场展示" }));
   expect(screen.queryByRole("button", { name: "退出展示" })).toBeNull();
@@ -1099,5 +1102,275 @@ test("labels text inputs and gives choices at least a 44 point touch target", ()
     onSave={jest.fn()}
     pointTotal={0}
   />);
-  expect(screen.getByLabelText("沟通卡字段：boundaries").props.multiline).toBe(true);
+  expect(screen.getByLabelText("沟通卡字段：不希望").props.multiline).toBe(true);
+});
+
+test("all eight pages use a theme-backed Card hierarchy with a reachable bottom primary action and delegate scrolling to the shell", () => {
+  const pageCases: Array<{
+    page: number;
+    primaryAction: string;
+    renderPage: () => ReactElement;
+  }> = [
+    {
+      page: 1,
+      primaryAction: "我已满18岁",
+      renderPage: () => (
+        <WelcomePage
+          onAdult={jest.fn()}
+          onOpenPreface={jest.fn()}
+          onRestart={jest.fn()}
+          onResume={jest.fn()}
+          onUnderage={jest.fn()}
+          resumeAvailable
+        />
+      )
+    },
+    {
+      page: 2,
+      primaryAction: "继续",
+      renderPage: () => <OvernightPage concernOptions={[]} expectationOptions={[]} onContinue={jest.fn()} />
+    },
+    {
+      page: 3,
+      primaryAction: "继续",
+      renderPage: () => (
+        <BodyKnowledgePage
+          cards={[]}
+          onContinue={jest.fn()}
+          onOpenDiagram={jest.fn()}
+          onOpenSources={jest.fn()}
+          onRead={jest.fn()}
+        />
+      )
+    },
+    {
+      page: 4,
+      primaryAction: "继续",
+      renderPage: () => (
+        <BehaviorAttitudesPage behaviors={[]} onContinue={jest.fn()} onSet={jest.fn()} />
+      )
+    },
+    {
+      page: 5,
+      primaryAction: "完成反思并继续",
+      renderPage: () => <ReflectionPage onComplete={jest.fn()} />
+    },
+    {
+      page: 6,
+      primaryAction: "采用这句话",
+      renderPage: () => (
+        <PresetPracticePage
+          behaviors={[{ id: "kissing", label: "亲吻" }]}
+          branches={[{ branch: "supportive", label: "支持" }]}
+          intents={[{
+            intent: "pause-and-decide",
+            label: "先暂停",
+            phrase: "先暂停一下。",
+            phraseId: "phrase-pause"
+          }]}
+          onComplete={jest.fn()}
+        />
+      )
+    },
+    {
+      page: 7,
+      primaryAction: "完成回顾",
+      renderPage: () => <ChecklistPage items={[]} onFinish={jest.fn()} onUpdate={jest.fn()} />
+    },
+    {
+      page: 8,
+      primaryAction: "完成旅程",
+      renderPage: () => (
+        <CommunicationCardPage
+          fields={[]}
+          onCopy={jest.fn()}
+          onEdit={jest.fn()}
+          onFinish={jest.fn()}
+          onSave={jest.fn()}
+          pointTotal={0}
+        />
+      )
+    }
+  ];
+
+  for (const pageCase of pageCases) {
+    const view = render(pageCase.renderPage());
+    const content = screen.getByTestId(`page-${pageCase.page}-content`);
+    const contentStyle = StyleSheet.flatten(content.props.style);
+    const cards = screen.getAllByTestId(new RegExp(`^page-${pageCase.page}-card-`, "u"));
+
+    expect(contentStyle.gap).toBe(theme.space.lg);
+    expect(contentStyle.flexGrow).toBe(1);
+    expect(cards.length).toBeGreaterThan(0);
+    expect(StyleSheet.flatten(cards[0]?.props.style)).toEqual(expect.objectContaining({
+      borderRadius: theme.radius.lg,
+      padding: theme.space.lg
+    }));
+    expect(screen.getByTestId(`page-${pageCase.page}-primary-actions`)).toBeTruthy();
+    expect(screen.getByRole("button", { name: pageCase.primaryAction })).toBeTruthy();
+    expect(view.UNSAFE_queryAllByType(ScrollView)).toHaveLength(0);
+
+    view.unmount();
+  }
+});
+
+test("welcome renders the canonical brand and retains every entry action", () => {
+  render(<WelcomePage
+    onAdult={jest.fn()}
+    onOpenPreface={jest.fn()}
+    onRestart={jest.fn()}
+    onResume={jest.fn()}
+    onUnderage={jest.fn()}
+    resumeAvailable
+  />);
+
+  expect(screen.getByText(brand.displayName)).toBeTruthy();
+  expect(screen.getByText(brand.slogan)).toBeTruthy();
+  for (const action of [
+    "阅读能力与局限短笺",
+    "我已满18岁",
+    "我未满18岁",
+    "继续本机旅程",
+    "重新开始（需要确认）"
+  ]) {
+    expect(screen.getByRole("button", { name: action })).toBeTruthy();
+  }
+});
+
+test("Pages 2 through 8 keep every required local and non-gating disclosure visible", () => {
+  const cases: Array<{ copy: string; page: () => ReactElement }> = [
+    {
+      copy: "过夜不代表会发生性行为，也不代表任何事一定会发生。",
+      page: () => <OvernightPage concernOptions={[]} expectationOptions={[]} onContinue={jest.fn()} />
+    },
+    {
+      copy: "医学图示将在内容完善阶段替换",
+      page: () => (
+        <BodyKnowledgePage
+          cards={[]}
+          onOpenDiagram={jest.fn()}
+          onOpenSources={jest.fn()}
+          onRead={jest.fn()}
+        />
+      )
+    },
+    {
+      copy: "每项都可独立选择，没有高低顺序",
+      page: () => <BehaviorAttitudesPage behaviors={[]} onSet={jest.fn()} />
+    },
+    {
+      copy: "反思记录只会保存在这台设备上；云端保存尚不可用。",
+      page: () => <ReflectionPage onComplete={jest.fn()} />
+    },
+    {
+      copy: "预设对话，不使用 AI",
+      page: () => (
+        <PresetPracticePage
+          behaviors={[]}
+          branches={[]}
+          intents={[]}
+          onComplete={jest.fn()}
+        />
+      )
+    },
+    {
+      copy: "这不是需要全部勾选的通关表",
+      page: () => <ChecklistPage items={[]} onFinish={jest.fn()} onUpdate={jest.fn()} />
+    },
+    {
+      copy: "根据妳刚才的选择整理",
+      page: () => (
+        <CommunicationCardPage
+          fields={[]}
+          onCopy={jest.fn()}
+          onEdit={jest.fn()}
+          onSave={jest.fn()}
+          pointTotal={0}
+        />
+      )
+    }
+  ];
+
+  for (const testCase of cases) {
+    const view = render(testCase.page());
+    if (testCase.copy.startsWith("医学图示")) {
+      fireEvent.press(screen.getByRole("button", { name: "主动展开医学图示" }));
+    }
+    expect(screen.getByText(testCase.copy)).toBeTruthy();
+    view.unmount();
+  }
+});
+
+test("long labels and multiline inputs remain flexible while journey controls own 44 point targets", () => {
+  const longLabel = "这是一个会在小屏幕和大号字体下自然换行而不会被截断的很长期待选项标签";
+  render(<OvernightPage
+    concernOptions={[]}
+    expectationOptions={[{ id: "long", label: longLabel }]}
+    onContinue={jest.fn()}
+  />);
+
+  const longLabelText = screen.getByText(longLabel);
+  const input = screen.getByLabelText("过夜情境可选补充");
+  const choice = screen.getByRole("checkbox", { name: longLabel });
+  const continueAction = screen.getByRole("button", { name: "继续" });
+  const inputStyle = StyleSheet.flatten(input.props.style) ?? {};
+
+  expect(longLabelText.props.numberOfLines).toBeUndefined();
+  expect(StyleSheet.flatten(longLabelText.props.style).height).toBeUndefined();
+  expect(input.props.numberOfLines).toBeUndefined();
+  expect(inputStyle.height).toBeUndefined();
+  expect(inputStyle.minHeight).toBe(theme.size.minimumTouchTarget);
+  expect(StyleSheet.flatten(choice.props.style)).toEqual(expect.objectContaining({
+    minHeight: theme.size.minimumTouchTarget,
+    minWidth: theme.size.minimumTouchTarget
+  }));
+  expect(StyleSheet.flatten(continueAction.props.style)).toEqual(expect.objectContaining({
+    minHeight: theme.size.minimumTouchTarget,
+    minWidth: theme.size.minimumTouchTarget
+  }));
+});
+
+test("visible journey results never add readiness, score, or percentage language and points reveal no sensitive input", () => {
+  const sensitiveText = "只想留在本机的私密表达";
+  render(<CommunicationCardPage
+    fields={[{ id: "boundaries", needsReview: false, text: sensitiveText }]}
+    onCopy={jest.fn()}
+    onEdit={jest.fn()}
+    onSave={jest.fn()}
+    pointTotal={7}
+  />);
+
+  expect(screen.getByText("探索积分：7")).toBeTruthy();
+  expect(screen.queryByText(/准备度|评分|百分比|readiness|score|percentage/iu)).toBeNull();
+  expect(screen.queryByText(new RegExp(`探索积分.*${sensitiveText}`, "u"))).toBeNull();
+});
+
+test("Page 8 presents every communication-card section with stable Chinese labels while callbacks keep canonical IDs", async () => {
+  const sections = [
+    ["intentions", "期待"],
+    ["boundaries", "不希望"],
+    ["pace", "当时再感受"],
+    ["comfort", "安心条件"],
+    ["practical", "确认与暂停"],
+    ["aftercare", "改变时表达"]
+  ] as const;
+  const onEdit = jest.fn();
+  render(<CommunicationCardPage
+    fields={sections.map(([id]) => ({ id, needsReview: false, text: `${id}-content` }))}
+    onCopy={jest.fn()}
+    onEdit={onEdit}
+    onSave={jest.fn()}
+    pointTotal={0}
+  />);
+
+  for (const [id, label] of sections) {
+    expect(screen.getByRole("header", { name: label })).toBeTruthy();
+    expect(screen.getByLabelText(`沟通卡字段：${label}`)).toBeTruthy();
+    fireEvent.press(screen.getByRole("button", { name: `保存字段：${label}` }));
+    await waitFor(() => expect(onEdit).toHaveBeenCalledWith(id, `${id}-content`));
+
+    expect(screen.queryByRole("header", { name: id })).toBeNull();
+    expect(screen.queryByLabelText(`沟通卡字段：${id}`)).toBeNull();
+    expect(screen.queryByRole("button", { name: `保存字段：${id}` })).toBeNull();
+  }
 });

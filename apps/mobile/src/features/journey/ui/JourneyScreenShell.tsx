@@ -1,17 +1,19 @@
-import type { PropsWithChildren } from "react";
-import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { useEffect, useRef, useState, type PropsWithChildren } from "react";
+import { KeyboardAvoidingView, Text, View } from "react-native";
 
+import { brand } from "../../../config/brand";
+import { theme } from "../../../core/design/theme";
+import { Card } from "../../../core/ui/Card";
+import { ProgressHeader } from "../../../core/ui/ProgressHeader";
+import { Screen } from "../../../core/ui/Screen";
+import { StatusBanner } from "../../../core/ui/StatusBanner";
 import { JOURNEY_PAGE_IDS } from "../application/journey-navigation";
 import type { JourneyPageId } from "../domain/types";
-import type { JourneyRuntimeNotice } from "./journey-ui-contracts";
 import type { JourneyAction as JourneyActionCallback } from "./journey-ui-contracts";
-import { journeyColors, journeySizes, journeySpacing } from "./journey-ui-tokens";
-import { JourneyAction } from "./components/JourneyAction";
-import { JourneyStatusBanner } from "./components/JourneyStatusBanner";
+import type { JourneyRuntimeNotice } from "./journey-ui-contracts";
 
 const JOURNEY_PAGE_TITLES: Record<JourneyPageId, string> = {
-  welcome: "欢迎来到内界 CAVE",
+  welcome: `欢迎来到${brand.displayName}`,
   overnight: "过夜期待与在意",
   "body-knowledge": "身体与安全知识",
   "behavior-attitudes": "行为态度与边界",
@@ -24,85 +26,119 @@ const JOURNEY_PAGE_TITLES: Record<JourneyPageId, string> = {
 type Props = PropsWithChildren<{
   pageId: JourneyPageId;
   onBack?: JourneyActionCallback | undefined;
+  onExit: JourneyActionCallback;
   runtimeNotice?: JourneyRuntimeNotice;
 }>;
 
-export function JourneyScreenShell({ pageId, onBack, runtimeNotice, children }: Props) {
+type BackState = "idle" | "loading" | "error";
+
+export function JourneyScreenShell({
+  pageId,
+  onBack,
+  onExit,
+  runtimeNotice,
+  children
+}: Props) {
   const pageNumber = JOURNEY_PAGE_IDS.indexOf(pageId) + 1;
+  const mountedRef = useRef(false);
+  const pageGenerationRef = useRef(0);
+  const operationGenerationRef = useRef(0);
+  const backInFlightRef = useRef(false);
+  const [backState, setBackState] = useState<BackState>("idle");
+
+  useEffect(() => {
+    mountedRef.current = true;
+    const pageGeneration = ++pageGenerationRef.current;
+    operationGenerationRef.current += 1;
+    backInFlightRef.current = false;
+    setBackState("idle");
+
+    return () => {
+      mountedRef.current = false;
+      if (pageGenerationRef.current === pageGeneration) pageGenerationRef.current += 1;
+      operationGenerationRef.current += 1;
+      backInFlightRef.current = false;
+    };
+  }, [pageId]);
+
+  const handleBack = () => {
+    if (!onBack || backInFlightRef.current) return;
+
+    const pageGeneration = pageGenerationRef.current;
+    const operationGeneration = ++operationGenerationRef.current;
+    const isCurrentOperation = () => (
+      mountedRef.current
+      && pageGenerationRef.current === pageGeneration
+      && operationGenerationRef.current === operationGeneration
+    );
+
+    backInFlightRef.current = true;
+    setBackState("loading");
+    try {
+      const result = onBack();
+      if (result && typeof result.then === "function") {
+        void Promise.resolve(result)
+          .then(() => {
+            if (isCurrentOperation()) setBackState("idle");
+          })
+          .catch(() => {
+            if (isCurrentOperation()) setBackState("error");
+          })
+          .finally(() => {
+            if (isCurrentOperation()) backInFlightRef.current = false;
+          });
+        return;
+      }
+
+      if (isCurrentOperation()) setBackState("idle");
+    } catch {
+      if (isCurrentOperation()) setBackState("error");
+    }
+    if (isCurrentOperation()) backInFlightRef.current = false;
+  };
+
   return (
-    <View style={styles.screen} testID={`journey-page-${pageId}`}>
-      <SafeAreaView style={styles.safeArea} testID="journey-safe-area">
-        <KeyboardAvoidingView
-          behavior={Platform.OS === "ios" ? "padding" : undefined}
-          style={styles.keyboardAvoiding}
-          testID="journey-keyboard-avoiding"
-        >
-          <ScrollView
-            contentContainerStyle={styles.scrollContent}
-            keyboardDismissMode="interactive"
-            keyboardShouldPersistTaps="handled"
-            testID="journey-scroll"
-          >
-            <View style={styles.header}>
-              <Text style={styles.progress}>{`第 ${pageNumber} 页，共 8 页`}</Text>
-              {pageNumber > 1 ? (
-                <JourneyAction
-                  accessibilityLabel="返回上一页"
-                  disabled={!onBack}
-                  errorMessage="返回失败，请重试。"
-                  label="返回修改"
-                  loadingLabel="正在返回…"
-                  onAction={onBack}
-                  testID="journey-back"
-                />
-              ) : (
-                <View
-                  style={styles.backTarget}
-                  testID="journey-back-placeholder"
-                />
-              )}
-              <Text accessibilityRole="header" style={styles.title}>
-                {JOURNEY_PAGE_TITLES[pageId]}
-              </Text>
-            </View>
-            {runtimeNotice ? (
-              <JourneyStatusBanner
-                accessibilityLabel={runtimeNotice.accessibilityLabel}
-                message={runtimeNotice.message}
-              />
-            ) : null}
-            {children}
-          </ScrollView>
-        </KeyboardAvoidingView>
-      </SafeAreaView>
+    <View
+      style={{ backgroundColor: theme.color.background, flex: 1 }}
+      testID={`journey-page-${pageId}`}
+    >
+      <KeyboardAvoidingView
+        behavior={process.env.EXPO_OS === "ios" ? "padding" : undefined}
+        style={{ flex: 1 }}
+        testID="journey-keyboard-avoiding"
+      >
+        <Screen keyboardDismissMode="interactive" testID="journey-scroll">
+          <ProgressHeader
+            backLabel={backState === "loading" ? "正在返回…" : "返回上一页"}
+            backBusy={backState === "loading"}
+            backDisabled={backState === "loading"}
+            currentPage={pageNumber}
+            onExit={onExit}
+            testID="journey-progress-header"
+            {...(pageNumber > 1 && onBack ? { onBack: handleBack } : {})}
+          />
+          <Card accessible={false} testID="journey-title-card">
+            <Text
+              accessibilityRole="header"
+              selectable
+              style={{ ...theme.typography.title, color: theme.color.text }}
+            >
+              {JOURNEY_PAGE_TITLES[pageId]}
+            </Text>
+          </Card>
+          {runtimeNotice ? (
+            <StatusBanner
+              accessibilityLabel={runtimeNotice.accessibilityLabel}
+              message={runtimeNotice.message}
+              variant="info"
+            />
+          ) : null}
+          {backState === "error" ? (
+            <StatusBanner message="返回失败，请重试。" variant="error" />
+          ) : null}
+          {children}
+        </Screen>
+      </KeyboardAvoidingView>
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  screen: { backgroundColor: journeyColors.background, flex: 1 },
-  safeArea: { flex: 1 },
-  keyboardAvoiding: { flex: 1 },
-  scrollContent: {
-    flexGrow: 1,
-    gap: journeySpacing.md,
-    paddingBottom: journeySpacing.xl,
-    paddingHorizontal: journeySpacing.lg,
-    paddingTop: journeySpacing.md
-  },
-  header: { gap: journeySpacing.sm },
-  progress: { color: journeyColors.mutedText, fontSize: 14, lineHeight: 20 },
-  backTarget: {
-    alignItems: "flex-start",
-    justifyContent: "center",
-    minHeight: journeySizes.minimumTouchTarget,
-    minWidth: journeySizes.minimumTouchTarget,
-    paddingVertical: journeySpacing.sm
-  },
-  title: {
-    color: journeyColors.text,
-    fontSize: 24,
-    fontWeight: "600",
-    lineHeight: 32
-  }
-});

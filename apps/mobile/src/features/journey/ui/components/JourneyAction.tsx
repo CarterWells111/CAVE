@@ -1,12 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import type { AccessibilityRole, AccessibilityState } from "react-native";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Text, View } from "react-native";
 
+import { theme } from "../../../../core/design/theme";
+import { Button } from "../../../../core/ui/Button";
 import type {
   JourneyAction as JourneyActionCallback,
   JourneyAsyncState
 } from "../journey-ui-contracts";
-import { journeyColors, journeyRadii, journeySizes, journeySpacing } from "../journey-ui-tokens";
 import { JourneyStatusBanner } from "./JourneyStatusBanner";
 
 export type JourneyActionProps = {
@@ -45,14 +46,6 @@ export function JourneyAction({
   const externallyLoading = actionState?.status === "loading";
   const loading = externallyLoading || internalState.status === "loading";
   const unavailable = disabled || !onAction || loading;
-  const checked = role === "checkbox" || role === "radio" ? selected : state?.checked;
-  const accessibilityState: AccessibilityState = {
-    ...state,
-    busy: loading,
-    checked,
-    disabled: unavailable,
-    selected
-  };
 
   useEffect(() => {
     mountedRef.current = true;
@@ -106,33 +99,30 @@ export function JourneyAction({
     : visibleState.status === "success"
       ? visibleState.message
       : undefined;
+  const visibleLabel = loading ? loadingLabel : label;
 
   return (
-    <View style={styles.container}>
-      <Pressable
-        accessibilityLabel={accessibilityLabel ?? (loading ? loadingLabel : label)}
-        accessibilityRole={role}
-        accessibilityState={accessibilityState}
-        disabled={unavailable}
+    <View style={{ gap: theme.space.sm }}>
+      <Button
+        accessibilityLabel={accessibilityLabel}
+        disabled={disabled || !onAction}
+        label={visibleLabel}
+        loading={loading}
         onPress={handlePress}
-        style={[
-          styles.action,
-          selected && styles.selectedAction,
-          unavailable && styles.disabledAction
-        ]}
+        role={role}
+        selected={selected}
+        state={state}
         testID={testID}
-      >
-        <Text
-          style={[
-            styles.label,
-            selected && styles.selectedLabel,
-            unavailable && styles.disabledLabel
-          ]}
+      />
+      {selected ? (
+        <View
+          accessibilityElementsHidden
+          importantForAccessibility="no-hide-descendants"
+          pointerEvents="none"
         >
-          {loading ? loadingLabel : label}
-        </Text>
-        {selected ? <Text style={styles.selectedMarker}>已选中</Text> : null}
-      </Pressable>
+          <Text style={{ ...theme.typography.caption, color: theme.color.text }}>✓ 已选中</Text>
+        </View>
+      ) : null}
       {statusMessage ? (
         <JourneyStatusBanner
           message={statusMessage}
@@ -142,34 +132,3 @@ export function JourneyAction({
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { gap: journeySpacing.sm },
-  action: {
-    alignItems: "center",
-    backgroundColor: journeyColors.actionBackground,
-    borderRadius: journeyRadii.md,
-    justifyContent: "center",
-    minHeight: journeySizes.minimumTouchTarget,
-    minWidth: journeySizes.minimumTouchTarget,
-    paddingHorizontal: journeySpacing.md,
-    paddingVertical: journeySpacing.sm
-  },
-  selectedAction: { backgroundColor: journeyColors.selectedBackground },
-  disabledAction: { backgroundColor: journeyColors.disabledBackground },
-  label: {
-    color: journeyColors.actionText,
-    fontSize: 16,
-    fontWeight: "600",
-    lineHeight: 22,
-    textAlign: "center"
-  },
-  selectedLabel: { color: journeyColors.selectedText },
-  disabledLabel: { color: journeyColors.disabledText },
-  selectedMarker: {
-    color: journeyColors.selectedText,
-    fontSize: 13,
-    lineHeight: 18,
-    marginTop: journeySpacing.xs
-  }
-});

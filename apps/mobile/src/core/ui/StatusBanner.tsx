@@ -6,6 +6,7 @@ import { theme } from "../design/theme";
 type StatusVariant = "info" | "success" | "warning" | "error";
 
 type StatusBannerProps = {
+  accessibilityLabel?: string | undefined;
   message: string;
   variant: StatusVariant;
   actionLabel?: string;
@@ -40,6 +41,7 @@ const STATUS_PRESENTATION: Record<
 };
 
 export function StatusBanner({
+  accessibilityLabel,
   message,
   variant,
   actionLabel,
@@ -70,7 +72,7 @@ export function StatusBanner({
     >
       <View
         accessible
-        accessibilityLabel={`${presentation.icon} ${message}`}
+        accessibilityLabel={accessibilityLabel ?? `${presentation.icon} ${message}`}
         accessibilityLiveRegion={isError ? "assertive" : "polite"}
         role={isError ? "alert" : "status"}
         style={{ alignItems: "flex-start", flexDirection: "row", gap: theme.space.sm }}

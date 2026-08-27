@@ -166,7 +166,7 @@ test("production back navigation can edit Page 4 and recompute derived output wi
   const originalGenerated = journeyRuntime.service.getSnapshot()?.communicationCard.pace?.generatedText;
   let view = await openRoute(<ReflectionRoute />, journeyRuntime);
 
-  fireEvent.press(screen.getByTestId("journey-back"));
+  fireEvent.press(screen.getByRole("button", { name: "返回上一页" }));
   await waitFor(() => {
     expect(journeyRuntime.service.getSnapshot()?.currentPage).toBe("behavior-attitudes");
     expect(mockRouter.replace).toHaveBeenCalledWith("/journey/behavior-attitudes");
@@ -174,7 +174,8 @@ test("production back navigation can edit Page 4 and recompute derived output wi
   view.unmount();
 
   view = await openRoute(<BehaviorAttitudesRoute />, journeyRuntime);
-  fireEvent.press(screen.getAllByText("这次不要")[0]!);
+  expect(screen.getAllByRole("radio", { name: "亲吻：这次不要" })).toHaveLength(1);
+  fireEvent.press(screen.getByRole("radio", { name: "亲吻：这次不要" }));
 
   await waitFor(() => expect(journeyRuntime.service.getSnapshot()?.behaviorAttitudes["draft-kissing"])
     .toBe("not-this-time"));

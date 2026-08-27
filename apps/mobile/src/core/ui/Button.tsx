@@ -1,4 +1,5 @@
 import { useState } from "react";
+import type { AccessibilityRole, AccessibilityState } from "react-native";
 import { Pressable, Text } from "react-native";
 
 import { theme } from "../design/theme";
@@ -6,26 +7,46 @@ import { theme } from "../design/theme";
 type ButtonProps = {
   label: string;
   onPress: () => void;
-  disabled?: boolean;
-  loading?: boolean;
-  testID?: string;
+  accessibilityLabel?: string | undefined;
+  disabled?: boolean | undefined;
+  loading?: boolean | undefined;
+  role?: AccessibilityRole | undefined;
+  selected?: boolean | undefined;
+  state?: AccessibilityState | undefined;
+  testID?: string | undefined;
 };
 
 export function Button({
   label,
   onPress,
+  accessibilityLabel,
   disabled = false,
   loading = false,
+  role = "button",
+  selected,
+  state,
   testID
 }: ButtonProps) {
   const [focused, setFocused] = useState(false);
   const unavailable = disabled || loading;
+  const accessibilityState: AccessibilityState = {
+    ...state,
+    busy: loading,
+    disabled: unavailable
+  };
+
+  if (selected !== undefined) {
+    accessibilityState.selected = selected;
+    if (role === "checkbox" || role === "radio") {
+      accessibilityState.checked = selected;
+    }
+  }
 
   return (
     <Pressable
-      accessibilityLabel={label}
-      accessibilityRole="button"
-      accessibilityState={{ busy: loading, disabled: unavailable }}
+      accessibilityLabel={accessibilityLabel ?? label}
+      accessibilityRole={role}
+      accessibilityState={accessibilityState}
       disabled={unavailable}
       onBlur={() => setFocused(false)}
       onFocus={() => setFocused(true)}
@@ -47,8 +68,11 @@ export function Button({
         borderRadius: theme.radius.md,
         borderWidth: theme.border.width,
         flexDirection: "row",
+        flexShrink: 1,
+        flexWrap: "wrap",
         gap: theme.space.sm,
         justifyContent: "center",
+        maxWidth: "100%",
         minHeight: theme.size.minimumTouchTarget,
         minWidth: theme.size.minimumTouchTarget,
         opacity: disabled ? 0.55 : pressed ? 0.82 : 1,
@@ -63,13 +87,27 @@ export function Button({
       <Text
         style={{
           ...theme.typography.button,
-          color: disabled ? theme.color.textMuted : theme.color.onPrimary
+          color: disabled ? theme.color.textMuted : theme.color.onPrimary,
+          flexShrink: 1,
+          flexWrap: "wrap",
+          maxWidth: "100%",
+          textAlign: "center"
         }}
       >
         {label}
       </Text>
       {loading ? (
-        <Text style={{ ...theme.typography.caption, color: theme.color.onPrimary }}>加载中</Text>
+        <Text
+          style={{
+            ...theme.typography.caption,
+            color: theme.color.onPrimary,
+            flexShrink: 1,
+            flexWrap: "wrap",
+            textAlign: "center"
+          }}
+        >
+          加载中
+        </Text>
       ) : null}
     </Pressable>
   );

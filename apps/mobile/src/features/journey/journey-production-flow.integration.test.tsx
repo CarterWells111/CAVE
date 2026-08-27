@@ -88,7 +88,7 @@ test("the production routes complete Page 1 through 8 offline with real snapshot
     fireEvent.press(screen.getByText("想了解自己的感受"));
     fireEvent.press(screen.getByText("保有隐私"));
     fireEvent.press(screen.getByText("需要表达支持"));
-    fireEvent.press(screen.getByText("完成反思"));
+    fireEvent.press(screen.getByRole("button", { name: "完成反思并继续" }));
     await waitFor(() => expect(journeyRuntime.service.getSnapshot()?.currentPage).toBe("preset-practice"));
     view.unmount();
 
@@ -113,7 +113,8 @@ test("the production routes complete Page 1 through 8 offline with real snapshot
     expect(screen.getByText("健康准备：插入式性行为")).toBeTruthy();
     expect(screen.queryByText(/checklist:/u)).toBeNull();
     fireEvent.changeText(screen.getAllByPlaceholderText("补充说明（可选）")[0]!, "先说出暂停句");
-    fireEvent.press(screen.getAllByText("已考虑")[0]!);
+    expect(screen.getAllByRole("radio", { name: "过夜安排与个人空间：已考虑" })).toHaveLength(1);
+    fireEvent.press(screen.getByRole("radio", { name: "过夜安排与个人空间：已考虑" }));
     fireEvent.press(screen.getByText("完成回顾"));
     await waitFor(() => expect(journeyRuntime.service.getSnapshot()?.currentPage).toBe("communication-card"));
     view.unmount();

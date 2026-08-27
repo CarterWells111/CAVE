@@ -111,3 +111,26 @@ test("shows and clears an explicit focus treatment", () => {
   fireEvent(chip, "blur");
   expect(chip.props.style.outlineWidth).toBe(0);
 });
+
+test("wraps a long choice label within the available narrow-screen width", () => {
+  const label = "我想先停下来确认彼此都感到安全和舒服";
+  render(
+    <ChoiceChip
+      label={label}
+      onPress={jest.fn()}
+      selected={false}
+      semantics="checkbox"
+    />
+  );
+
+  const chip = screen.getByRole("checkbox", { name: label });
+  const text = screen.getByText(label);
+
+  expect(chip).toHaveStyle({ maxWidth: "100%", minHeight: 44, minWidth: 44 });
+  expect(text).toHaveStyle({
+    flexShrink: 1,
+    flexWrap: "wrap",
+    maxWidth: "100%"
+  });
+  expect(text.props.numberOfLines).toBeUndefined();
+});

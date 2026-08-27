@@ -3,6 +3,7 @@ import { join } from "node:path";
 
 import { fireEvent, render, screen } from "@testing-library/react-native";
 import { AccessibilityInfo } from "react-native";
+import * as ReactNative from "react-native";
 
 import { theme } from "../design/theme";
 import { ProgressHeader } from "./ProgressHeader";
@@ -152,4 +153,59 @@ test("retains the Android polite live-region contract behind the iOS-only build 
     "accessibilityLiveRegion",
     "polite"
   );
+});
+
+test("uses a two-line header at 320 points with the largest text scale", () => {
+  jest.spyOn(ReactNative, "useWindowDimensions").mockReturnValue({
+    fontScale: 2,
+    height: 568,
+    scale: 2,
+    width: 320
+  });
+
+  render(
+    <ProgressHeader
+      backLabel="返回上一页"
+      currentPage={2}
+      exitLabel="退出并返回开始页面"
+      onBack={jest.fn()}
+      onExit={jest.fn()}
+      testID="responsive-progress-header"
+    />
+  );
+
+  expect(screen.getByTestId("responsive-progress-header")).toHaveStyle({
+    flexDirection: "column",
+    width: "100%"
+  });
+  expect(screen.getByTestId("progress-actions-row")).toHaveStyle({
+    flexDirection: "row",
+    width: "100%"
+  });
+  expect(screen.getByText("退出并返回开始页面")).toHaveStyle({
+    flexShrink: 1,
+    flexWrap: "wrap"
+  });
+  expect(screen.getByRole("header", { name: "第 2 页，共 8 页" })).toHaveStyle({
+    flexShrink: 1,
+    flexWrap: "wrap"
+  });
+});
+
+test("exposes busy and disabled state for an unavailable back action", () => {
+  const onBack = jest.fn();
+
+  render(
+    <ProgressHeader
+      backBusy
+      backDisabled
+      currentPage={2}
+      onBack={onBack}
+    />
+  );
+
+  const back = screen.getByRole("button", { name: "返回上一页" });
+  expect(back).toHaveProp("accessibilityState", { busy: true, disabled: true });
+  fireEvent.press(back);
+  expect(onBack).not.toHaveBeenCalled();
 });

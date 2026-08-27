@@ -147,3 +147,18 @@ test("retains the Android assertive live-region contract behind the iOS-only bui
     "assertive"
   );
 });
+
+test("applies a custom accessibility label to the single status node", () => {
+  render(
+    <StatusBanner
+      accessibilityLabel="本机暂存提示"
+      message="演示期数据只保存在本机"
+      variant="info"
+    />
+  );
+
+  const labelledNodes = screen.getAllByLabelText("本机暂存提示");
+  expect(labelledNodes).toHaveLength(1);
+  expect(labelledNodes[0]).toHaveProp("role", "status");
+  expect(labelledNodes[0]).toHaveProp("accessibilityLiveRegion", "polite");
+});

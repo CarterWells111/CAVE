@@ -51,6 +51,7 @@ export function ChoiceChip({
         borderWidth: theme.border.width,
         flexDirection: "row",
         gap: theme.space.sm,
+        maxWidth: "100%",
         minHeight: theme.size.minimumTouchTarget,
         minWidth: theme.size.minimumTouchTarget,
         opacity: disabled ? 0.55 : pressed ? 0.82 : 1,
@@ -63,11 +64,19 @@ export function ChoiceChip({
       testID={testID}
     >
       <Text
-        style={{ ...theme.typography.label, color: theme.color.text }}
+        style={{ ...theme.typography.label, color: theme.color.text, flexShrink: 0 }}
       >
         {marker}
       </Text>
-      <Text style={{ ...theme.typography.label, color: disabled ? theme.color.textMuted : theme.color.text }}>
+      <Text
+        style={{
+          ...theme.typography.label,
+          color: disabled ? theme.color.textMuted : theme.color.text,
+          flexShrink: 1,
+          flexWrap: "wrap",
+          maxWidth: "100%"
+        }}
+      >
         {label}
       </Text>
     </Pressable>

@@ -58,6 +58,38 @@ test("shows and clears an explicit focus treatment", () => {
   expect(button.props.style.outlineWidth).toBe(0);
 });
 
+test("keeps custom accessibility semantics on the focused interaction node", () => {
+  render(
+    <Button
+      accessibilityLabel="选择继续"
+      label="继续"
+      onPress={jest.fn()}
+      role="radio"
+      selected
+      state={{ expanded: true }}
+      testID="semantic-button"
+    />
+  );
+
+  const button = screen.getByRole("radio", { name: "选择继续" });
+  expect(button).toHaveProp("testID", "semantic-button");
+  expect(button).toHaveProp(
+    "accessibilityState",
+    expect.objectContaining({
+      busy: false,
+      checked: true,
+      disabled: false,
+      expanded: true,
+      selected: true
+    })
+  );
+
+  fireEvent(button, "focus");
+  expect(button.props.style.outlineColor).toBe(theme.color.focus);
+  expect(button.props.style.outlineWidth).toBe(theme.border.focusWidth);
+  expect(button.props.style.outlineOffset).toBeGreaterThan(0);
+});
+
 test("does not activate while disabled", () => {
   const onPress = jest.fn();
   render(<Button disabled label="继续" onPress={onPress} />);
@@ -94,4 +126,27 @@ test("keeps loading label and status readable without dimming the whole control"
   expect(button.props.style.opacity).toBe(1);
   expect(contrastRatio(label.props.style.color, button.props.style.backgroundColor)).toBeGreaterThanOrEqual(4.5);
   expect(contrastRatio(status.props.style.color, button.props.style.backgroundColor)).toBeGreaterThanOrEqual(4.5);
+});
+
+test("wraps a long label inside a narrow large-text layout without truncation", () => {
+  const label = "保存当前沟通卡并继续下一步";
+  render(<Button label={label} onPress={jest.fn()} />);
+
+  const button = screen.getByRole("button", { name: label });
+  const text = screen.getByText(label);
+
+  expect(button).toHaveStyle({
+    flexShrink: 1,
+    flexWrap: "wrap",
+    maxWidth: "100%",
+    minHeight: 44,
+    minWidth: 44
+  });
+  expect(text).toHaveStyle({
+    flexShrink: 1,
+    flexWrap: "wrap",
+    maxWidth: "100%",
+    textAlign: "center"
+  });
+  expect(text.props.numberOfLines).toBeUndefined();
 });
