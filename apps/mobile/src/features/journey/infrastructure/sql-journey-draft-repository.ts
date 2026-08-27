@@ -1,5 +1,14 @@
 import type { EncryptedDatabaseManager } from "../../../core/storage/database";
-import type { JourneyDraft, SavedCommunicationCardRecord } from "../domain/types";
+import {
+  migrateLegacyCommunicationCard,
+  migrateJourneyDraftV1ToV2,
+  type JourneyDraftV1
+} from "../domain/migrate-journey-draft";
+import {
+  COMMUNICATION_SECTION_IDS,
+  type JourneyDraft,
+  type SavedCommunicationCardRecord
+} from "../domain/types";
 import {
   JourneyStorageError,
   type CommunicationCardRepository,
@@ -40,14 +49,18 @@ function isCustomBehaviors(value: unknown): value is JourneyDraft["customBehavio
 function isPractice(value: unknown): value is JourneyDraft["practice"] {
   return isRecord(value)
     && typeof value.completed === "boolean"
+    && typeof value.mirrorRehearsed === "boolean"
     && isOptionalString(value.behaviorId)
     && isOptionalString(value.intent)
     && isOptionalString(value.selectedPhraseId)
     && isOptionalString(value.editedPhrase)
-    && isOptionalString(value.partnerResponseBranch);
+    && isOptionalString(value.partnerResponseBranch)
+    && isOptionalString(value.responseId)
+    && isOptionalString(value.catalogVersion)
+    && isOptionalString(value.reflectionNote);
 }
 
-function isChecklistItems(value: unknown): value is JourneyDraft["checklistItems"] {
+function isChecklistItems(value: unknown): value is JourneyDraft["privatePreparation"]["items"] {
   return Array.isArray(value) && value.every((entry) => isRecord(entry)
     && typeof entry.id === "string"
     && isOneOf(entry.category, [
@@ -59,6 +72,50 @@ function isChecklistItems(value: unknown): value is JourneyDraft["checklistItems
 }
 
 function isCommunicationCard(value: unknown): value is JourneyDraft["communicationCard"] {
+  return isRecord(value)
+    && Object.keys(value).length === COMMUNICATION_SECTION_IDS.length
+    && COMMUNICATION_SECTION_IDS.every((sectionId) => isRecord(value[sectionId])
+    && typeof value[sectionId].generatedText === "string"
+    && isOptionalString(value[sectionId].userText)
+    && typeof value[sectionId].sourceRevision === "number"
+    && Number.isInteger(value[sectionId].sourceRevision)
+    && value[sectionId].sourceRevision >= 0
+    && typeof value[sectionId].needsReview === "boolean"
+    && isOneOf(value[sectionId].visibility, ["pending", "included", "private", "deleted"]));
+}
+
+function isOvernightState(value: unknown): value is JourneyDraft["overnight"] {
+  return isRecord(value)
+    && isOneOf(value.stage, ["expectations", "concerns"])
+    && isOneOf(value.resumeStage, ["expectations", "concerns"]);
+}
+
+function isReflection(value: unknown): value is JourneyDraft["reflection"] {
+  return isRecord(value)
+    && (value.pressureWithoutDisappointment === null || typeof value.pressureWithoutDisappointment === "string")
+    && (value.refusalSafety === null || typeof value.refusalSafety === "string")
+    && (value.expressionDifficulty === null || typeof value.expressionDifficulty === "string")
+    && (value.comfortClarity === null || typeof value.comfortClarity === "string")
+    && typeof value.comfortNote === "string";
+}
+
+function isJournal(value: unknown): value is JourneyDraft["journal"] {
+  return isRecord(value)
+    && isOptionalString(value.promptId)
+    && typeof value.text === "string"
+    && isOneOf(value.saveChoice, ["device", "not-saved"])
+    && isOptionalString(value.savedAt);
+}
+
+function isPrivatePreparation(value: unknown): value is JourneyDraft["privatePreparation"] {
+  return isRecord(value)
+    && isChecklistItems(value.items)
+    && isStringArray(value.excludedGroupIds)
+    && isStringArray(value.aftercareIds)
+    && isOptionalString(value.customNeed);
+}
+
+function isLegacyCommunicationCard(value: unknown): value is Record<string, unknown> {
   return isRecord(value) && Object.values(value).every((field) => isRecord(field)
     && typeof field.generatedText === "string"
     && isOptionalString(field.userText)
@@ -68,7 +125,20 @@ function isCommunicationCard(value: unknown): value is JourneyDraft["communicati
     && typeof field.needsReview === "boolean");
 }
 
-function isJourneyDraft(value: unknown): value is JourneyDraft {
+function isLegacyPractice(value: unknown): value is JourneyDraftV1["practice"] {
+  return isRecord(value)
+    && typeof value.completed === "boolean"
+    && isOptionalString(value.behaviorId)
+    && isOptionalString(value.intent)
+    && isOptionalString(value.selectedPhraseId)
+    && isOptionalString(value.editedPhrase)
+    && isOptionalString(value.partnerResponseBranch)
+    && isOptionalString(value.responseId)
+    && isOptionalString(value.catalogVersion)
+    && isOptionalString(value.reflectionNote);
+}
+
+function isJourneyDraftV1(value: unknown): value is JourneyDraftV1 {
   if (!isRecord(value)) return false;
   return value.schemaVersion === 1
     && typeof value.id === "string"
@@ -88,10 +158,48 @@ function isJourneyDraft(value: unknown): value is JourneyDraft {
     && isStringArray(value.motivationIds)
     && isStringArray(value.comfortNeedIds)
     && (typeof value.expressionSupportNeeded === "boolean" || value.expressionSupportNeeded === null)
+    && isOneOf(value.journalSaveChoice, ["device", "not-saved"])
+    && value.cloudSaveAvailability === "coming-soon"
+    && isLegacyPractice(value.practice)
+    && isChecklistItems(value.checklistItems)
+    && isLegacyCommunicationCard(value.communicationCard)
+    && isStringArray(value.pointEventKeys)
+    && typeof value.sourceRevision === "number"
+    && Number.isInteger(value.sourceRevision)
+    && value.sourceRevision >= 0
+    && typeof value.createdAt === "string"
+    && typeof value.updatedAt === "string";
+}
+
+function isJourneyDraft(value: unknown): value is JourneyDraft {
+  if (!isRecord(value)) return false;
+  return value.schemaVersion === 2
+    && typeof value.id === "string"
+    && isOneOf(value.currentPage, [
+      "welcome", "overnight", "body-knowledge", "behavior-map", "reflection",
+      "preset-practice", "final-preparation"
+    ])
+    && typeof value.ageConfirmed === "boolean"
+    && (value.addressPreference === null || value.addressPreference === "你" || value.addressPreference === "妳")
+    && typeof value.prefaceRead === "boolean"
+    && (typeof value.explicitContentConsent === "boolean" || value.explicitContentConsent === null)
+    && isOvernightState(value.overnight)
+    && isStringArray(value.expectationIds)
+    && isStringArray(value.concernIds)
+    && typeof value.overnightCustomNote === "string"
+    && isStringArray(value.readKnowledgeCardIds)
+    && typeof value.medicalDiagramOpened === "boolean"
+    && isBehaviorAttitudes(value.behaviorAttitudes)
+    && isCustomBehaviors(value.customBehaviors)
+    && isStringArray(value.motivationIds)
+    && isStringArray(value.comfortNeedIds)
+    && (typeof value.expressionSupportNeeded === "boolean" || value.expressionSupportNeeded === null)
+    && isReflection(value.reflection)
     && (value.journalSaveChoice === "device" || value.journalSaveChoice === "not-saved")
+    && isJournal(value.journal)
     && value.cloudSaveAvailability === "coming-soon"
     && isPractice(value.practice)
-    && isChecklistItems(value.checklistItems)
+    && isPrivatePreparation(value.privatePreparation)
     && isCommunicationCard(value.communicationCard)
     && isStringArray(value.pointEventKeys)
     && typeof value.sourceRevision === "number"
@@ -115,19 +223,70 @@ export class SqlJourneyDraftRepository implements JourneyDraftRepository {
   async loadActive(): Promise<JourneyDraft | null> {
     const connection = await this.database.initialize();
     const row = await connection.getFirstAsync<DraftRow>(
-      "SELECT schema_version, payload FROM journey_drafts ORDER BY updated_at DESC LIMIT 1"
+      "SELECT schema_version, payload FROM journey_drafts_v2 ORDER BY updated_at DESC LIMIT 1"
     );
-    if (row === null) return null;
-    if (row.schema_version !== 1) throw new JourneyStorageError("unsupported-schema");
-    const value = parseJson(row.payload);
-    if (!isJourneyDraft(value)) throw new JourneyStorageError("malformed-payload");
-    return value;
+    if (row !== null) {
+      if (row.schema_version !== 2) throw new JourneyStorageError("unsupported-schema");
+      const value = parseJson(row.payload);
+      if (!isJourneyDraft(value)) throw new JourneyStorageError("malformed-payload");
+      return value;
+    }
+
+    await connection.execAsync("BEGIN IMMEDIATE");
+    try {
+      const concurrentRow = await connection.getFirstAsync<DraftRow>(
+        "SELECT schema_version, payload FROM journey_drafts_v2 ORDER BY updated_at DESC LIMIT 1"
+      );
+      if (concurrentRow !== null) {
+        if (concurrentRow.schema_version !== 2) throw new JourneyStorageError("unsupported-schema");
+        const concurrentValue = parseJson(concurrentRow.payload);
+        if (!isJourneyDraft(concurrentValue)) throw new JourneyStorageError("malformed-payload");
+        await connection.execAsync("COMMIT");
+        return concurrentValue;
+      }
+
+      const legacyRow = await connection.getFirstAsync<DraftRow>(
+        "SELECT schema_version, payload FROM journey_drafts ORDER BY updated_at DESC LIMIT 1"
+      );
+      if (legacyRow === null) {
+        await connection.execAsync("COMMIT");
+        return null;
+      }
+      if (legacyRow.schema_version !== 1) throw new JourneyStorageError("unsupported-schema");
+      const legacyValue = parseJson(legacyRow.payload);
+      if (!isJourneyDraftV1(legacyValue)) throw new JourneyStorageError("malformed-payload");
+      const migrated = migrateJourneyDraftV1ToV2(legacyValue);
+      if (!isJourneyDraft(migrated)) throw new JourneyStorageError("malformed-payload");
+
+      await connection.runAsync(
+        "INSERT INTO journey_drafts_v2 (id, schema_version, payload, created_at, updated_at) VALUES (?, ?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET schema_version = excluded.schema_version, payload = excluded.payload, created_at = excluded.created_at, updated_at = excluded.updated_at",
+        migrated.id,
+        migrated.schemaVersion,
+        JSON.stringify(migrated),
+        migrated.createdAt,
+        migrated.updatedAt
+      );
+      await connection.runAsync(
+        "INSERT INTO journey_migration_receipts (migration_id, source_draft_id, target_draft_id, source_schema_version, target_schema_version, migrated_at) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT(migration_id) DO NOTHING",
+        `journey-draft-v1-v2:${legacyValue.id}`,
+        legacyValue.id,
+        migrated.id,
+        1,
+        2,
+        migrated.updatedAt
+      );
+      await connection.execAsync("COMMIT");
+      return migrated;
+    } catch (error) {
+      await connection.execAsync("ROLLBACK");
+      throw error;
+    }
   }
 
   async saveActive(draft: JourneyDraft): Promise<void> {
     const connection = await this.database.initialize();
     await connection.runAsync(
-      "INSERT INTO journey_drafts (id, schema_version, payload, created_at, updated_at) VALUES (?, ?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET schema_version = excluded.schema_version, payload = excluded.payload, created_at = excluded.created_at, updated_at = excluded.updated_at",
+      "INSERT INTO journey_drafts_v2 (id, schema_version, payload, created_at, updated_at) VALUES (?, ?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET schema_version = excluded.schema_version, payload = excluded.payload, created_at = excluded.created_at, updated_at = excluded.updated_at",
       draft.id,
       draft.schemaVersion,
       JSON.stringify(draft),
@@ -138,7 +297,7 @@ export class SqlJourneyDraftRepository implements JourneyDraftRepository {
 
   async deleteActive(): Promise<void> {
     const connection = await this.database.initialize();
-    await connection.runAsync("DELETE FROM journey_drafts");
+    await connection.runAsync("DELETE FROM journey_drafts_v2");
   }
 }
 
@@ -152,11 +311,15 @@ export class SqlCommunicationCardRepository implements CommunicationCardReposito
     );
     return rows.map((row) => {
       const card = parseJson(row.payload);
-      if (!isCommunicationCard(card)) throw new JourneyStorageError("malformed-payload");
+      if (!isCommunicationCard(card) && !isLegacyCommunicationCard(card)) {
+        throw new JourneyStorageError("malformed-payload");
+      }
       return {
         id: row.id,
         journeyId: row.journey_id,
-        card: card as SavedCommunicationCardRecord["card"],
+        card: isCommunicationCard(card)
+          ? card
+          : migrateLegacyCommunicationCard(card as Record<string, never>),
         savedAt: row.saved_at
       };
     });

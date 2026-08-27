@@ -90,13 +90,45 @@ describe("encrypted database lifecycle", () => {
     expect(harness.calls).toContain("PRAGMA user_version = 2");
   });
 
+  test("adds the seven-screen v2 draft tables without rewriting the legacy v1 table", async () => {
+    const harness = makeHarness({ databaseExists: true, key: VALID_DATABASE_KEY, userVersion: 2 });
+
+    await createEncryptedDatabaseManager(
+      harness as unknown as Parameters<typeof createEncryptedDatabaseManager>[0]
+    ).initialize();
+
+    const schemaSql = harness.calls.join("\n");
+    expect(schemaSql).toContain("CREATE TABLE IF NOT EXISTS journey_drafts_v2");
+    expect(schemaSql).toContain("CHECK (schema_version = 2)");
+    expect(schemaSql).toContain("CREATE TABLE IF NOT EXISTS journey_migration_receipts");
+    expect(schemaSql).not.toContain("DROP TABLE");
+    expect(harness.calls).toContain("PRAGMA user_version = 3");
+  });
+
+  test("applies the v3 migration in its own transaction", async () => {
+    const harness = makeHarness({ databaseExists: true, key: VALID_DATABASE_KEY, userVersion: 2 });
+
+    await createEncryptedDatabaseManager(
+      harness as unknown as Parameters<typeof createEncryptedDatabaseManager>[0]
+    ).initialize();
+
+    const begin = harness.calls.indexOf("BEGIN IMMEDIATE");
+    const schema = harness.calls.findIndex((call) => call.includes("journey_drafts_v2"));
+    const version = harness.calls.indexOf("PRAGMA user_version = 3");
+    const commit = harness.calls.indexOf("COMMIT");
+    expect(begin).toBeGreaterThan(-1);
+    expect(schema).toBeGreaterThan(begin);
+    expect(version).toBeGreaterThan(schema);
+    expect(commit).toBeGreaterThan(version);
+  });
+
   test("rejects a database created by a future app version without mutating it", async () => {
-    const harness = makeHarness({ databaseExists: true, key: VALID_DATABASE_KEY, userVersion: 3 });
+    const harness = makeHarness({ databaseExists: true, key: VALID_DATABASE_KEY, userVersion: 4 });
     const manager = createEncryptedDatabaseManager(
       harness as unknown as Parameters<typeof createEncryptedDatabaseManager>[0]
     );
 
-    await expect(manager.initialize()).rejects.toThrow("Unsupported database version: 3");
+    await expect(manager.initialize()).rejects.toThrow("Unsupported database version: 4");
     expect(harness.calls.join("\n")).not.toContain("CREATE TABLE");
     expect(harness.calls).not.toContain("PRAGMA user_version = 2");
     expect(harness.files.removeDatabaseFiles).not.toHaveBeenCalled();
