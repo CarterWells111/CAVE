@@ -117,10 +117,12 @@ git commit -m "docs: record eight-page MVP gate"
 
 ```text
 Branch: codex/plan-05a-05b
+Main sync: existing Plan05 commits preserved; origin/main ca3152c integrated through non-destructive merge commit 553c890; no reset or overwrite
 Result: local framework/domain/storage/controllers/basic pages/offline harness implemented and verified; final native composition intentionally not claimed
 Gate 05A: in_progress — local framework tests pass, production route composition and route guard/resume consumption pending
 Gate 05B: in_progress — local core flow tests pass, production routes and native clipboard/recovered-form integration pending
 Gate 05C: not run as a passing Gate because 05A/05B product wiring is incomplete
 Plan 06/07: locked
 No deploy, no main merge, no secret output
+No PR created; Expo SDK 54 remains the active technical baseline
 ```

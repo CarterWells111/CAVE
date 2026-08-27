@@ -340,7 +340,7 @@ Next plan unlocked: Plan 05A/05B local implementation may proceed because the Pl
 ```text
 Plan: 05A Eight-page MVP framework
 Branch: codex/plan-05a-05b
-Baseline: 2436773 from merged main
+Original baseline: 2436773; existing Plan05 commits later preserved while origin/main ca3152c was integrated through non-destructive merge commit 553c890
 Commits: 43afb05, 37581ca, 62de80f, 54e2be7, 995400a, 3b5750c
 Commands run: corepack pnpm --filter @cave/mobile typecheck; corepack pnpm --filter @cave/mobile lint; corepack pnpm --filter @cave/mobile test; corepack pnpm test:safety; rg -n "GatewayClient|ModelProvider|/v1/practice|fetch\(" apps/mobile/app/journey apps/mobile/src/features/journey; git diff --check
 Expected result: technical commands exit 0; import scan exits 1 with zero matches
@@ -354,11 +354,12 @@ Gate status correction after independent review: Gate 05A in_progress; local cor
 ```text
 Branch: codex/plan-05a-05b
 Commits: 12a83be, 3e28838, 7420113, 407b979, 14c029c, 186752b, cd98348, d8fd1be; framework hardening d76f7a8, 0d86225
-Fresh evidence: mobile typecheck/lint pass and 25 suites / 106 tests; content 3 files / 18 tests and draft validation pass; production validation reports exactly 23 DRAFT_CONTENT entries; contracts 4/19; scenario 2/18; fixtures 2/11; gateway 16/160; safety 4/53; CI config 4/15; Wrangler no-deploy dry-run 692.70 KiB / gzip 113.77 KiB
+Fresh SDK 54 evidence after main sync: corepack pnpm 10.34.5 frozen install pass; installed Expo 54.0.37 / React Native 0.81.5 / React 19.1.0; Expo Doctor 18/18; mobile typecheck/lint pass and 26 suites / 107 tests; content 3 files / 19 tests and draft validation pass; production validation reports exactly 23 DRAFT_CONTENT entries; contracts 4/19; scenario 2/18; fixtures 2/11; gateway 16/160; safety 4/53; CI config 5/26; Wrangler no-deploy dry-run 694.95 KiB / gzip 114.82 KiB
 Boundary evidence: journey AI/network scan zero matches; production-only readiness/score/percentage/cloudEnabled scan zero matches; cloud save remains disabled coming-soon
 Gate status: Gate 05B in_progress — local catalogs, preset engine, points, controllers, basic components and offline harness pass; production route composition, native clipboard recovery, recovered form hydration and route-level resume/guard/back integration remain pending
-Environment blocker: current host minimum-release-age policy rejects 49 dependencies already pinned on merged main, preventing restoration of standard pnpm fresh commands; direct binaries from the same pinned dependency tree were used and pnpm-lock.yaml was unchanged
-External pending: journey content review; Plan 04 Golden evaluator blocked; Apple/signing/real-iPhone SQLCipher evidence external_pending
+Main sync: origin/main ca3152c integrated through merge commit 553c890 without reset, overwrite, PR or SDK 57 restoration
+Merge adjustment: ca58132 reconciles main's seven reviewed Plan 02 entries with the 23 deliberately unreviewed journey drafts
+External pending: journey content review; Plan 04 Golden evaluator blocked; Apple/signing/real-iPhone SQLCipher evidence external_pending; CodeQL upload disabled_manually and not a local code blocker
 Next plan unlocked: none; Plan 06 and Plan 07 remain locked
 ```
 
