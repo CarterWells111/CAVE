@@ -18,8 +18,46 @@ export const JOURNEY_ROUTE_MANIFEST = [
   "preface"
 ] as const;
 
+const REQUIRED_KNOWLEDGE_CARD_IDS = [
+  "draft-knowledge-body-signals",
+  "draft-knowledge-consent",
+  "draft-knowledge-health",
+] as const;
+
+const REQUIRED_BASE_BEHAVIOR_IDS = [
+  "behavior-hug",
+  "draft-kissing",
+  "behavior-same-bed",
+  "behavior-my-nudity",
+  "behavior-partner-nudity",
+  "behavior-over-clothes-touch",
+  "behavior-direct-touch",
+] as const;
+
 export function canAccessJourneyPage(draft: JourneyDraft | null, page: JourneyPageId) {
-  return page === "welcome" || draft?.ageConfirmed === true;
+  if (page === "welcome") return true;
+  if (draft?.ageConfirmed !== true) return false;
+
+  const welcomeCompleted = draft.addressPreference !== null && draft.prefaceRead;
+  if (page === "overnight") return welcomeCompleted;
+
+  const overnightCompleted = welcomeCompleted && draft.overnight.resumeStage === "concerns";
+  if (page === "body-knowledge") return overnightCompleted;
+
+  const knowledgeCompleted = overnightCompleted
+    && REQUIRED_KNOWLEDGE_CARD_IDS.every((id) => draft.readKnowledgeCardIds.includes(id));
+  if (page === "behavior-map") return knowledgeCompleted;
+
+  const behaviorMapCompleted = knowledgeCompleted
+    && draft.explicitContentConsent !== null
+    && REQUIRED_BASE_BEHAVIOR_IDS.every((id) => draft.behaviorAttitudes[id] !== undefined);
+  if (page === "reflection") return behaviorMapCompleted;
+
+  const reflectionCompleted = behaviorMapCompleted
+    && (draft.journal.saveChoice === "not-saved" || draft.journal.savedAt !== undefined);
+  if (page === "preset-practice") return reflectionCompleted;
+
+  return reflectionCompleted && draft.practice.completed;
 }
 
 export function resolveJourneyPageAlias(page: string): JourneyPageId | null {
@@ -33,5 +71,11 @@ export function getAdjacentJourneyPage(page: JourneyPageId, direction: -1 | 1): 
 }
 
 export function getResumePath(draft: JourneyDraft | null): `/journey/${JourneyPageId}` {
-  return `/journey/${draft?.ageConfirmed === true ? draft.currentPage : "welcome"}`;
+  if (draft === null) return "/journey/welcome";
+  const currentIndex = JOURNEY_PAGE_IDS.indexOf(draft.currentPage);
+  for (let index = currentIndex; index >= 0; index -= 1) {
+    const page = JOURNEY_PAGE_IDS[index];
+    if (page !== undefined && canAccessJourneyPage(draft, page)) return `/journey/${page}`;
+  }
+  return "/journey/welcome";
 }

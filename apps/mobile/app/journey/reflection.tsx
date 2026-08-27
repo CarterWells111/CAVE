@@ -1,16 +1,29 @@
+import { Text } from "react-native";
+
+import { loadJourneyContentCatalog } from "../../src/features/journey/infrastructure/journey-content-catalog";
 import { JourneyRouteScreen } from "../../src/features/journey/ui/JourneyRouteScreen";
 import { ReflectionPage } from "../../src/features/journey/ui/pages/reflection-page";
 
 export default function ReflectionRoute() {
+  const catalog = loadJourneyContentCatalog();
+  const behaviorLabels = new Map(
+    catalog.options
+      .filter(({ group }) => group === "behavior")
+      .map(({ id, label }) => [id, label]),
+  );
   return (
     <JourneyRouteScreen pageId="reflection">
       {({ controller, goTo, runAndRefresh, snapshot }) => (
-        <ReflectionPage
-          behaviorAnswers={Object.entries(snapshot?.behaviorAttitudes ?? {}).map(([behaviorId, attitude]) => ({
-            attitude,
-            behaviorId,
-            behaviorLabel: snapshot?.customBehaviors.find(({ id }) => id === behaviorId)?.label ?? behaviorId,
-          }))}
+        <>
+          <Text>选择任一行为会返回行为地图编辑；当前页面不支持原位修改。</Text>
+          <ReflectionPage
+            behaviorAnswers={Object.entries(snapshot?.behaviorAttitudes ?? {}).map(([behaviorId, attitude]) => ({
+              attitude,
+              behaviorId,
+              behaviorLabel: snapshot?.customBehaviors.find(({ id }) => id === behaviorId)?.label
+                ?? behaviorLabels.get(behaviorId)
+                ?? "已记录的行为",
+            }))}
           initialValue={{
             comfortClarity: (snapshot?.reflection.comfortClarity ?? null) as "mostly-clear" | "need-space" | null,
             comfortNeedIds: snapshot?.comfortNeedIds ?? [],
@@ -40,7 +53,8 @@ export default function ReflectionRoute() {
             refusalSafety: input.refusalSafety,
           }))
             .then(() => goTo("preset-practice"))}
-        />
+          />
+        </>
       )}
     </JourneyRouteScreen>
   );

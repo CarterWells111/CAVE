@@ -62,6 +62,38 @@ afterEach(() => {
 test("the production Welcome route resumes at the persisted journey page", async () => {
   const journeyRuntime = runtime();
   await journeyRuntime.service.confirmAdult();
+  await journeyRuntime.controller.setAddressPreference("你");
+  await journeyRuntime.service.dispatch({ type: "set-preface-read", read: true });
+  await journeyRuntime.service.dispatch({ type: "set-overnight-stage", stage: "concerns" });
+  for (const cardId of [
+    "draft-knowledge-body-signals",
+    "draft-knowledge-consent",
+    "draft-knowledge-health",
+  ]) {
+    await journeyRuntime.controller.readKnowledge(cardId);
+  }
+  for (const behaviorId of [
+    "behavior-hug",
+    "draft-kissing",
+    "behavior-same-bed",
+    "behavior-my-nudity",
+    "behavior-partner-nudity",
+    "behavior-over-clothes-touch",
+    "behavior-direct-touch",
+  ]) {
+    await journeyRuntime.controller.setBehaviorAttitude(behaviorId, "skip");
+  }
+  await journeyRuntime.controller.setExplicitContentConsent(false);
+  await journeyRuntime.controller.saveReflection({
+    comfortNeedIds: [],
+    journalSaveChoice: "not-saved",
+    journalText: "",
+    motivationIds: [],
+  });
+  await journeyRuntime.service.dispatch({
+    type: "set-practice",
+    practice: { completed: true, mirrorRehearsed: false },
+  });
   await journeyRuntime.service.navigateTo("final-preparation");
   const view = await openRoute(<WelcomeRoute />, journeyRuntime);
 
@@ -163,8 +195,24 @@ test("the production Welcome route keeps adult confirmation pending and blocks d
 test("production back navigation can edit Page 4 and recompute derived output without losing user text", async () => {
   const journeyRuntime = runtime();
   await journeyRuntime.service.confirmAdult();
+  await journeyRuntime.controller.setAddressPreference("你");
+  await journeyRuntime.service.dispatch({ type: "set-preface-read", read: true });
+  await journeyRuntime.service.dispatch({ type: "set-overnight-stage", stage: "concerns" });
+  for (const cardId of [
+    "draft-knowledge-body-signals",
+    "draft-knowledge-consent",
+    "draft-knowledge-health",
+  ]) {
+    await journeyRuntime.controller.readKnowledge(cardId);
+  }
   await journeyRuntime.controller.setBehaviorAttitude("behavior-hug", "looking-forward");
   await journeyRuntime.controller.setBehaviorAttitude("draft-kissing", "unsure");
+  await journeyRuntime.controller.setBehaviorAttitude("behavior-same-bed", "skip");
+  await journeyRuntime.controller.setBehaviorAttitude("behavior-my-nudity", "skip");
+  await journeyRuntime.controller.setBehaviorAttitude("behavior-partner-nudity", "skip");
+  await journeyRuntime.controller.setBehaviorAttitude("behavior-over-clothes-touch", "skip");
+  await journeyRuntime.controller.setBehaviorAttitude("behavior-direct-touch", "skip");
+  await journeyRuntime.controller.setExplicitContentConsent(false);
   await journeyRuntime.controller.editCommunicationCard(
     "communication-decide-in-moment",
     "请保留我的节奏表达。"
@@ -173,6 +221,10 @@ test("production back navigation can edit Page 4 and recompute derived output wi
   const originalGenerated = journeyRuntime.service.getSnapshot()
     ?.communicationCard["communication-decide-in-moment"].generatedText;
   let view = await openRoute(<ReflectionRoute />, journeyRuntime);
+
+  expect(screen.getByRole("button", { name: "修改接吻的答案" })).toBeTruthy();
+  expect(screen.queryByText("draft-kissing")).toBeNull();
+  expect(screen.getByText("选择任一行为会返回行为地图编辑；当前页面不支持原位修改。")).toBeTruthy();
 
   fireEvent.press(screen.getByRole("button", { name: "返回上一页" }));
   await waitFor(() => {

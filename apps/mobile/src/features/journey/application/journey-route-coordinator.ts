@@ -21,6 +21,7 @@ export class JourneyRouteCoordinator {
   }
 
   async goTo(page: JourneyPageId): Promise<void> {
+    if (!this.guard(page)) throw new Error(`journey-page-locked:${page}`);
     await this.service.navigateTo(page);
     this.router.replace(`/journey/${page}`);
   }
