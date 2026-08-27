@@ -27,13 +27,26 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     version: "0.1.0",
     scheme: "cave",
     orientation: "portrait",
-    plugins: ["expo-router"],
+    plugins: [
+      "expo-router",
+      ["expo-sqlite", { useSQLCipher: true }],
+      [
+        "expo-secure-store",
+        {
+          configureAndroidBackup: false,
+          faceIDPermission: "允许内界 CAVE 保护仅存储在此设备上的私密练习数据。"
+        }
+      ]
+    ],
     experiments: {
       typedRoutes: true
     },
     ios: {
       bundleIdentifier: "com.neijie.cave",
-      supportsTablet: false
+      supportsTablet: false,
+      config: {
+        usesNonExemptEncryption: false
+      }
     },
     extra: {
       eas: {
