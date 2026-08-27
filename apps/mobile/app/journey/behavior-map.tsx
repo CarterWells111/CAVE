@@ -1,16 +1,21 @@
-import { loadJourneyContentCatalog } from "../../src/features/journey/infrastructure/journey-content-catalog";
+import { useJourneyRuntime } from "../../src/features/journey/runtime/JourneyRuntimeProvider";
 import { JourneyRouteScreen } from "../../src/features/journey/ui/JourneyRouteScreen";
-import { BehaviorAttitudesPage } from "../../src/features/journey/ui/pages/JourneyPages";
+import { BehaviorMapPage } from "../../src/features/journey/ui/pages/behavior-map-page";
 
 export default function BehaviorMapRoute() {
+  const runtime = useJourneyRuntime();
   return (
     <JourneyRouteScreen pageId="behavior-map">
       {({ controller, goTo, runAndRefresh, snapshot }) => (
-        <BehaviorAttitudesPage
-          behaviors={loadJourneyContentCatalog().options.filter(({ group }) => group === "behavior")}
-          currentAttitudes={snapshot?.behaviorAttitudes ?? {}}
-          onContinue={() => goTo("reflection")}
-          onSet={(behaviorId, attitude) => runAndRefresh(
+        <BehaviorMapPage
+          initialAttitudes={snapshot?.behaviorAttitudes ?? {}}
+          initialCustomBehaviors={snapshot?.customBehaviors ?? []}
+          initialSensitiveContentConsent={snapshot?.explicitContentConsent ?? null}
+          onAddCustomBehavior={(behavior) => runtime.runAndRefresh(
+            () => runtime.service.dispatch({ type: "add-custom-behavior", behavior })
+          )}
+          onComplete={() => goTo("reflection")}
+          onSetAttitude={(behaviorId, attitude) => runAndRefresh(
             () => controller.setBehaviorAttitude(behaviorId, attitude)
           )}
         />

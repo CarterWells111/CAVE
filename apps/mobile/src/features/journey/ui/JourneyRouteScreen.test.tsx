@@ -71,8 +71,8 @@ test("renders active snapshot state and persists back navigation before replacin
   fireEvent.press(screen.getByRole("button", { name: "返回上一页" }));
 
   await waitFor(() => {
-    expect(mockRuntime.service.navigateTo).toHaveBeenCalledWith("behavior-attitudes");
-    expect(mockReplace).toHaveBeenCalledWith("/journey/behavior-attitudes");
+    expect(mockRuntime.service.navigateTo).toHaveBeenCalledWith("behavior-map");
+    expect(mockReplace).toHaveBeenCalledWith("/journey/behavior-map");
   });
   expect(mockRuntime.runAndRefresh).toHaveBeenCalledTimes(1);
 });
@@ -184,7 +184,7 @@ test("keeps back navigation busy, blocks duplicates, and hides rejection details
 
   fireEvent.press(screen.getByRole("button", { name: "返回上一页" }));
   await waitFor(() => expect(mockRuntime.runAndRefresh).toHaveBeenCalledTimes(2));
-  expect(mockRuntime.service.navigateTo).toHaveBeenCalledWith("behavior-attitudes");
+  expect(mockRuntime.service.navigateTo).toHaveBeenCalledWith("behavior-map");
 });
 
 test("keeps forward navigation busy, handles rejection safely, and retries", async () => {

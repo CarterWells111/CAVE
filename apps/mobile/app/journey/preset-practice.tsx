@@ -1,65 +1,58 @@
-import type { PartnerResponseBranch, PracticeIntent } from "../../src/features/journey/domain/practice-types";
+import * as ExpoClipboard from "expo-clipboard";
+import { Alert, Linking } from "react-native";
+
 import { loadJourneyContentCatalog } from "../../src/features/journey/infrastructure/journey-content-catalog";
+import { useJourneyRuntime } from "../../src/features/journey/runtime/JourneyRuntimeProvider";
 import { JourneyRouteScreen } from "../../src/features/journey/ui/JourneyRouteScreen";
-import { PresetPracticePage } from "../../src/features/journey/ui/pages/JourneyPages";
-
-const PRACTICE_INTENTS = new Set<PracticeIntent>([
-  "slow-down",
-  "adjust-touch",
-  "pause-and-decide",
-  "stop-current-action",
-  "choose-another-closeness",
-  "pause-to-feel"
-]);
-const PARTNER_RESPONSE_BRANCHES = new Set<PartnerResponseBranch>([
-  "supportive",
-  "disappointed-follow-up",
-  "ignores-pause"
-]);
-
-function isPracticeIntent(value: string): value is PracticeIntent {
-  return PRACTICE_INTENTS.has(value as PracticeIntent);
-}
-
-function isPartnerResponseBranch(value: string): value is PartnerResponseBranch {
-  return PARTNER_RESPONSE_BRANCHES.has(value as PartnerResponseBranch);
-}
+import { PresetPracticePage } from "../../src/features/journey/ui/pages/PresetPracticePage";
 
 export default function PresetPracticeRoute() {
   const catalog = loadJourneyContentCatalog();
-  const intents = catalog.practice.phrases
-    .filter((option): option is typeof option & { intent: PracticeIntent } => isPracticeIntent(option.intent))
-    .sort((left, right) => left.order - right.order);
-  const branches = catalog.practice.responses
-    .filter((option): option is typeof option & { branch: PartnerResponseBranch } => isPartnerResponseBranch(option.branch));
+  const runtime = useJourneyRuntime();
+  const openSources = (sourceIds: string[]) => {
+    const sources = sourceIds.flatMap((id) => catalog.sources.filter((source) => source.id === id));
+    if (sources.length === 0) return Promise.resolve();
+    return new Promise<void>((resolve) => {
+      Alert.alert("信息来源", "请选择要查看的来源。", [
+        ...sources.map((source) => ({
+          text: source.organization,
+          onPress: () => { void Linking.openURL(source.url).finally(resolve); },
+        })),
+        { text: "取消", style: "cancel", onPress: () => resolve() },
+      ]);
+    });
+  };
   return (
     <JourneyRouteScreen pageId="preset-practice">
-      {({ controller, goTo, runAndRefresh, snapshot }) => {
-        const initialIntent = intents.find(({ intent }) => intent === snapshot?.practice.intent)?.intent;
-        const initialBranch = branches.find(({ branch }) => branch === snapshot?.practice.partnerResponseBranch)?.branch;
+      {({ goTo, snapshot }) => {
         return <PresetPracticePage
-          behaviors={Object.keys(snapshot?.behaviorAttitudes ?? {}).map((id) => ({
+          behaviorOptions={Object.entries(snapshot?.behaviorAttitudes ?? {}).map(([id, attitude]) => ({
+            attitude,
             id,
             label: catalog.options.find((option) => option.id === id)?.label
               ?? snapshot?.customBehaviors.find((behavior) => behavior.id === id)?.label
               ?? "自定义行为"
           }))}
-          branches={branches.map((response) => ({
-            branch: response.branch,
-            label: response.text
-          }))}
-          intents={intents.map((option) => ({
-              intent: option.intent,
-              label: option.text,
-              phraseId: option.id,
-              phrase: option.text
-            }))}
-          {...(snapshot?.practice.behaviorId === undefined ? {} : { initialBehaviorId: snapshot.practice.behaviorId })}
-          {...(initialIntent === undefined ? {} : { initialIntent })}
-          {...(initialBranch === undefined ? {} : { initialBranch })}
-          {...(snapshot?.practice.editedPhrase === undefined ? {} : { initialEditedPhrase: snapshot.practice.editedPhrase })}
-          onComplete={(input) => runAndRefresh(() => controller.completePractice(input))
-            .then(() => goTo("final-preparation"))}
+          catalog={catalog.practice}
+          onComplete={(input) => runtime.runAndRefresh(async () => {
+            await runtime.service.dispatch({
+              type: "set-practice",
+              practice: {
+                ...(input.behaviorId ? { behaviorId: input.behaviorId } : {}),
+                intent: input.intent,
+                editedPhrase: input.phrase,
+                ...(input.optionalBranch ? { partnerResponseBranch: input.optionalBranch } : {}),
+                ...(input.optionalResponse ? { reflectionNote: input.optionalResponse } : {}),
+                mirrorRehearsed: true,
+                completed: true,
+              },
+            });
+            if (input.pointEventKey) {
+              await runtime.service.dispatch({ type: "record-point-event", key: input.pointEventKey });
+            }
+          }).then(() => goTo("final-preparation"))}
+          onCopySupportNumber={async (number) => { await ExpoClipboard.setStringAsync(number); }}
+          onOpenSources={openSources}
         />;
       }}
     </JourneyRouteScreen>
