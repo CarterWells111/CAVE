@@ -1,6 +1,6 @@
 declare const __dirname: string;
 
-const { readFileSync } = jest.requireActual<typeof import("node:fs")>("node:fs");
+const { existsSync, readFileSync } = jest.requireActual<typeof import("node:fs")>("node:fs");
 const { resolve } = jest.requireActual<typeof import("node:path")>("node:path");
 
 function route(name: string) {
@@ -40,6 +40,7 @@ test("pages two through five hydrate canonical state and persist before navigati
   const knowledge = route("body-knowledge");
   expect(knowledge).toContain("sources={catalog.sources}");
   expect(knowledge).toContain('require("../../../../assets/medical/vulva-anatomy-review-current.png")');
+  expect(existsSync(resolve(__dirname, "../../../../assets/medical/vulva-anatomy-review-current.png"))).toBe(true);
   expect(knowledge).toContain("diagramSource={medicalDiagram}");
   expect(knowledge).toContain("onSourceAction");
   expect(knowledge).toContain('goTo("behavior-map")');
