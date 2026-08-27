@@ -12,6 +12,7 @@
     "expo:doctor": "expo-doctor"
   },
   "dependencies": {
+    "@cave/content": "workspace:*",
     "@cave/contracts": "workspace:*",
     "expo": "~57.0.17",
     "expo-constants": "~57.0.15",

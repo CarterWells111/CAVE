@@ -54,6 +54,9 @@ importers:
 
   apps/mobile:
     dependencies:
+      '@cave/content':
+        specifier: workspace:*
+        version: link:../../packages/content
       '@cave/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
