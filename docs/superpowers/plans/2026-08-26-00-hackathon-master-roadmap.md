@@ -6,7 +6,7 @@
 
 **架构（Architecture）：** pnpm workspace 包含 Expo 移动端、无状态 Cloudflare Worker 网关，以及共享契约、内容与领域 Package。客户端 local-first；原始练习文本默认不持久化，只有用户逐次明确保存时才进入本地加密数据库，网关永不保存会话正文。
 
-**技术栈（Tech Stack）：** TypeScript、Node 22、pnpm 10、Expo SDK 57、Expo Router、Cloudflare Workers、Hono、Zod、SQLCipher SQLite、SecureStore、Vitest/Jest、Maestro、EAS Build/Update。
+**技术栈（Tech Stack）：** TypeScript、Node 22、pnpm 10、Expo SDK 54、Expo Router、Cloudflare Workers、Hono、Zod、SQLCipher SQLite、SecureStore、Vitest/Jest、Maestro、EAS Build/Update。
 
 ## 不可随意修改的决策
 
@@ -254,10 +254,11 @@ Interim acceptance scope: observe whether the JS bundle opens without a red erro
 Non-substitution rule: Expo Go does not prove bundle identifier, Apple Team/signing, device provisioning, Development Build inclusion/installation, or two launches after Metro is stopped
 Observed first attempt: the iPhone reached exp://172.20.10.3:8082 over the phone-hotspot connection with Tailscale enabled, but at 16:48 Expo Go displayed "Project is incompatible with this version of Expo Go" and said the project requires a newer version; the JavaScript shell did not launch
 Diagnostic evidence: the initial Metro session also logged a request for missing apps/mobile/assets/images; after a clean network-authorized restart, the repository had no assets/images reference, the Expo manifest returned HTTP 200 with zero assets, and the iOS bundle returned HTTP 200; this asset symptom remains subject to a compatible-client retest rather than being declared fixed
-Compatibility decision: CAVE remains on the fixed Expo SDK 57 baseline; the Apple App Store Expo Go build stops at SDK 54, so an App Store update alone is not an acceptance path and the project will not be downgraded
-Interim installation path: on the physical iPhone use https://sign.expo.dev/ to install the SDK 57 Expo Go build with free Apple developer provisioning; this does not require active paid membership and its certificate is valid for about seven days
+Supersession: SDK 57 baseline was superseded by the user-authorized Expo SDK 54 decision
+Compatibility decision: CAVE now uses the fixed Expo SDK 54 baseline supported by the Apple App Store Expo Go client; the incompatible SDK 57 attempt above remains truthful historical evidence
+Interim installation path: on the physical iPhone install or update Expo Go from the Apple App Store, then use that SDK 54-compatible client for the supplemental JavaScript bundle check
 Gate status: Gate 01A=pass; Gate 01B=external_pending until membership is active and the planned Development Build, installation, and Metro-disconnected launch evidence are complete
-Next action: complete the official sign.expo.dev flow, reopen exp://172.20.10.3:8082 in the SDK 57-compatible client, and record the real-device observation; do not run EAS app device registration or build while membership remains Pending
+Next action: install or update Apple App Store Expo Go, restart Metro with the SDK 54 project, scan the current QR code, and record the real-device observation; do not run EAS app device registration or build while membership remains Pending
 ```
 
 ### Plan 02 / Gate 02B 内容负责人审核（2026-08-27）

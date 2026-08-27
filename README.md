@@ -18,7 +18,7 @@
 
 ## 固定技术决策
 
-- Expo SDK 57 + pnpm workspace；
+- Expo SDK 54 + pnpm workspace；
 - Expo mobile app + Cloudflare Worker；
 - OpenAI-compatible HTTP model interface；
 - SQLCipher + SecureStore；

@@ -6,7 +6,7 @@
 
 **Architecture:** Treat product identity as a small set of separately testable boundaries: Expo app config, user-facing copy, workspace package graph, Worker config, and content identifiers. Update the master contract before consumers, use precise RED → GREEN tests for every code/config capability, regenerate the lockfile through pnpm, and defer all cloud/device mutations until the local branch and remote CI are clean.
 
-**Tech Stack:** TypeScript, Expo SDK 57, Expo config, Jest, Vitest, pnpm 10, Wrangler, EAS CLI, GitHub Actions, iOS internal distribution
+**Tech Stack:** TypeScript, Expo SDK 54, Expo config, Jest, Vitest, pnpm 10, Wrangler, EAS CLI, GitHub Actions, iOS internal distribution
 
 ---
 
@@ -746,7 +746,7 @@ Require the new feature-branch CI run to pass.
 
 This is an interim real-device check of the JavaScript bundle only. It does not replace the signed iOS Development Build, installation, or Metro-disconnected launch requirements below, and Gate 01B remains `external_pending` until those requirements are observed.
 
-For SDK 57 on a physical iPhone, do not rely on the Apple App Store build of Expo Go: the store build currently stops at SDK 54. On the intended iPhone, open `https://sign.expo.dev/` in Safari, select SDK 57, sign in to the Expo account, select the intended device, and follow the official Apple ID signing and installation flow. This uses free Apple developer provisioning, does not require an active paid Apple Developer Program membership, and produces a certificate valid for about seven days. Enter Apple credentials only in the official site flow, never in chat or logs.
+For SDK 54 on a physical iPhone, install or update Expo Go from the Apple App Store and use that SDK 54-compatible client for this supplemental check. Do not use the prior `sign.expo.dev` SDK 57 sideloading path. Expo Go does not satisfy the signed Development Build gate: it cannot replace the planned signed iOS Development Build, installation, or Metro-disconnected launch evidence, so Gate 01B remains `external_pending`.
 
 From `apps/mobile`, run the Expo CLI shim explicitly so the existing `start --dev-client` package script remains unchanged:
 
@@ -754,7 +754,7 @@ From `apps/mobile`, run the Expo CLI shim explicitly so the existing `start --de
 .\node_modules\.bin\expo.CMD start --go
 ```
 
-After installing the SDK 57-compatible Expo Go build, open the QR code on the intended iPhone. Record the device model and iOS version from Settings, the compatible Expo Go installation outcome, whether the bundle opens without a red error, and the exact displayed product name, slogan, version, build, and environment. Expo Go may verify the current JavaScript shell and copy, but it cannot prove the configured bundle identifier, the app's Apple Team/signing, the app's device provisioning profile, EAS Development Build inclusion, installed standalone app behavior, or launch behavior after Metro stops.
+After installing the SDK 54-compatible Apple App Store Expo Go build, open the QR code on the intended iPhone. Record the device model and iOS version from Settings, the compatible Expo Go installation outcome, whether the bundle opens without a red error, and the exact displayed product name, slogan, version, build, and environment. Expo Go may verify the current JavaScript shell and copy, but it cannot prove the configured bundle identifier, the app's Apple Team/signing, the app's device provisioning profile, EAS Development Build inclusion, installed standalone app behavior, or launch behavior after Metro stops.
 
 If LAN discovery fails, stop this Metro process and retry the same check once with `--tunnel`; record which transport was actually used. Do not run `device:create` or an EAS build until the Apple Developer membership is active.
 

@@ -6,7 +6,7 @@
 
 **架构（Architecture）：** Expo Router 文件保持薄层并调用 feature-level application use cases；Zustand 管 transient session；TanStack Query 管可取消 gateway operations；Repository interfaces 隔离 SQLite/SecureStore 与 UI。
 
-**技术栈（Tech Stack）：** Expo SDK 57、Expo Router、React Native、Zustand、TanStack Query、Zod、SQLCipher SQLite、SecureStore、Jest、React Native Testing Library。
+**技术栈（Tech Stack）：** Expo SDK 54、Expo Router、React Native、Zustand、TanStack Query、Zod、SQLCipher SQLite、SecureStore、Jest、React Native Testing Library。
 
 ---
 
