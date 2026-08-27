@@ -84,7 +84,7 @@ test("adds a trimmed custom behavior through an explicit labelled input", () => 
 
   fireEvent.press(screen.getByRole("radio", { name: "行为地图，第 9 项，共 9 项：添加一个我在意的行为" }));
   fireEvent.changeText(screen.getByLabelText("我在意的自定义行为"), "  轻轻触碰手臂  ");
-  fireEvent.press(screen.getByRole("button", { name: "添加这个行为" }));
+  fireEvent.press(screen.getByRole("button", { name: "添加到我的地图" }));
 
   expect(onAddCustomBehavior).toHaveBeenCalledWith({ id: "custom-gentle-touch", label: "轻轻触碰手臂" });
   expect(screen.getByText("对于轻轻触碰手臂，此刻的你更接近哪种感觉？")).toBeTruthy();
@@ -142,7 +142,68 @@ test("keeps future items unavailable and requires every base item to have an exp
 });
 
 test("gates sensitive details behind learn, explicit confirmation, and a persistence callback", async () => {
+  const onSetAttitude = jest.fn();
   const onSetSensitiveContentConsent = jest.fn();
+  render(
+    <BehaviorMapPage
+      initialAttitudes={completeBaseAttitudes}
+      initialPointId="behavior-map-more"
+      onComplete={jest.fn()}
+      onSetAttitude={onSetAttitude}
+      onSetSensitiveContentConsent={onSetSensitiveContentConsent}
+    />,
+  );
+
+  expect(screen.queryByText("口腔与私密部位的接触")).toBeNull();
+  fireEvent.press(screen.getByRole("button", { name: "了解内容后再决定" }));
+  expect(screen.getByText(/成年人的身体认识、同意与健康教育为目的/u)).toBeTruthy();
+  expect(screen.getByText(/不查看不会影响后续流程或积分/u)).toBeTruthy();
+  expect(screen.getByRole("checkbox", { name: "我知道接下来会看到更具体的健康教育内容，并愿意继续" })).toBeTruthy();
+  expect(screen.getByRole("button", { name: "我了解，继续查看" }))
+    .toHaveProp("accessibilityState", expect.objectContaining({ disabled: true }));
+
+  fireEvent.press(screen.getByRole("checkbox", { name: "我知道接下来会看到更具体的健康教育内容，并愿意继续" }));
+  fireEvent.press(screen.getByRole("button", { name: "我了解，继续查看" }));
+  await waitFor(() => expect(onSetSensitiveContentConsent).toHaveBeenCalledWith(true));
+  expect(screen.getByText("对于口腔与私密部位的接触，此刻的你更接近哪种感觉？")).toBeTruthy();
+  expect(screen.queryByText("对于任何形式的插入，此刻的你更接近哪种感觉？")).toBeNull();
+  expect(screen.getByRole("radio", { name: "行为地图，第 9 项，共 9 项：添加一个我在意的行为" }))
+    .toHaveProp("accessibilityState", expect.objectContaining({ disabled: true }));
+
+  fireEvent.press(screen.getByRole("radio", { name: "口腔与私密部位的接触：暂时不回答" }));
+  await waitFor(() => expect(onSetAttitude).toHaveBeenCalledWith("behavior-oral-genital-contact", "skip"));
+  expect(screen.getByText("对于任何形式的插入，此刻的你更接近哪种感觉？")).toBeTruthy();
+  expect(screen.getByText(/包括手指、玩具或身体部位进入阴道或肛门/u)).toBeTruthy();
+  expect(screen.getByText(/你的选择不能代替对方的同意/u)).toBeTruthy();
+  fireEvent.press(screen.getByRole("radio", { name: "任何形式的插入：这不是我这次想要的" }));
+  await waitFor(() => expect(onSetAttitude).toHaveBeenCalledWith("draft-penetrative-sex", "not-this-time"));
+  expect(screen.getByRole("button", { name: "继续到自定义行为" })).toBeTruthy();
+});
+
+test("can return from informed consent without exposing sensitive behavior or losing the base map", () => {
+  render(
+    <BehaviorMapPage
+      initialAttitudes={completeBaseAttitudes}
+      initialPointId="behavior-map-more"
+      onComplete={jest.fn()}
+      onSetAttitude={jest.fn()}
+      onSetSensitiveContentConsent={jest.fn()}
+    />,
+  );
+
+  fireEvent.press(screen.getByRole("button", { name: "了解内容后再决定" }));
+  fireEvent.press(screen.getByRole("button", { name: "返回更多具体行为" }));
+
+  expect(screen.getByText("还有一些更具体的身体接触")).toBeTruthy();
+  expect(screen.queryByText("口腔与私密部位的接触")).toBeNull();
+  fireEvent.press(screen.getByRole("button", { name: "返回上一项" }));
+  expect(screen.getByText("对于对方直接触摸我的胸部、外阴或其他私密部位，此刻的你更接近哪种感觉？")).toBeTruthy();
+});
+
+test("does not unlock or pretend to save when sensitive consent persistence fails", async () => {
+  const onSetSensitiveContentConsent = jest.fn()
+    .mockRejectedValueOnce(new Error("disk full"))
+    .mockResolvedValueOnce(undefined);
   render(
     <BehaviorMapPage
       initialAttitudes={completeBaseAttitudes}
@@ -153,17 +214,40 @@ test("gates sensitive details behind learn, explicit confirmation, and a persist
     />,
   );
 
-  expect(screen.queryByText("口腔与私密部位的接触")).toBeNull();
-  fireEvent.press(screen.getByRole("button", { name: "了解内容后再决定" }));
-  expect(screen.getByRole("checkbox", { name: "我选择查看这些具体行为" })).toBeTruthy();
-  expect(screen.getByRole("button", { name: "确认并查看" }))
+  fireEvent.press(screen.getByRole("button", { name: "这次不查看" }));
+  expect(await screen.findByRole("alert")).toHaveTextContent(/操作失败，请重试。/);
+  expect(screen.getByText("还有一些更具体的身体接触")).toBeTruthy();
+  expect(screen.getByRole("radio", { name: "行为地图，第 9 项，共 9 项：添加一个我在意的行为" }))
     .toHaveProp("accessibilityState", expect.objectContaining({ disabled: true }));
 
-  fireEvent.press(screen.getByRole("checkbox", { name: "我选择查看这些具体行为" }));
-  fireEvent.press(screen.getByRole("button", { name: "确认并查看" }));
-  await waitFor(() => expect(onSetSensitiveContentConsent).toHaveBeenCalledWith(true));
-  expect(screen.getByText("口腔与私密部位的接触")).toBeTruthy();
-  expect(screen.getByRole("button", { name: "继续到自定义行为" })).toBeTruthy();
+  fireEvent.press(screen.getByRole("button", { name: "这次不查看" }));
+  await waitFor(() => expect(onSetSensitiveContentConsent).toHaveBeenCalledTimes(2));
+  expect(screen.getByText("还有没有一件你在意、但没有出现在前面的事？")).toBeTruthy();
+});
+
+test("keeps the current sensitive item active when its answer fails and retries without fake progress", async () => {
+  const onSetAttitude = jest.fn()
+    .mockRejectedValueOnce(new Error("write failed"))
+    .mockResolvedValueOnce(undefined);
+  render(
+    <BehaviorMapPage
+      initialAttitudes={completeBaseAttitudes}
+      initialPointId="behavior-map-more"
+      initialSensitiveContentConsent
+      onComplete={jest.fn()}
+      onSetAttitude={onSetAttitude}
+    />,
+  );
+
+  const answer = screen.getByRole("radio", { name: "口腔与私密部位的接触：我还没想清楚" });
+  fireEvent.press(answer);
+  expect(await screen.findByRole("alert")).toHaveTextContent(/操作失败，请重试。/);
+  expect(screen.getByText("对于口腔与私密部位的接触，此刻的你更接近哪种感觉？")).toBeTruthy();
+  expect(screen.queryByText("当前选择：我还没想清楚")).toBeNull();
+
+  fireEvent.press(screen.getByRole("radio", { name: "口腔与私密部位的接触：我还没想清楚" }));
+  await waitFor(() => expect(onSetAttitude).toHaveBeenCalledTimes(2));
+  expect(screen.getByText("对于任何形式的插入，此刻的你更接近哪种感觉？")).toBeTruthy();
 });
 
 test("lets the user decline sensitive details and persists that explicit choice", async () => {
@@ -181,7 +265,7 @@ test("lets the user decline sensitive details and persists that explicit choice"
   fireEvent.press(screen.getByRole("button", { name: "这次不查看" }));
 
   await waitFor(() => expect(onSetSensitiveContentConsent).toHaveBeenCalledWith(false));
-  expect(screen.getByText("添加一个我在意的行为")).toBeTruthy();
+  expect(screen.getByText("还有没有一件你在意、但没有出现在前面的事？")).toBeTruthy();
   expect(screen.queryByText("口腔与私密部位的接触")).toBeNull();
 });
 
@@ -197,9 +281,26 @@ test("keeps a declined sensitive-content decision usable when navigating back", 
   );
 
   fireEvent.press(screen.getByRole("button", { name: "这次不查看" }));
-  await waitFor(() => expect(screen.getByText("添加一个我在意的行为")).toBeTruthy());
+  await waitFor(() => expect(screen.getByText("还有没有一件你在意、但没有出现在前面的事？")).toBeTruthy());
   fireEvent.press(screen.getByRole("button", { name: "返回上一项" }));
 
   expect(screen.getByText("你选择了这次不查看具体行为。")).toBeTruthy();
   expect(screen.getByRole("button", { name: "继续到自定义行为" })).toBeTruthy();
+});
+
+test("offers an explicit no-custom-behavior path without changing participation points", () => {
+  const onComplete = jest.fn();
+  render(
+    <BehaviorMapPage
+      initialAttitudes={completeBaseAttitudes}
+      initialPointId="behavior-map-custom"
+      initialSensitiveContentConsent={false}
+      onComplete={onComplete}
+      onSetAttitude={jest.fn()}
+    />,
+  );
+
+  fireEvent.press(screen.getByRole("button", { name: "这次没有" }));
+  expect(onComplete).toHaveBeenCalledWith({ participated: true });
+  expect(screen.queryByText(/跳过.*少|不回答.*少|扣分|加分/u)).toBeNull();
 });

@@ -35,6 +35,7 @@ const behaviorOptions = new Map(
 const requiredBaseBehaviorIds = mapPoints
   .slice(0, 7)
   .flatMap(({ behaviorIds }) => behaviorIds.slice(0, 1));
+const sensitiveBehaviorIds = mapPoints.find(({ kind }) => kind === "more")?.behaviorIds ?? [];
 
 function toDomainAttitude(value: (typeof catalogAttitudes)[number]["value"]): BehaviorAttitude {
   return value === "expecting" ? "looking-forward" : value;
@@ -58,7 +59,9 @@ export function BehaviorMapPage({
   const initialUnlockedIndex = (() => {
     const missingBaseIndex = requiredBaseBehaviorIds.findIndex((id) => initialAttitudes[id] === undefined);
     if (missingBaseIndex >= 0) return missingBaseIndex;
-    return initialSensitiveContentConsent === null ? 7 : 8;
+    if (initialSensitiveContentConsent === false) return 8;
+    if (initialSensitiveContentConsent === true && sensitiveBehaviorIds.every((id) => initialAttitudes[id] !== undefined)) return 8;
+    return 7;
   })();
   const requestedInitialIndex = mapPoints.findIndex(({ id }) => id === initialPointId);
   const initialPointIndex = requestedInitialIndex >= 0 && requestedInitialIndex <= initialUnlockedIndex
@@ -68,7 +71,11 @@ export function BehaviorMapPage({
   const [attitudes, setAttitudes] = useState<Record<string, BehaviorAttitude>>(() => ({ ...initialAttitudes }));
   const [customBehaviors, setCustomBehaviors] = useState<CustomBehavior[]>(() => [...initialCustomBehaviors]);
   const [customLabel, setCustomLabel] = useState("");
-  const [activeMoreBehaviorId, setActiveMoreBehaviorId] = useState<string>();
+  const [activeMoreBehaviorId, setActiveMoreBehaviorId] = useState<string | undefined>(() => {
+    if (initialSensitiveContentConsent !== true) return undefined;
+    return sensitiveBehaviorIds.find((id) => initialAttitudes[id] === undefined)
+      ?? sensitiveBehaviorIds[sensitiveBehaviorIds.length - 1];
+  });
   const [activeCustomBehaviorId, setActiveCustomBehaviorId] = useState(initialCustomBehaviors[0]?.id);
   const [sensitiveConsent, setSensitiveConsent] = useState<boolean | null>(initialSensitiveContentConsent);
   const [sensitiveGateStage, setSensitiveGateStage] = useState<"intro" | "learned" | "confirmed" | "declined">(
@@ -97,11 +104,12 @@ export function BehaviorMapPage({
   const activePointIndex = mapPoints.findIndex(({ id }) => id === activePoint?.id);
   const firstMissingBaseIndex = requiredBaseBehaviorIds.findIndex((id) => attitudes[id] === undefined);
   const baseComplete = firstMissingBaseIndex === -1;
+  const sensitiveAnswersComplete = sensitiveBehaviorIds.every((id) => attitudes[id] !== undefined);
   const unlockedPointIndex = firstMissingBaseIndex >= 0
     ? firstMissingBaseIndex
-    : sensitiveConsent === null
-      ? 7
-      : 8;
+    : sensitiveConsent === false || (sensitiveConsent === true && sensitiveAnswersComplete)
+      ? 8
+      : 7;
 
   const moveToPoint = (index: number) => {
     const point = mapPoints[Math.max(0, Math.min(index, mapPoints.length - 1))];
@@ -112,9 +120,26 @@ export function BehaviorMapPage({
     const finish = () => {
       setSensitiveConsent(consented);
       setSensitiveGateStage(consented ? "confirmed" : "declined");
+      setActiveMoreBehaviorId(consented
+        ? sensitiveBehaviorIds.find((id) => attitudes[id] === undefined) ?? sensitiveBehaviorIds[0]
+        : undefined);
       onSuccess();
     };
     const result = onSetSensitiveContentConsent?.(consented);
+    if (result && typeof result.then === "function") return Promise.resolve(result).then(finish);
+    finish();
+  };
+
+  const persistAttitude = (
+    behaviorId: string,
+    attitude: BehaviorAttitude,
+    onSuccess?: () => void,
+  ) => {
+    const finish = () => {
+      setAttitudes((current) => ({ ...current, [behaviorId]: attitude }));
+      onSuccess?.();
+    };
+    const result = onSetAttitude(behaviorId, attitude);
     if (result && typeof result.then === "function") return Promise.resolve(result).then(finish);
     finish();
   };
@@ -197,7 +222,7 @@ export function BehaviorMapPage({
             还有一些更具体的身体接触
           </Text>
           <Text selectable style={{ ...theme.typography.body, color: theme.color.textSecondary }}>
-            这里使用直接健康教育用语。是否查看，由你决定。
+            这里包含使用直接健康教育用语描述的内容。是否查看、是否回答，都由你决定；跳过不会影响后续流程或积分。
           </Text>
           <JourneyAction
             label="了解内容后再决定"
@@ -214,18 +239,28 @@ export function BehaviorMapPage({
 
       {activePoint?.kind === "more" && sensitiveGateStage === "learned" ? (
         <Card accessible={false}>
-          <SectionTitleText>查看前确认</SectionTitleText>
-          <SupportingText>具体行为会使用直接健康教育用语描述。你可以确认查看，也可以返回并选择这次不查看。</SupportingText>
+          <SectionTitleText>继续查看更具体的身体接触</SectionTitleText>
+          <SupportingText>接下来的内容会使用直接、明确的健康教育用语，涉及口腔与私密部位的接触、插入式行为等。</SupportingText>
+          <SupportingText>这里的内容以成年人的身体认识、同意与健康教育为目的，不提供色情材料，也不鼓励任何违法行为或要求你尝试任何行为。</SupportingText>
+          <SupportingText>部分内容可能让人不舒服。你可以随时返回；不查看不会影响后续流程或积分。</SupportingText>
           <JourneyChoice
-            label="我选择查看这些具体行为"
+            label="我知道接下来会看到更具体的健康教育内容，并愿意继续"
             onSelect={() => setSensitiveConfirmationChecked((current) => !current)}
             selected={sensitiveConfirmationChecked}
           />
           <JourneyAction
             disabled={!sensitiveConfirmationChecked}
-            label="确认并查看"
+            label="我了解，继续查看"
             loadingLabel="正在记录选择…"
             onAction={() => persistSensitiveConsent(true, () => undefined)}
+          />
+          <JourneyAction
+            label="返回更多具体行为"
+            loadingLabel="正在返回…"
+            onAction={() => {
+              setSensitiveConfirmationChecked(false);
+              setSensitiveGateStage("intro");
+            }}
           />
           <JourneyAction
             label="这次不查看"
@@ -237,26 +272,11 @@ export function BehaviorMapPage({
 
       {activePoint?.kind === "more" && sensitiveGateStage === "confirmed" ? (
         <Card accessible={false}>
-          <SectionTitleText>选择想继续了解的具体行为</SectionTitleText>
-          <View style={{ gap: theme.space.compact }}>
-            {activePoint.behaviorIds.map((behaviorId) => {
-              const option = behaviorOptions.get(behaviorId);
-              return option ? (
-                <JourneyChoice
-                  key={behaviorId}
-                  label={option.label}
-                  mode="single"
-                  onSelect={() => setActiveMoreBehaviorId(behaviorId)}
-                  selected={activeMoreBehaviorId === behaviorId}
-                />
-              ) : null;
-            })}
-          </View>
-          <JourneyAction
-            label="继续到自定义行为"
-            loadingLabel="正在继续…"
-            onAction={() => moveToPoint(8)}
-          />
+          <SectionTitleText>{`具体行为 ${Math.max(1, sensitiveBehaviorIds.indexOf(activeMoreBehaviorId ?? "") + 1)} / ${sensitiveBehaviorIds.length}`}</SectionTitleText>
+          {activeMoreBehaviorId === "draft-penetrative-sex" ? (
+            <SupportingText>包括手指、玩具或身体部位进入阴道或肛门。</SupportingText>
+          ) : null}
+          <SupportingText>两项需要分别留下此刻的答案；“暂时不回答”也是明确答案。</SupportingText>
         </Card>
       ) : null}
 
@@ -275,13 +295,13 @@ export function BehaviorMapPage({
       {activePoint?.kind === "custom" && !activeBehavior ? (
         <Card accessible={false}>
           <Text accessibilityRole="header" selectable style={{ ...theme.typography.heading, color: theme.color.text }}>
-            添加一个我在意的行为
+            还有没有一件你在意、但没有出现在前面的事？
           </Text>
           <TextInput
             accessibilityLabel="我在意的自定义行为"
             maxLength={120}
             onChangeText={setCustomLabel}
-            placeholder="用自己的话写下来"
+            placeholder="例如：只想拥抱、不想关灯、希望保留衣物……"
             placeholderTextColor={theme.color.textTertiary}
             selectionColor={theme.color.primary}
             style={{
@@ -301,9 +321,14 @@ export function BehaviorMapPage({
           />
           <JourneyAction
             disabled={!customLabel.trim()}
-            label="添加这个行为"
+            label="添加到我的地图"
             loadingLabel="正在添加…"
             onAction={addCustomBehavior}
+          />
+          <JourneyAction
+            label="这次没有"
+            loadingLabel="正在继续…"
+            onAction={() => onComplete({ participated: true })}
           />
         </Card>
       ) : null}
@@ -313,6 +338,9 @@ export function BehaviorMapPage({
           <Text accessibilityRole="header" selectable style={{ ...theme.typography.heading, color: theme.color.text }}>
             {`对于${activeBehavior.label}，此刻的你更接近哪种感觉？`}
           </Text>
+          {activePoint?.kind === "more" ? (
+            <SupportingText>对方也需要对每一种行为表达自己的意愿。你的选择不能代替对方的同意。</SupportingText>
+          ) : null}
           {selectedCatalogAttitude ? (
             <Text selectable style={{ ...theme.typography.caption, color: theme.color.textSecondary }}>
               {`当前选择：${catalogAttitudes.find(({ value }) => value === selectedCatalogAttitude)?.label}`}
@@ -328,8 +356,10 @@ export function BehaviorMapPage({
                   label={attitude.label}
                   mode="single"
                   onSelect={() => {
-                    setAttitudes((current) => ({ ...current, [activeBehavior.id]: domainAttitude }));
-                    return onSetAttitude(activeBehavior.id, domainAttitude);
+                    const sensitiveIndex = sensitiveBehaviorIds.indexOf(activeBehavior.id);
+                    return persistAttitude(activeBehavior.id, domainAttitude, sensitiveIndex >= 0 && sensitiveIndex < sensitiveBehaviorIds.length - 1
+                      ? () => setActiveMoreBehaviorId(sensitiveBehaviorIds[sensitiveIndex + 1])
+                      : undefined);
                   }}
                   selected={attitudes[activeBehavior.id] === domainAttitude}
                 />
@@ -359,6 +389,13 @@ export function BehaviorMapPage({
           label="记录这个感受，继续"
           loadingLabel="正在记录…"
           onAction={() => moveToPoint(activePointIndex + 1)}
+        />
+      ) : null}
+      {activePointIndex === 7 && sensitiveGateStage === "confirmed" && sensitiveAnswersComplete ? (
+        <JourneyAction
+          label="继续到自定义行为"
+          loadingLabel="正在继续…"
+          onAction={() => moveToPoint(8)}
         />
       ) : null}
       {activePointIndex === 8 ? (
