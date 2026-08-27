@@ -32,7 +32,7 @@ test("upserts, clones and deletes communication cards inside one repository inst
   const record: SavedCommunicationCardRecord = {
     id: "card:journey-1",
     journeyId: "journey-1",
-    card: {},
+    card: createJourneyDraft({ id: "card-draft", now: "2026-08-27T12:00:00.000Z" }).communicationCard,
     savedAt: "2026-08-27T12:00:00.000Z"
   };
 

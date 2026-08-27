@@ -1,5 +1,5 @@
 import type { JourneyCommand } from "../domain/commands";
-import { buildChecklist } from "../domain/derive-checklist";
+import { buildPrivatePreparation } from "../domain/derive-checklist";
 import { buildCommunicationCard } from "../domain/derive-communication-card";
 import { reduceJourneyDraft } from "../domain/reducer";
 import { createJourneyDraft, type JourneyDraft, type JourneyPageId } from "../domain/types";
@@ -60,7 +60,7 @@ export class DefaultJourneyApplicationService implements JourneyApplicationServi
     return this.enqueue(async () => {
       const current = this.requireActive();
       const reduced = { ...reduceJourneyDraft(current, command), updatedAt: this.dependencies.now() };
-      const withChecklist = { ...reduced, checklistItems: buildChecklist(reduced) };
+      const withChecklist = { ...reduced, privatePreparation: buildPrivatePreparation(reduced) };
       const next = {
         ...withChecklist,
         communicationCard: buildCommunicationCard(withChecklist)

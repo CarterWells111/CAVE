@@ -3,7 +3,7 @@ import type { PresetPracticeEngine, PresetPracticeState } from "../domain/practi
 import { createJourneyDraft, type JourneyDraft } from "../domain/types";
 import type { CommunicationCardRepository } from "../infrastructure/journey-draft-repository";
 import type { JourneyApplicationService } from "./journey-application-service";
-import { JourneyPageController } from "./page-controllers";
+import { JourneyPageController, type ClipboardAdapter } from "./page-controllers";
 
 function activeDraft(): JourneyDraft {
   const draft = {
@@ -12,7 +12,17 @@ function activeDraft(): JourneyDraft {
     behaviorAttitudes: { "draft-kissing": "unsure" as const },
     sourceRevision: 1
   };
-  return { ...draft, communicationCard: buildCommunicationCard(draft) };
+  const communicationCard = buildCommunicationCard(draft);
+  communicationCard["communication-night-expectations"] = {
+    ...communicationCard["communication-night-expectations"],
+    visibility: "included"
+  };
+  communicationCard["communication-not-this-time"] = {
+    ...communicationCard["communication-not-this-time"],
+    userText: "private marker",
+    visibility: "private"
+  };
+  return { ...draft, communicationCard };
 }
 
 function harness() {
@@ -29,7 +39,9 @@ function harness() {
     save: jest.fn(async () => undefined),
     delete: jest.fn(async () => undefined)
   };
-  const clipboard = { setStringAsync: jest.fn(async () => undefined) };
+  const clipboard: { setStringAsync: jest.MockedFunction<ClipboardAdapter["setStringAsync"]> } = {
+    setStringAsync: jest.fn(async (_value: string) => undefined)
+  };
   const practiceState: PresetPracticeState = {
     scenarioId: "draft-scenario",
     behaviorId: "draft-kissing",
@@ -130,7 +142,7 @@ test("rejects practice for a behavior that is not selected in the active draft",
   expect(service.dispatch).not.toHaveBeenCalled();
 });
 
-test("updates Page 7 and explicitly saves or copies only the current visible Page 8 card", async () => {
+test("updates private preparation and copies only explicitly included final-page sections", async () => {
   const { cards, clipboard, controller, service } = harness();
   await controller.updateChecklist("checklist:expression", "considered", "Pause first");
   await controller.finishChecklistReview();
@@ -142,7 +154,10 @@ test("updates Page 7 and explicitly saves or copies only the current visible Pag
   expect(service.dispatch).toHaveBeenCalledWith(expect.objectContaining({ type: "update-checklist-item" }));
   expect(service.dispatch).toHaveBeenCalledWith({ type: "record-point-event", key: "review:checklist:v1" });
   expect(cards.save).toHaveBeenCalledWith(expect.objectContaining({ id: "card:journey-1", journeyId: "journey-1" }));
-  expect(clipboard.setStringAsync).toHaveBeenCalledWith(expect.stringContaining("draft-card.intentions"));
+  const copied = clipboard.setStringAsync.mock.calls[0]?.[0] ?? "";
+  expect(copied).toContain("draft-card.night-expectations");
+  expect(copied).toContain("每种行为都需要独立、持续且可撤回的同意");
+  expect(copied).not.toContain("private marker");
 });
 
 test("returns a typed clipboard failure that the route can render", async () => {

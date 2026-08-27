@@ -39,6 +39,8 @@ export function reduceJourneyDraft(draft: JourneyDraft, command: JourneyCommand)
       return changed(draft, { expectationIds: unique(command.ids) });
     case "set-concern-ids":
       return changed(draft, { concernIds: unique(command.ids) });
+    case "set-overnight-stage":
+      return userChanged(draft, { overnight: { stage: command.stage, resumeStage: command.stage } });
     case "set-overnight-custom-note":
       return changed(draft, { overnightCustomNote: command.note });
     case "mark-knowledge-card-read":
@@ -78,21 +80,24 @@ export function reduceJourneyDraft(draft: JourneyDraft, command: JourneyCommand)
     case "set-practice":
       return changed(draft, { practice: { ...command.practice } });
     case "update-checklist-item": {
-      if (!draft.checklistItems.some(({ id }) => id === command.itemId)) {
+      if (!draft.privatePreparation.items.some(({ id }) => id === command.itemId)) {
         throw new JourneyDomainError("unknown-checklist-item");
       }
       return userChanged(draft, {
-        checklistItems: draft.checklistItems.map((item) => item.id === command.itemId
-          ? {
-              ...item,
-              status: command.status,
-              ...(command.userNote === undefined ? {} : { userNote: command.userNote })
-            }
-          : item)
+        privatePreparation: {
+          ...draft.privatePreparation,
+          items: draft.privatePreparation.items.map((item) => item.id === command.itemId
+            ? {
+                ...item,
+                status: command.status,
+                ...(command.userNote === undefined ? {} : { userNote: command.userNote })
+              }
+            : item)
+        }
       });
     }
     case "edit-communication-card-field": {
-      const field = draft.communicationCard[command.sectionId];
+      const field = draft.communicationCard[command.sectionId as keyof JourneyDraft["communicationCard"]];
       if (field === undefined) throw new JourneyDomainError("unknown-card-section");
       return userChanged(draft, {
         communicationCard: {
@@ -101,8 +106,18 @@ export function reduceJourneyDraft(draft: JourneyDraft, command: JourneyCommand)
         }
       });
     }
+    case "set-communication-card-visibility": {
+      const field = draft.communicationCard[command.sectionId as keyof JourneyDraft["communicationCard"]];
+      if (field === undefined) throw new JourneyDomainError("unknown-card-section");
+      return userChanged(draft, {
+        communicationCard: {
+          ...draft.communicationCard,
+          [command.sectionId]: { ...field, visibility: command.visibility }
+        }
+      });
+    }
     case "confirm-communication-card-field-review": {
-      const field = draft.communicationCard[command.sectionId];
+      const field = draft.communicationCard[command.sectionId as keyof JourneyDraft["communicationCard"]];
       if (field === undefined) throw new JourneyDomainError("unknown-card-section");
       return userChanged(draft, {
         communicationCard: {

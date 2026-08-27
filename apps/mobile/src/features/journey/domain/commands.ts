@@ -2,13 +2,16 @@ import type {
   BehaviorAttitude,
   ChecklistItemStatus,
   JournalSaveChoice,
-  JourneyDraft
+  JourneyDraft,
+  OvernightStage
 } from "./types";
+import type { SharingVisibility } from "./types";
 
 export type JourneyCommand =
   | { type: "set-preface-read"; read: boolean }
   | { type: "set-expectation-ids"; ids: string[] }
   | { type: "set-concern-ids"; ids: string[] }
+  | { type: "set-overnight-stage"; stage: OvernightStage }
   | { type: "set-overnight-custom-note"; note: string }
   | { type: "mark-knowledge-card-read"; cardId: string }
   | { type: "set-medical-diagram-opened"; opened: boolean }
@@ -22,5 +25,6 @@ export type JourneyCommand =
   | { type: "set-practice"; practice: JourneyDraft["practice"] }
   | { type: "update-checklist-item"; itemId: string; status: ChecklistItemStatus; userNote?: string }
   | { type: "edit-communication-card-field"; sectionId: string; userText: string }
+  | { type: "set-communication-card-visibility"; sectionId: string; visibility: SharingVisibility }
   | { type: "confirm-communication-card-field-review"; sectionId: string }
   | { type: "record-point-event"; key: string };

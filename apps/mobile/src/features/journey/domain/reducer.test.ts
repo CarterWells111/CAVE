@@ -112,6 +112,7 @@ test("updates page 6 practice through one page-owned command", () => {
       intent: "slow-down",
       selectedPhraseId: "draft-phrase-slow-down",
       partnerResponseBranch: "supportive",
+      mirrorRehearsed: false,
       completed: true
     }
   });
@@ -123,17 +124,22 @@ test("updates page 6 practice through one page-owned command", () => {
 test("edits checklist/card overrides and records points without changing source revision", () => {
   const base = {
     ...adultDraft(),
-    checklistItems: [{
-      id: "checklist:expression",
-      category: "expression" as const,
-      sourceIds: [],
-      status: "prepare-more" as const
-    }],
+    privatePreparation: {
+      ...adultDraft().privatePreparation,
+      items: [{
+        id: "checklist:expression",
+        category: "expression" as const,
+        sourceIds: [],
+        status: "prepare-more" as const
+      }]
+    },
     communicationCard: {
-      boundaries: {
+      ...adultDraft().communicationCard,
+      "communication-not-this-time": {
         generatedText: "draft-card.boundaries",
         sourceRevision: 0,
-        needsReview: true
+        needsReview: true,
+        visibility: "pending" as const
       }
     }
   };
@@ -145,19 +151,47 @@ test("edits checklist/card overrides and records points without changing source 
   });
   result = reduceJourneyDraft(result, {
     type: "edit-communication-card-field",
-    sectionId: "boundaries",
+    sectionId: "communication-not-this-time",
     userText: "Please ask before continuing."
   });
-  result = reduceJourneyDraft(result, { type: "confirm-communication-card-field-review", sectionId: "boundaries" });
+  result = reduceJourneyDraft(result, { type: "confirm-communication-card-field-review", sectionId: "communication-not-this-time" });
   result = reduceJourneyDraft(result, { type: "record-point-event", key: "review:checklist:v1" });
   result = reduceJourneyDraft(result, { type: "record-point-event", key: "review:checklist:v1" });
 
-  expect(result.checklistItems[0]).toMatchObject({ status: "considered", userNote: "Use my pause phrase" });
-  expect(result.communicationCard.boundaries).toMatchObject({
+  expect(result.privatePreparation.items[0]).toMatchObject({ status: "considered", userNote: "Use my pause phrase" });
+  expect(result.communicationCard["communication-not-this-time"]).toMatchObject({
     generatedText: "draft-card.boundaries",
     userText: "Please ask before continuing.",
     needsReview: false
   });
   expect(result.pointEventKeys).toEqual(["review:checklist:v1"]);
   expect(result.sourceRevision).toBe(0);
+});
+
+test("stores and resumes the overnight screen's two-stage local progress", () => {
+  const concerns = reduceJourneyDraft(adultDraft(), {
+    type: "set-overnight-stage",
+    stage: "concerns"
+  });
+
+  expect(concerns.overnight).toEqual({ stage: "concerns", resumeStage: "concerns" });
+  expect(concerns.sourceRevision).toBe(0);
+});
+
+test("changes communication visibility only through the four explicit privacy states", () => {
+  const base = adultDraft();
+  const included = reduceJourneyDraft(base, {
+    type: "set-communication-card-visibility",
+    sectionId: "communication-not-this-time",
+    visibility: "included"
+  });
+  const privateAgain = reduceJourneyDraft(included, {
+    type: "set-communication-card-visibility",
+    sectionId: "communication-not-this-time",
+    visibility: "private"
+  });
+
+  expect(included.communicationCard["communication-not-this-time"].visibility).toBe("included");
+  expect(privateAgain.communicationCard["communication-not-this-time"].visibility).toBe("private");
+  expect(privateAgain.sourceRevision).toBe(0);
 });

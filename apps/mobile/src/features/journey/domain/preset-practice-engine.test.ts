@@ -21,13 +21,19 @@ function catalog(): JourneyPracticeCatalog {
       intent,
       order: index + 1,
       text: intent,
+      page: 6,
+      contentType: "UX",
+      sourceIds: [],
       reviewStatus: "draft"
     })),
     responses: [
-      { id: "support", branch: "supportive", text: "support", scripted: true, safeTerminal: false, reviewStatus: "draft" },
-      { id: "follow", branch: "disappointed-follow-up", text: "follow", scripted: true, safeTerminal: false, reviewStatus: "draft" },
-      { id: "stop", branch: "ignores-pause", text: "stop", scripted: true, safeTerminal: true, reviewStatus: "draft" }
-    ]
+      { id: "support", page: 6, contentType: "UX", sourceIds: [], branch: "supportive", text: "support", scripted: true, safeTerminal: false, reviewStatus: "draft" },
+      { id: "follow", page: 6, contentType: "UX", sourceIds: [], branch: "disappointed-follow-up", text: "follow", scripted: true, safeTerminal: false, reviewStatus: "draft" },
+      { id: "stop", page: 6, contentType: "UX", sourceIds: [], branch: "ignores-pause", text: "stop", scripted: true, safeTerminal: true, reviewStatus: "draft" }
+    ],
+    partnerResponses: [],
+    safetyBranches: [],
+    supportResources: []
   };
 }
 

@@ -1,4 +1,5 @@
 import type { BehaviorAttitude, ChecklistItemStatus, JournalSaveChoice, JourneyDraft } from "../domain/types";
+import { selectConfirmedCommunicationCard } from "../domain/derive-communication-card";
 import type {
   PartnerResponseBranch,
   PracticeIntent,
@@ -88,6 +89,7 @@ export class JourneyPageController {
         selectedPhraseId: input.phraseId,
         ...(input.editedPhrase === undefined ? {} : { editedPhrase: input.editedPhrase }),
         partnerResponseBranch: input.branch,
+        mirrorRehearsed: draft.practice.mirrorRehearsed,
         completed: true
       }
     });
@@ -142,7 +144,9 @@ export class JourneyPageController {
 }
 
 export function formatCommunicationCard(draft: JourneyDraft) {
-  return Object.values(draft.communicationCard)
-    .map((field) => field.userText ?? field.generatedText)
-    .join("\n\n");
+  const confirmed = selectConfirmedCommunicationCard(draft);
+  return [
+    ...confirmed.sections.map(({ text }) => text),
+    confirmed.consentFooter
+  ].join("\n\n");
 }
