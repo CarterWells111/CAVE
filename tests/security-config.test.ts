@@ -24,6 +24,7 @@ describe("repository security configuration", () => {
     expect(workflow).toContain("github/codeql-action/init@v4");
     expect(workflow).toContain("languages: javascript-typescript");
     expect(workflow).toContain("github/codeql-action/analyze@v4");
+    expect(workflow).toContain("actions: read");
   });
 
   it("checks npm and GitHub Actions dependencies weekly", () => {
