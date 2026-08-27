@@ -38,8 +38,9 @@ test("renders exactly three expanded catalog cards and can continue without open
   expect(onContinue).toHaveBeenCalledTimes(1);
 });
 
-test("requires explicit consent before showing optional explicit anatomy content", () => {
-  const onOpenDiagram = jest.fn();
+test("waits for persisted consent before showing optional explicit anatomy content", async () => {
+  let resolveOpen!: () => void;
+  const onOpenDiagram = jest.fn(() => new Promise<void>((resolve) => { resolveOpen = resolve; }));
   render(
     <BodyKnowledgePage
       cards={cards}
@@ -54,11 +55,78 @@ test("requires explicit consent before showing optional explicit anatomy content
   expect(screen.queryByLabelText(/阴阜、大阴唇/u)).toBeNull();
   fireEvent.press(screen.getByRole("button", { name: "我愿意查看" }));
   expect(onOpenDiagram).toHaveBeenCalledTimes(1);
+  expect(screen.queryByLabelText(/阴阜、大阴唇/u)).toBeNull();
+  expect(screen.getByRole("button", { name: "正在记录查看选择…" })).toHaveProp(
+    "accessibilityState", expect.objectContaining({ busy: true, disabled: true }),
+  );
+  resolveOpen();
+  await waitFor(() => expect(screen.getByLabelText(/阴阜、大阴唇/u)).toBeTruthy());
   expect(screen.getByLabelText(/阴阜、大阴唇、阴蒂、小阴唇、尿道口、阴道口、肛门/u)).toHaveProp(
     "resizeMode", "contain",
   );
   expect(screen.getByText("医学图审核稿")).toBeTruthy();
   expect(screen.getByText(/就诊前可以询问是否能安排女性医生/u)).toBeTruthy();
+});
+
+test("keeps the diagram hidden after a persistence failure and allows an announced retry", async () => {
+  const onOpenDiagram = jest.fn()
+    .mockRejectedValueOnce(new Error("offline"))
+    .mockResolvedValueOnce(undefined);
+  render(
+    <BodyKnowledgePage
+      cards={cards}
+      diagramSource={{ uri: "medical-review" }}
+      onContinue={jest.fn()}
+      onOpenDiagram={onOpenDiagram}
+      sources={[source]}
+    />,
+  );
+  fireEvent.press(screen.getByRole("button", { name: "查看身体图" }));
+  fireEvent.press(screen.getByRole("button", { name: "我愿意查看" }));
+  await waitFor(() => expect(screen.getByRole("alert")).toBeTruthy());
+  expect(screen.getByText("身体图暂时无法打开，请重试。")).toBeTruthy();
+  expect(screen.queryByLabelText(/阴阜、大阴唇/u)).toBeNull();
+  fireEvent.press(screen.getByRole("button", { name: "我愿意查看" }));
+  await waitFor(() => expect(screen.getByLabelText(/阴阜、大阴唇/u)).toBeTruthy());
+  expect(onOpenDiagram).toHaveBeenCalledTimes(2);
+});
+
+test("offers labelled button-only zoom with bounded state and reset", async () => {
+  render(
+    <BodyKnowledgePage
+      cards={cards}
+      diagramSource={{ uri: "medical-review" }}
+      onContinue={jest.fn()}
+      onOpenDiagram={jest.fn()}
+      reducedMotion
+      sources={[source]}
+    />,
+  );
+  fireEvent.press(screen.getByRole("button", { name: "查看身体图" }));
+  fireEvent.press(screen.getByRole("button", { name: "我愿意查看" }));
+  await waitFor(() => expect(screen.getByLabelText(/阴阜、大阴唇/u)).toHaveProp(
+    "accessibilityValue", expect.objectContaining({ text: "100%" }),
+  ));
+  expect(screen.getByRole("button", { name: "缩小身体图" })).toHaveProp(
+    "accessibilityState", expect.objectContaining({ disabled: true }),
+  );
+  expect(screen.getByRole("button", { name: "重置身体图缩放" })).toHaveProp(
+    "accessibilityState", expect.objectContaining({ disabled: true }),
+  );
+
+  fireEvent.press(screen.getByRole("button", { name: "放大身体图" }));
+  expect(screen.getByLabelText(/阴阜、大阴唇/u)).toHaveProp(
+    "accessibilityValue", expect.objectContaining({ text: "125%" }),
+  );
+  expect(screen.getByText("当前缩放：125%")).toHaveProp("accessibilityLiveRegion", "polite");
+  expect(screen.getByRole("button", { name: "缩小身体图" })).toHaveProp(
+    "accessibilityState", expect.objectContaining({ disabled: false }),
+  );
+
+  fireEvent.press(screen.getByRole("button", { name: "重置身体图缩放" }));
+  expect(screen.getByLabelText(/阴阜、大阴唇/u)).toHaveProp(
+    "accessibilityValue", expect.objectContaining({ text: "100%" }),
+  );
 });
 
 test("SourceDrawer shows passed catalog metadata and invokes only the passed user action", () => {

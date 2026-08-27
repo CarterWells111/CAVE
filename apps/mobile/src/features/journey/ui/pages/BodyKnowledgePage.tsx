@@ -4,7 +4,6 @@ import { Image, type ImageSourcePropType, Text, View } from "react-native";
 
 import { theme } from "../../../../core/design/theme";
 import { BottomSheet } from "../../../../core/ui/bottom-sheet";
-import { Button } from "../../../../core/ui/Button";
 import { Card } from "../../../../core/ui/Card";
 import { InfoCard } from "../../../../core/ui/info-card";
 import { SecondaryButton } from "../../../../core/ui/secondary-button";
@@ -45,6 +44,7 @@ export function BodyKnowledgePage({
   }, [sortedCards, sources]);
   const [consentOpen, setConsentOpen] = useState(false);
   const [diagramOpen, setDiagramOpen] = useState(false);
+  const [diagramZoom, setDiagramZoom] = useState(1);
   const [source, setSource] = useState<JourneySource | null>(null);
 
   const complete = async () => {
@@ -52,11 +52,14 @@ export function BodyKnowledgePage({
     await onContinue();
   };
 
-  const revealDiagram = () => {
+  const revealDiagram = async () => {
+    await onOpenDiagram?.();
+    setDiagramZoom(1);
     setConsentOpen(false);
     setDiagramOpen(true);
-    void onOpenDiagram?.();
   };
+
+  const zoomPercent = Math.round(diagramZoom * 100);
 
   return (
     <View style={styles.page} testID="page-3-content">
@@ -76,12 +79,37 @@ export function BodyKnowledgePage({
           <View style={styles.diagram}>
             <Text style={styles.paperBody}>外阴是身体外部可见的区域；阴道是通向身体内部的管道。阴蒂也不只是外部可见的小点，它的大部分结构延伸在身体内部。</Text>
             {diagramSource ? (
-              <Image
-                accessibilityLabel="医学图审核稿：阴阜、大阴唇、阴蒂、小阴唇、尿道口、阴道口、肛门"
-                resizeMode="contain"
-                source={diagramSource}
-                style={styles.image}
-              />
+              <>
+                <View style={styles.imageViewport}>
+                  <Image
+                    accessibilityLabel="医学图审核稿：阴阜、大阴唇、阴蒂、小阴唇、尿道口、阴道口、肛门"
+                    accessibilityValue={{ max: 200, min: 100, now: zoomPercent, text: `${zoomPercent}%` }}
+                    resizeMode="contain"
+                    source={diagramSource}
+                    style={[styles.image, { transform: [{ scale: diagramZoom }] }]}
+                  />
+                </View>
+                <Text accessibilityLiveRegion="polite" selectable style={styles.paperBody}>
+                  {`当前缩放：${zoomPercent}%`}
+                </Text>
+                <View accessibilityLabel="身体图缩放控制" style={styles.zoomControls}>
+                  <SecondaryButton
+                    disabled={diagramZoom >= 2}
+                    label="放大身体图"
+                    onPress={() => setDiagramZoom((current) => Math.min(2, current + 0.25))}
+                  />
+                  <SecondaryButton
+                    disabled={diagramZoom <= 1}
+                    label="缩小身体图"
+                    onPress={() => setDiagramZoom((current) => Math.max(1, current - 0.25))}
+                  />
+                  <TextAction
+                    disabled={diagramZoom === 1}
+                    label="重置身体图缩放"
+                    onPress={() => setDiagramZoom(1)}
+                  />
+                </View>
+              </>
             ) : null}
             <Text style={styles.reviewLabel}>医学图审核稿</Text>
             <View accessibilityRole="summary" style={styles.paperTip}>
@@ -124,7 +152,12 @@ export function BodyKnowledgePage({
         visible={consentOpen}
       >
         <Text style={styles.body}>接下来会显示外阴结构的医学审核图。是否现在查看？</Text>
-        <Button label="我愿意查看" onPress={revealDiagram} />
+        <JourneyAction
+          errorMessage="身体图暂时无法打开，请重试。"
+          label="我愿意查看"
+          loadingLabel="正在记录查看选择…"
+          onAction={revealDiagram}
+        />
         <TextAction label="暂时不看" onPress={() => setConsentOpen(false)} />
       </BottomSheet>
 
@@ -166,5 +199,12 @@ const styles = {
     padding: theme.space.md,
   },
   reviewLabel: { ...theme.typography.label, color: theme.color.paperSecondary },
-  image: { aspectRatio: 1, maxHeight: 480, width: "100%" as const },
+  imageViewport: {
+    aspectRatio: 1,
+    maxHeight: 480,
+    overflow: "hidden" as const,
+    width: "100%" as const,
+  },
+  image: { height: "100%" as const, width: "100%" as const },
+  zoomControls: { gap: theme.space.compact, width: "100%" as const },
 };
