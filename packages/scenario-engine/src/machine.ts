@@ -3,7 +3,7 @@ import type {
   ScenarioConfig,
   ScenarioStage,
   StopRuleCode
-} from "@hackathon/contracts";
+} from "@cave/contracts";
 
 import { isTerminalStage, resolveCandidateStage } from "./reducer";
 

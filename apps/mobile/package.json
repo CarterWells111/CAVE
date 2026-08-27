@@ -1,5 +1,5 @@
 {
-  "name": "@hackathon/mobile",
+  "name": "@cave/mobile",
   "version": "0.1.0",
   "private": true,
   "main": "expo-router/entry",
@@ -12,7 +12,7 @@
     "expo:doctor": "expo-doctor"
   },
   "dependencies": {
-    "@hackathon/contracts": "workspace:*",
+    "@cave/contracts": "workspace:*",
     "expo": "~57.0.17",
     "expo-constants": "~57.0.15",
     "expo-dev-client": "~57.0.16",

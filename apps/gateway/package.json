@@ -1,5 +1,5 @@
 {
-  "name": "@hackathon/gateway",
+  "name": "@cave/gateway",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -11,7 +11,7 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@hackathon/contracts": "workspace:*",
+    "@cave/contracts": "workspace:*",
     "hono": "^4.10.7",
     "zod": "^4.1.13"
   },

@@ -1,5 +1,5 @@
 {
-  "name": "body-voice-hackathon",
+  "name": "neijie-cave",
   "version": "0.0.0",
   "private": true,
   "packageManager": "pnpm@10.34.5",
@@ -7,17 +7,17 @@
     "node": ">=22 <25"
   },
   "scripts": {
-    "dev:mobile": "pnpm --filter @hackathon/mobile start",
-    "dev:gateway": "pnpm --filter @hackathon/gateway dev",
+    "dev:mobile": "pnpm --filter @cave/mobile start",
+    "dev:gateway": "pnpm --filter @cave/gateway dev",
     "typecheck": "pnpm -r typecheck",
     "lint": "pnpm -r lint",
     "test": "pnpm -r test",
-    "test:ci-config": "vitest run tests/ci-workflow.test.ts",
-    "test:contracts": "pnpm --filter @hackathon/contracts test",
-    "test:content": "pnpm --filter @hackathon/content test",
-    "validate:content": "pnpm --filter @hackathon/content validate:content",
-    "validate:content:draft": "pnpm --filter @hackathon/content validate:content:draft",
-    "build:gateway": "pnpm --filter @hackathon/gateway build",
+    "test:ci-config": "vitest run tests",
+    "test:contracts": "pnpm --filter @cave/contracts test",
+    "test:content": "pnpm --filter @cave/content test",
+    "validate:content": "pnpm --filter @cave/content validate:content",
+    "validate:content:draft": "pnpm --filter @cave/content validate:content:draft",
+    "build:gateway": "pnpm --filter @cave/gateway build",
     "verify:foundation": "pnpm typecheck && pnpm lint && pnpm test && pnpm build:gateway",
     "verify": "pnpm typecheck && pnpm lint && pnpm test && pnpm validate:content && pnpm build:gateway"
   },

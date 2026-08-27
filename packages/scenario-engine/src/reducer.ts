@@ -1,4 +1,4 @@
-import type { ScenarioStage } from "@hackathon/contracts";
+import type { ScenarioStage } from "@cave/contracts";
 
 const CANDIDATE_TRANSITIONS: Record<ScenarioStage, readonly ScenarioStage[]> = {
   setup: ["opening"],

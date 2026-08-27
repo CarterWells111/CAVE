@@ -1,16 +1,16 @@
-import { loadCatalog, validateCatalog } from "@hackathon/content";
+import { loadCatalog, validateCatalog } from "@cave/content";
 import {
   ApiErrorResponseSchema,
   DebriefResponseSchema,
   PracticeTurnRequestSchema,
   SafetyDecisionSchema,
   type StopRuleCode
-} from "@hackathon/contracts";
+} from "@cave/contracts";
 import {
   advanceScenario,
   createScenarioState,
   type ScenarioEvent
-} from "@hackathon/scenario-engine";
+} from "@cave/scenario-engine";
 import { describe, expect, it } from "vitest";
 
 import {

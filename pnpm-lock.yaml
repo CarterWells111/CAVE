@@ -29,7 +29,7 @@ importers:
 
   apps/gateway:
     dependencies:
-      '@hackathon/contracts':
+      '@cave/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
       hono:
@@ -48,7 +48,7 @@ importers:
 
   apps/mobile:
     dependencies:
-      '@hackathon/contracts':
+      '@cave/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
       expo:
@@ -65,7 +65,7 @@ importers:
         version: 57.0.8(expo@57.0.17)(react-native@0.86.3(@babel/core@7.29.7)(@react-native/jest-preset@0.86.3(@babel/core@7.29.7)(react@19.2.3))(@react-native/metro-config@0.87.1(@babel/core@7.29.7))(@types/react@19.2.18)(react@19.2.3))(react@19.2.3)
       expo-router:
         specifier: ~57.0.17
-        version: 57.0.17(457bc6195ccf0a847969538d59f2de0f)
+        version: 57.0.17(ca41096b9cd1c4151bde160b224ed5fe)
       expo-status-bar:
         specifier: ~57.0.1
         version: 57.0.1(expo@57.0.17)(react-native@0.86.3(@babel/core@7.29.7)(@react-native/jest-preset@0.86.3(@babel/core@7.29.7)(react@19.2.3))(@react-native/metro-config@0.87.1(@babel/core@7.29.7))(@types/react@19.2.18)(react@19.2.3))(react@19.2.3)
@@ -109,7 +109,7 @@ importers:
 
   packages/content:
     dependencies:
-      '@hackathon/contracts':
+      '@cave/contracts':
         specifier: workspace:*
         version: link:../contracts
       zod:
@@ -131,19 +131,19 @@ importers:
 
   packages/scenario-engine:
     dependencies:
-      '@hackathon/contracts':
+      '@cave/contracts':
         specifier: workspace:*
         version: link:../contracts
 
   packages/test-fixtures:
     dependencies:
-      '@hackathon/content':
+      '@cave/content':
         specifier: workspace:*
         version: link:../content
-      '@hackathon/contracts':
+      '@cave/contracts':
         specifier: workspace:*
         version: link:../contracts
-      '@hackathon/scenario-engine':
+      '@cave/scenario-engine':
         specifier: workspace:*
         version: link:../scenario-engine
 
@@ -6290,7 +6290,7 @@ snapshots:
       ws: 8.21.3
       zod: 3.25.76
     optionalDependencies:
-      expo-router: 57.0.17(457bc6195ccf0a847969538d59f2de0f)
+      expo-router: 57.0.17(ca41096b9cd1c4151bde160b224ed5fe)
       react-native: 0.86.3(@babel/core@7.29.7)(@react-native/jest-preset@0.86.3(@babel/core@7.29.7)(react@19.2.3))(@react-native/metro-config@0.87.1(@babel/core@7.29.7))(@types/react@19.2.18)(react@19.2.3)
     transitivePeerDependencies:
       - '@expo/dom-webview'
@@ -6565,7 +6565,7 @@ snapshots:
       react: 19.2.3
     optionalDependencies:
       '@expo/metro-runtime': 57.0.14(@expo/log-box@57.0.4)(expo@57.0.17)(react-native@0.86.3(@babel/core@7.29.7)(@react-native/jest-preset@0.86.3(@babel/core@7.29.7)(react@19.2.3))(@react-native/metro-config@0.87.1(@babel/core@7.29.7))(@types/react@19.2.18)(react@19.2.3))(react@19.2.3)
-      expo-router: 57.0.17(457bc6195ccf0a847969538d59f2de0f)
+      expo-router: 57.0.17(ca41096b9cd1c4151bde160b224ed5fe)
     transitivePeerDependencies:
       - supports-color
 
@@ -8875,7 +8875,7 @@ snapshots:
     dependencies:
       react-native: 0.86.3(@babel/core@7.29.7)(@react-native/jest-preset@0.86.3(@babel/core@7.29.7)(react@19.2.3))(@react-native/metro-config@0.87.1(@babel/core@7.29.7))(@types/react@19.2.18)(react@19.2.3)
 
-  expo-router@57.0.17(457bc6195ccf0a847969538d59f2de0f):
+  expo-router@57.0.17(ca41096b9cd1c4151bde160b224ed5fe):
     dependencies:
       '@expo/log-box': 57.0.4(@expo/dom-webview@57.0.1)(expo@57.0.17)(react-native@0.86.3(@babel/core@7.29.7)(@react-native/jest-preset@0.86.3(@babel/core@7.29.7)(react@19.2.3))(@react-native/metro-config@0.87.1(@babel/core@7.29.7))(@types/react@19.2.18)(react@19.2.3))(react@19.2.3)
       '@expo/metro-runtime': 57.0.14(@expo/log-box@57.0.4)(expo@57.0.17)(react-native@0.86.3(@babel/core@7.29.7)(@react-native/jest-preset@0.86.3(@babel/core@7.29.7)(react@19.2.3))(@react-native/metro-config@0.87.1(@babel/core@7.29.7))(@types/react@19.2.18)(react@19.2.3))(react@19.2.3)

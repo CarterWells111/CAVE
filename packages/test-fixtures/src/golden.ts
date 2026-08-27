@@ -3,7 +3,7 @@ import type {
   PracticeTurn,
   SafetyDecision,
   ScenarioStage
-} from "@hackathon/contracts";
+} from "@cave/contracts";
 
 export type GoldenConversation = {
   id: string;

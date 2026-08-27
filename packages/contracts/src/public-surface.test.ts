@@ -1,4 +1,4 @@
-import * as contractExports from "@hackathon/contracts";
+import * as contractExports from "@cave/contracts";
 import type {
   ApiErrorCode,
   ApiErrorResponse,
@@ -21,7 +21,7 @@ import type {
   ScenarioStage,
   StopRule,
   StopRuleCode
-} from "@hackathon/contracts";
+} from "@cave/contracts";
 import { describe, expect, expectTypeOf, it } from "vitest";
 
 type PublicTypeInventory = [
@@ -49,7 +49,7 @@ type PublicTypeInventory = [
 ];
 
 // @ts-expect-error v1 package exports intentionally block deep imports.
-type DeepImport = typeof import("@hackathon/contracts/src/content");
+type DeepImport = typeof import("@cave/contracts/src/content");
 
 describe("version one public contract surface", () => {
   it("exports only the frozen schema inventory", () => {

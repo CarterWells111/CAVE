@@ -1,8 +1,8 @@
 import type {
   DebriefResponse,
   PracticeTurnRequest
-} from "@hackathon/contracts";
-import type { ScenarioEvent } from "@hackathon/scenario-engine";
+} from "@cave/contracts";
+import type { ScenarioEvent } from "@cave/scenario-engine";
 
 export const validPracticeRequest: PracticeTurnRequest = {
   contractVersion: "1",

@@ -1,5 +1,5 @@
 {
-  "name": "@hackathon/scenario-engine",
+  "name": "@cave/scenario-engine",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -12,6 +12,6 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@hackathon/contracts": "workspace:*"
+    "@cave/contracts": "workspace:*"
   }
 }

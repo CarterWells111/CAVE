@@ -4,7 +4,7 @@ import type {
   QuizQuestion,
   ReviewStatus,
   ScenarioConfig
-} from "@hackathon/contracts";
+} from "@cave/contracts";
 
 export type GuideCategory = {
   id: string;

@@ -3,7 +3,7 @@ import {
   LessonSchema,
   QuizQuestionSchema,
   ScenarioConfigSchema
-} from "@hackathon/contracts";
+} from "@cave/contracts";
 import { z } from "zod";
 
 import courses from "../data/courses.json";

@@ -1,5 +1,5 @@
 {
-  "name": "@hackathon/test-fixtures",
+  "name": "@cave/test-fixtures",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -12,8 +12,8 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@hackathon/content": "workspace:*",
-    "@hackathon/contracts": "workspace:*",
-    "@hackathon/scenario-engine": "workspace:*"
+    "@cave/content": "workspace:*",
+    "@cave/contracts": "workspace:*",
+    "@cave/scenario-engine": "workspace:*"
   }
 }

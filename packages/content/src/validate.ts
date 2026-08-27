@@ -1,4 +1,4 @@
-import type { ReviewStatus, StopRuleCode } from "@hackathon/contracts";
+import type { ReviewStatus, StopRuleCode } from "@cave/contracts";
 
 import type { ContentCatalog, GuideCategory } from "./catalog";
 import { ContentCatalogSchema } from "./load";

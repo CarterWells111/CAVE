@@ -2,7 +2,7 @@ import type {
   SafetyDecision,
   ScenarioConfig,
   StopRuleCode
-} from "@hackathon/contracts";
+} from "@cave/contracts";
 import { describe, expect, it } from "vitest";
 
 import { advanceScenario, createScenarioState } from "./machine";

@@ -1,5 +1,5 @@
 {
-  "name": "@hackathon/content",
+  "name": "@cave/content",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -14,7 +14,7 @@
     "validate:content:draft": "tsx src/validate-cli.ts --mode draft"
   },
   "dependencies": {
-    "@hackathon/contracts": "workspace:*",
+    "@cave/contracts": "workspace:*",
     "zod": "^4.1.13"
   },
   "devDependencies": {
