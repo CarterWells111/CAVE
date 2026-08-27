@@ -7,7 +7,7 @@ import {
 
 export const COMMUNICATION_CARD_SECTION_IDS = COMMUNICATION_SECTION_IDS;
 export const COMMUNICATION_CARD_CONSENT_FOOTER =
-  "每种行为都需要独立、持续且可撤回的同意。任何人都可以随时放慢、暂停或改变主意。";
+  "这张卡只代表我整理它时的感受。任何人都可以随时改变主意，每一种靠近仍然需要当时再次确认。";
 
 function attitudesWith(draft: JourneyDraft, ...values: Array<JourneyDraft["behaviorAttitudes"][string]>) {
   return Object.entries(draft.behaviorAttitudes)

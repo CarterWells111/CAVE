@@ -93,4 +93,7 @@ test("selects only explicitly included sections plus the fixed consent footer", 
   });
   expect(JSON.stringify(selectConfirmedCommunicationCard({ ...draft(), communicationCard: card })))
     .not.toMatch(/PRIVATE|DELETED|PENDING/);
+  expect(COMMUNICATION_CARD_CONSENT_FOOTER).toBe(
+    "这张卡只代表我整理它时的感受。任何人都可以随时改变主意，每一种靠近仍然需要当时再次确认。"
+  );
 });
