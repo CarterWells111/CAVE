@@ -26,15 +26,15 @@
 | SRC-010 | SAFE | 常用紧急救助及公益服务号码说明 | 北京市通信管理局 | https://bjca.miit.gov.cn/zwgk/tzgg/art/2022/art_8d4eb93ee3424f30826c97ee400e8937.html | 中国大陆 110 公安报警、120 医疗急救及 12348 法律咨询号码用途 | 2022-08-29 | 2026-08-27 | source_verified; expert_review_pending |
 | SRC-011 | SAFE | 12338 妇联维权服务中心地图上线 | 全国妇联女性之声 / 北京妇女网转载 | https://study.bjwomen.gov.cn/thought/politics/2025/05/30/16190.shtml | 中国大陆所在地 12338 妇女维权热线及线下服务中心入口 | 2025-05-30 | 2026-08-27 | source_verified; expert_review_pending |
 | SRC-012 | SAFE | 权益科工作职能 | 深圳市盐田区妇女联合会 | https://www.yantian.gov.cn/ytfl/gkmlpt/content/12/12597/post_12597195.html | 12338 提供妇女咨询、调解与维权公益服务；证明地方服务内容与时间存在差异 | 2026-01-12 | 2026-08-27 | source_verified; expert_review_pending |
-| SRC-013 | MED | The Vulva | Sexual Health St Helens, NHS | https://www.sexualhealthsthelens.nhs.uk/adult---the-vulva | 外阴形状、大小、颜色及左右不对称具有广泛正常差异；作为 SRC-004 的辅助来源 | 页面未列明 | 2026-08-27 | source_verified; expert_review_pending |
+| SRC-013 | MED | 小阴唇肥大是什么原因 | 中国医药信息查询平台；主讲专家来自北京大学第一医院妇产科 | https://m.dayi.org.cn/qa/42340.html | 先天差异及长期摩擦可能与小阴唇一侧增生、左右不对称有关；作为 SRC-004 的中国大陆辅助来源 | 2026-03-07 | 2026-08-27 | source_verified; expert_review_pending |
 
 ## 医学图资产登记
 
 | 资产 | 来源说明 | 适用内容 | 复核状态 |
 |---|---|---|---|
-| `assets/medical/vulva-anatomy-review-current.png` | 用户提供并选定的当前示意图；不冒充 ACOG、NHS 或其他机构原图 | 第 3 屏外阴外部结构说明：阴阜、大阴唇、阴蒂、小阴唇、尿道口、阴道口、肛门 | expert_review_pending |
+| `assets/medical/vulva-anatomy-review-current.png` | 用户提供并选定的当前示意图；不冒充任何医学机构的官方原图 | 第 3 屏外阴外部结构说明：阴阜、大阴唇、阴蒂、小阴唇、尿道口、阴道口、肛门 | expert_review_pending |
 
-就医支持语“可询问女性医生”和“在医疗机构允许的情况下由可信同伴陪同”属于产品支持提示，不以 SRC-004 或 SRC-013 证明机构必然能够安排；上线前需按中国大陆医疗场景复核。
+就医支持语“可询问女性医生”和“在医疗机构允许的情况下由可信同伴陪同”属于产品支持提示，不以 SRC-004 或 SRC-013 证明机构必然能够安排；上线前需按中国大陆医疗场景复核。SRC-004 只用于跨地区通用医学事实，实际就医路径与服务安排不得直接套用美国医疗体系。
 
 ## 界面来源入口规则
 
