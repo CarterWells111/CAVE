@@ -19,7 +19,7 @@ test("offers current and historical card actions without previewing sensitive bo
   expect(screen.getByText("今天 · 已保存")).toBeTruthy();
   expect(screen.queryByText(/我愿意|我不希望|正文/u)).toBeNull();
   fireEvent.press(screen.getByRole("button", { name: "编辑当前沟通卡" }));
-  fireEvent.press(screen.getByRole("button", { name: "复制当前沟通卡" }));
+  fireEvent.press(screen.getByRole("button", { name: "打开后复制当前沟通卡" }));
   fireEvent.press(screen.getByRole("button", { name: "全屏展示当前沟通卡" }));
   fireEvent.press(screen.getByRole("button", { name: "打开沟通卡版本 1" }));
   expect(onEdit).toHaveBeenCalledWith("current");

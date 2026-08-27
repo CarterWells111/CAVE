@@ -59,7 +59,7 @@ export default function HomeRoute() {
         onOpenRecord={(id) => router.push(`/cards/${id}`)}
         onOpenSettings={() => router.push("/settings")}
         onRetry={() => { void load(); }}
-        onStartPractice={() => router.push("/journey/preset-practice")}
+        onStartPractice={() => router.push("/practice/session")}
         onStartReview={() => {
           void runtime.restart().then(() => router.push("/journey/welcome"));
         }}

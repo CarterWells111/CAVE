@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react-native";
 
-import IndexRoute from "./index";
+import IndexRoute from "../../../app/index";
 
 const mockReplace = jest.fn();
 const mockLoad = jest.fn();
@@ -11,7 +11,7 @@ jest.mock("expo-router", () => ({
   useRouter: () => mockRouter
 }));
 
-jest.mock("../src/features/journey/runtime/JourneyRuntimeProvider", () => ({
+jest.mock("../journey/runtime/JourneyRuntimeProvider", () => ({
   useJourneyRuntime: () => ({ shellState: mockShellState })
 }));
 

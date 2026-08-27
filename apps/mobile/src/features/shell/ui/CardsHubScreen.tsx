@@ -57,7 +57,7 @@ export function CardsHubScreen({
                 <SectionHeading>{currentCard.title}</SectionHeading>
                 <SupportingText>{`${currentCard.dateLabel} · ${currentCard.statusLabel}`}</SupportingText>
                 <Button disabled={!onEdit} label="编辑当前沟通卡" onPress={() => onEdit?.(currentCard.id)} />
-                <SecondaryButton disabled={!onCopy} label="复制当前沟通卡" onPress={() => onCopy?.(currentCard.id)} />
+                <SecondaryButton disabled={!onCopy} label="打开后复制当前沟通卡" onPress={() => onCopy?.(currentCard.id)} />
                 <SecondaryButton disabled={!onFullscreen} label="全屏展示当前沟通卡" onPress={() => onFullscreen?.(currentCard.id)} />
               </Card>
             ) : <EmptyState message="完成并保存沟通卡后，可在这里编辑、复制或全屏展示。" title="还没有沟通卡" />}

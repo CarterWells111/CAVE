@@ -4,7 +4,7 @@ const { readFileSync } = jest.requireActual<typeof import("node:fs")>("node:fs")
 const { resolve } = jest.requireActual<typeof import("node:path")>("node:path");
 
 function source(path: string) {
-  return readFileSync(resolve(__dirname, path), "utf8");
+  return readFileSync(resolve(__dirname, "../../../app", path), "utf8");
 }
 
 test("ships exactly the four approved long-term tabs behind the completion guard", () => {
@@ -38,6 +38,7 @@ test("keeps the long-term navigation available during later full reviews", () =>
 
 test("opens standalone practice and saved-card details without journey prerequisites", () => {
   expect(source("(tabs)/practice.tsx")).toContain('router.push("/practice/session")');
+  expect(source("(tabs)/index.tsx")).toContain('router.push("/practice/session")');
   expect(source("practice/session.tsx")).toContain('context="standalone"');
   expect(source("(tabs)/reviews.tsx")).toContain("`/reviews/topic/${id}`");
   expect(source("(tabs)/cards.tsx")).toContain("`/cards/${id}`");
