@@ -13,6 +13,8 @@ export interface JourneyApplicationService {
   dispatch(command: JourneyCommand): Promise<void>;
   navigateTo(page: JourneyPageId): Promise<void>;
   resetJourney(): Promise<void>;
+  adoptCompletedJourney?(): void;
+  adoptPersistedJourney?(draft: JourneyDraft): void;
 }
 
 type Dependencies = {
@@ -81,6 +83,14 @@ export class DefaultJourneyApplicationService implements JourneyApplicationServi
       await this.repository.deleteActive();
       this.snapshot = null;
     });
+  }
+
+  adoptCompletedJourney(): void {
+    this.snapshot = null;
+  }
+
+  adoptPersistedJourney(draft: JourneyDraft): void {
+    this.snapshot = draft;
   }
 
   private requireActive(): JourneyDraft {

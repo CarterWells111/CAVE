@@ -18,6 +18,8 @@ import { InMemoryAppShellStateRepository } from "../../shell/infrastructure/in-m
 import type { ReviewHistoryRepository } from "../../reviews/infrastructure/review-history-repository";
 import { InMemoryPayloadReviewHistoryRepository } from "../../reviews/infrastructure/in-memory-payload-review-history-repository";
 import { VersionedJourneyDraftRepository } from "../../reviews/infrastructure/versioned-journey-draft-repository";
+import type { ActiveReview } from "../../reviews/infrastructure/review-history-repository";
+import type { JourneyBranchTransaction, JourneyCompletionTransaction } from "../infrastructure/journey-write-coordinator";
 import type { JourneyDraft } from "../domain/types";
 
 export type JourneyRuntimeMode = "expo-go-demo" | "native-secure";
@@ -34,6 +36,7 @@ export type JourneyRuntime = {
   reviewHistory: ReviewHistoryRepository<JourneyDraft>;
   deleteAllData(): Promise<void>;
   replaceActiveReview(): Promise<void>;
+  branchFromReview(draft: JourneyDraft, lineage: { rootId: string; sourceVersionId: string; title: string }): Promise<void>;
 };
 
 type RuntimeDependencies = {
@@ -50,6 +53,9 @@ type ComposeDependencies = RuntimeDependencies & {
   shellState?: AppShellStateRepository;
   reviewHistory?: ReviewHistoryRepository<JourneyDraft>;
   deleteStorage?: () => Promise<void>;
+  saveVersionedDraft?: (draft: JourneyDraft, active: ActiveReview<JourneyDraft>) => Promise<void>;
+  completeJourney?: (transaction: JourneyCompletionTransaction) => Promise<void>;
+  branchReview?: (transaction: JourneyBranchTransaction) => Promise<void>;
 };
 
 type CreateDependencies = RuntimeDependencies & {
@@ -68,18 +74,22 @@ export function composeJourneyRuntime({
   cards,
   shellState = new InMemoryAppShellStateRepository(),
   reviewHistory = new InMemoryPayloadReviewHistoryRepository<JourneyDraft>(),
+  saveVersionedDraft,
+  completeJourney,
+  branchReview,
   deleteStorage,
   clipboard,
   createId,
   now
 }: ComposeDependencies): JourneyRuntime {
-  const versionedDrafts = new VersionedJourneyDraftRepository(drafts, reviewHistory);
+  const versionedDrafts = new VersionedJourneyDraftRepository(drafts, reviewHistory, saveVersionedDraft);
   const service = new DefaultJourneyApplicationService(versionedDrafts, { createId, now });
   const controller = new JourneyPageController({
     service,
     cards,
     shellState,
     reviewHistory,
+    ...(completeJourney === undefined ? {} : { completeAtomically: completeJourney }),
     clipboard,
     practice: new LocalPresetPracticeEngine(loadJourneyContentCatalog().practice),
     now
@@ -111,7 +121,26 @@ export function composeJourneyRuntime({
     }
     await service.resetJourney();
   };
-  return { mode, persistence, service, controller, drafts: versionedDrafts, cards, shellState, reviewHistory, deleteAllData, replaceActiveReview };
+  const branchFromReview = async (draft: JourneyDraft, lineage: { rootId: string; sourceVersionId: string; title: string }) => {
+    const current = await reviewHistory.loadActive();
+    const archivedActive = current === null ? null : {
+      id: `review:${current.payload.id}:incomplete`, rootId: current.rootId,
+      parentVersionId: current.sourceVersionId, title: current.title, createdAt: current.updatedAt,
+      status: "incomplete" as const, payload: current.payload,
+    };
+    const active = { id: `active:${draft.id}`, ...lineage, updatedAt: draft.updatedAt, payload: draft };
+    if (branchReview !== undefined) {
+      await branchReview({ archivedActive, branch: draft, active });
+    } else {
+      if (archivedActive !== null && await reviewHistory.loadDetail(archivedActive.id) === null) {
+        await reviewHistory.appendVersionAndClearActive(archivedActive);
+      }
+      await service.resetJourney();
+      await versionedDrafts.saveWithLineage(draft, lineage);
+    }
+    service.adoptPersistedJourney(draft);
+  };
+  return { mode, persistence, service, controller, drafts: versionedDrafts, cards, shellState, reviewHistory, deleteAllData, replaceActiveReview, branchFromReview };
 }
 
 export async function createJourneyRuntime({

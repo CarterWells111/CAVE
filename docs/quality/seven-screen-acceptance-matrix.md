@@ -39,7 +39,7 @@ Status: `local_automated_pass`
 
 - Workspace typecheck: passed.
 - Workspace lint: passed.
-- Workspace tests: passed. Mobile: 68 suites / 472 tests. Other packages: contracts 19, content 39, scenario engine 18, gateway 160, test fixtures 11.
+- Workspace tests: passed. Mobile: 90 suites / 573 tests. Other packages: contracts 19, content 39, scenario engine 18, gateway 160, test fixtures 11.
 - Content tests: 4 files / 39 tests passed.
 - Draft content validation: passed.
 - Safety regression: 4 files / 53 tests passed.
@@ -85,5 +85,7 @@ Status: `local_automated_pass`
 - Single-version deletion detaches child ancestry in one SQL transaction and rolls back on failure. Delete-all also clears active/version history and reports partial cleanup honestly when a native cleanup step fails.
 - History loading, empty/error/retry, detail, branching, deletion confirmation, pending/error/success, large-text scrolling, 44-point targets, and VoiceOver semantics have focused tests.
 - Participation events remain idempotent keys and do not create a readiness score or reward private content, saving choices, openness, or text length.
+- Native branch replacement now archives the prior active draft, removes legacy active rows, and writes the new draft plus exact lineage in one SQLCipher transaction. Any statement failure rolls the whole transition back.
+- Native completion writes the confirmed card, immutable version, first-run marker, active-review cleanup, and legacy/v2 draft cleanup in one SQLCipher transaction. Focused failure injection covers every write boundary and safe retry UI.
 
 Physical-device SQLCipher upgrade, rollback, delete recovery, and VoiceOver evidence remain `device_external_pending` until a signed native build is tested.

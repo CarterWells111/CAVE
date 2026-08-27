@@ -27,6 +27,7 @@ export type JourneyRuntimeContextValue = {
   runAndRefresh<T>(action: () => Promise<T>): Promise<T>;
   restart(): Promise<void>;
   replaceActiveReview(): Promise<void>;
+  branchFromReview: JourneyRuntime["branchFromReview"];
 };
 
 type JourneyRuntimeProviderProps = PropsWithChildren<{
@@ -69,7 +70,8 @@ function RuntimeContextProvider({
     deleteAllData,
     runAndRefresh,
     restart,
-    replaceActiveReview
+    replaceActiveReview,
+    branchFromReview: runtime.branchFromReview
   }), [deleteAllData, replaceActiveReview, restart, runAndRefresh, runtime, snapshot]);
 
   return (

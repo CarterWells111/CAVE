@@ -21,12 +21,13 @@ export type ReviewDetailScreenProps = {
   metadata: ReviewDetailMetadata;
   sections: readonly ReviewDetailSection[];
   onBack(): void;
-  onBranch(reviewId: string): void;
+  onBranch(reviewId: string): Promise<void>;
   onDelete(reviewId: string): Promise<void>;
   onContinueAfterDelete(): void;
 };
 
 type DeleteState = "idle" | "confirming" | "deleting" | "error" | "success";
+type BranchState = "idle" | "branching" | "error";
 
 function DeleteButton({ label, loading = false, onPress }: { label: string; loading?: boolean; onPress(): void }) {
   const [focused, setFocused] = useState(false);
@@ -75,7 +76,23 @@ function DeleteButton({ label, loading = false, onPress }: { label: string; load
 export function ReviewDetailScreen(_props: ReviewDetailScreenProps) {
   const { metadata, onBack, onBranch, onContinueAfterDelete, onDelete, sections } = _props;
   const [deleteState, setDeleteState] = useState<DeleteState>("idle");
+  const [branchState, setBranchState] = useState<BranchState>("idle");
   const deletionInFlight = useRef(false);
+  const branchingInFlight = useRef(false);
+
+  const branchReview = async () => {
+    if (branchingInFlight.current) return;
+    branchingInFlight.current = true;
+    setBranchState("branching");
+    try {
+      await onBranch(metadata.id);
+      setBranchState("idle");
+    } catch {
+      setBranchState("error");
+    } finally {
+      branchingInFlight.current = false;
+    }
+  };
 
   const deleteReview = async () => {
     if (deletionInFlight.current) return;
@@ -143,22 +160,27 @@ export function ReviewDetailScreen(_props: ReviewDetailScreenProps) {
             </View>
 
             <View style={{ gap: theme.space.md }}>
-              <Button disabled={deleting} label="从这条回顾开始新分支" onPress={() => onBranch(metadata.id)} />
-              <SecondaryButton disabled={deleting} label="返回回顾历史" onPress={onBack} />
+              {branchState === "error" ? <StatusBanner message="新分支保存失败，原回顾和当前草稿都没有改变。请重试。" variant="error" /> : null}
+              <Button
+                disabled={deleting || deleteState !== "idle" || branchState === "branching"}
+                label={branchState === "branching" ? "正在创建新分支…" : branchState === "error" ? "重试创建新分支" : "从这条回顾开始新分支"}
+                onPress={() => { void branchReview(); }}
+              />
+              <SecondaryButton disabled={deleting || branchState === "branching"} label="返回回顾历史" onPress={onBack} />
             </View>
 
             <Card accessible={false} style={{ borderColor: theme.color.danger }}>
               <Text accessibilityRole="header" selectable style={{ ...theme.typography.heading, color: theme.color.text }}>
                 删除这条回顾
               </Text>
-              {deleteState === "idle" ? <DeleteButton label="删除这条回顾" onPress={() => setDeleteState("confirming")} /> : null}
+              {deleteState === "idle" ? <DeleteButton label="删除这条回顾" loading={branchState === "branching"} onPress={() => setDeleteState("confirming")} /> : null}
               {deleteState === "confirming" ? (
                 <View style={{ gap: theme.space.md }}>
                   <Text accessibilityRole="alert" selectable style={{ ...theme.typography.body, color: theme.color.error }}>
                     请再次确认：这条回顾会从本机删除，并且无法恢复。
                   </Text>
-                  <DeleteButton label="确认删除这条回顾" onPress={() => { void deleteReview(); }} />
-                  <SecondaryButton label="取消删除" onPress={() => setDeleteState("idle")} />
+                  <DeleteButton label="确认删除这条回顾" loading={branchState === "branching"} onPress={() => { void deleteReview(); }} />
+                  <SecondaryButton disabled={branchState === "branching"} label="取消删除" onPress={() => setDeleteState("idle")} />
                 </View>
               ) : null}
               {deleteState === "deleting" ? (
@@ -172,8 +194,8 @@ export function ReviewDetailScreen(_props: ReviewDetailScreenProps) {
               {deleteState === "error" ? (
                 <View style={{ gap: theme.space.md }}>
                   <StatusBanner message="删除失败，请重试。回顾内容仍保留在当前画面。" variant="error" />
-                  <DeleteButton label="重试删除" onPress={() => { void deleteReview(); }} />
-                  <SecondaryButton label="取消删除" onPress={() => setDeleteState("idle")} />
+                  <DeleteButton label="重试删除" loading={branchState === "branching"} onPress={() => { void deleteReview(); }} />
+                  <SecondaryButton disabled={branchState === "branching"} label="取消删除" onPress={() => setDeleteState("idle")} />
                 </View>
               ) : null}
             </Card>

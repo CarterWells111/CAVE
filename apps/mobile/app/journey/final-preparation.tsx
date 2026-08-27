@@ -16,7 +16,6 @@ export default function FinalPreparationRoute() {
       {({ controller, runAndRefresh, snapshot }) => (
         snapshot ? <FinalPreparationPage
           draft={snapshot}
-          onCompleted={() => router.replace("/")}
           onCopy={async () => {
             const result = await controller.copyCommunicationCard();
             if (result.status === "error") throw new Error(result.code);
@@ -24,7 +23,10 @@ export default function FinalPreparationRoute() {
           onEdit={(sectionId, userText) => runAndRefresh(
             () => controller.editCommunicationCard(sectionId, userText)
           )}
-          onFinish={(card) => controller.completeInitialJourney(card)}
+          onFinish={async (card) => {
+            await runAndRefresh(() => controller.completeInitialJourney(card));
+            router.replace("/");
+          }}
           onOpenImageSettings={() => cardImagePermissionRecovery.openSettings()}
           onSaveDraft={() => controller.saveCommunicationCard()}
           onSaveImage={(_card, imageUri) => saveCardImageToLibrary(imageUri)}

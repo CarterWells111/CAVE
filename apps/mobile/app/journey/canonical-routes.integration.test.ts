@@ -79,8 +79,8 @@ test("practice and final routes use real user-triggered local adapters", () => {
   expect(final).toContain("saveCardImageToLibrary(imageUri)");
   expect(final).toContain("cardImagePermissionRecovery.openSettings()");
   expect(final).toContain('result.status === "error"');
-  expect(final).toContain("onFinish={(card) => controller.completeInitialJourney(card)}");
-  expect(final).toContain('onCompleted={() => router.replace("/")}');
+  expect(final).toContain("await runAndRefresh(() => controller.completeInitialJourney(card));");
+  expect(final).toContain('router.replace("/");');
   expect(final).toContain("onSaveDraft={() => controller.saveCommunicationCard()}");
   expect(final).toContain("onUpdatePreparation={(itemId, status) => runAndRefresh(");
   expect(final).toContain("controller.updateChecklist(itemId, status)");

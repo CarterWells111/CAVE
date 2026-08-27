@@ -12,6 +12,7 @@ import {
 import { SqlAppShellStateRepository } from "../../shell/infrastructure/sql-app-shell-state-repository";
 import { SqlReviewHistoryRepository } from "../../reviews/infrastructure/sql-review-history-repository";
 import type { JourneyDraft } from "../domain/types";
+import { SqlJourneyTransactionRepository } from "../infrastructure/sql-journey-transaction-repository";
 import {
   composeJourneyRuntime,
   createJourneyRuntime,
@@ -47,6 +48,7 @@ export function createComposedJourneyRuntime({
         files: adapters.files,
         secrets: adapters.secrets
       });
+      const transactions = new SqlJourneyTransactionRepository(database);
       return composeJourneyRuntime({
         mode: "native-secure",
         persistence: "sqlcipher-secure-store",
@@ -54,6 +56,9 @@ export function createComposedJourneyRuntime({
         cards: new SqlCommunicationCardRepository(database),
         shellState: new SqlAppShellStateRepository(database),
         reviewHistory: new SqlReviewHistoryRepository<JourneyDraft>(database),
+        saveVersionedDraft: (draft, active) => transactions.saveActive(draft, active),
+        completeJourney: (transaction) => transactions.complete(transaction),
+        branchReview: (transaction) => transactions.branch(transaction),
         deleteStorage: () => deleteAllLocalData({ database, secrets: adapters.secrets }),
         clipboard: adapters.clipboard,
         createId,

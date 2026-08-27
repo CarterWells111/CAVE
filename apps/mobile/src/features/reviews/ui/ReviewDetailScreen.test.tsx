@@ -16,9 +16,9 @@ function deferred<T>() {
   return { promise, reject, resolve };
 }
 
-test("shows detail body only here and exposes back and branch actions", () => {
+test("shows detail body only here and exposes back and branch actions", async () => {
   const onBack = jest.fn();
-  const onBranch = jest.fn();
+  const onBranch = jest.fn(async () => undefined);
   render(
     <ReviewDetailScreen
       metadata={metadata}
@@ -32,6 +32,7 @@ test("shows detail body only here and exposes back and branch actions", () => {
 
   expect(screen.getByText("我需要更多时间。")).toBeTruthy();
   fireEvent.press(screen.getByRole("button", { name: "从这条回顾开始新分支" }));
+  await screen.findByRole("button", { name: "从这条回顾开始新分支" });
   fireEvent.press(screen.getByRole("button", { name: "返回回顾历史" }));
   expect(onBranch).toHaveBeenCalledWith("review-1");
   expect(onBack).toHaveBeenCalledTimes(1);
@@ -40,12 +41,13 @@ test("shows detail body only here and exposes back and branch actions", () => {
 test("requires explicit deletion confirmation and allows cancellation", () => {
   const onDelete = jest.fn(async () => undefined);
   render(
-    <ReviewDetailScreen metadata={metadata} onBack={jest.fn()} onBranch={jest.fn()} onContinueAfterDelete={jest.fn()} onDelete={onDelete} sections={sections} />
+    <ReviewDetailScreen metadata={metadata} onBack={jest.fn()} onBranch={jest.fn(async () => undefined)} onContinueAfterDelete={jest.fn()} onDelete={onDelete} sections={sections} />
   );
 
   fireEvent.press(screen.getByRole("button", { name: "删除这条回顾" }));
   expect(screen.getByRole("alert")).toBeTruthy();
   expect(screen.getByText(/请再次确认/)).toBeTruthy();
+  expect(screen.getByRole("button", { name: "从这条回顾开始新分支" }).props.accessibilityState).toMatchObject({ disabled: true });
   expect(onDelete).not.toHaveBeenCalled();
   fireEvent.press(screen.getByRole("button", { name: "取消删除" }));
   expect(screen.queryByRole("button", { name: "确认删除这条回顾" })).toBeNull();
@@ -56,7 +58,7 @@ test("shows non-color pending and success states and prevents duplicate deletion
   const onDelete = jest.fn(() => pending.promise);
   const onContinueAfterDelete = jest.fn();
   render(
-    <ReviewDetailScreen metadata={metadata} onBack={jest.fn()} onBranch={jest.fn()} onContinueAfterDelete={onContinueAfterDelete} onDelete={onDelete} sections={sections} />
+    <ReviewDetailScreen metadata={metadata} onBack={jest.fn()} onBranch={jest.fn(async () => undefined)} onContinueAfterDelete={onContinueAfterDelete} onDelete={onDelete} sections={sections} />
   );
 
   fireEvent.press(screen.getByRole("button", { name: "删除这条回顾" }));
@@ -77,7 +79,7 @@ test("keeps content visible after a safe delete error and retries", async () => 
     .mockRejectedValueOnce(new Error("secret database path"))
     .mockResolvedValueOnce(undefined);
   render(
-    <ReviewDetailScreen metadata={metadata} onBack={jest.fn()} onBranch={jest.fn()} onContinueAfterDelete={jest.fn()} onDelete={onDelete} sections={sections} />
+    <ReviewDetailScreen metadata={metadata} onBack={jest.fn()} onBranch={jest.fn(async () => undefined)} onContinueAfterDelete={jest.fn()} onDelete={onDelete} sections={sections} />
   );
 
   fireEvent.press(screen.getByRole("button", { name: "删除这条回顾" }));
@@ -94,7 +96,7 @@ test("keeps content visible after a safe delete error and retries", async () => 
 
 test("is a static keyboard-safe large-text layout with 44-point actions", () => {
   const { UNSAFE_getAllByType, getByTestId } = render(
-    <ReviewDetailScreen metadata={metadata} onBack={jest.fn()} onBranch={jest.fn()} onContinueAfterDelete={jest.fn()} onDelete={jest.fn(async () => undefined)} sections={sections} />
+    <ReviewDetailScreen metadata={metadata} onBack={jest.fn()} onBranch={jest.fn(async () => undefined)} onContinueAfterDelete={jest.fn()} onDelete={jest.fn(async () => undefined)} sections={sections} />
   );
 
   const scroll = getByTestId("review-detail-scroll");
@@ -108,4 +110,21 @@ test("is a static keyboard-safe large-text layout with 44-point actions", () => 
   for (const text of UNSAFE_getAllByType(Text)) {
     expect(text.props.numberOfLines).toBeUndefined();
   }
+});
+
+test("shows a safe retry state and blocks duplicate branch creation", async () => {
+  const pending = deferred<void>();
+  const onBranch = jest.fn()
+    .mockImplementationOnce(() => pending.promise)
+    .mockResolvedValueOnce(undefined);
+  render(<ReviewDetailScreen metadata={metadata} onBack={jest.fn()} onBranch={onBranch} onContinueAfterDelete={jest.fn()} onDelete={jest.fn(async () => undefined)} sections={sections} />);
+
+  fireEvent.press(screen.getByRole("button", { name: "从这条回顾开始新分支" }));
+  fireEvent.press(screen.getByRole("button", { name: "正在创建新分支…" }));
+  expect(onBranch).toHaveBeenCalledTimes(1);
+  pending.reject(new Error("secret sql details"));
+  expect(await screen.findByText("新分支保存失败，原回顾和当前草稿都没有改变。请重试。")).toBeTruthy();
+  expect(screen.queryByText(/secret sql details/u)).toBeNull();
+  fireEvent.press(screen.getByRole("button", { name: "重试创建新分支" }));
+  await waitFor(() => expect(onBranch).toHaveBeenCalledTimes(2));
 });
