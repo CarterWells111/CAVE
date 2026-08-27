@@ -1,0 +1,42 @@
+# CAVE 医学及教育内容来源台账
+
+> 访问日期：2026-08-27  
+> 说明：“来源已核验”只表示链接、机构和适用内容已核对，不代表 CAVE 中文改写已通过临床或性教育专家复核。
+
+## 状态定义
+
+- `source_verified`：权威机构、标题、链接与适用范围已核验。
+- `expert_review_pending`：CAVE 中文改写待医学或性教育专家复核。
+- `reviewed`：已记录复核人、复核日期和版本。
+- `revision_required`：来源或改写需要更新。
+
+## 来源清单
+
+| ID | 类型 | 标题 | 机构 | 链接 | 适用内容 | 发布/复核日期 | 访问日期 | 内部状态 |
+|---|---|---|---|---|---|---|---|---|
+| SRC-001 | EDU | Comprehensive sexuality education | World Health Organization | https://www.who.int/news-room/questions-and-answers/item/comprehensive-sexuality-education | 准确、适龄的性教育；身体认识、同意与身体自主权 | 2023-05-18 | 2026-08-27 | source_verified; expert_review_pending |
+| SRC-002 | EDU | International technical guidance on sexuality education: an evidence-informed approach | UNESCO, UNAIDS, UNFPA, UNICEF, UN Women, WHO | https://cdn.who.int/media/docs/default-source/reproductive-health/sexual-health/international-technical-guidance-on-sexuality-education.pdf | 15—18+ 岁同意、隐私、身体完整性与表达技能 | 2018 | 2026-08-27 | source_verified; expert_review_pending |
+| SRC-003 | EDU | Consent 101: Respect, Boundaries, & Building Trust | RAINN | https://rainn.org/share-the-facts/consent-101-respect-boundaries-and-building-trust/ | 每种行为独立确认；同意持续且可撤回；身体反应不等于同意 | 2026-05-31 更新 | 2026-08-27 | source_verified; expert_review_pending |
+| SRC-004 | MED | Vulvovaginal Health | American College of Obstetricians and Gynecologists | https://www.acog.org/womens-health/faqs/vulvovaginal-health | 外阴、阴道、阴蒂、阴唇、尿道口等解剖名称及位置 | 页面未列明 | 2026-08-27 | source_verified; expert_review_pending |
+| SRC-005 | MED | Your Sexual Health | American College of Obstetricians and Gynecologists | https://www.acog.org/womens-health/faqs/your-sexual-health | 心理兴奋与身体兴奋可能不同步；非插入性活动选项 | 页面未列明 | 2026-08-27 | source_verified; expert_review_pending |
+| SRC-006 | MED | When Sex Is Painful | American College of Obstetricians and Gynecologists | https://www.acog.org/womens-health/faqs/when-sex-is-painful | 频繁或严重性活动疼痛的求医提示 | 2026-05 复核 | 2026-08-27 | source_verified; expert_review_pending |
+| SRC-007 | MED | Condoms | World Health Organization | https://www.who.int/news-room/fact-sheets/detail/condoms | 正确且持续使用安全套与大多数性传播感染、HIV 及非意愿妊娠的风险降低 | 2025-02-14 | 2026-08-27 | source_verified; expert_review_pending |
+| SRC-008 | MED | Sexually transmitted infections (STIs) | World Health Organization | https://www.who.int/news-room/fact-sheets/detail/sexually-transmitted-infections-%28stis%29 | 性传播感染的预防；安全套的保护作用与局限；HPV 和乙肝疫苗 | 2025-09-10 | 2026-08-27 | source_verified; expert_review_pending |
+| SRC-009 | MED | Birth Control | American College of Obstetricians and Gynecologists | https://www.acog.org/womens-health/faqs/birth-control | 避孕与性传播感染预防的区分；安全套与口交膜等屏障方法 | 页面未列明 | 2026-08-27 | source_verified; expert_review_pending |
+| SRC-010 | SAFE | 常用紧急救助及公益服务号码说明 | 北京市通信管理局 | https://bjca.miit.gov.cn/zwgk/tzgg/art/2022/art_8d4eb93ee3424f30826c97ee400e8937.html | 中国大陆 110 公安报警、120 医疗急救及 12348 法律咨询号码用途 | 2022-08-29 | 2026-08-27 | source_verified; expert_review_pending |
+| SRC-011 | SAFE | 12338 妇联维权服务中心地图上线 | 全国妇联女性之声 / 北京妇女网转载 | https://study.bjwomen.gov.cn/thought/politics/2025/05/30/16190.shtml | 中国大陆所在地 12338 妇女维权热线及线下服务中心入口 | 2025-05-30 | 2026-08-27 | source_verified; expert_review_pending |
+| SRC-012 | SAFE | 权益科工作职能 | 深圳市盐田区妇女联合会 | https://www.yantian.gov.cn/ytfl/gkmlpt/content/12/12597/post_12597195.html | 12338 提供妇女咨询、调解与维权公益服务；证明地方服务内容与时间存在差异 | 2026-01-12 | 2026-08-27 | source_verified; expert_review_pending |
+
+## 界面来源入口规则
+
+- 只在出现 `MED` 或 `EDU` 内容的卡片上显示轻量“来源与说明”入口。
+- 首层只显示机构名和来源数量；展开后显示标题、直达链接、发布/复核日期和访问日期。
+- `UX` 文案不伪装成医学建议，不为了“看起来科学”强行附会来源。
+- 某条内容对应多个来源时，在内部记录主来源与辅助来源，界面不堆叠引用。
+- 所有 `MED` 文案在上线前必须从 `expert_review_pending` 变为 `reviewed`。
+
+## 专家复核记录模板
+
+| 内容 ID | 中文文案版本 | 复核人/角色 | 复核日期 | 结论 | 修改摘要 | 下次复核日期 |
+|---|---|---|---|---|---|---|
+| 待填写 | v0 | 待填写 | 待填写 | 待复核 | — | 待填写 |

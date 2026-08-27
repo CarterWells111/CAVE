@@ -1,0 +1,119 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="1280" viewBox="0 0 900 1280" role="img" aria-labelledby="title desc">
+  <title id="title">CAVE 身体地图：外阴外部可见结构</title>
+  <desc id="desc">原创编号身体地图，通过七个编号标示阴蒂头、大阴唇、小阴唇、尿道口、阴道口、会阴与肛门。颜色仅用于区分结构，正式使用前须经医学专家复核。</desc>
+
+  <defs>
+    <style>
+      .page { fill: #171217; }
+      .paper { fill: #f8f1ed; }
+      .map { fill: #efe2dd; }
+      .eyebrow { fill: #806e77; font: 600 14px "Source Han Sans SC", "Microsoft YaHei", sans-serif; letter-spacing: 2px; }
+      .title { fill: #2f232a; font: 700 34px "Source Han Sans SC", "Microsoft YaHei", sans-serif; }
+      .body { fill: #5d4d55; font: 400 17px "Source Han Sans SC", "Microsoft YaHei", sans-serif; }
+      .legend { fill: #2f232a; font: 650 20px "Source Han Sans SC", "Microsoft YaHei", sans-serif; }
+      .latin { fill: #907e87; font: 500 11px "Arial", sans-serif; letter-spacing: 1px; }
+      .skin { fill: #e9bcae; }
+      .outer { fill: #c77e7e; stroke: #874c56; stroke-width: 3; stroke-linejoin: round; }
+      .inner { fill: #a85f69; stroke: #703c47; stroke-width: 3; stroke-linejoin: round; }
+      .vestibule { fill: #d88b87; stroke: #874c56; stroke-width: 2.5; }
+      .clitoris { fill: #f2b79e; stroke: #703c47; stroke-width: 2.5; }
+      .opening { fill: #613642; }
+      .perineum { fill: #dfa497; fill-opacity: .72; }
+      .anus { fill: #6a4650; }
+      .pinLine { fill: none; stroke: #6d345a; stroke-width: 2; stroke-linecap: round; }
+      .pin { fill: #6d345a; stroke: #f8f1ed; stroke-width: 3; }
+      .pinText { fill: #fff9f7; font: 700 15px "Arial", sans-serif; }
+      .legendCard { fill: #fffaf7; stroke: #dfd1d3; stroke-width: 1.5; }
+      .divider { stroke: #dfd1d3; stroke-width: 1.5; }
+    </style>
+  </defs>
+
+  <rect class="page" width="900" height="1280" rx="34"/>
+  <rect class="paper" x="32" y="32" width="836" height="1216" rx="30"/>
+
+  <text class="eyebrow" x="76" y="84">BODY MAP · 01</text>
+  <text class="title" x="76" y="130">外阴：外部可见结构</text>
+  <text class="body" x="76" y="166">这是一张位置地图，不代表唯一或“标准”的外观。</text>
+
+  <rect class="map" x="76" y="202" width="748" height="574" rx="28"/>
+
+  <!-- 原创简化身体地图：略微不对称以避免暗示唯一标准外观 -->
+  <path class="skin" d="M356 236 C317 264 299 338 306 460 C314 604 350 700 450 748 C550 700 586 604 594 460 C601 338 583 264 544 236 C501 206 399 206 356 236 Z"/>
+
+  <!-- 大阴唇 -->
+  <path class="outer" d="M402 294 C360 334 338 423 347 542 C356 647 390 714 438 745 C418 682 412 606 416 523 C420 427 419 345 402 294 Z"/>
+  <path class="outer" d="M498 294 C539 339 561 430 552 543 C543 648 510 716 462 745 C482 678 488 601 484 518 C480 421 481 343 498 294 Z"/>
+
+  <!-- 小阴唇与前庭 -->
+  <path class="inner" d="M430 336 C398 380 389 454 399 539 C408 614 425 669 450 704 C436 645 438 583 444 523 C452 438 449 372 430 336 Z"/>
+  <path class="inner" d="M470 336 C502 377 511 453 501 540 C491 615 474 670 450 704 C466 642 464 579 458 518 C450 434 452 370 470 336 Z"/>
+  <path class="vestibule" d="M450 366 C426 398 419 459 425 531 C431 602 441 646 450 665 C459 646 469 602 475 531 C481 459 474 398 450 366 Z"/>
+
+  <!-- 阴蒂头、尿道口、阴道口 -->
+  <path class="clitoris" d="M419 347 Q450 311 481 347 Q465 338 456 346 Q450 352 444 346 Q435 338 419 347 Z"/>
+  <ellipse class="clitoris" cx="450" cy="360" rx="11" ry="14"/>
+  <ellipse class="opening" cx="450" cy="450" rx="6.5" ry="5"/>
+  <path class="opening" d="M450 507 C433 507 425 529 427 561 C429 594 439 614 450 620 C461 614 471 594 473 561 C475 529 467 507 450 507 Z"/>
+
+  <!-- 会阴与肛门 -->
+  <path class="perineum" d="M428 632 Q450 651 472 632 L468 696 Q450 711 432 696 Z"/>
+  <ellipse class="anus" cx="450" cy="718" rx="17" ry="10"/>
+
+  <!-- 编号定位点：不使用参考图的左右文字引线布局 -->
+  <path class="pinLine" d="M461 360 L513 337"/>
+  <circle class="pin" cx="528" cy="330" r="18"/><text class="pinText" x="528" y="335" text-anchor="middle">1</text>
+
+  <path class="pinLine" d="M382 430 L345 403"/>
+  <circle class="pin" cx="331" cy="393" r="18"/><text class="pinText" x="331" y="398" text-anchor="middle">2</text>
+
+  <path class="pinLine" d="M489 492 L534 472"/>
+  <circle class="pin" cx="549" cy="465" r="18"/><text class="pinText" x="549" y="470" text-anchor="middle">3</text>
+
+  <path class="pinLine" d="M456 450 L508 425"/>
+  <circle class="pin" cx="523" cy="418" r="18"/><text class="pinText" x="523" y="423" text-anchor="middle">4</text>
+
+  <path class="pinLine" d="M472 558 L529 575"/>
+  <circle class="pin" cx="545" cy="580" r="18"/><text class="pinText" x="545" y="585" text-anchor="middle">5</text>
+
+  <path class="pinLine" d="M432 672 L378 686"/>
+  <circle class="pin" cx="361" cy="690" r="18"/><text class="pinText" x="361" y="695" text-anchor="middle">6</text>
+
+  <path class="pinLine" d="M467 718 L512 732"/>
+  <circle class="pin" cx="529" cy="737" r="18"/><text class="pinText" x="529" y="742" text-anchor="middle">7</text>
+
+  <text class="eyebrow" x="76" y="823">图例 · 点击编号可查看说明</text>
+
+  <!-- 两列图例，移动端实现可改为可点击列表 -->
+  <g transform="translate(76 848)">
+    <rect class="legendCard" x="0" y="0" width="354" height="76" rx="16"/>
+    <circle class="pin" cx="34" cy="38" r="18"/><text class="pinText" x="34" y="43" text-anchor="middle">1</text>
+    <text class="legend" x="66" y="34">阴蒂头</text><text class="latin" x="66" y="55">CLITORAL GLANS</text>
+
+    <rect class="legendCard" x="370" y="0" width="354" height="76" rx="16"/>
+    <circle class="pin" cx="404" cy="38" r="18"/><text class="pinText" x="404" y="43" text-anchor="middle">2</text>
+    <text class="legend" x="436" y="34">大阴唇</text><text class="latin" x="436" y="55">LABIA MAJORA</text>
+
+    <rect class="legendCard" x="0" y="88" width="354" height="76" rx="16"/>
+    <circle class="pin" cx="34" cy="126" r="18"/><text class="pinText" x="34" y="131" text-anchor="middle">3</text>
+    <text class="legend" x="66" y="122">小阴唇</text><text class="latin" x="66" y="143">LABIA MINORA</text>
+
+    <rect class="legendCard" x="370" y="88" width="354" height="76" rx="16"/>
+    <circle class="pin" cx="404" cy="126" r="18"/><text class="pinText" x="404" y="131" text-anchor="middle">4</text>
+    <text class="legend" x="436" y="122">尿道口</text><text class="latin" x="436" y="143">URETHRAL OPENING</text>
+
+    <rect class="legendCard" x="0" y="176" width="354" height="76" rx="16"/>
+    <circle class="pin" cx="34" cy="214" r="18"/><text class="pinText" x="34" y="219" text-anchor="middle">5</text>
+    <text class="legend" x="66" y="210">阴道口</text><text class="latin" x="66" y="231">VAGINAL OPENING</text>
+
+    <rect class="legendCard" x="370" y="176" width="354" height="76" rx="16"/>
+    <circle class="pin" cx="404" cy="214" r="18"/><text class="pinText" x="404" y="219" text-anchor="middle">6</text>
+    <text class="legend" x="436" y="210">会阴</text><text class="latin" x="436" y="231">PERINEUM</text>
+
+    <rect class="legendCard" x="0" y="264" width="724" height="76" rx="16"/>
+    <circle class="pin" cx="34" cy="302" r="18"/><text class="pinText" x="34" y="307" text-anchor="middle">7</text>
+    <text class="legend" x="66" y="298">肛门</text><text class="latin" x="66" y="319">ANUS</text>
+  </g>
+
+  <line class="divider" x1="76" y1="1210" x2="824" y2="1210"/>
+  <text class="body" x="450" y="1242" text-anchor="middle">图中颜色仅用于区分结构；正式使用前须完成医学专家复核。</text>
+</svg>

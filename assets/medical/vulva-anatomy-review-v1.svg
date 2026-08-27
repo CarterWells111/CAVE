@@ -1,0 +1,90 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="760" height="1180" viewBox="0 0 760 1180" role="img" aria-labelledby="title desc">
+  <title id="title">外阴、阴蒂及周围结构医学示意图审核稿</title>
+  <desc id="desc">包含外部可见结构，以及阴蒂和周围勃起组织的简化正面示意。用于 CAVE 第三屏视觉审核，尚待医学专家复核。</desc>
+
+  <defs>
+    <style>
+      .bg { fill: #171217; }
+      .panel { fill: #241a22; stroke: #5a4652; stroke-width: 1.5; }
+      .heading { fill: #faf5f7; font: 600 28px "Source Han Sans SC", "Microsoft YaHei", sans-serif; }
+      .subheading { fill: #f2c7a5; font: 600 20px "Source Han Sans SC", "Microsoft YaHei", sans-serif; }
+      .label { fill: #faf5f7; font: 500 18px "Source Han Sans SC", "Microsoft YaHei", sans-serif; }
+      .note { fill: #cbbfc5; font: 400 15px "Source Han Sans SC", "Microsoft YaHei", sans-serif; }
+      .outer { fill: #6d345a; fill-opacity: .24; stroke: #d7a0b5; stroke-width: 4; stroke-linecap: round; stroke-linejoin: round; }
+      .inner { fill: #d7a0b5; fill-opacity: .18; stroke: #e4b8c8; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+      .opening { fill: #171217; stroke: #f2c7a5; stroke-width: 3; }
+      .erectile { fill: #f2c7a5; fill-opacity: .28; stroke: #f2c7a5; stroke-width: 4; stroke-linecap: round; stroke-linejoin: round; }
+      .leader { fill: none; stroke: #a98f9b; stroke-width: 1.5; stroke-linecap: round; }
+      .dot { fill: #f2c7a5; }
+    </style>
+  </defs>
+
+  <rect class="bg" width="760" height="1180" rx="36"/>
+  <text class="heading" x="380" y="54" text-anchor="middle">外阴与阴蒂结构</text>
+  <text class="note" x="380" y="84" text-anchor="middle">医学线稿审核稿 · 外观存在自然差异</text>
+
+  <rect class="panel" x="34" y="112" width="692" height="636" rx="28"/>
+  <text class="subheading" x="62" y="154">外部可见结构</text>
+
+  <!-- 外部轮廓：教学用简化正面示意 -->
+  <path class="outer" d="M354 184 C300 203 270 275 266 375 C261 493 284 633 354 698 C365 708 374 714 380 716 C386 714 395 708 406 698 C476 633 499 493 494 375 C490 275 460 203 406 184 C390 178 370 178 354 184 Z"/>
+  <path class="inner" d="M352 285 C325 320 318 369 326 423 C334 477 326 555 354 620 C365 645 373 657 380 662 C387 657 395 645 406 620 C434 555 426 477 434 423 C442 369 435 320 408 285 C393 267 367 267 352 285 Z"/>
+
+  <!-- 阴蒂包皮与阴蒂头 -->
+  <path class="inner" d="M337 288 Q380 246 423 288 Q405 277 392 285 Q380 294 368 285 Q355 277 337 288 Z"/>
+  <ellipse class="erectile" cx="380" cy="302" rx="15" ry="19"/>
+
+  <!-- 尿道口、阴道口与会阴 -->
+  <ellipse class="opening" cx="380" cy="404" rx="8" ry="6"/>
+  <path class="opening" d="M380 456 C351 456 334 491 338 535 C342 578 360 603 380 608 C400 603 418 578 422 535 C426 491 409 456 380 456 Z"/>
+  <path class="leader" d="M354 646 Q380 665 406 646"/>
+
+  <!-- 左侧标注 -->
+  <text class="label" x="62" y="250">阴蒂包皮</text>
+  <path class="leader" d="M165 244 H292 L339 284"/><circle class="dot" cx="339" cy="284" r="3.5"/>
+
+  <text class="label" x="62" y="356">大阴唇</text>
+  <path class="leader" d="M138 350 H230 L278 380"/><circle class="dot" cx="278" cy="380" r="3.5"/>
+
+  <text class="label" x="62" y="438">尿道口</text>
+  <path class="leader" d="M138 432 H300 L369 406"/><circle class="dot" cx="369" cy="406" r="3.5"/>
+
+  <text class="label" x="62" y="668">会阴</text>
+  <path class="leader" d="M118 662 H298 L354 650"/><circle class="dot" cx="354" cy="650" r="3.5"/>
+
+  <!-- 右侧标注 -->
+  <text class="label" x="574" y="292">阴蒂头</text>
+  <path class="leader" d="M566 286 H470 L397 302"/><circle class="dot" cx="397" cy="302" r="3.5"/>
+
+  <text class="label" x="574" y="392">小阴唇</text>
+  <path class="leader" d="M566 386 H490 L431 407"/><circle class="dot" cx="431" cy="407" r="3.5"/>
+
+  <text class="label" x="574" y="530">阴道口</text>
+  <path class="leader" d="M566 524 H482 L423 528"/><circle class="dot" cx="423" cy="528" r="3.5"/>
+
+  <rect class="panel" x="34" y="774" width="692" height="342" rx="28"/>
+  <text class="subheading" x="62" y="816">阴蒂及周围勃起组织</text>
+  <text class="note" x="62" y="844">正面简化示意；内部结构并非外部直接可见</text>
+
+  <!-- 阴蒂内部结构与周围前庭球：教学用简化示意 -->
+  <ellipse class="erectile" cx="380" cy="892" rx="14" ry="18"/>
+  <path class="erectile" d="M380 876 C380 852 380 842 380 832"/>
+  <path class="erectile" d="M374 910 C354 929 323 957 286 1024"/>
+  <path class="erectile" d="M386 910 C406 929 437 957 474 1024"/>
+  <path class="erectile" d="M351 938 C326 952 316 992 326 1037 C334 1066 352 1074 366 1048 C376 1028 374 970 351 938 Z"/>
+  <path class="erectile" d="M409 938 C434 952 444 992 434 1037 C426 1066 408 1074 394 1048 C384 1028 386 970 409 938 Z"/>
+
+  <text class="label" x="62" y="902">阴蒂头</text>
+  <path class="leader" d="M138 896 H310 L363 892"/><circle class="dot" cx="363" cy="892" r="3.5"/>
+
+  <text class="label" x="62" y="1006">阴蒂脚</text>
+  <path class="leader" d="M138 1000 H230 L287 1019"/><circle class="dot" cx="287" cy="1019" r="3.5"/>
+
+  <text class="label" x="574" y="872">阴蒂体</text>
+  <path class="leader" d="M566 866 H468 L389 858"/><circle class="dot" cx="389" cy="858" r="3.5"/>
+
+  <text class="label" x="574" y="1008">前庭球</text>
+  <path class="leader" d="M566 1002 H488 L438 1014"/><circle class="dot" cx="438" cy="1014" r="3.5"/>
+
+  <text class="note" x="380" y="1152" text-anchor="middle">位置与比例为教学简化，正式使用前须完成医学复核</text>
+</svg>

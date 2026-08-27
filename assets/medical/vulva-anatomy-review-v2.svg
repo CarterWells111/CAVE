@@ -1,0 +1,86 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="1180" viewBox="0 0 900 1180" role="img" aria-labelledby="title desc">
+  <title id="title">外阴外部可见结构医学示意图第二版审核稿</title>
+  <desc id="desc">采用浅色医学卡片与清晰引线，标出阴蒂头、大阴唇、小阴唇、尿道口、阴道口、会阴和肛门。用于 CAVE 第三屏审核，正式使用前仍需医学专家复核。</desc>
+
+  <defs>
+    <style>
+      .card { fill: #fff9f7; }
+      .title { fill: #2f232a; font: 700 34px "Source Han Sans SC", "Microsoft YaHei", sans-serif; }
+      .subtitle { fill: #806e77; font: 400 18px "Source Han Sans SC", "Microsoft YaHei", sans-serif; }
+      .label { fill: #2f232a; font: 650 21px "Source Han Sans SC", "Microsoft YaHei", sans-serif; }
+      .latin { fill: #9b8992; font: 500 12px "Arial", sans-serif; letter-spacing: 1px; }
+      .note { fill: #806e77; font: 400 15px "Source Han Sans SC", "Microsoft YaHei", sans-serif; }
+      .skin { fill: #efc9bd; }
+      .outerFold { fill: #d9968d; fill-opacity: .62; stroke: #a85f61; stroke-width: 3; stroke-linejoin: round; }
+      .innerFold { fill: #bd6e70; fill-opacity: .76; stroke: #87484f; stroke-width: 3; stroke-linejoin: round; }
+      .vestibule { fill: #d98682; stroke: #87484f; stroke-width: 2.5; }
+      .opening { fill: #793f49; }
+      .clitoral { fill: #f3b7a4; stroke: #87484f; stroke-width: 2.5; }
+      .perineum { fill: #e6a99d; fill-opacity: .52; }
+      .anus { fill: #79515a; stroke: #4b3038; stroke-width: 2; }
+      .callout { fill: none; stroke: #4d9c9a; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
+      .dot { fill: #4d9c9a; }
+    </style>
+  </defs>
+
+  <rect class="card" width="900" height="1180" rx="30"/>
+  <text class="title" x="54" y="66">外阴</text>
+  <text class="subtitle" x="54" y="99">外部可见结构 · 每个人的外观、颜色和大小都可能不同</text>
+
+  <!-- 身体区域与阴阜的简化正面示意 -->
+  <path class="skin" d="M351 159 C305 182 276 236 262 322 C241 455 251 688 298 840 C327 934 377 984 450 1004 C523 984 573 934 602 840 C649 688 659 455 638 322 C624 236 595 182 549 159 C497 132 403 132 351 159 Z"/>
+  <path d="M364 206 Q450 162 536 206" fill="none" stroke="#c48d83" stroke-width="2.5" stroke-linecap="round"/>
+
+  <!-- 大阴唇 -->
+  <path class="outerFold" d="M405 275 C365 333 352 433 361 575 C369 702 390 786 430 845 C442 862 447 870 450 874 C432 822 423 748 425 657 C427 537 424 397 405 275 Z"/>
+  <path class="outerFold" d="M495 275 C535 333 548 433 539 575 C531 702 510 786 470 845 C458 862 453 870 450 874 C468 822 477 748 475 657 C473 537 476 397 495 275 Z"/>
+
+  <!-- 小阴唇与前庭 -->
+  <path class="innerFold" d="M433 337 C401 390 393 470 402 561 C410 651 421 717 450 770 C430 711 432 641 440 570 C449 490 449 408 433 337 Z"/>
+  <path class="innerFold" d="M467 337 C499 390 507 470 498 561 C490 651 479 717 450 770 C470 711 468 641 460 570 C451 490 451 408 467 337 Z"/>
+  <path class="vestibule" d="M450 376 C424 409 417 481 424 571 C431 655 441 703 450 723 C459 703 469 655 476 571 C483 481 476 409 450 376 Z"/>
+
+  <!-- 阴蒂包皮、阴蒂头、尿道口、阴道口 -->
+  <path class="clitoral" d="M416 360 Q450 315 484 360 Q468 347 457 355 Q450 362 443 355 Q432 347 416 360 Z"/>
+  <ellipse class="clitoral" cx="450" cy="372" rx="12" ry="15"/>
+  <ellipse class="opening" cx="450" cy="466" rx="7" ry="5"/>
+  <path class="opening" d="M450 523 C429 523 419 550 422 591 C425 633 438 654 450 660 C462 654 475 633 478 591 C481 550 471 523 450 523 Z"/>
+
+  <!-- 会阴与肛门 -->
+  <path class="perineum" d="M425 674 Q450 697 475 674 L470 789 Q450 807 430 789 Z"/>
+  <path class="anus" d="M450 813 l8 8 11 -2 -2 11 8 8 -11 2 -5 10 -9 -7 -9 7 -5 -10 -11 -2 8 -8 -2 -11 11 2 Z"/>
+
+  <!-- 左侧标注 -->
+  <text class="label" x="54" y="316">大阴唇</text>
+  <text class="latin" x="54" y="338">LABIA MAJORA</text>
+  <path class="callout" d="M230 320 H320 L374 382"/><circle class="dot" cx="374" cy="382" r="4"/>
+
+  <text class="label" x="54" y="478">小阴唇</text>
+  <text class="latin" x="54" y="500">LABIA MINORA</text>
+  <path class="callout" d="M230 482 H335 L405 506"/><circle class="dot" cx="405" cy="506" r="4"/>
+
+  <text class="label" x="54" y="766">会阴</text>
+  <text class="latin" x="54" y="788">PERINEUM</text>
+  <path class="callout" d="M170 770 H330 L427 740"/><circle class="dot" cx="427" cy="740" r="4"/>
+
+  <!-- 右侧标注 -->
+  <text class="label" x="682" y="340">阴蒂头</text>
+  <text class="latin" x="682" y="362">CLITORAL GLANS</text>
+  <path class="callout" d="M672 344 H576 L463 372"/><circle class="dot" cx="463" cy="372" r="4"/>
+
+  <text class="label" x="682" y="462">尿道口</text>
+  <text class="latin" x="682" y="484">URETHRAL OPENING</text>
+  <path class="callout" d="M672 466 H570 L458 466"/><circle class="dot" cx="458" cy="466" r="4"/>
+
+  <text class="label" x="682" y="586">阴道口</text>
+  <text class="latin" x="682" y="608">VAGINAL OPENING</text>
+  <path class="callout" d="M672 590 H575 L479 590"/><circle class="dot" cx="479" cy="590" r="4"/>
+
+  <text class="label" x="682" y="840">肛门</text>
+  <text class="latin" x="682" y="862">ANUS</text>
+  <path class="callout" d="M672 844 H566 L470 830"/><circle class="dot" cx="470" cy="830" r="4"/>
+
+  <rect x="54" y="1051" width="792" height="1.5" fill="#e2d5d7"/>
+  <text class="note" x="450" y="1090" text-anchor="middle">这是一张帮助辨认位置的简化示意图，不代表唯一或“标准”的外观。</text>
+  <text class="note" x="450" y="1120" text-anchor="middle">结构位置与文案须在正式使用前完成医学专家复核。</text>
+</svg>
