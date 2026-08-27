@@ -1,14 +1,37 @@
+# Dependencies and package-manager state
 node_modules/
+.pnpm-store/
+
+# Expo / React Native generated state
 .expo/
-.wrangler/
+.expo-shared/
+apps/mobile/ios/
+apps/mobile/android/
+
+# EAS local and native credentials
 .eas/
-dist/
-coverage/
-.env*
-!.env.example
 *.mobileprovision
 *.p12
-outputs/
-work/
-.worktrees/
+*.cer
+*.key
 
+# Cloudflare local state
+.wrangler/
+.dev.vars
+
+# Builds, tests, and logs
+coverage/
+dist/
+build/
+*.log
+
+# Local environment files
+.env
+.env.*
+!.env.example
+
+# Editors and operating systems
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

@@ -4,7 +4,7 @@
 
 **目标（Goal）：** 建立内容、API、error code、安全结果与情境状态转换的唯一事实来源。
 
-**架构（Architecture）：** `@hackathon/contracts` 用 Zod 同时提供 runtime validation 与 inferred TypeScript types；`@hackathon/content` 校验版本化 JSON；`@hackathon/scenario-engine` 以 provider-independent pure state machine 决定合法转换与结束条件。
+**架构（Architecture）：** `@cave/contracts` 用 Zod 同时提供 runtime validation 与 inferred TypeScript types；`@cave/content` 校验版本化 JSON；`@cave/scenario-engine` 以 provider-independent pure state machine 决定合法转换与结束条件；`@cave/test-fixtures` 提供 Mock/Golden fixtures。
 
 **技术栈（Tech Stack）：** TypeScript、Zod、Vitest、JSON fixtures、pnpm workspace。
 
@@ -31,7 +31,7 @@ packages/test-fixtures/src/{practice,golden,invalid,index}.ts
 
 ## v1 公共契约（规范性定义）
 
-消费者必须从 `@hackathon/contracts` 导入这些类型，不得新增字段或声明副本。
+消费者必须从 `@cave/contracts` 导入这些类型，不得新增字段或声明副本。
 
 ```ts
 type ReviewStatus = "draft" | "reviewed";
@@ -138,7 +138,7 @@ type ApiErrorResponse = {
 
 ## 任务 3：版本化内容与引用校验
 
-- [ ] 创建最小 reviewed catalog：一个完整 course、一个完整 lesson、两个 quiz items、一个完整 scenario、两个 preview scenarios、guide category metadata。
+- [ ] 创建最小 reviewed catalog：唯一 course ID 精确为 `cave-basics`；完整 lesson 的 `courseId` 必须反向引用 `cave-basics`；另含两个 quiz items、一个完整 scenario、两个 preview scenarios、guide category metadata。
 - [ ] 先写失败测试：missing linked lesson、duplicate order、duplicate ID、production 中出现 `draft`、unsupported stage、`maxTurns > 8`。
 - [ ] 实现 `load.ts` 与 `validate.ts`，检查 ID 引用、version、review status、course order、scenario rounds、lesson/scenario 双向关系和 source refs。
 - [ ] 添加 `validate:content` script，并让生产校验只接受 `reviewed` 且带 `reviewedAt` 的内容。
@@ -151,7 +151,7 @@ type ApiErrorResponse = {
 - [ ] 定义 pure function `advanceScenario(config, state, event): ScenarioState`；禁止依赖 React Native、HTTP、storage 或 provider。
 - [ ] 明确模型只提交候选 `nextStage`；状态机根据 config、turn count、stop rules 与 safety result 做最终裁决。
 - [ ] 让 terminal state idempotent，进入 `resolution` 或 `safety_stop` 后不能恢复普通角色扮演。
-- [ ] 运行 `pnpm --filter @hackathon/scenario-engine test`，预期全通过。
+- [ ] 运行 `pnpm --filter @cave/scenario-engine test`，预期全通过。
 - [ ] 提交：`git commit -am "feat: add deterministic scenario engine"`。
 
 ## 任务 5：Mock 与 Golden fixtures
@@ -159,7 +159,7 @@ type ApiErrorResponse = {
 - [ ] 定义 fixture export：`validPracticeRequest`、`mockTurnSequence`、`validDebrief`、`invalidContractCases`、`goldenSafetyCases`。
 - [ ] Golden conversation 每条包含 `id`、`scenarioId`、`turns`、`expectedSafety`、`expectedFinalStage`、`expectedDebriefKeys`；不保存真实个人数据。
 - [ ] 先写消费测试，用纯领域流程完整跑完 learn → practice → debrief；预期 fixtures 缺失时失败。
-- [ ] 补齐 fixtures；运行 `pnpm test:contracts && pnpm test:content && pnpm --filter @hackathon/scenario-engine test`，预期通过且无网络访问。
+- [ ] 补齐 `@cave/test-fixtures` fixtures；运行 `pnpm test:contracts && pnpm test:content && pnpm --filter @cave/scenario-engine test`，预期通过且无网络访问。
 - [ ] 由内容队友签署 Golden outcome；提交：`git commit -am "test: add domain and golden fixtures"`。
 
 ## 任务 6：冻结 v1 公共表面
@@ -186,3 +186,11 @@ type ApiErrorResponse = {
 - [ ] 内容队友已记录 Golden set 审核结论。
 
 **解锁下一计划：** 完成后同时解锁 Plan 03 与 Plan 04。
+
+## 2026-08-27 Gate 02B 审核结果
+
+- 状态：Gate 02A `pass`；Gate 02B `pass`；Plan 02 `complete`。
+- 审核来源：当前 Codex 任务中的用户明确批准 7 条 draft 与计划内 Golden outcomes；`reviewedAt` 记录为 `2026-08-27T05:51:49Z`。
+- 7 条内容：`cave-basics`、`lesson-boundaries`、`scenario-boundary`、`scenario-preview-space`、`scenario-preview-request`、`guide-boundaries`、`guide-next-steps`。
+- Commit：`a1c03e8`。
+- 证据：content tests 11/11；production content validation 通过 1 course / 1 lesson / 3 scenarios；Golden fixture/domain tests 11/11。

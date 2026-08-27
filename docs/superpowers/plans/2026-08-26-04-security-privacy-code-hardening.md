@@ -84,7 +84,7 @@ interface SecretRepository {
 
 ## 任务 3：SQLCipher 与 key lifecycle
 
-- [ ] 开启 `expo-sqlite` config plugin 的 `useSQLCipher: true`，iOS/Android 同配置。
+- [ ] 开启 `expo-sqlite` config plugin 的 `useSQLCipher: true`，本轮仅验证 iOS；Android 配置与验证延期至独立固定决策获批并配置 Android package 后。
 - [ ] 加入 `expo-secure-store`，配置 iOS encryption declaration 与 device-only accessibility。
 - [ ] 先写失败测试：first creation、stable reread、explicit deletion、key/database mismatch。
 - [ ] 生成 32-byte random key，只 encode 一次，以 `db.key.v1` 保存，禁止 logging。
@@ -165,3 +165,13 @@ interface SecretRepository {
 - [ ] Golden safety set 与 injection tests 通过。
 
 **解锁下一计划：** 与 Plan 03 同时验收完成后解锁 Plan 05。
+
+## 2026-08-27 执行结果
+
+- 状态：`blocked`；不得声称 Plan 04 完整完成，Plan 05 未解锁。
+- Commit：`dc90739`、`6f642c9`、`3c875c1`、`dbc085e`、`371c905`；共享组合 commit `aed8270`；依赖 commit `248b87d`。
+- 已实现并本地通过：threat model/data classification；`LocalDataRepository`/`SecretRepository`；SQLCipher/SecureStore config 与 key lifecycle；per-record/delete-all semantics；16 KiB guards；hashed installation-token rate limits；output guard；redacted logs；CodeQL/Dependabot；fail-closed bundle-secret scanner。
+- 本地证据：mobile 9 suites / 26 tests；safety 4 files / 53 tests；repository security config/scanner 4 files / 15 tests；iOS JS export 1101 modules / 2.3 MB；扫描 25 files 无 provider credential/canary。
+- 唯一已知本地 Important blocker：`createTurnSafetyEvaluator` 对 Golden 明确边界“我今天不能继续，我需要在这里停下来。”返回 `uncertain → safety_stop`，而 Golden outcome 要求 `safe → resolution`；同一根因已执行两轮修复，依纪律停止第三轮并准确保留 blocker。
+- `external_pending`：Apple/iPhone Development Build；真机 SQLCipher 无 key/有 key 查询；delete-all 后冷启动；部署 Worker canary log；GitHub Code Scanning/Secret Scanning 仓库设置。CodeQL 已提取并扫描 95/95 TypeScript、2/2 Actions、2/2 JavaScript files，但 GitHub 因仓库未启用 Code Scanning 而拒绝 SARIF upload。
+- dependency audit：沙箱命令因网络 EACCES 失败；提升权限因会向 npm 公共 advisory endpoint 发送 package/version metadata 而被安全策略拒绝，等待用户显式授权，不绕过。

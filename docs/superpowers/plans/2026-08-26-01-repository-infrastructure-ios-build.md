@@ -45,7 +45,7 @@ packages/{contracts,content,scenario-engine,test-fixtures}/package.json
 
 - [ ] 运行 `git init`；运行 `git status --short`，预期退出码为 0。
 - [ ] 创建 `pnpm-workspace.yaml`，仅包含 `apps/*` 与 `packages/*`。
-- [ ] 创建根 `package.json`：`private: true`、`packageManager: pnpm@10`、`engines.node: >=22 <25`，并加入 `dev:mobile`、`dev:gateway`、`typecheck`、`lint`、`test`、`build:gateway`、`verify:foundation`。
+- [ ] 创建根 `package.json`：`name: neijie-cave`、`private: true`、`packageManager: pnpm@10`、`engines.node: >=22 <25`，并加入使用 `@cave/*` filters 的 `dev:mobile`、`dev:gateway`、`typecheck`、`lint`、`test`、`build:gateway`、`verify:foundation`。
 - [ ] 创建 `tsconfig.base.json`，开启 `strict`、`noUncheckedIndexedAccess`、`exactOptionalPropertyTypes`、`noImplicitOverride`、`useUnknownInCatchVariables`。
 - [ ] 创建 `.gitignore`，覆盖 Node、Expo、EAS local、Worker state、构建产物、`.env*`（保留 `.env.example`）和 provisioning 文件。
 - [ ] 为所有 workspace 创建最小 `package.json` 后运行 `pnpm install`。
@@ -57,30 +57,31 @@ packages/{contracts,content,scenario-engine,test-fixtures}/package.json
 **文件：** `apps/mobile/**`。
 
 - [ ] 运行 `pnpm dlx create-expo-app@latest apps/mobile --template default@sdk-57`。
-- [ ] 将 Package 名改为 `@hackathon/mobile`，删除模板演示路由和无用资源。
-- [ ] 创建 `app.config.ts`：`slug: body-voice`、`scheme: bodyvoice`、iOS/Android identifier 为 `com.shenicest.bodyvoice`、开启 typed routes，并根据环境显示 App 名称。
-- [ ] 让 `app/_layout.tsx` 只承载 Provider 与 Stack；`app/index.tsx` 只显示 App version、build 和 environment。
+- [ ] 将 Package 名改为 `@cave/mobile`，删除模板演示路由和无用资源。
+- [ ] 创建 `app.config.ts`：`owner: carter_wells`、`slug: cave`、`scheme: cave`、`version: 0.1.0`、iOS Bundle ID `com.neijie.cave`、开启 typed routes；不得配置 `android.package`。
+- [ ] App 名称按环境固定映射：production 为 `内界 CAVE`、development 为 `内界 CAVE Dev`、preview 为 `内界 CAVE Preview`。
+- [ ] 让 `app/_layout.tsx` 只承载 Provider 与 Stack；`app/index.tsx` 只负责读取 runtime version、build、environment metadata 并传给 `HealthScreen`；`HealthScreen` 显示 `内界 CAVE`、`听见身体，确认边界。`、version、build 和 environment。
 - [ ] 添加 `start`、`typecheck`、`lint`、`test`、`test:watch`、`expo:doctor` scripts。
-- [ ] 先写失败测试：健康页必须显示 `development`；运行 `pnpm --filter @hackathon/mobile test`，预期测试因文案缺失而失败。
-- [ ] 实现最小环境标签；再次运行同一命令，预期通过。
-- [ ] 运行 `pnpm --filter @hackathon/mobile expo:doctor`，预期全部检查通过。
+- [ ] 先写失败测试，精确断言健康页显示 `内界 CAVE`、`听见身体，确认边界。`、`version 0.1.0`、`build local` 与 `development`；运行 `pnpm --filter @cave/mobile test`，预期因批准品牌或 metadata 文案缺失而失败。
+- [ ] 实现 `HealthScreen` 品牌与 metadata 展示；再次运行同一命令，预期上述五项精确断言全部通过。
+- [ ] 运行 `pnpm --filter @cave/mobile expo:doctor`，预期全部检查通过。
 - [ ] 提交：`git commit -am "feat: add expo application shell"`。
 
 ## 任务 3：建立 Worker 与健康检查
 
 **文件：** `apps/gateway/package.json`、`wrangler.jsonc`、`src/index.ts`、`src/index.test.ts`。
 
-- [ ] 创建 `@hackathon/gateway`，依赖 Hono、Zod、Vitest、Wrangler 与 Workers types。
-- [ ] 配置 Worker name `body-voice-gateway`、compatibility date `2026-08-26`，以及 `MODEL_MODE=mock`、`PROMPT_VERSION=2026-08-26.1`、`POLICY_VERSION=2026-08-26.1`。
+- [ ] 创建 `@cave/gateway`，依赖 Hono、Zod、Vitest、Wrangler 与 Workers types。
+- [ ] 配置 Worker name `neijie-cave-gateway`、compatibility date `2026-08-26`，以及 `MODEL_MODE=mock`、`PROMPT_VERSION=2026-08-26.1`、`POLICY_VERSION=2026-08-26.1`。
 - [ ] 先写失败测试：`GET /health` 返回 200 与 `{ "status": "ok", "contractVersion": "1" }`。
-- [ ] 运行 `pnpm --filter @hackathon/gateway test`，预期 404 或断言失败。
+- [ ] 运行 `pnpm --filter @cave/gateway test`，预期 404 或断言失败。
 - [ ] 实现 Hono route；重跑测试，预期通过。
-- [ ] 运行 `pnpm --filter @hackathon/gateway build`，预期 Wrangler dry-run/build 成功。
+- [ ] 运行 `pnpm --filter @cave/gateway build`，预期 Wrangler dry-run/build 成功。
 - [ ] 提交：`git commit -am "feat: add gateway health endpoint"`。
 
 ## 任务 4：创建共享 Package 外壳
 
-- [ ] 创建 `@hackathon/contracts`、`@hackathon/content`、`@hackathon/scenario-engine`、`@hackathon/test-fixtures`。
+- [ ] 创建 `@cave/contracts`、`@cave/content`、`@cave/scenario-engine`、`@cave/test-fixtures`。
 - [ ] 每个 Package 从 `src/index.ts` 导出，继承 `tsconfig.base.json`，并提供 `typecheck`、`lint`、`test`。
 - [ ] 先为每个公共入口写 import smoke test；在入口不存在时运行 `pnpm -r test`，预期失败。
 - [ ] 添加最小入口后运行 `pnpm -r typecheck && pnpm -r test`，预期全部通过。
@@ -90,10 +91,12 @@ packages/{contracts,content,scenario-engine,test-fixtures}/package.json
 
 **文件：** `apps/mobile/eas.json`、`apps/mobile/app.config.ts`。
 
-- [ ] 运行 `pnpm dlx eas-cli@latest login`，核对目标 Expo account。
-- [ ] 在 `apps/mobile` 运行 `pnpm dlx eas-cli@latest build:configure`。
+- [ ] 在任何 EAS 创建、关联或云构建前，先完成本地 `verify:foundation`、identity tests、`expo:doctor` 与 Gateway dry-run build；本地 Gate 未通过时不得开始外部流程。
+- [ ] 运行 `pnpm dlx eas-cli@latest login`，核对目标 Expo account 为 `carter_wells`。
+- [ ] 在 `carter_wells` owner 下新建并关联唯一项目 `cave`；若该 slug 已占用，停止并请求用户选择，不得自动改用备用 slug。
+- [ ] 在 `apps/mobile` 运行 `pnpm dlx eas-cli@latest build:configure`，随后审查 EAS 写入的 `projectId`、`owner` 与全部配置 diff，确认没有恢复旧 slug/Bundle ID 或加入 Android 标识。
 - [ ] 固定 profiles：`development` 使用 `developmentClient: true` 和 internal distribution；`preview` 使用 internal distribution 与 `preview` channel；`production` 只配置 `production` channel，本次不构建。
-- [ ] 运行 `pnpm dlx eas-cli@latest device:create` 注册主演示 iPhone。
+- [ ] 由用户亲自确认 Apple Team 与主演示 iPhone 后，运行 `pnpm dlx eas-cli@latest device:create` 注册设备；选择不明确时停止。
 - [ ] 运行 `pnpm dlx eas-cli@latest build --profile development --platform ios`。
 - [ ] 在已注册 iPhone 安装产物，断开 Metro 后启动两次；预期原生外壳显示 environment/build 标识。
 - [ ] 在总索引证据表记录 EAS build URL、device model、iOS version 与 commit。
@@ -121,6 +124,7 @@ packages/{contracts,content,scenario-engine,test-fixtures}/package.json
 - [ ] `pnpm verify:foundation` 退出码为 0。
 - [ ] `/health` 返回准确契约。
 - [ ] 真实 iPhone 脱离 Metro 打开 Development Build。
+- [ ] Android 构建或安装结果不得替代真实 iPhone 门槛。
 - [ ] clean checkout 的 CI 通过。
 - [ ] Git 中无 secret、provisioning 或本地 `.env`。
 - [ ] commit hashes 与 EAS build URL 已记录在总索引。

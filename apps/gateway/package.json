@@ -1,0 +1,25 @@
+{
+  "name": "@cave/gateway",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "build": "wrangler deploy --dry-run --outdir dist",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src test --max-warnings 0",
+    "test": "vitest run",
+    "test:safety": "vitest run test/safety-policy.test.ts test/output-guard.test.ts test/prompt-injection.test.ts test/log-redaction.test.ts"
+  },
+  "dependencies": {
+    "@cave/content": "workspace:*",
+    "@cave/contracts": "workspace:*",
+    "@cave/scenario-engine": "workspace:*",
+    "hono": "^4.10.7",
+    "zod": "^4.1.13"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "5.20260826.1",
+    "wrangler": "^4.40.3"
+  }
+}

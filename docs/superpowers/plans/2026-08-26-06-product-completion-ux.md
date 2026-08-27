@@ -1,127 +1,153 @@
-# 06 产品功能收口与体验完善实施计划
+# 06 八页产品细节与体验完善实施计划
 
-> 执行要求：只在已冻结的架构与 P0 范围内完善产品；萨福与 Eazo 的差异留在提交素材，不进入 runtime branch。
+> 本计划在八页 MVP 框架和基础功能已经稳定后执行。只完善内容、表现和可访问性，不改变 05A 冻结的 journey/domain/repository 接口。
 
-**目标（Goal）：** 把技术闭环收口成连贯、可访问、无死路的 MVP，不扩大公共契约或功能范围。
+**目标（Goal）：** 把基础八页闭环收口成内容可信、状态完整、视觉一致、可由 VoiceOver 完成的主演示体验。
 
-**架构（Architecture）：** 最终内容通过 validated packages 装配，由 reusable feature components 渲染。Brand text 与 submission framing 属于 config/assets；navigation、domain、storage 与 API contracts 始终共享。
+**架构（Architecture）：** reviewed local catalogs 提供最终文字与来源；design tokens 和 reusable primitives 统一呈现；医学图示由带 metadata 的受控 asset manifest 装配；页面继续只消费 05A/05B view models。
 
-**技术栈（Tech Stack）：** Expo/React Native、Expo Router、React Native SVG、已安装时使用 Reanimated、design tokens、React Native Testing Library、VoiceOver 真机测试。
+**技术栈（Tech Stack）：** Expo/React Native、Expo Router、React Native SVG、semantic design tokens、React Native Testing Library、VoiceOver 真机测试。
 
----
+## 依赖、输入、输出与排除项
 
-**依赖计划：** Plan 05 complete。  
-**输入：** 可运行移动闭环、reviewed content、submission-neutral brand config。  
-**输出：** 最终内容装配、design system、完整 screen states、accessibility、privacy/model disclosures、guide。  
-**明确排除：** account、social/community、checkout、cloud sync、新模型能力、sponsor code fork。  
-**预计时间：** 5 小时。**负责人：** 两人共同；工程师负责实现，队友负责内容与商业披露审核。
+**依赖计划：** Gate 05A/05B `pass`。
+**输入：** 可运行八页闭环、内容队友审核稿、来源清单、医学图示候选资产。
+**输出：** 最终内容装配、医学图示、设计系统、全状态 UI、沟通卡版式、披露、Dynamic Type/VoiceOver 证据。
+**明确排除：** 修改 `JourneyDraft`、新增 public API、AI、云同步、账号、CMS、社区、商城、赞助商 runtime fork。
+**预计时间：** 5 小时。**负责人：** 两人共同；队友拥有内容审核，工程师拥有实现与验证。
 
 ## 准确文件路径
 
 ```text
 apps/mobile/src/config/brand.ts
 apps/mobile/src/core/design/{tokens,theme,motion}.ts
-apps/mobile/src/core/ui/{Screen,Card,Button,StatusBanner,EmptyState,ErrorState}.tsx
-apps/mobile/src/features/courses/ui/**
-apps/mobile/src/features/practice/ui/**
-apps/mobile/src/features/guide/{application,ui}/**
-apps/mobile/src/features/privacy/ui/**
-packages/content/data/**
-packages/content/assets/**
-apps/mobile/src/**/*.test.tsx
+apps/mobile/src/core/ui/{Screen,Card,Button,ChoiceChip,ProgressHeader,StatusBanner,EmptyState,ErrorState}.tsx
+apps/mobile/src/core/ui/*.test.tsx
+apps/mobile/src/features/journey/ui/pages/*.tsx
+apps/mobile/src/features/journey/ui/pages/*.test.tsx
+apps/mobile/src/features/journey/ui/components/*.tsx
+apps/mobile/src/features/journey/ui/components/*.test.tsx
+packages/content/data/{journey-options,journey-knowledge,journey-practice,journey-sources}.json
+packages/content/assets/body-knowledge/*
+packages/content/assets/manifest.json
+packages/content/src/{catalog,validate}.ts
+packages/content/src/*.test.ts
+docs/content/eight-page-review-record.md
 ```
 
-## 任务 1：冻结内容与 asset manifest
+## 不可改变的 UI/内容契约
 
-- [ ] 内容队友逐条核对 source、wording、scenario outcome，审核后才把 production record 改为 `reviewed`。
-- [ ] asset manifest 写入 deterministic ID、dimensions、alt text、license/source metadata。
-- [ ] 先写失败测试：missing asset、missing alt text、broken reference、unused required asset 必须使 validation 失败。
-- [ ] 运行 production content validation；预期无 draft、missing source、broken reference 或缺失资源。
-- [ ] 提交：`git commit -am "content: freeze reviewed mvp catalog"`。
+- 八页标题可以改文案，`JourneyPageId` 和路由顺序不变。
+- 行为卡没有等级、默认排序不表达进展，五个 `BehaviorAttitude` 值不变。
+- Page 5 不显示准备完成度；Page 7 不是通关清单；Page 8 明示“根据妳刚才的选择整理”。
+- Page 6 始终显示“预设对话”，不能用拟人加载、输入中动画或语言暗示实时 AI。
+- 本地保存是唯一可选保存方式；cloud `coming-soon` 保持 disabled。
+- 内容审核只能由内容负责人记录，工程实现者不能自行填写 `reviewedAt`。
 
-## 任务 2：可替换 Brand 与 Design Tokens
+## 任务 1：最终内容、来源与审核记录
 
-- [ ] 定义 `brand.ts`：technical slug、display name、slogan、support URL、privacy URL、sponsor-neutral default copy；route 禁止 hardcode display name。
-- [ ] 定义 semantic colors、typography scale、spacing、radii、shadows、elevation、minimum touch size、reduced-motion durations。
-- [ ] 先写 contrast tests：正文/背景组合不满足 WCAG AA 时失败。
-- [ ] 替换 P0 screens 的 raw color/spacing literal；只允许一个记录清楚的 platform system color exception。
-- [ ] 重跑 token/contrast tests；提交：`git commit -am "feat: add replaceable brand and design tokens"`。
+- [ ] 3 分钟：先写 content RED tests，要求八页每个 production item 有 reviewer、`reviewedAt`、source IDs 和明确 page owner。
+- [ ] 4 分钟：增加 wording lint，拒绝“准备度”“合格/不合格”“应该更开放”“第一次必须疼”和暗示身体反应等于同意的表达。
+- [ ] 5 分钟：内容队友逐条审核 Page 1—8 catalog；审核记录写入 `docs/content/eight-page-review-record.md`，包含 item ID、来源、决定和时间。
+- [ ] 4 分钟：把批准文本装配到 JSON catalog，不在 `.tsx` hardcode 长文案。
+- [ ] 3 分钟：运行 production content validation，预期所有正式条目通过；未审核项保持真实阻塞。
+- [ ] 2 分钟：提交 `git commit -am "content: freeze reviewed eight-page copy"`。
 
-## 任务 3：共享 UI primitives 与状态覆盖
+## 任务 2：医学图示与 asset manifest
 
-- [ ] 先为 `Screen`、`Card`、`Button`、`StatusBanner`、`EmptyState`、`ErrorState` 写 rendering/accessibility tests。
-- [ ] `Button` 支持 default、pressed、disabled、loading、destructive、focus，并带 accessibility role/label。
-- [ ] `Screen` 统一 Safe Area、keyboard avoidance、scroll、Dynamic Type、focus restoration。
-- [ ] 为每个 P0 route 创建 loading、content、empty、offline、recoverable error、terminal error state matrix。
-- [ ] component tests 证明每个状态都有 visible action 或明确 terminal explanation，不存在死路。
-- [ ] 提交：`git commit -am "feat: standardize screen and state primitives"`。
+- [ ] 3 分钟：先写 asset RED tests：文件不存在、dimensions 缺失、alt text 缺失、license/source metadata 缺失均失败。
+- [ ] 4 分钟：内容队友确认医学准确性、非色情表达和来源许可；将确认结果加入审核记录。
+- [ ] 5 分钟：加入外阴医学线稿资产和 manifest；资产默认折叠，仅由用户主动展开。
+- [ ] 4 分钟：实现可缩放但不自动放大的图示组件，VoiceOver 读取简洁 alt text，并提供来源入口。
+- [ ] 3 分钟：运行 asset/content tests，预期退出码 0。
+- [ ] 2 分钟：提交 `git commit -am "content: add reviewed medical illustration"`。
 
-## 任务 4：课程与练习 presentation 收口
+## 任务 3：Brand、Design Tokens 与基础组件
 
-- [ ] 用既有 Use Cases 装配 course map、lesson blocks、quiz feedback、practice setup/session/waiting/debrief/save confirmation。
-- [ ] model waiting text 固定且与 roleplay text 分离。
-- [ ] 先写 component tests：long text、largest font、smallest supported iPhone、empty linked lessons、multiple debrief alternatives。
-- [ ] 处理 keyboard，任何支持屏幕上 input/send controls 都不得被遮挡。
-- [ ] 遵循 reduced-motion；动画不得承载唯一信息或阻断 navigation。
-- [ ] 提交：`git commit -am "feat: finish learning and practice presentation"`。
+- [ ] 3 分钟：定义 `brand.ts`，固定 `slug = "cave"`、`displayName = "内界 CAVE"` 和已批准 slogan；routes 禁止 hardcode brand。
+- [ ] 4 分钟：定义 semantic colors、typography、spacing、radii、surface、focus、minimum touch size 和 reduced-motion duration。
+- [ ] 3 分钟：先写 contrast RED tests；正文/背景和交互状态未达到 WCAG AA 时失败。
+- [ ] 5 分钟：实现 `Screen`、`Card`、`Button`、`ChoiceChip`、`ProgressHeader`、`StatusBanner` 的 default/pressed/disabled/loading/focus 状态。
+- [ ] 4 分钟：替换八页 raw color/spacing literals，保留必要 platform system color 时写明确测试说明。
+- [ ] 3 分钟：运行 primitives 与 contrast tests。
+- [ ] 2 分钟：提交 `git commit -am "feat: style eight-page design system"`。
 
-## 任务 5：隐私、模型与数据控制
+## 任务 4：Page 1—3 表现收口
 
-- [ ] 隐私页准确说明 local progress、transient raw conversations、explicit save、Worker processing、delete-all。
-- [ ] first live request 前显示一次 acknowledgement，明确哪些字段离开设备、gateway 不保留什么。
-- [ ] Profile 提供 model mode、saved-data controls、per-record delete、delete-all。
-- [ ] delete-all confirmation 禁止 shame 或 dark pattern。
-- [ ] 先写测试：拒绝 live acknowledgement 后 local content 仍可用，practice 保持 Mock/disabled；接受后只持久化 acknowledgement flag。
-- [ ] 提交：`git commit -am "feat: expose privacy and model controls"`。
+- [ ] 3 分钟：先写 largest-font/small-device tests，覆盖 welcome、preface、underage exit、Page 2 多选、Page 3 图示与来源 sheet。
+- [ ] 4 分钟：完善 Page 1 品牌氛围、能力与局限说明，不加入诊断或承诺结果措辞。
+- [ ] 4 分钟：完善 Page 2 情境说明，始终保留“不默认发生性行为”的语义。
+- [ ] 4 分钟：完善 Page 3 三条核心知识、来源展示和图示展开状态。
+- [ ] 3 分钟：检查 keyboard、Safe Area、返回后 focus restoration。
+- [ ] 2 分钟：提交 `git commit -am "feat: polish journey pages one to three"`。
 
-## 任务 6：用品 Guide 与合作披露（P1）
+## 任务 5：Page 4—6 表现收口
 
-- [ ] 从 local validated content 渲染 guide categories 与 educational selection criteria。
-- [ ] guide navigation 与 practice/debrief 独立，永不根据 transcript 推荐产品。
-- [ ] sponsored/affiliate entry 必须显示 disclosure 与 source metadata。
-- [ ] 不实现 cart、checkout、affiliate tracking ID、external analytics。
-- [ ] 先写测试：改变 practice state 不得影响 guide ordering/content。
-- [ ] 提交：`git commit -am "feat: add independent educational guide"`。
+- [ ] 3 分钟：先写长 label、五态选择、动态字体和自定义行为输入 tests。
+- [ ] 4 分钟：统一 Page 4 行为卡视觉权重，五种答案没有好坏色或隐含进度。
+- [ ] 4 分钟：完善 Page 5 动机/安心/保存说明，cloud 卡清楚解释未开放且不可选择。
+- [ ] 4 分钟：完善 Page 6 scripted label、句子编辑、镜前练习和全屏暂停卡；“暂停不需要道歉”作为非交互核心信息。
+- [ ] 3 分钟：为不理想回应分支增加清晰退出与安全资源入口，不提供继续说服用户的路径。
+- [ ] 2 分钟：提交 `git commit -am "feat: polish journey pages four to six"`。
 
-## 任务 7：Accessibility 与 usability pass
+## 任务 6：Page 7—8 与沟通卡版式
 
-- [ ] 为 illustration regions、buttons、quiz answers、message bubbles、progress、debrief dimensions、destructive actions 补 accessibility labels/hints。
-- [ ] 真实 iPhone 上验证主流程 VoiceOver order。
-- [ ] largest accessibility Dynamic Type 下只允许 vertical growth/scroll，不截断关键信息。
-- [ ] 验证最小 44×44 point touch target，以及不只依赖颜色的 status indicator。
-- [ ] submit failure 后 focus 移到 error/status banner。
-- [ ] 把 device、font size、VoiceOver 结果记录进证据；提交：`git commit -am "fix: complete accessibility pass"`。
+- [ ] 3 分钟：先写 long-content tests，覆盖大量 checklist items、所有 section、用户编辑与 `needsReview` 状态。
+- [ ] 4 分钟：完善清单 category、三态控件、健康模块和实际安排，不加入全部完成按钮或进度百分比。
+- [ ] 5 分钟：完成沟通卡视觉层级：期待、当时再感受、不希望、安心条件、改变时表达、确认与暂停。
+- [ ] 4 分钟：优化 edit/save/copy/fullscreen display feedback；复制成功不显示内容全文到日志或 toast。
+- [ ] 3 分钟：积分展示只呈现已完成任务和总分，隐藏任何敏感输入细节。
+- [ ] 2 分钟：提交 `git commit -am "feat: polish checklist and communication card"`。
 
-## 任务 8：证明双命题共用一个 Build
+## 任务 7：完整状态矩阵与隐私披露
 
-- [ ] 搜索 application source 中 `sappho`、`eazo` 与 sponsor-specific feature flags；除 `submissions/` 和可选 attribution 外预期为零。
-- [ ] 两份 demo scripts 必须引用同一 bundle ID、app version、API contract 与 build URL。
-- [ ] submission-specific opening copy 只进入 presentation/video assets，不进入 runtime branches。
-- [ ] 提交：`git commit -am "docs: verify submission-neutral product build"`。
+- [ ] 4 分钟：先为八页建立 loading、content、validation error、storage error、saved、copy failure、empty derived output、reset confirmation 状态矩阵 tests。
+- [ ] 4 分钟：实现每个 recoverable state 的明确 action；terminal state 提供原因和安全返回路径，不留死路。
+- [ ] 3 分钟：隐私入口准确说明本地加密草稿、主动保存卡片、删除全部和 cloud 未启用。
+- [ ] 3 分钟：披露 Page 6/7/8 为预设/规则整理，不提模型 provider。
+- [ ] 3 分钟：验证错误与 crash logging fixture 不包含 `overnightCustomNote`、`editedPhrase`、`userText`。
+- [ ] 2 分钟：提交 `git commit -am "feat: complete journey states and disclosures"`。
+
+## 任务 8：Accessibility 与设备体验
+
+- [ ] 4 分钟：为标题、选择组、知识卡、医学图、输入、暂停卡、清单、沟通卡和 destructive action 补 labels/hints/roles。
+- [ ] 4 分钟：largest Dynamic Type 只纵向增长或滚动，不截断暂停、退出、保存和来源信息。
+- [ ] 3 分钟：所有 touch target 至少 44×44 pt；状态不只依赖颜色。
+- [ ] 3 分钟：submit/validation/storage failure 后 focus 移到 status banner。
+- [ ] 5 分钟：真实 iPhone 用 VoiceOver 完成 Page 1—8；记录 device、iOS、app commit、字体级别和失败恢复。
+- [ ] 2 分钟：提交 `git commit -am "fix: complete eight-page accessibility pass"`。
+
+## 任务 9：双命题与运行时中立性
+
+- [ ] 2 分钟：运行 `rg -n "sappho|eazo" apps/mobile packages/content`，除批准的 attribution metadata 外预期无命中。
+- [ ] 3 分钟：两套提交脚本引用同一 bundle ID、version、commit、八页结构和隐私事实。
+- [ ] 3 分钟：命题差异只写入 `submissions/sappho` 与 `submissions/eazo`，不创建 runtime feature flag。
+- [ ] 2 分钟：提交 `git commit -am "docs: verify submission-neutral eight-page build"`。
 
 ## 执行命令与预期结果
 
-- [ ] `pnpm verify` 与 production content validation：退出码 0。
-- [ ] mobile component tests 使用 large-text fixtures：全通过。
-- [ ] 主 iPhone 完成 VoiceOver、keyboard、rotation/foreground checks。
-- [ ] state matrix 的每个 P0 状态均可人工触发并与 snapshot 一致。
-- [ ] 普通 practice 后打开 guide：ordering/content 不变。
-- [ ] 扫描 `apps/mobile` 与 `packages/content` 中未审核样例标记：预期无命中。
+- [ ] `corepack pnpm verify`：退出码 0，production content validation 通过。
+- [ ] `corepack pnpm --filter @cave/mobile test`：包含 large-text、state-matrix 和 accessibility suites，全部通过。
+- [ ] `corepack pnpm test:safety`：无八页内容引入的回归；发布前既有 Plan 04 blocker 已关闭。
+- [ ] `rg -n "readiness|percentage|AI generated|cloudEnabled" apps/mobile/src/features/journey packages/content/data`：预期无命中，退出码 1。
+- [ ] `git diff --check`：退出码 0。
+- [ ] 真实 iPhone 完成 VoiceOver、keyboard、background/resume 与 offline path。
 
 ## 故障、回滚与降级
 
-- visual asset 阻断：改用可访问、token-based 的信息面板，不增加 rendering framework。
-- Guide 威胁 P0：从 preview build 移除 route/content，保留为 P1 未交付项。
-- animation 造成不稳定或 accessibility regression：删除动画，不推迟 Plan 07。
-- sponsor framing 需要 runtime logic：把差异退回 submission materials。
+- 医学图示审核未完成：继续使用明确占位框，Page 3 文字知识可交付；不得把候选资产标成 reviewed。
+- 最终 copy 影响 domain 字段：调整 catalog mapping，不改 05A 类型；确需改接口时先走总路线图 change request。
+- 动画导致不稳定或 reduced-motion 回归：删除动画，不推迟 Plan 07。
+- 单页细节威胁主演示路径：降为 P1，保留基础交互和可访问状态。
+- sponsor 要求运行时分叉：退回 submission materials，不复制 app logic。
 
 ## 验收证据清单
 
-- [ ] P0 route 无 unreachable action 或 dead end。
-- [ ] 所有 network/local state 都有 tested UI。
-- [ ] VoiceOver 与 largest Dynamic Type 能完成主演示路径。
-- [ ] privacy、save、delete、model、partnership disclosures 可达。
-- [ ] production content/assets 通过 validation。
-- [ ] source 无 sponsor-specific product fork。
+- [ ] 内容审核记录、source validation 与 asset manifest。
+- [ ] 八页状态矩阵、large text 和 accessibility test 数量。
+- [ ] VoiceOver 主路径、keyboard、offline、resume 真机记录。
+- [ ] Page 6 scripted 和 Page 8 rule-based 披露可达。
+- [ ] 无准备度、云开关、AI 生成或 sponsor runtime fork 的扫描证据。
+- [ ] branch、HEAD、独立英文 commits 与 clean git status。
 
-**解锁下一计划：** 验收完成后解锁 Plan 07。
+**解锁下一计划：** 本计划本地与真机 Gate 全部通过后解锁 Plan 07。

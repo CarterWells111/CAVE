@@ -1,0 +1,31 @@
+[
+  {
+    "id": "lesson-boundaries",
+    "version": 1,
+    "courseId": "cave-basics",
+    "order": 1,
+    "title": "感受并表达边界",
+    "blocks": [
+      {
+        "id": "notice-body",
+        "kind": "text",
+        "body": "先留意身体的感觉，再决定自己愿意表达多少。"
+      },
+      {
+        "id": "clear-is-kind",
+        "kind": "callout",
+        "tone": "info",
+        "body": "清楚地表达边界，可以同时保持尊重。"
+      }
+    ],
+    "quizIds": ["quiz-boundary-clear", "quiz-boundary-next-step"],
+    "linkedScenarioIds": [
+      "scenario-boundary",
+      "scenario-preview-space",
+      "scenario-preview-request"
+    ],
+    "reviewStatus": "reviewed",
+    "reviewedAt": "2026-08-27T05:51:49Z",
+    "sourceRefs": ["source-editorial-draft"]
+  }
+]

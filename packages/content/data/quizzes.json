@@ -1,0 +1,40 @@
+[
+  {
+    "id": "quiz-boundary-clear",
+    "lessonId": "lesson-boundaries",
+    "prompt": "哪句话最清楚地表达了当下的边界？",
+    "options": [
+      {
+        "id": "option-clear-boundary",
+        "text": "我现在不愿意继续这个话题。",
+        "isCorrect": true,
+        "feedback": "这句话直接说明了当下的边界。"
+      },
+      {
+        "id": "option-vague-boundary",
+        "text": "也许以后再说吧。",
+        "isCorrect": false,
+        "feedback": "这句话保留了空间，但没有清楚说明现在的边界。"
+      }
+    ]
+  },
+  {
+    "id": "quiz-boundary-next-step",
+    "lessonId": "lesson-boundaries",
+    "prompt": "表达边界后，哪句话提供了清楚的下一步？",
+    "options": [
+      {
+        "id": "option-next-step",
+        "text": "我们明天下午再确认。",
+        "isCorrect": true,
+        "feedback": "这句话给出了具体、可执行的下一步。"
+      },
+      {
+        "id": "option-no-next-step",
+        "text": "随便吧。",
+        "isCorrect": false,
+        "feedback": "这句话没有说明接下来会发生什么。"
+      }
+    ]
+  }
+]

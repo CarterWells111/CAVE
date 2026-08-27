@@ -1,0 +1,94 @@
+[
+  {
+    "id": "scenario-boundary",
+    "version": 1,
+    "title": "拒绝额外请求",
+    "allowedStages": [
+      "setup",
+      "opening",
+      "response",
+      "clarification",
+      "resolution",
+      "debrief",
+      "safety_stop"
+    ],
+    "maxTurns": 4,
+    "learningObjectives": ["辨认感受", "表达意愿", "说出边界", "提出下一步"],
+    "allowedPressureLevel": 1,
+    "stopRules": [
+      { "code": "explicit_exit", "terminalStage": "resolution" },
+      { "code": "max_turns", "terminalStage": "resolution" },
+      { "code": "clear_boundary", "terminalStage": "resolution" },
+      { "code": "danger", "terminalStage": "safety_stop" },
+      { "code": "violence", "terminalStage": "safety_stop" },
+      { "code": "self_harm", "terminalStage": "safety_stop" },
+      { "code": "medical_emergency", "terminalStage": "safety_stop" },
+      { "code": "minor", "terminalStage": "safety_stop" }
+    ],
+    "debriefRubric": {
+      "dimensions": ["feeling", "willingness", "boundary", "next_step"]
+    },
+    "linkedLessonIds": ["lesson-boundaries"],
+    "reviewStatus": "reviewed",
+    "reviewedAt": "2026-08-27T05:51:49Z",
+    "sourceRefs": ["source-editorial-draft"]
+  },
+  {
+    "id": "scenario-preview-space",
+    "version": 1,
+    "title": "请求一点空间",
+    "allowedStages": [
+      "setup",
+      "opening",
+      "response",
+      "resolution",
+      "debrief",
+      "safety_stop"
+    ],
+    "maxTurns": 3,
+    "learningObjectives": ["请求空间", "说明下一步"],
+    "allowedPressureLevel": 0,
+    "stopRules": [
+      { "code": "explicit_exit", "terminalStage": "resolution" },
+      { "code": "max_turns", "terminalStage": "resolution" },
+      { "code": "clear_boundary", "terminalStage": "resolution" },
+      { "code": "danger", "terminalStage": "safety_stop" }
+    ],
+    "debriefRubric": {
+      "dimensions": ["feeling", "willingness", "boundary", "next_step"]
+    },
+    "linkedLessonIds": ["lesson-boundaries"],
+    "reviewStatus": "reviewed",
+    "reviewedAt": "2026-08-27T05:51:49Z",
+    "sourceRefs": ["source-editorial-draft"]
+  },
+  {
+    "id": "scenario-preview-request",
+    "version": 1,
+    "title": "回应重复请求",
+    "allowedStages": [
+      "setup",
+      "opening",
+      "response",
+      "resolution",
+      "debrief",
+      "safety_stop"
+    ],
+    "maxTurns": 3,
+    "learningObjectives": ["保持边界", "避免过度解释"],
+    "allowedPressureLevel": 1,
+    "stopRules": [
+      { "code": "explicit_exit", "terminalStage": "resolution" },
+      { "code": "max_turns", "terminalStage": "resolution" },
+      { "code": "clear_boundary", "terminalStage": "resolution" },
+      { "code": "danger", "terminalStage": "safety_stop" }
+    ],
+    "debriefRubric": {
+      "dimensions": ["feeling", "willingness", "boundary", "next_step"]
+    },
+    "linkedLessonIds": ["lesson-boundaries"],
+    "reviewStatus": "reviewed",
+    "reviewedAt": "2026-08-27T05:51:49Z",
+    "sourceRefs": ["source-editorial-draft"]
+  }
+]
