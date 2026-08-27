@@ -23,13 +23,17 @@ describe("versioned content validation", () => {
     ]);
   });
 
-  it("accepts the checked-in draft catalog", () => {
+  it("accepts the checked-in catalog in draft mode", () => {
     expect(() => validateCatalog(loadCatalog(), { mode: "draft" })).not.toThrow();
   });
 
   it("rejects draft content in production", () => {
+    const catalog = loadCatalog();
+    catalog.courses[0]!.reviewStatus = "draft";
+    delete catalog.courses[0]!.reviewedAt;
+
     expect(
-      issueCodes(() => validateCatalog(loadCatalog(), { mode: "production" }))
+      issueCodes(() => validateCatalog(catalog, { mode: "production" }))
     ).toContain("DRAFT_CONTENT");
   });
 

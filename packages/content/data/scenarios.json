@@ -29,7 +29,8 @@
       "dimensions": ["feeling", "willingness", "boundary", "next_step"]
     },
     "linkedLessonIds": ["lesson-boundaries"],
-    "reviewStatus": "draft",
+    "reviewStatus": "reviewed",
+    "reviewedAt": "2026-08-27T05:51:49Z",
     "sourceRefs": ["source-editorial-draft"]
   },
   {
@@ -57,7 +58,8 @@
       "dimensions": ["feeling", "willingness", "boundary", "next_step"]
     },
     "linkedLessonIds": ["lesson-boundaries"],
-    "reviewStatus": "draft",
+    "reviewStatus": "reviewed",
+    "reviewedAt": "2026-08-27T05:51:49Z",
     "sourceRefs": ["source-editorial-draft"]
   },
   {
@@ -85,7 +87,8 @@
       "dimensions": ["feeling", "willingness", "boundary", "next_step"]
     },
     "linkedLessonIds": ["lesson-boundaries"],
-    "reviewStatus": "draft",
+    "reviewStatus": "reviewed",
+    "reviewedAt": "2026-08-27T05:51:49Z",
     "sourceRefs": ["source-editorial-draft"]
   }
 ]
