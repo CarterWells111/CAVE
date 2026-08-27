@@ -21,11 +21,13 @@ import type {
 
 type Props = {
   draft: JourneyDraft;
+  onCompleted?(): void;
   onEdit(sectionId: CommunicationSectionId, userText: string): void | Promise<void>;
   onSetVisibility(sectionId: CommunicationSectionId, visibility: SharingVisibility): void | Promise<void>;
   onCopy(card: ConfirmedCommunicationCard): void | Promise<void>;
   onSaveImage(card: ConfirmedCommunicationCard, imageUri: string): void | Promise<void>;
   onFinish(card: ConfirmedCommunicationCard): void | Promise<void>;
+  onOpenImageSettings?(): void | Promise<void>;
   onSaveDraft?(): void | Promise<void>;
   onUpdatePreparation?(itemId: string, status: ChecklistItemStatus): void | Promise<void>;
 };
@@ -89,9 +91,11 @@ function SharePreview({ card }: { card: ConfirmedCommunicationCard }) {
 
 export function FinalPreparationPage({
   draft,
+  onCompleted,
   onCopy,
   onEdit,
   onFinish,
+  onOpenImageSettings,
   onSaveDraft,
   onSaveImage,
   onSetVisibility,
@@ -106,6 +110,7 @@ export function FinalPreparationPage({
   const [editingText, setEditingText] = useState("");
   const [previewVisible, setPreviewVisible] = useState(false);
   const [imageConfirmationVisible, setImageConfirmationVisible] = useState(false);
+  const [imageSettingsRecoveryVisible, setImageSettingsRecoveryVisible] = useState(false);
   const [handwritingVisible, setHandwritingVisible] = useState(false);
   const [status, setStatus] = useState<string>();
   const operationRef = useRef<ActiveOperation | undefined>(undefined);
@@ -191,7 +196,16 @@ export function FinalPreparationPage({
         setFinishSucceeded(true);
       }
       setStatus(success);
-    } catch {
+    } catch (error) {
+      if (
+        kind === "image"
+        && typeof error === "object"
+        && error !== null
+        && "recovery" in error
+        && error.recovery === "open-settings"
+      ) {
+        setImageSettingsRecoveryVisible(true);
+      }
       setStatus(failure);
     } finally {
       operationRef.current = undefined;
@@ -232,6 +246,7 @@ export function FinalPreparationPage({
   };
 
   const requestImageConfirmation = () => {
+    setImageSettingsRecoveryVisible(false);
     setPreviewVisible(true);
     setImageConfirmationVisible(true);
     setStatus("请先查看最终预览和相册提示，再确认保存图片。");
@@ -330,6 +345,9 @@ export function FinalPreparationPage({
           />
         </View>
       ) : null}
+      {imageSettingsRecoveryVisible && onOpenImageSettings !== undefined ? (
+        <Button label="前往系统设置" onPress={() => { void onOpenImageSettings(); }} />
+      ) : null}
       <TextAction label="我想手写" onPress={() => setHandwritingVisible(true)} />
       {handwritingVisible ? <Text style={{ ...theme.typography.body, color: theme.color.text }}>可以把确认后的内容抄写到纸上；CAVE 不会自动分享。</Text> : null}
       {status ? <Text accessibilityLiveRegion="polite" style={{ ...theme.typography.body, color: theme.color.text }}>{status}</Text> : null}
@@ -350,6 +368,9 @@ export function FinalPreparationPage({
         loading={activeOperation === "finish"}
         onPress={() => { void afterFlush("finish", onFinish, "已保存到本机。", "保存失败，请重试。"); }}
       />
+      {finishSucceeded && onCompleted !== undefined ? (
+        <Button label="返回应用入口" onPress={onCompleted} />
+      ) : null}
       <Text style={{ ...theme.typography.caption, color: theme.color.textSecondary }}>云端同步｜后续版本（不可用）</Text>
     </View>
   );

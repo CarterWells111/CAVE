@@ -7,13 +7,13 @@ export default function IndexRoute() {
   return (
     <View style={styles.container}>
       <Text style={styles.title}>内界 CAVE</Text>
-      <Text>八屏本地旅程已准备好。</Text>
+      <Text>七屏本地旅程已准备好。</Text>
       <Pressable
         accessibilityRole="button"
         onPress={() => router.push("/journey/welcome")}
         style={styles.button}
       >
-        <Text>进入八屏演示</Text>
+        <Text>进入七屏体验</Text>
       </Pressable>
     </View>
   );

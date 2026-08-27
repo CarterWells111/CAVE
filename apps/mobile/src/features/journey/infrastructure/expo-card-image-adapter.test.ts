@@ -4,7 +4,13 @@ jest.mock("expo-media-library", () => ({
   createAssetAsync: jest.fn()
 }));
 
-import { CardImageSaveError, saveCardImageToLibrary } from "./expo-card-image-adapter";
+import { Linking } from "react-native";
+
+import {
+  CardImageSaveError,
+  cardImagePermissionRecovery,
+  saveCardImageToLibrary
+} from "./expo-card-image-adapter";
 
 const mediaLibrary = jest.requireMock<{
   requestPermissionsAsync: jest.Mock;
@@ -42,6 +48,39 @@ test("rejects denied permission with a safe typed error and does not write", asy
     message: "无法将图片保存到本机相册。"
   });
   expect(mockCreateAssetAsync).not.toHaveBeenCalled();
+});
+
+test("offers an explicit settings recovery for permanently denied permission without opening it automatically", async () => {
+  const openSettings = jest.spyOn(Linking, "openSettings").mockResolvedValue(undefined);
+  mockRequestPermissionsAsync.mockResolvedValue({
+    status: "denied",
+    canAskAgain: false,
+    accessPrivileges: "none"
+  });
+
+  await expect(saveCardImageToLibrary("file:///private/card.png")).rejects.toMatchObject({
+    code: "permission-denied",
+    recovery: "open-settings"
+  });
+  expect(openSettings).not.toHaveBeenCalled();
+  expect(mockCreateAssetAsync).not.toHaveBeenCalled();
+
+  await cardImagePermissionRecovery.openSettings();
+
+  expect(openSettings).toHaveBeenCalledTimes(1);
+});
+
+test("does not offer settings recovery while photo permission can still be requested", async () => {
+  mockRequestPermissionsAsync.mockResolvedValue({
+    status: "denied",
+    canAskAgain: true,
+    accessPrivileges: "none"
+  });
+
+  await expect(saveCardImageToLibrary("file:///private/card.png")).rejects.toMatchObject({
+    code: "permission-denied",
+    recovery: null
+  });
 });
 
 test("rejects limited photo access instead of claiming a successful save", async () => {

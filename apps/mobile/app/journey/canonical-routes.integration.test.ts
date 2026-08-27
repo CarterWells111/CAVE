@@ -58,7 +58,8 @@ test("pages two through five hydrate canonical state and persist before navigati
   expect(reflection).toContain("journalPromptId: input.journalPromptId");
   expect(reflection).toContain("journalText: input.journalText");
   expect(reflection).toContain("catalog.options");
-  expect(reflection).toContain("返回行为地图编辑");
+  expect(reflection).toContain("controller.setBehaviorAttitude(behaviorId, attitude)");
+  expect(reflection).not.toContain('onEditBehaviorAttitude={() => goTo("behavior-map")}');
   expect(reflection).not.toContain("?? behaviorId");
   expect(reflection).toMatch(/saveReflection\([\s\S]*goTo\("preset-practice"\)/u);
 });
@@ -75,7 +76,10 @@ test("practice and final routes use real user-triggered local adapters", () => {
   expect(final).toContain("<FinalPreparationPage");
   expect(final).toContain('type: "set-communication-card-visibility"');
   expect(final).toContain("saveCardImageToLibrary(imageUri)");
+  expect(final).toContain("cardImagePermissionRecovery.openSettings()");
   expect(final).toContain('result.status === "error"');
+  expect(final).toContain("onFinish={(card) => controller.saveCommunicationCard(card)}");
+  expect(final).toContain('onCompleted={() => router.replace("/")}');
   expect(final).toContain("onSaveDraft={() => controller.saveCommunicationCard()}");
   expect(final).toContain("onUpdatePreparation={(itemId, status) => runAndRefresh(");
   expect(final).toContain("controller.updateChecklist(itemId, status)");

@@ -35,7 +35,7 @@ export type ReflectionValue = {
 export type ReflectionPageProps = {
   initialValue?: Partial<ReflectionValue>;
   behaviorAnswers?: Array<{ behaviorId: string; behaviorLabel: string; attitude: BehaviorAttitude }>;
-  onEditBehaviorAttitude?(behaviorId: string): ReturnType<JourneyActionCallback>;
+  onEditBehaviorAttitude?(behaviorId: string, attitude: BehaviorAttitude): ReturnType<JourneyActionCallback>;
   onOpenComfort?(): ReturnType<JourneyActionCallback>;
   onOpenJournal?(): ReturnType<JourneyActionCallback>;
   onUsePracticePhrase?(phrase: string): ReturnType<JourneyActionCallback>;
@@ -139,6 +139,16 @@ export function ReflectionPage({
     initialValue.journalSaveChoice !== undefined,
   );
   const [journalStorageOpen, setJournalStorageOpen] = useState(false);
+  const [localBehaviorAnswers, setLocalBehaviorAnswers] = useState(() => [...behaviorAnswers]);
+  const [editingBehaviorId, setEditingBehaviorId] = useState<string | null>(null);
+
+  const saveBehaviorAttitude = async (behaviorId: string, attitude: BehaviorAttitude) => {
+    await onEditBehaviorAttitude?.(behaviorId, attitude);
+    setLocalBehaviorAnswers((current) => current.map((answer) => answer.behaviorId === behaviorId
+      ? { ...answer, attitude }
+      : answer));
+    setEditingBehaviorId(null);
+  };
 
   const toggleMotivation = (id: string) => {
     setMotivationIds((current) => {
@@ -190,29 +200,46 @@ export function ReflectionPage({
         <SupportingCopy>这些答案不需要整齐，也可以随时改变；这里不会生成分数或准备度结论。</SupportingCopy>
       </Card>
 
-      {behaviorAnswers.length > 0 ? (
+      {localBehaviorAnswers.length > 0 ? (
         <Card accessible={false}>
           <SectionTitle>这是你刚才留下的答案</SectionTitle>
           {reviewGroups.map((group) => {
-            const answers = behaviorAnswers.filter(({ attitude }) => attitude === group.attitude);
+            const answers = localBehaviorAnswers.filter(({ attitude }) => attitude === group.attitude);
             return answers.length > 0 ? (
               <View key={group.attitude} style={{ gap: theme.space.sm }}>
                 <Text selectable style={{ ...theme.typography.cardTitle, color: theme.color.text }}>{group.label}</Text>
                 {answers.map((answer) => (
-                  <JourneyAction
-                    accessibilityLabel={`修改${answer.behaviorLabel}的答案`}
-                    key={answer.behaviorId}
-                    label={answer.behaviorLabel}
-                    loadingLabel="正在打开…"
-                    onAction={onEditBehaviorAttitude
-                      ? () => onEditBehaviorAttitude(answer.behaviorId)
-                      : undefined}
-                  />
+                  <View key={answer.behaviorId} style={{ gap: theme.space.compact }}>
+                    <JourneyAction
+                      accessibilityLabel={`修改${answer.behaviorLabel}的答案`}
+                      label={answer.behaviorLabel}
+                      loadingLabel="正在展开…"
+                      onAction={onEditBehaviorAttitude
+                        ? () => setEditingBehaviorId((current) => current === answer.behaviorId ? null : answer.behaviorId)
+                        : undefined}
+                    />
+                    {editingBehaviorId === answer.behaviorId ? (
+                      <View accessibilityRole="radiogroup" style={{ gap: theme.space.compact }}>
+                        <SupportingCopy>{`正在修改：${answer.behaviorLabel}`}</SupportingCopy>
+                        {reviewGroups.map((option) => (
+                          <JourneyChoice
+                            accessibilityLabel={`修改${answer.behaviorLabel}：${option.label}`}
+                            key={option.attitude}
+                            label={option.label}
+                            mode="single"
+                            onSelect={() => saveBehaviorAttitude(answer.behaviorId, option.attitude)}
+                            selected={answer.attitude === option.attitude}
+                          />
+                        ))}
+                      </View>
+                    ) : null}
+                  </View>
                 ))}
               </View>
             ) : null;
           })}
           <SupportingCopy>这是你此刻的感受，不需要整齐，也可以随时改变。</SupportingCopy>
+          <SupportingCopy>此页的其他反思仍保留在当前页面。</SupportingCopy>
         </Card>
       ) : null}
 

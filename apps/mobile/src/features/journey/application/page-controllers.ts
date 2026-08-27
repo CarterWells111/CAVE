@@ -7,6 +7,7 @@ import type {
   JourneyPracticeSubmission,
 } from "../domain/types";
 import { selectConfirmedCommunicationCard } from "../domain/derive-communication-card";
+import type { ConfirmedCommunicationCard } from "../domain/derive-communication-card";
 import type {
   PartnerResponseBranch,
   PracticeIntent,
@@ -230,12 +231,30 @@ export class JourneyPageController {
     return this.dependencies.service.dispatch({ type: "edit-communication-card-field", sectionId, userText });
   }
 
-  async saveCommunicationCard() {
+  async saveCommunicationCard(confirmedCard?: ConfirmedCommunicationCard) {
     const draft = this.requireDraft();
+    const confirmed = confirmedCard ?? selectConfirmedCommunicationCard(draft);
+    const included = new Map(confirmed.sections.map((section) => [section.id, section.text]));
+    const card = Object.fromEntries(Object.entries(draft.communicationCard).map(([sectionId, field]) => {
+      const text = included.get(sectionId as keyof JourneyDraft["communicationCard"]);
+      return [sectionId, text === undefined
+        ? {
+            generatedText: "",
+            sourceRevision: field.sourceRevision,
+            needsReview: false,
+            visibility: "deleted" as const
+          }
+        : {
+            generatedText: text,
+            sourceRevision: field.sourceRevision,
+            needsReview: false,
+            visibility: "included" as const
+          }];
+    })) as JourneyDraft["communicationCard"];
     await this.dependencies.cards.save({
       id: `card:${draft.id}`,
       journeyId: draft.id,
-      card: draft.communicationCard,
+      card,
       savedAt: this.dependencies.now()
     });
   }

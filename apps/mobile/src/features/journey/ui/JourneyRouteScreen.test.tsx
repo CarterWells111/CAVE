@@ -43,6 +43,35 @@ function deferred<T>() {
   return { promise, reject, resolve };
 }
 
+function createUnlockedDraft(currentPage: JourneyPageId): JourneyDraft {
+  return {
+    ...createJourneyDraft({ id: "journey-1", now: "now" }),
+    ageConfirmed: true,
+    addressPreference: "你",
+    prefaceRead: true,
+    currentPage,
+    overnight: { stage: "concerns", resumeStage: "concerns" },
+    readKnowledgeCardIds: [
+      "draft-knowledge-body-signals",
+      "draft-knowledge-consent",
+      "draft-knowledge-health"
+    ],
+    explicitContentConsent: false,
+    behaviorAttitudes: {
+      "behavior-hug": "skip",
+      "draft-kissing": "skip",
+      "behavior-same-bed": "skip",
+      "behavior-my-nudity": "skip",
+      "behavior-partner-nudity": "skip",
+      "behavior-over-clothes-touch": "skip",
+      "behavior-direct-touch": "skip"
+    },
+    journalSaveChoice: "not-saved",
+    journal: { text: "", saveChoice: "not-saved" },
+    practice: { completed: true, mirrorRehearsed: true }
+  };
+}
+
 test("redirects an unconfirmed visitor before rendering an adult-only page", async () => {
   render(
     <JourneyRouteScreen pageId="overnight">
@@ -55,11 +84,7 @@ test("redirects an unconfirmed visitor before rendering an adult-only page", asy
 });
 
 test("renders active snapshot state and persists back navigation before replacing", async () => {
-  mockRuntime.snapshot = {
-    ...createJourneyDraft({ id: "journey-1", now: "now" }),
-    ageConfirmed: true,
-    currentPage: "reflection"
-  };
+  mockRuntime.snapshot = createUnlockedDraft("reflection");
 
   render(
     <JourneyRouteScreen pageId="reflection">
@@ -78,11 +103,7 @@ test("renders active snapshot state and persists back navigation before replacin
 });
 
 test("exits every journey page to root without resetting or deleting the active draft", async () => {
-  mockRuntime.snapshot = {
-    ...createJourneyDraft({ id: "journey-1", now: "now" }),
-    ageConfirmed: true,
-    currentPage: "reflection"
-  };
+  mockRuntime.snapshot = createUnlockedDraft("reflection");
 
   render(
     <JourneyRouteScreen pageId="reflection">
@@ -101,11 +122,7 @@ test("exits every journey page to root without resetting or deleting the active 
 
 test("does not replace the root with a late forward navigation after exit", async () => {
   const pendingForward = deferred<void>();
-  mockRuntime.snapshot = {
-    ...createJourneyDraft({ id: "journey-1", now: "now" }),
-    ageConfirmed: true,
-    currentPage: "overnight"
-  };
+  mockRuntime.snapshot = createUnlockedDraft("overnight");
   mockRuntime.service.navigateTo.mockReturnValueOnce(pendingForward.promise);
 
   render(
@@ -132,11 +149,7 @@ test("does not replace the root with a late forward navigation after exit", asyn
 
 test("does not replace the route when a deferred back navigation resolves after unmount", async () => {
   const pendingBack = deferred<void>();
-  mockRuntime.snapshot = {
-    ...createJourneyDraft({ id: "journey-1", now: "now" }),
-    ageConfirmed: true,
-    currentPage: "reflection"
-  };
+  mockRuntime.snapshot = createUnlockedDraft("reflection");
   mockRuntime.service.navigateTo.mockReturnValueOnce(pendingBack.promise);
 
   const view = render(
@@ -154,11 +167,7 @@ test("does not replace the route when a deferred back navigation resolves after 
 
 test("keeps back navigation busy, blocks duplicates, and hides rejection details", async () => {
   const pendingBack = deferred<void>();
-  mockRuntime.snapshot = {
-    ...createJourneyDraft({ id: "journey-1", now: "now" }),
-    ageConfirmed: true,
-    currentPage: "reflection"
-  };
+  mockRuntime.snapshot = createUnlockedDraft("reflection");
   mockRuntime.runAndRefresh.mockReturnValueOnce(pendingBack.promise);
 
   render(
@@ -189,11 +198,7 @@ test("keeps back navigation busy, blocks duplicates, and hides rejection details
 
 test("keeps forward navigation busy, handles rejection safely, and retries", async () => {
   const pendingForward = deferred<void>();
-  mockRuntime.snapshot = {
-    ...createJourneyDraft({ id: "journey-1", now: "now" }),
-    ageConfirmed: true,
-    currentPage: "overnight"
-  };
+  mockRuntime.snapshot = createUnlockedDraft("overnight");
   mockRuntime.runAndRefresh.mockReturnValueOnce(pendingForward.promise);
 
   render(

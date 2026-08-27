@@ -62,3 +62,11 @@ test("connects every canonical continue action without an eighth page or dead-en
   expect(canonicalSources).not.toMatch(/goTo\("(?:checklist|communication-card|behavior-attitudes)"\)/u);
   expect(canonicalSources).not.toMatch(/\b8\s*\/\s*8\b|\/8\b|共\s*8\s*页/u);
 });
+
+test("describes the current seven-screen experience at the application entry", () => {
+  const entry = readFileSync(resolve(routeDirectory, "../index.tsx"), "utf8");
+
+  expect(entry).toContain("七屏本地旅程");
+  expect(entry).toContain("进入七屏体验");
+  expect(entry).not.toContain("八屏");
+});

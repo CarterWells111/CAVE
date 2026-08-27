@@ -151,7 +151,8 @@ test("requires a rendered preview before copy or image export and guards duplica
   const onCopy = jest.fn<Promise<void>, [ConfirmedCommunicationCard]>(async (card) => { void card; });
   const onSaveImage = jest.fn<Promise<void>, [ConfirmedCommunicationCard]>(async (card) => { void card; });
   const onFinish = jest.fn(() => pendingFinish);
-  render(<FinalPreparationPage draft={draft()} onCopy={onCopy} onEdit={jest.fn()} onFinish={onFinish} onSaveImage={onSaveImage} onSetVisibility={jest.fn()} />);
+  const onCompleted = jest.fn();
+  render(<FinalPreparationPage draft={draft()} onCompleted={onCompleted} onCopy={onCopy} onEdit={jest.fn()} onFinish={onFinish} onSaveImage={onSaveImage} onSetVisibility={jest.fn()} />);
 
   fireEvent.press(screen.getByText("复制已确认内容"));
   expect(onCopy).not.toHaveBeenCalled();
@@ -172,6 +173,8 @@ test("requires a rendered preview before copy or image export and guards duplica
   expect(await screen.findByText("首次记录已完成")).toBeTruthy();
   fireEvent.press(screen.getByText("首次记录已完成"));
   expect(onFinish).toHaveBeenCalledTimes(1);
+  fireEvent.press(screen.getByRole("button", { name: "返回应用入口" }));
+  expect(onCompleted).toHaveBeenCalledTimes(1);
 });
 
 test("guards duplicate clipboard and image operations while each user action is pending", async () => {
@@ -193,6 +196,29 @@ test("guards duplicate clipboard and image operations while each user action is 
   fireEvent.press(screen.getByText("正在保存图片…"));
   await waitFor(() => expect(onSaveImage).toHaveBeenCalledTimes(1));
   await act(async () => { resolveImage(); });
+});
+
+test("offers an explicit settings recovery after photo permission is permanently denied", async () => {
+  const onOpenImageSettings = jest.fn(async () => undefined);
+  const onSaveImage = jest.fn(async () => {
+    throw Object.assign(new Error("denied"), { recovery: "open-settings" });
+  });
+  render(<FinalPreparationPage
+    draft={draft()}
+    onCopy={jest.fn()}
+    onEdit={jest.fn()}
+    onFinish={jest.fn()}
+    onOpenImageSettings={onOpenImageSettings}
+    onSaveImage={onSaveImage}
+    onSetVisibility={jest.fn()}
+  />);
+
+  fireEvent.press(screen.getByText("保存为图片"));
+  fireEvent.press(screen.getByText("确认并保存图片"));
+  expect(await screen.findByRole("button", { name: "前往系统设置" })).toBeTruthy();
+
+  fireEvent.press(screen.getByRole("button", { name: "前往系统设置" }));
+  await waitFor(() => expect(onOpenImageSettings).toHaveBeenCalledTimes(1));
 });
 
 test("offers user-readable private preparation controls and save-for-self", async () => {

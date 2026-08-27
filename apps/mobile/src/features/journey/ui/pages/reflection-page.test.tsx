@@ -145,7 +145,7 @@ test("exposes visible loading and error states for the final local action", asyn
   await waitFor(() => expect(screen.getByText("保存反思失败，请重试。")).toBeTruthy());
 });
 
-test("groups Page 4 answers in canonical attitude order and exposes real edit callbacks", () => {
+test("edits a Page 4 attitude inline, persists it, and keeps the Page 5 review open", async () => {
   const onEditBehaviorAttitude = jest.fn();
   render(
     <ReflectionPage
@@ -164,7 +164,14 @@ test("groups Page 4 answers in canonical attitude order and exposes real edit ca
   expect(screen.getByText("我还没想清楚")).toBeTruthy();
   expect(screen.getByText("这次我不希望发生")).toBeTruthy();
   fireEvent.press(screen.getByRole("button", { name: "修改拥抱或依偎的答案" }));
-  expect(onEditBehaviorAttitude).toHaveBeenCalledWith("hug");
+  expect(screen.getByText("正在修改：拥抱或依偎")).toBeTruthy();
+  expect(screen.getAllByRole("radio", { name: /^修改拥抱或依偎：/u })).toHaveLength(5);
+  fireEvent.press(screen.getByRole("radio", { name: "修改拥抱或依偎：我还没想清楚" }));
+
+  await waitFor(() => expect(onEditBehaviorAttitude).toHaveBeenCalledWith("hug", "unsure"));
+  expect(screen.queryByText("正在修改：拥抱或依偎")).toBeNull();
+  expect(screen.getByRole("button", { name: "修改拥抱或依偎的答案" })).toBeTruthy();
+  expect(screen.getByText("此页的其他反思仍保留在当前页面。" )).toBeTruthy();
 });
 
 test("never submits journal content when the user chooses not to save it", () => {

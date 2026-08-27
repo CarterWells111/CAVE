@@ -36,6 +36,49 @@ function runtime(clipboard = { setStringAsync: jest.fn(async () => undefined) })
   });
 }
 
+async function unlockAllSevenScreens(journeyRuntime: JourneyRuntime) {
+  await journeyRuntime.service.confirmAdult();
+  await journeyRuntime.controller.setAddressPreference("你");
+  await journeyRuntime.service.dispatch({ type: "set-preface-read", read: true });
+  await journeyRuntime.controller.saveOvernight({
+    expectationIds: [],
+    concernIds: [],
+    customNote: ""
+  });
+  for (const cardId of [
+    "draft-knowledge-body-signals",
+    "draft-knowledge-consent",
+    "draft-knowledge-health"
+  ]) {
+    await journeyRuntime.controller.readKnowledge(cardId);
+  }
+  for (const behaviorId of [
+    "behavior-hug",
+    "draft-kissing",
+    "behavior-same-bed",
+    "behavior-my-nudity",
+    "behavior-partner-nudity",
+    "behavior-over-clothes-touch",
+    "behavior-direct-touch"
+  ]) {
+    await journeyRuntime.controller.setBehaviorAttitude(behaviorId, "skip");
+  }
+  await journeyRuntime.controller.setExplicitContentConsent(false);
+  await journeyRuntime.controller.saveReflection({
+    motivationIds: [],
+    comfortNeedIds: [],
+    journalSaveChoice: "not-saved",
+    journalText: ""
+  });
+  await journeyRuntime.controller.completePractice({
+    behaviorId: null,
+    intent: "pause-to-feel",
+    phrase: "先停一下，我需要一点时间。",
+    aftercareId: "quiet",
+    completed: true
+  });
+}
+
 async function openRoute(element: ReactElement, journeyRuntime: JourneyRuntime): Promise<RenderAPI> {
   const view = render(
     <JourneyRuntimeProvider createRuntime={async () => journeyRuntime}>
@@ -58,7 +101,7 @@ test("the production routes expose all seven screens offline without an eighth r
     expect(screen.queryByTestId("progress-center")).toBeNull();
     view.unmount();
 
-    await journeyRuntime.controller.enterWelcome({ adult: true, prefaceRead: false });
+    await unlockAllSevenScreens(journeyRuntime);
     const screens: Array<[JourneyPageId, number, ReactElement]> = [
       ["overnight", 2, <OvernightRoute />],
       ["body-knowledge", 3, <BodyKnowledgeRoute />],
@@ -101,7 +144,7 @@ test("the production underage route exits without creating an active draft", asy
 test("clipboard failure is structured and visible on the production final screen", async () => {
   const clipboard = { setStringAsync: jest.fn(async () => { throw new Error("denied"); }) };
   const journeyRuntime = runtime(clipboard);
-  await journeyRuntime.service.confirmAdult();
+  await unlockAllSevenScreens(journeyRuntime);
   await journeyRuntime.service.navigateTo("final-preparation");
   const view = await openRoute(<FinalPreparationRoute />, journeyRuntime);
 

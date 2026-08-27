@@ -1,15 +1,22 @@
+import { useRouter } from "expo-router";
+
 import { useJourneyRuntime } from "../../src/features/journey/runtime/JourneyRuntimeProvider";
-import { saveCardImageToLibrary } from "../../src/features/journey/infrastructure/expo-card-image-adapter";
+import {
+  cardImagePermissionRecovery,
+  saveCardImageToLibrary
+} from "../../src/features/journey/infrastructure/expo-card-image-adapter";
 import { JourneyRouteScreen } from "../../src/features/journey/ui/JourneyRouteScreen";
 import { FinalPreparationPage } from "../../src/features/journey/ui/pages/FinalPreparationPage";
 
 export default function FinalPreparationRoute() {
+  const router = useRouter();
   const runtime = useJourneyRuntime();
   return (
     <JourneyRouteScreen pageId="final-preparation">
       {({ controller, runAndRefresh, snapshot }) => (
         snapshot ? <FinalPreparationPage
           draft={snapshot}
+          onCompleted={() => router.replace("/")}
           onCopy={async () => {
             const result = await controller.copyCommunicationCard();
             if (result.status === "error") throw new Error(result.code);
@@ -17,7 +24,8 @@ export default function FinalPreparationRoute() {
           onEdit={(sectionId, userText) => runAndRefresh(
             () => controller.editCommunicationCard(sectionId, userText)
           )}
-          onFinish={() => controller.saveCommunicationCard()}
+          onFinish={(card) => controller.saveCommunicationCard(card)}
+          onOpenImageSettings={() => cardImagePermissionRecovery.openSettings()}
           onSaveDraft={() => controller.saveCommunicationCard()}
           onSaveImage={(_card, imageUri) => saveCardImageToLibrary(imageUri)}
           onSetVisibility={(sectionId, visibility) => runtime.runAndRefresh(

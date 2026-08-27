@@ -1,4 +1,4 @@
-import { buildCommunicationCard } from "../domain/derive-communication-card";
+import { buildCommunicationCard, selectConfirmedCommunicationCard } from "../domain/derive-communication-card";
 import type { PresetPracticeEngine, PresetPracticeState } from "../domain/practice-types";
 import { createJourneyDraft, type JourneyDraft } from "../domain/types";
 import type { CommunicationCardRepository } from "../infrastructure/journey-draft-repository";
@@ -154,12 +154,14 @@ test("updates private preparation and copies only explicitly included final-page
   await controller.finishChecklistReview();
   expect(cards.save).not.toHaveBeenCalled();
 
-  await controller.saveCommunicationCard();
+  await controller.saveCommunicationCard(selectConfirmedCommunicationCard(activeDraft()));
   await expect(controller.copyCommunicationCard()).resolves.toEqual({ status: "success" });
 
   expect(service.dispatch).toHaveBeenCalledWith(expect.objectContaining({ type: "update-checklist-item" }));
   expect(service.dispatch).toHaveBeenCalledWith({ type: "record-point-event", key: "review:checklist:v1" });
   expect(cards.save).toHaveBeenCalledWith(expect.objectContaining({ id: "card:journey-1", journeyId: "journey-1" }));
+  const saveCard = cards.save as jest.MockedFunction<CommunicationCardRepository["save"]>;
+  expect(JSON.stringify(saveCard.mock.calls[0]?.[0].card)).not.toContain("private marker");
   const copied = clipboard.setStringAsync.mock.calls[0]?.[0] ?? "";
   expect(copied).toContain("我对这个夜晚暂时没有具体想象。");
   expect(copied).not.toMatch(/draft-card|draft-/u);

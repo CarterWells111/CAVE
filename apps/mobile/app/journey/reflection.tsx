@@ -1,5 +1,3 @@
-import { Text } from "react-native";
-
 import { loadJourneyContentCatalog } from "../../src/features/journey/infrastructure/journey-content-catalog";
 import { JourneyRouteScreen } from "../../src/features/journey/ui/JourneyRouteScreen";
 import { ReflectionPage } from "../../src/features/journey/ui/pages/reflection-page";
@@ -14,16 +12,14 @@ export default function ReflectionRoute() {
   return (
     <JourneyRouteScreen pageId="reflection">
       {({ controller, goTo, runAndRefresh, snapshot }) => (
-        <>
-          <Text>选择任一行为会返回行为地图编辑；当前页面不支持原位修改。</Text>
-          <ReflectionPage
-            behaviorAnswers={Object.entries(snapshot?.behaviorAttitudes ?? {}).map(([behaviorId, attitude]) => ({
-              attitude,
-              behaviorId,
-              behaviorLabel: snapshot?.customBehaviors.find(({ id }) => id === behaviorId)?.label
-                ?? behaviorLabels.get(behaviorId)
-                ?? "已记录的行为",
-            }))}
+        <ReflectionPage
+          behaviorAnswers={Object.entries(snapshot?.behaviorAttitudes ?? {}).map(([behaviorId, attitude]) => ({
+            attitude,
+            behaviorId,
+            behaviorLabel: snapshot?.customBehaviors.find(({ id }) => id === behaviorId)?.label
+              ?? behaviorLabels.get(behaviorId)
+              ?? "已记录的行为",
+          }))}
           initialValue={{
             comfortClarity: (snapshot?.reflection.comfortClarity ?? null) as "mostly-clear" | "need-space" | null,
             comfortNeedIds: snapshot?.comfortNeedIds ?? [],
@@ -36,7 +32,9 @@ export default function ReflectionRoute() {
             pressureWithoutDisappointment: (snapshot?.reflection.pressureWithoutDisappointment ?? null) as "still-want" | "slow-down" | "unsure" | "less-want" | "skip" | null,
             refusalSafety: (snapshot?.reflection.refusalSafety ?? null) as "can" | "difficult-but-possible" | "fear-reaction" | "cannot-refuse" | "unsure" | null,
           }}
-          onEditBehaviorAttitude={() => goTo("behavior-map")}
+          onEditBehaviorAttitude={(behaviorId, attitude) => runAndRefresh(
+            () => controller.setBehaviorAttitude(behaviorId, attitude),
+          )}
           onComplete={(input) => runAndRefresh(() => controller.saveReflection({
             comfortClarity: input.comfortClarity,
             comfortNeedIds: input.comfortNeedIds,
@@ -53,8 +51,7 @@ export default function ReflectionRoute() {
             refusalSafety: input.refusalSafety,
           }))
             .then(() => goTo("preset-practice"))}
-          />
-        </>
+        />
       )}
     </JourneyRouteScreen>
   );

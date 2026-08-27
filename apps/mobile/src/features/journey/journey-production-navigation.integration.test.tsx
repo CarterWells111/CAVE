@@ -224,7 +224,12 @@ test("production back navigation can edit Page 4 and recompute derived output wi
 
   expect(screen.getByRole("button", { name: "修改接吻的答案" })).toBeTruthy();
   expect(screen.queryByText("draft-kissing")).toBeNull();
-  expect(screen.getByText("选择任一行为会返回行为地图编辑；当前页面不支持原位修改。")).toBeTruthy();
+  fireEvent.press(screen.getByRole("button", { name: "修改接吻的答案" }));
+  fireEvent.press(screen.getByRole("radio", { name: "修改接吻：这次我不希望发生" }));
+  await waitFor(() => expect(journeyRuntime.service.getSnapshot()?.behaviorAttitudes["draft-kissing"])
+    .toBe("not-this-time"));
+  expect(journeyRuntime.service.getSnapshot()?.currentPage).toBe("reflection");
+  expect(mockRouter.replace).not.toHaveBeenCalledWith("/journey/behavior-map");
 
   fireEvent.press(screen.getByRole("button", { name: "返回上一页" }));
   await waitFor(() => {
