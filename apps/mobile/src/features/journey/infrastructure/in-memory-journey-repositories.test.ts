@@ -49,3 +49,32 @@ test("upserts, clones and deletes communication cards inside one repository inst
   await repository.delete("card:journey-1");
   expect(await repository.list()).toEqual([]);
 });
+
+test("projects sorted communication-card metadata without exposing card payloads", async () => {
+  const repository = new InMemoryCommunicationCardRepository();
+  const privateCard = createJourneyDraft({ id: "private-card", now: "now" }).communicationCard;
+  privateCard["communication-comfort"].userText = "sensitive private text";
+
+  await repository.save({
+    id: "card-older",
+    journeyId: "journey-older",
+    card: privateCard,
+    savedAt: "2026-08-27T12:00:00.000Z",
+  });
+  await repository.save({
+    id: "card-newer",
+    journeyId: "journey-newer",
+    card: privateCard,
+    savedAt: "2026-08-27T13:00:00.000Z",
+  });
+
+  const metadata = await repository.listMetadata();
+
+  expect(metadata).toEqual([
+    { id: "card-newer", journeyId: "journey-newer", savedAt: "2026-08-27T13:00:00.000Z" },
+    { id: "card-older", journeyId: "journey-older", savedAt: "2026-08-27T12:00:00.000Z" },
+  ]);
+  expect(JSON.stringify(metadata)).not.toMatch(/payload|communication-comfort|sensitive private text/u);
+  await expect(repository.load("card-newer")).resolves.toMatchObject({ id: "card-newer" });
+  await expect(repository.load("missing")).resolves.toBeNull();
+});

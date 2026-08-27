@@ -1,4 +1,8 @@
-import type { JourneyDraft, SavedCommunicationCardRecord } from "../domain/types";
+import type {
+  JourneyDraft,
+  SavedCommunicationCardMetadata,
+  SavedCommunicationCardRecord
+} from "../domain/types";
 
 export interface JourneyDraftRepository {
   loadActive(): Promise<JourneyDraft | null>;
@@ -8,6 +12,8 @@ export interface JourneyDraftRepository {
 
 export interface CommunicationCardRepository {
   list(): Promise<SavedCommunicationCardRecord[]>;
+  listMetadata(): Promise<SavedCommunicationCardMetadata[]>;
+  load(id: string): Promise<SavedCommunicationCardRecord | null>;
   save(record: SavedCommunicationCardRecord): Promise<void>;
   delete(id: string): Promise<void>;
 }

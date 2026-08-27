@@ -66,6 +66,9 @@ function harness(options: { failLegacyDeleteOnce?: boolean; failV2InsertOnce?: b
     getAllAsync: jest.fn(async () => [...cards.values()] as never[]),
     getFirstAsync: jest.fn(async (sql: string, ...params: unknown[]) => {
       sqlCalls.push(sql);
+      if (sql.includes("FROM journey_cards")) {
+        return (cards.get(String(params[0])) ?? null) as never;
+      }
       if (sql.includes("journey_migration_receipts")) {
         return (receiptSourceIds.has(String(params[0])) ? { migration_id: `receipt:${String(params[0])}` } : null) as never;
       }
@@ -325,5 +328,38 @@ describe("SqlCommunicationCardRepository", () => {
     await expect(repository.list()).resolves.toEqual([record]);
     await repository.delete("card-1");
     await expect(repository.list()).resolves.toEqual([]);
+  });
+
+  test("lists card metadata without selecting or returning payload", async () => {
+    const fake = harness();
+    const repository = new SqlCommunicationCardRepository(fake.manager);
+    await repository.save({
+      id: "card-private",
+      journeyId: "journey-private",
+      card: createJourneyDraft({ id: "private", now: "now" }).communicationCard,
+      savedAt: "2026-08-27T12:00:00.000Z",
+    });
+
+    await expect(repository.listMetadata()).resolves.toEqual([{
+      id: "card-private",
+      journeyId: "journey-private",
+      savedAt: "2026-08-27T12:00:00.000Z",
+    }]);
+
+    const getAll = fake.connection.getAllAsync as jest.Mock;
+    const metadataSql = getAll.mock.calls.at(-1)?.[0] as string;
+    expect(metadataSql).toBe(
+      "SELECT id, journey_id, saved_at FROM journey_cards ORDER BY saved_at DESC",
+    );
+    expect(metadataSql).not.toMatch(/payload/iu);
+
+    await expect(repository.load("card-private")).resolves.toMatchObject({
+      id: "card-private",
+      journeyId: "journey-private",
+    });
+    const getFirst = fake.connection.getFirstAsync as jest.Mock;
+    expect(getFirst.mock.calls.at(-1)?.[0]).toBe(
+      "SELECT id, journey_id, payload, saved_at FROM journey_cards WHERE id = ?",
+    );
   });
 });

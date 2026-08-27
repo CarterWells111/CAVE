@@ -18,7 +18,10 @@ export type JourneyRuntimeContextValue = {
   mode: JourneyRuntimeMode;
   snapshot: JourneyDraft | null;
   controller: JourneyRuntime["controller"];
+  cards: JourneyRuntime["cards"];
   service: JourneyRuntime["service"];
+  shellState: JourneyRuntime["shellState"];
+  deleteAllData(): Promise<void>;
   runAndRefresh<T>(action: () => Promise<T>): Promise<T>;
   restart(): Promise<void>;
 };
@@ -43,14 +46,21 @@ function RuntimeContextProvider({
     () => runAndRefresh(() => runtime.service.resetJourney()),
     [runAndRefresh, runtime]
   );
+  const deleteAllData = useCallback(
+    () => runAndRefresh(() => runtime.deleteAllData()),
+    [runAndRefresh, runtime]
+  );
   const context = useMemo<JourneyRuntimeContextValue>(() => ({
     mode: runtime.mode,
     snapshot,
     controller: runtime.controller,
+    cards: runtime.cards,
     service: runtime.service,
+    shellState: runtime.shellState,
+    deleteAllData,
     runAndRefresh,
     restart
-  }), [restart, runAndRefresh, runtime, snapshot]);
+  }), [deleteAllData, restart, runAndRefresh, runtime, snapshot]);
 
   return (
     <JourneyRuntimeContext.Provider value={context}>

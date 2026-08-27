@@ -21,6 +21,11 @@ function localStorageHarness() {
   };
   const cards: CommunicationCardRepository = {
     list: jest.fn(async () => [...savedCards.values()].map((record) => structuredClone(record))),
+    listMetadata: jest.fn(async () => [...savedCards.values()].map(({ id, journeyId, savedAt }) => ({ id, journeyId, savedAt }))),
+    load: jest.fn(async (id) => {
+      const record = savedCards.get(id);
+      return record === undefined ? null : structuredClone(record);
+    }),
     save: jest.fn(async (record) => { savedCards.set(record.id, structuredClone(record)); }),
     delete: jest.fn(async (id) => { savedCards.delete(id); })
   };

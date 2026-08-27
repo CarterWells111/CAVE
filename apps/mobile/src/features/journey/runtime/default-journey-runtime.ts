@@ -2,6 +2,7 @@ import * as ExpoClipboard from "expo-clipboard";
 import Constants from "expo-constants";
 
 import { createEncryptedDatabaseManager } from "../../../core/storage/database";
+import { deleteAllData as deleteAllLocalData } from "../../../core/privacy/delete-all-data";
 import type { ClipboardAdapter } from "../application/page-controllers";
 import type { ExpoJourneyAdapters } from "../infrastructure/expo-journey-adapters";
 import {
@@ -50,6 +51,7 @@ export function createComposedJourneyRuntime({
         drafts: new SqlJourneyDraftRepository(database),
         cards: new SqlCommunicationCardRepository(database),
         shellState: new SqlAppShellStateRepository(database),
+        deleteStorage: () => deleteAllLocalData({ database, secrets: adapters.secrets }),
         clipboard: adapters.clipboard,
         createId,
         now

@@ -1,4 +1,8 @@
-import type { JourneyDraft, SavedCommunicationCardRecord } from "../domain/types";
+import type {
+  JourneyDraft,
+  SavedCommunicationCardMetadata,
+  SavedCommunicationCardRecord
+} from "../domain/types";
 import type {
   CommunicationCardRepository,
   JourneyDraftRepository
@@ -31,6 +35,17 @@ export class InMemoryCommunicationCardRepository implements CommunicationCardRep
     return [...this.records.values()]
       .sort((left, right) => right.savedAt.localeCompare(left.savedAt))
       .map(clone);
+  }
+
+  async listMetadata(): Promise<SavedCommunicationCardMetadata[]> {
+    return [...this.records.values()]
+      .sort((left, right) => right.savedAt.localeCompare(left.savedAt))
+      .map(({ id, journeyId, savedAt }) => ({ id, journeyId, savedAt }));
+  }
+
+  async load(id: string): Promise<SavedCommunicationCardRecord | null> {
+    const record = this.records.get(id);
+    return record === undefined ? null : clone(record);
   }
 
   async save(record: SavedCommunicationCardRecord): Promise<void> {

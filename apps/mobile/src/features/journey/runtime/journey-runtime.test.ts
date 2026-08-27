@@ -52,3 +52,24 @@ test("uses the secure runtime factory for Development and Preview without a memo
 
   expect(createNativeRuntime).toHaveBeenCalledTimes(1);
 });
+
+test("deletes the Expo Go draft, cards, and completion marker together", async () => {
+  const runtime = await createJourneyRuntime({
+    executionEnvironment: "storeClient",
+    clipboard,
+    createId: () => "delete-all-journey",
+    now: () => "2026-08-27T12:00:00.000Z",
+    createNativeRuntime: jest.fn()
+  });
+  await runtime.service.confirmAdult();
+  const draft = runtime.service.getSnapshot();
+  if (draft === null) throw new Error("missing draft");
+  await runtime.cards.save({ id: "card-1", journeyId: draft.id, card: draft.communicationCard, savedAt: draft.updatedAt });
+  await runtime.shellState.completeInitialJourney({ initialJourneyId: draft.id, initialJourneyCompletedAt: draft.updatedAt });
+
+  await runtime.deleteAllData();
+
+  expect(runtime.service.getSnapshot()).toBeNull();
+  await expect(runtime.cards.listMetadata()).resolves.toEqual([]);
+  await expect(runtime.shellState.load()).resolves.toBeNull();
+});

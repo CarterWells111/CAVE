@@ -271,7 +271,11 @@ export class JourneyPageController {
   }
 
   async copyCommunicationCard(): Promise<ClipboardCopyResult> {
-    const cardText = formatCommunicationCard(this.requireDraft());
+    return this.copyConfirmedCommunicationCard(selectConfirmedCommunicationCard(this.requireDraft()));
+  }
+
+  async copyConfirmedCommunicationCard(card: ConfirmedCommunicationCard): Promise<ClipboardCopyResult> {
+    const cardText = formatConfirmedCommunicationCard(card);
     try {
       await this.dependencies.clipboard.setStringAsync(cardText);
       return { status: "success" };
@@ -288,7 +292,10 @@ export class JourneyPageController {
 }
 
 export function formatCommunicationCard(draft: JourneyDraft) {
-  const confirmed = selectConfirmedCommunicationCard(draft);
+  return formatConfirmedCommunicationCard(selectConfirmedCommunicationCard(draft));
+}
+
+export function formatConfirmedCommunicationCard(confirmed: ConfirmedCommunicationCard) {
   return [
     ...confirmed.sections.map(({ text }) => text),
     confirmed.consentFooter

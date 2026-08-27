@@ -7,6 +7,7 @@ import {
 import {
   COMMUNICATION_SECTION_IDS,
   type JourneyDraft,
+  type SavedCommunicationCardMetadata,
   type SavedCommunicationCardRecord
 } from "../domain/types";
 import {
@@ -18,6 +19,7 @@ import {
 type DraftRow = { schema_version: number; payload: string };
 type MigrationReceiptRow = { migration_id: string };
 type CardRow = { id: string; journey_id: string; payload: string; saved_at: string };
+type CardMetadataRow = { id: string; journey_id: string; saved_at: string };
 
 function isStringArray(value: unknown): value is string[] {
   return Array.isArray(value) && value.every((entry) => typeof entry === "string");
@@ -321,25 +323,48 @@ export class SqlJourneyDraftRepository implements JourneyDraftRepository {
 export class SqlCommunicationCardRepository implements CommunicationCardRepository {
   constructor(private readonly database: EncryptedDatabaseManager) {}
 
+  private parseRecord(row: CardRow): SavedCommunicationCardRecord {
+    const card = parseJson(row.payload);
+    if (!isCommunicationCard(card) && !isLegacyCommunicationCard(card)) {
+      throw new JourneyStorageError("malformed-payload");
+    }
+    return {
+      id: row.id,
+      journeyId: row.journey_id,
+      card: isCommunicationCard(card)
+        ? card
+        : migrateLegacyCommunicationCard(card as Record<string, never>),
+      savedAt: row.saved_at
+    };
+  }
+
   async list(): Promise<SavedCommunicationCardRecord[]> {
     const connection = await this.database.initialize();
     const rows = await connection.getAllAsync<CardRow>(
       "SELECT id, journey_id, payload, saved_at FROM journey_cards ORDER BY saved_at DESC"
     );
-    return rows.map((row) => {
-      const card = parseJson(row.payload);
-      if (!isCommunicationCard(card) && !isLegacyCommunicationCard(card)) {
-        throw new JourneyStorageError("malformed-payload");
-      }
-      return {
-        id: row.id,
-        journeyId: row.journey_id,
-        card: isCommunicationCard(card)
-          ? card
-          : migrateLegacyCommunicationCard(card as Record<string, never>),
-        savedAt: row.saved_at
-      };
-    });
+    return rows.map((row) => this.parseRecord(row));
+  }
+
+  async listMetadata(): Promise<SavedCommunicationCardMetadata[]> {
+    const connection = await this.database.initialize();
+    const rows = await connection.getAllAsync<CardMetadataRow>(
+      "SELECT id, journey_id, saved_at FROM journey_cards ORDER BY saved_at DESC"
+    );
+    return rows.map((row) => ({
+      id: row.id,
+      journeyId: row.journey_id,
+      savedAt: row.saved_at
+    }));
+  }
+
+  async load(id: string): Promise<SavedCommunicationCardRecord | null> {
+    const connection = await this.database.initialize();
+    const row = await connection.getFirstAsync<CardRow>(
+      "SELECT id, journey_id, payload, saved_at FROM journey_cards WHERE id = ?",
+      id
+    );
+    return row === null ? null : this.parseRecord(row);
   }
 
   async save(record: SavedCommunicationCardRecord): Promise<void> {

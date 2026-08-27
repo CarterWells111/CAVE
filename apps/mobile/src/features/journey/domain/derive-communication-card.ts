@@ -116,7 +116,9 @@ export type ConfirmedCommunicationCard = {
   consentFooter: typeof COMMUNICATION_CARD_CONSENT_FOOTER;
 };
 
-export function selectConfirmedCommunicationCard(draft: JourneyDraft): ConfirmedCommunicationCard {
+export function selectConfirmedCommunicationCard(
+  draft: Pick<JourneyDraft, "communicationCard">
+): ConfirmedCommunicationCard {
   return {
     sections: COMMUNICATION_CARD_SECTION_IDS.flatMap((id) => {
       const field = draft.communicationCard[id];
