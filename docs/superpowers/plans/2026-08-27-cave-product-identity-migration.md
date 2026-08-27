@@ -742,7 +742,21 @@ Require the new feature-branch CI run to pass.
 **Files:**
 - Modify: `docs/superpowers/plans/2026-08-26-00-hackathon-master-roadmap.md`
 
-- [ ] **Step 1: Register the real iPhone interactively**
+- [ ] **Step 0: Run supplemental Expo Go acceptance while Apple Developer membership is pending**
+
+This is an interim real-device check of the JavaScript bundle only. It does not replace the signed iOS Development Build, installation, or Metro-disconnected launch requirements below, and Gate 01B remains `external_pending` until those requirements are observed.
+
+From `apps/mobile`, run the Expo CLI shim explicitly so the existing `start --dev-client` package script remains unchanged:
+
+```powershell
+.\node_modules\.bin\expo.CMD start --go
+```
+
+Open the QR code in the current Expo Go app on the intended iPhone. Record the device model and iOS version from Settings, whether the bundle opens without a red error, and the exact displayed product name, slogan, version, build, and environment. Expo Go may verify the current JavaScript shell and copy, but it cannot prove the configured bundle identifier, Apple signing, provisioning profile, EAS Development Build inclusion, installed standalone app behavior, or launch behavior after Metro stops.
+
+If LAN discovery fails, stop this Metro process and retry the same check once with `--tunnel`; record which transport was actually used. Do not run `device:create` or an EAS build until the Apple Developer membership is active.
+
+- [ ] **Step 1: Register the real iPhone interactively after membership becomes active**
 
 From `apps/mobile`, run:
 

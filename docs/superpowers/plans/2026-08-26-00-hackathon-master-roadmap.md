@@ -244,6 +244,18 @@ Known non-blocking issues: initial sandbox-only Expo cache/network and Wrangler 
 Next plan unlocked: identity migration Task 8 only; Plan 03/04 remain outside this execution scope
 ```
 
+### Expo Go 临时真机验收决策 / Gate 01B（2026-08-27）
+
+```text
+Decision: Apple Developer 会员已付款但仍为 Pending；等待激活期间先用 Expo Go 验收当前 JavaScript bundle，会员激活后继续真实 iOS Development Build
+Current project evidence: EAS project @carter_wells/cave is linked at https://expo.dev/accounts/carter_wells/projects/cave with project ID 1ddc0761-af43-491c-b969-ec2f6c415013; GitHub CI passed at commit 3badcd7583fb35bc5539cf569c6c03e26c03bafd, https://github.com/CarterWells111/CAVE/actions/runs/33034040119
+Interim command: from apps/mobile run .\node_modules\.bin\expo.CMD start --go, then scan the QR code with Expo Go on the intended iPhone
+Interim acceptance scope: observe whether the JS bundle opens without a red error and record the exact product name, slogan, version, build, and environment displayed on the real device
+Non-substitution rule: Expo Go does not prove bundle identifier, Apple Team/signing, device provisioning, Development Build inclusion/installation, or two launches after Metro is stopped
+Gate status: Gate 01A=pass; Gate 01B=external_pending until membership is active and the planned Development Build, installation, and Metro-disconnected launch evidence are complete
+Next action: execute the Expo Go observation now; do not run EAS device registration or build while membership remains Pending
+```
+
 ## P0 唯一归属
 
 | P0 结果 | 唯一负责计划 |
