@@ -231,6 +231,19 @@ Known non-blocking issues: Gate 02B content_review_pending — production valida
 Next plan unlocked: none until content review completes and production validation passes
 ```
 
+### CAVE 产品标识迁移 / Gate 01A、01B、02A—02B（2026-08-27）
+
+```text
+Plan: CR-2026-08-27 / Product identity migration Tasks 1—7
+Commit: 5d23a20 (with task commits 4a9f7c8, b3a5862, 854cc4b, abfc721, 9cfc544; Expo SDK dependency alignment a057e09; design/plan prerequisites e63bd27, 2f97163)
+Commands run: legacy identifier rg scan; corepack pnpm -r list --depth -1; corepack pnpm test:ci-config; corepack pnpm verify:foundation; corepack pnpm --filter @cave/mobile expo:doctor; corepack pnpm --filter @cave/gateway test; corepack pnpm --filter @cave/gateway build; corepack pnpm test:contracts; corepack pnpm test:content; corepack pnpm --filter @cave/scenario-engine test; corepack pnpm --filter @cave/test-fixtures test; corepack pnpm validate:content:draft; corepack pnpm validate:content; git diff --check; git status --short; GitHub CI foundation
+Expected result: active legacy scan has zero matches; all local technical commands exit 0; production validation exits 1 only for the seven unsigned draft entries; feature-branch CI passes
+Observed result: active legacy scan exit 1 with zero matches; 7 approved workspaces listed; ci-config 2 files / 5 tests; exact elevated foundation rerun exit 0 with typecheck/lint pass, 14 files / 68 tests, and Wrangler dry-run 62.70 KiB / gzip 15.40 KiB; Expo Doctor exact network-enabled rerun 21/21; gateway 1/1; contracts 19/19; content 11/11; scenario engine 18/18; fixture/domain 11/11; draft validation passed for 1 course / 1 lesson / 3 scenarios; production validation exit 1 for exactly 7 DRAFT_CONTENT entries including courses.cave-basics and no other error; diff check exit 0; status clean; Gate 01A pass and Gate 02A pass
+Artifacts/build URLs: GitHub CI pass for 5d23a20, https://github.com/CarterWells111/CAVE/actions/runs/33033160786; EAS project/build URL pending
+Known non-blocking issues: initial sandbox-only Expo cache/network and Wrangler AppData/parent-path failures passed on exact authorized reruns; Gate 01B external_pending — EAS project linking, Apple Team/device registration, iPhone Development Build, install, and two Metro-disconnected launches; Gate 02B content_review_pending — seven entries remain draft and Golden outcomes have no content-owner signature
+Next plan unlocked: identity migration Task 8 only; Plan 03/04 remain outside this execution scope
+```
+
 ## P0 唯一归属
 
 | P0 结果 | 唯一负责计划 |
