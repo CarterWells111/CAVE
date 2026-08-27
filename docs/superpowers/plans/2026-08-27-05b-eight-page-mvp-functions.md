@@ -192,3 +192,19 @@ Page 7/8 不新增第二套生成器，必须调用 05A 的 `buildChecklist()` �
 - [ ] branch、HEAD、独立英文 commits 与 git status。
 
 **解锁下一计划：** Gate 05B 与 Plan 05 联合 Gate 的本地部分通过后解锁 Plan 06；发布前仍需补齐真实 iPhone 验收。
+
+## 缩减范围执行证据（2026-08-27）
+
+```text
+Branch: codex/plan-05a-05b
+Commits: 12a83be, 3e28838, 7420113, 407b979, 14c029c, 186752b, cd98348, d8fd1be
+Implemented: draft local catalogs, explicit PresetPracticeEngine, idempotent points, page controllers, basic Page 1—8 components, deterministic checklist/card, explicit local save/copy/display contracts, and zero-fetch offline integration
+Fresh SDK 54 mobile evidence: typecheck pass; lint pass; Expo Doctor 18/18; 26 suites / 107 tests pass
+Fresh content evidence: 3 files / 19 tests pass; draft validation pass; production validation exits 1 only for 23 genuine DRAFT_CONTENT journey entries
+Fresh affected Plan 02—04 evidence: contracts 4/19; scenario 2/18; fixtures 2/11; gateway 16/160; safety subset 4/53; CI config 5/26; typecheck/lint pass; Wrangler dry-run 694.95 KiB / gzip 114.82 KiB
+Boundary scans: journey GatewayClient/ModelProvider/fetch scan has zero matches; production-only readiness/score/percentage/cloudEnabled scan has zero matches
+Gate 05B: in_progress — local core and test-harness flow pass, but production routes still use hard-coded props/no-op callbacks; native service/repository/controller composition, recovered form state, clipboard failure state, and route-level resume/guard/back behavior remain unwired
+Main sync: origin/main ca3152c integrated non-destructively by merge commit 553c890; corepack pnpm 10.34.5 frozen install pass on the SDK 54 lockfile
+Merge adjustment: ca58132 preserves the seven reviewed Plan 02 entries while asserting exactly 23 journey-only DRAFT_CONTENT issues
+External state: journey content_review_pending; Plan 04 Golden evaluator blocked; Apple/signing/real-iPhone SQLCipher evidence external_pending; CodeQL upload disabled_manually for the private-repository plan and is not a local code blocker; Plan 06 and Plan 07 locked
+```

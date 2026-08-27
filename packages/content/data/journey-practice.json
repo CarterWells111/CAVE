@@ -1,0 +1,17 @@
+{
+  "version": "draft-v1",
+  "scripted": true,
+  "phrases": [
+    { "id": "draft-phrase-slow-down", "intent": "slow-down", "order": 1, "text": "我们可以慢一点吗？", "reviewStatus": "draft" },
+    { "id": "draft-phrase-adjust-touch", "intent": "adjust-touch", "order": 2, "text": "我想换一种触碰方式。", "reviewStatus": "draft" },
+    { "id": "draft-phrase-pause-and-decide", "intent": "pause-and-decide", "order": 3, "text": "我想先停一下，再决定。", "reviewStatus": "draft" },
+    { "id": "draft-phrase-stop-current", "intent": "stop-current-action", "order": 4, "text": "我想停下现在这件事。", "reviewStatus": "draft" },
+    { "id": "draft-phrase-another-closeness", "intent": "choose-another-closeness", "order": 5, "text": "我们换一种亲近方式吧。", "reviewStatus": "draft" },
+    { "id": "draft-phrase-pause-to-feel", "intent": "pause-to-feel", "order": 6, "text": "给我一点时间感受一下。", "reviewStatus": "draft" }
+  ],
+  "responses": [
+    { "id": "draft-response-supportive", "branch": "supportive", "text": "好，我们按妳舒服的节奏来。", "scripted": true, "safeTerminal": false, "reviewStatus": "draft" },
+    { "id": "draft-response-disappointed", "branch": "disappointed-follow-up", "text": "草稿：练习再次清楚表达边界。", "scripted": true, "safeTerminal": false, "reviewStatus": "draft" },
+    { "id": "draft-response-ignores-pause", "branch": "ignores-pause", "text": "结束练习；优先离开并寻求可信支持。", "scripted": true, "safeTerminal": true, "reviewStatus": "draft" }
+  ]
+}

@@ -233,3 +233,18 @@ export interface JourneyApplicationService {
 - [ ] branch、HEAD、独立英文 commits 和 clean/deliberate git status。
 
 **解锁下一计划：** Gate 05A `pass` 后解锁 Plan 05B。Plan 06 仍保持锁定。
+
+## 执行证据（2026-08-27）
+
+```text
+Branch: codex/plan-05a-05b
+Original baseline: 2436773 from merged main; non-destructively synced to origin/main ca3152c through merge commit 553c890
+Commits: 43afb05, 37581ca, 62de80f, 54e2be7, 995400a, 3b5750c, d76f7a8, 0d86225
+Mobile core at initial checkpoint: typecheck pass; lint pass; 19 suites / 66 tests pass
+Fresh SDK 54 shared mobile verification after main sync: typecheck pass; lint pass; Expo Doctor 18/18; 26 suites / 107 tests pass
+Safety regression: 4 files / 53 tests pass
+Journey AI/network scan: exit 1, zero matches
+Gate 05A: in_progress — domain/reducer/builders/SQLCipher repository/application/provider shells pass, but production routes do not yet mount the provider/service composition root or consume resume/guard/back navigation
+Dependency baseline: corepack pnpm 10.34.5 frozen install pass; installed Expo 54.0.37, React Native 0.81.5 and React 19.1.0 verified from node_modules
+External state: Plan 04 Golden evaluator blocked; Apple/signing/real-iPhone evidence external_pending; Plan 06 and Plan 07 locked
+```

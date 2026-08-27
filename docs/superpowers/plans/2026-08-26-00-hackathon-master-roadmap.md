@@ -72,9 +72,9 @@ Plan 03 与 Plan 04 可在 Plan 02 完成后并行。八页 MVP 不消费 Plan 0
 | 02 | `2026-08-26-02-contracts-content-domain.md` | Engineer + Content | 3-4h | Gate 01A pass | `complete` | Package shells、内容草稿 | v1 contracts、内容校验、状态机 | Gate 02A `pass`；Gate 02B `pass` | `9d48b68`, `73d28d2`, `a51a8a1`, `05ce733`, `ca6586b`, `cc1495e`, `32123c5`, `a1c03e8`, `abb0fd4` |
 | 03 | `2026-08-26-03-ai-gateway-prompt-spec.md` | Engineer | 4-5h | 02 complete | `complete` | v1 contracts、scenario fixtures | routes、providers、prompts | local provider/route/prompt/evidence suites `pass`；live API credential not required for P0 | `3e83282`, `fbbb749`, `fe2c024`, `4c96f5d`, `aed8270` |
 | 04 | `2026-08-26-04-security-privacy-code-hardening.md` | Engineer + Content | 4h | 02 complete | `blocked` | v1 safety/storage shapes | encrypted repo、安全策略、CI security | local storage/guard/log/bundle checks `pass`；Golden evaluator integration `blocked`；native checks `external_pending` | `dc90739`, `6f642c9`, `3c875c1`, `dbc085e`, `371c905` |
-| 05 | `2026-08-26-05-mobile-mvp-integration.md` | Engineer | 6-7h | 02 complete；04 local storage pass | `not_started` | 八页设计、安全存储、local content | 八页本地端到端闭环 | Gate 05A/05B/05C | 执行后填写 |
-| 05A | `2026-08-27-05a-eight-page-mvp-framework.md` | Engineer | 2.5-3h | 02 complete；04 local storage pass | `not_started` | storage/content 基线 | routes、draft、repository、同步框架 | domain/storage/route evidence | 执行后填写 |
-| 05B | `2026-08-27-05b-eight-page-mvp-functions.md` | Engineer + Content | 3.5-4h | Gate 05A pass | `not_started` | 冻结接口、local catalogs | 八页基础功能、预设练习、卡片 | full-flow/offline evidence | 执行后填写 |
+| 05 | `2026-08-26-05-mobile-mvp-integration.md` | Engineer | 6-7h | 02 complete；04 local storage pass | `in_progress` | 八页设计、安全存储、local content | 八页本地端到端闭环 | 05A/05B local core pass；production composition pending；05C pending | `43afb05`…`d8fd1be` |
+| 05A | `2026-08-27-05a-eight-page-mvp-framework.md` | Engineer | 2.5-3h | 02 complete；04 local storage pass | `in_progress` | storage/content 基线 | routes、draft、repository、同步框架 | mobile 25 suites / 106 tests；core pass；route composition/guard consumption pending | `43afb05`, `37581ca`, `62de80f`, `54e2be7`, `995400a`, `3b5750c`, `d76f7a8`, `0d86225` |
+| 05B | `2026-08-27-05b-eight-page-mvp-functions.md` | Engineer + Content | 3.5-4h | 05A core interfaces | `in_progress` | 冻结接口、local catalogs | 八页基础功能、预设练习、卡片 | local harness/offline pass；production routes/native adapters pending | `12a83be`, `3e28838`, `7420113`, `407b979`, `14c029c`, `186752b`, `cd98348`, `d8fd1be` |
 | 06 | `2026-08-26-06-product-completion-ux.md` | Both | 5h | Gate 05B pass | `not_started` | 可运行八页闭环、最终内容 | 完整 UI、医学图示、可访问性、披露 | state/accessibility matrix | 执行后填写 |
 | 07 | `2026-08-26-07-quality-performance-demo-hardening.md` | Both | 3-4h | 06、Gate 01B、Plan 04 final Gate complete | `not_started` | feature-frozen build | RC、三轮彩排 | test/rehearsal matrix | 执行后填写 |
 | 08 | `2026-08-26-08-release-demo-submissions.md` | Both | 3h | 07 complete | `not_started` | verified RC | build、gateway、四层降级、双提交 | URLs、manifest、checklists | 执行后填写 |
@@ -333,6 +333,34 @@ Plan 03 status: complete locally with deterministic MockProvider and mocked-fetc
 Plan 04 status: blocked — createTurnSafetyEvaluator still classifies the Golden clear-boundary text as uncertain/safety_stop instead of safe/resolution after two root-cause fix rounds; no third masking fix was attempted
 External pending: Gate 01B Apple membership/Development Build/iPhone evidence; SQLCipher/no-key and delete-all cold-start checks on a real iPhone; deployed Worker canary-log inspection; repository Code Scanning and Secret Scanning settings; CodeQL extracted/scanned 95/95 TypeScript, 2/2 Actions, and 2/2 JavaScript files but GitHub rejected SARIF upload because Code Scanning is disabled; npm production audit pending explicit approval to send package/version metadata to the public npm advisory endpoint
 Next plan unlocked: Plan 05A/05B local implementation may proceed because the Plan 04 storage/key/delete-all local baseline passed; the Golden evaluator, native and external evidence continue to block Plan 07/release
+```
+
+### Plan 05A / Gate 05A（2026-08-27）
+
+```text
+Plan: 05A Eight-page MVP framework
+Branch: codex/plan-05a-05b
+Original baseline: 2436773; existing Plan05 commits later preserved while origin/main ca3152c was integrated through non-destructive merge commit 553c890
+Commits: 43afb05, 37581ca, 62de80f, 54e2be7, 995400a, 3b5750c
+Commands run: corepack pnpm --filter @cave/mobile typecheck; corepack pnpm --filter @cave/mobile lint; corepack pnpm --filter @cave/mobile test; corepack pnpm test:safety; rg -n "GatewayClient|ModelProvider|/v1/practice|fetch\(" apps/mobile/app/journey apps/mobile/src/features/journey; git diff --check
+Expected result: technical commands exit 0; import scan exits 1 with zero matches
+Observed result: mobile typecheck/lint pass; 19 suites / 66 tests pass; safety 4 files / 53 tests pass; exact journey import scan exits 1 with zero matches; diff check passes
+Known non-blocking issues: Plan 04 Golden evaluator remains blocked; Apple membership/signing and real-iPhone SQLCipher/delete-all evidence remain external_pending; these do not affect the local-only journey framework
+Gate status correction after independent review: Gate 05A in_progress; local core evidence passes, but production routes do not consume the service/provider guard and resume/back navigation. Gate 05B implementation proceeded only in the user-approved reduced local-core scope. Plan 06 and Plan 07 remain locked.
+```
+
+### Plan 05B / reduced local-core evidence（2026-08-27）
+
+```text
+Branch: codex/plan-05a-05b
+Commits: 12a83be, 3e28838, 7420113, 407b979, 14c029c, 186752b, cd98348, d8fd1be; framework hardening d76f7a8, 0d86225
+Fresh SDK 54 evidence after main sync: corepack pnpm 10.34.5 frozen install pass; installed Expo 54.0.37 / React Native 0.81.5 / React 19.1.0; Expo Doctor 18/18; mobile typecheck/lint pass and 26 suites / 107 tests; content 3 files / 19 tests and draft validation pass; production validation reports exactly 23 DRAFT_CONTENT entries; contracts 4/19; scenario 2/18; fixtures 2/11; gateway 16/160; safety 4/53; CI config 5/26; Wrangler no-deploy dry-run 694.95 KiB / gzip 114.82 KiB
+Boundary evidence: journey AI/network scan zero matches; production-only readiness/score/percentage/cloudEnabled scan zero matches; cloud save remains disabled coming-soon
+Gate status: Gate 05B in_progress — local catalogs, preset engine, points, controllers, basic components and offline harness pass; production route composition, native clipboard recovery, recovered form hydration and route-level resume/guard/back integration remain pending
+Main sync: origin/main ca3152c integrated through merge commit 553c890 without reset, overwrite, PR or SDK 57 restoration
+Merge adjustment: ca58132 reconciles main's seven reviewed Plan 02 entries with the 23 deliberately unreviewed journey drafts
+External pending: journey content review; Plan 04 Golden evaluator blocked; Apple/signing/real-iPhone SQLCipher evidence external_pending; CodeQL upload disabled_manually and not a local code blocker
+Next plan unlocked: none; Plan 06 and Plan 07 remain locked
 ```
 
 ## P0 唯一归属

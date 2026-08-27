@@ -1,0 +1,11 @@
+[
+  { "id": "draft-expect-rest", "group": "expectation", "order": 1, "label": "好好休息", "sourceIds": [], "reviewStatus": "draft" },
+  { "id": "draft-expect-talk", "group": "expectation", "order": 2, "label": "多一点交流", "sourceIds": [], "reviewStatus": "draft" },
+  { "id": "draft-concern-pressure", "group": "concern", "order": 3, "label": "担心被催促", "sourceIds": ["draft-source-consent"], "reviewStatus": "draft" },
+  { "id": "draft-concern-space", "group": "concern", "order": 4, "label": "需要自己的空间", "sourceIds": [], "reviewStatus": "draft" },
+  { "id": "draft-kissing", "group": "behavior", "order": 5, "label": "亲吻", "sourceIds": [], "reviewStatus": "draft" },
+  { "id": "draft-penetrative-sex", "group": "behavior", "order": 6, "label": "插入式性行为", "sourceIds": ["draft-source-sexual-health"], "reviewStatus": "draft" },
+  { "id": "draft-motivation-curious", "group": "motivation", "order": 7, "label": "想了解自己的感受", "sourceIds": [], "reviewStatus": "draft" },
+  { "id": "draft-comfort-privacy", "group": "comfort", "order": 8, "label": "保有隐私", "sourceIds": [], "reviewStatus": "draft" },
+  { "id": "draft-health-sexual-health", "group": "health", "order": 9, "label": "查看相关健康准备", "sourceIds": ["draft-source-sexual-health"], "reviewStatus": "draft" }
+]

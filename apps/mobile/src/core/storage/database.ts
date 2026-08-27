@@ -1,5 +1,5 @@
 import type { DatabaseSecretRepository } from "./key-store";
-import { CURRENT_SCHEMA_VERSION, SCHEMA_V1 } from "./migrations";
+import { CURRENT_SCHEMA_VERSION, SCHEMA_V1, SCHEMA_V2 } from "./migrations";
 
 export interface DatabaseConnection {
   execAsync(sql: string): Promise<void>;
@@ -40,6 +40,13 @@ export class InvalidDatabaseKeyError extends Error {
   }
 }
 
+export class UnsupportedDatabaseVersionError extends Error {
+  constructor(version: number) {
+    super(`Unsupported database version: ${version}`);
+    this.name = "UnsupportedDatabaseVersionError";
+  }
+}
+
 function isSqlCipherKeyMismatch(error: unknown): boolean {
   if (error instanceof InvalidDatabaseKeyError) return true;
   if (!(error instanceof Error)) return false;
@@ -71,9 +78,14 @@ export function createEncryptedDatabaseManager({
       await opened.execAsync("PRAGMA journal_mode = WAL");
       const version = await opened.getFirstAsync<UserVersionRow>("PRAGMA user_version");
       const currentVersion = version?.user_version ?? 0;
+      if (currentVersion > CURRENT_SCHEMA_VERSION) {
+        throw new UnsupportedDatabaseVersionError(currentVersion);
+      }
+      if (currentVersion < 1) {
+        await applyMigration(opened, SCHEMA_V1, 1);
+      }
       if (currentVersion < CURRENT_SCHEMA_VERSION) {
-        await opened.execAsync(SCHEMA_V1);
-        await opened.execAsync("PRAGMA user_version = 1");
+        await applyMigration(opened, SCHEMA_V2, 2);
       }
       return opened;
     } catch (error) {
@@ -114,4 +126,20 @@ export function createEncryptedDatabaseManager({
     },
     removeDatabaseFiles: () => files.removeDatabaseFiles(databaseName)
   };
+}
+
+async function applyMigration(
+  connection: DatabaseConnection,
+  schema: string,
+  version: number
+): Promise<void> {
+  await connection.execAsync("BEGIN IMMEDIATE");
+  try {
+    await connection.execAsync(schema);
+    await connection.execAsync(`PRAGMA user_version = ${version}`);
+    await connection.execAsync("COMMIT");
+  } catch (error) {
+    await connection.execAsync("ROLLBACK");
+    throw error;
+  }
 }
