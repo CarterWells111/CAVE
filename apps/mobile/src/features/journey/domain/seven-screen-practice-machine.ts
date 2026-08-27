@@ -145,7 +145,25 @@ export function chooseOptionalBranch(
   branch: OptionalPracticeBranch
 ): SevenScreenPracticeState {
   requireStage(state, ["optional-branch", "optional-response"]);
-  if (branch === "skip") return { ...state, stage: "completed" };
+  if (branch === "skip") {
+    if (state.stage !== "optional-branch") throw new Error("practice-branch-order");
+    return { ...state, stage: "completed" };
+  }
+  const expectedBranch = state.stage === "optional-branch"
+    ? "disappointed-but-stops"
+    : state.optionalBranch === "disappointed-but-stops"
+      ? "continues-pressure"
+      : state.optionalBranch === "continues-pressure"
+        ? "ignores-or-blocks-exit"
+        : null;
+  if (branch !== expectedBranch) throw new Error("practice-branch-order");
+  if (
+    state.stage === "optional-response"
+    && (state.optionalUserTexts?.length ?? 0) > 0
+    && state.optionalUserResponse === undefined
+  ) {
+    throw new Error("optional-practice-response-required");
+  }
   const scenario = catalog.safetyBranches.find((candidate) => candidate.branch === branch);
   if (scenario === undefined) throw new Error(`missing-safety-branch:${branch}`);
   const resetState = { ...state };

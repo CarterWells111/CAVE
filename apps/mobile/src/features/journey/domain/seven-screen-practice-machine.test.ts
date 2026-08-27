@@ -136,10 +136,37 @@ test("requires a selected optional response before completing a non-terminal bra
   expect(() => completePractice(state)).toThrow("optional-practice-response-required");
 });
 
+test("enforces disappointed then pressure before the safety terminal", () => {
+  let state = selectPracticeNeed(selectPracticeBehavior(completeMirror(beginPractice(catalog())), null), "stop-current-action");
+  state = showRespectfulResponse(state, catalog());
+  state = chooseAftercare(state, "end-night");
+
+  expect(() => chooseOptionalBranch(state, catalog(), "continues-pressure"))
+    .toThrow("practice-branch-order");
+  expect(() => chooseOptionalBranch(state, catalog(), "ignores-or-blocks-exit"))
+    .toThrow("practice-branch-order");
+
+  state = chooseOptionalBranch(state, catalog(), "disappointed-but-stops");
+  expect(() => chooseOptionalBranch(state, catalog(), "continues-pressure"))
+    .toThrow("optional-practice-response-required");
+  state = selectOptionalUserResponse(state, "one");
+  state = chooseOptionalBranch(state, catalog(), "continues-pressure");
+  expect(state).toMatchObject({ stage: "optional-response", optionalBranch: "continues-pressure" });
+  expect(() => chooseOptionalBranch(state, catalog(), "ignores-or-blocks-exit"))
+    .toThrow("optional-practice-response-required");
+  state = selectOptionalUserResponse(state, "stop");
+  state = chooseOptionalBranch(state, catalog(), "ignores-or-blocks-exit");
+  expect(state).toMatchObject({ stage: "safety-resources", safetyEnded: true });
+});
+
 test("ends ordinary language practice immediately when exit is ignored or blocked", () => {
   let state = selectPracticeNeed(selectPracticeBehavior(completeMirror(beginPractice(catalog())), null), "stop-current-action");
   state = showRespectfulResponse(state, catalog());
   state = chooseAftercare(state, "end-night");
+  state = chooseOptionalBranch(state, catalog(), "disappointed-but-stops");
+  state = selectOptionalUserResponse(state, "one");
+  state = chooseOptionalBranch(state, catalog(), "continues-pressure");
+  state = selectOptionalUserResponse(state, "stop");
   state = chooseOptionalBranch(state, catalog(), "ignores-or-blocks-exit");
 
   expect(state).toMatchObject({ stage: "safety-resources", safetyEnded: true });
