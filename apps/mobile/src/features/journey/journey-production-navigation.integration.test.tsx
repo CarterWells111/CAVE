@@ -138,28 +138,32 @@ test("the production Welcome route hides restart rejection details and allows re
 
 test("the production Welcome route keeps adult confirmation pending and blocks duplicate presses", async () => {
   const journeyRuntime = runtime();
-  const entering = deferred<"overnight" | "underage-exit">();
-  const enterWelcome = jest.spyOn(journeyRuntime.controller, "enterWelcome")
-    .mockReturnValue(entering.promise);
+  const savingPreference = deferred<void>();
+  const setAddressPreference = jest.spyOn(journeyRuntime.controller, "setAddressPreference")
+    .mockReturnValue(savingPreference.promise);
   const view = await openRoute(<WelcomeRoute />, journeyRuntime);
 
-  const adultAction = screen.getByRole("button", { name: "我已满18岁" });
-  fireEvent.press(adultAction);
-  fireEvent.press(adultAction);
+  fireEvent.press(screen.getByRole("button", { name: "我已满 18 岁，开始探索" }));
+  fireEvent.press(screen.getByRole("radio", { name: "你｜日常、自然，不限定性别。" }));
+  const saveAction = screen.getByRole("button", { name: "这样称呼我" });
+  fireEvent.press(saveAction);
+  fireEvent.press(saveAction);
 
-  expect(enterWelcome).toHaveBeenCalledTimes(1);
-  expect(screen.getByText("正在继续…")).toBeTruthy();
-  expect(screen.getByRole("button", { name: "正在继续…" }).props.accessibilityState).toEqual(
+  await waitFor(() => expect(setAddressPreference).toHaveBeenCalledTimes(1));
+  expect(screen.getByText("正在保存称呼…")).toBeTruthy();
+  expect(screen.getByRole("button", { name: "正在保存称呼…" }).props.accessibilityState).toEqual(
     expect.objectContaining({ busy: true, disabled: true })
   );
 
+  await act(async () => { savingPreference.resolve(); });
+  expect(await screen.findByText("开始前，想告诉你")).toBeTruthy();
   view.unmount();
-  entering.resolve("overnight");
 });
 
 test("production back navigation can edit Page 4 and recompute derived output without losing user text", async () => {
   const journeyRuntime = runtime();
   await journeyRuntime.service.confirmAdult();
+  await journeyRuntime.controller.setBehaviorAttitude("behavior-hug", "looking-forward");
   await journeyRuntime.controller.setBehaviorAttitude("draft-kissing", "unsure");
   await journeyRuntime.controller.editCommunicationCard(
     "communication-decide-in-moment",
@@ -178,8 +182,9 @@ test("production back navigation can edit Page 4 and recompute derived output wi
   view.unmount();
 
   view = await openRoute(<BehaviorMapRoute />, journeyRuntime);
-  expect(screen.getAllByRole("radio", { name: "接吻：这次不要" })).toHaveLength(1);
-  fireEvent.press(screen.getByRole("radio", { name: "接吻：这次不要" }));
+  fireEvent.press(screen.getByRole("radio", { name: "行为地图，第 2 项，共 9 项：接吻" }));
+  expect(screen.getAllByRole("radio", { name: "接吻：这不是我这次想要的" })).toHaveLength(1);
+  fireEvent.press(screen.getByRole("radio", { name: "接吻：这不是我这次想要的" }));
 
   await waitFor(() => expect(journeyRuntime.service.getSnapshot()?.behaviorAttitudes["draft-kissing"])
     .toBe("not-this-time"));
@@ -190,7 +195,5 @@ test("production back navigation can edit Page 4 and recompute derived output wi
   expect(journeyRuntime.service.getSnapshot()?.communicationCard["communication-decide-in-moment"].generatedText)
     .not.toBe(originalGenerated);
 
-  fireEvent.press(screen.getByText("继续"));
-  await waitFor(() => expect(mockRouter.replace).toHaveBeenCalledWith("/journey/reflection"));
   view.unmount();
 });

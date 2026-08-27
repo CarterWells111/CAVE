@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor, type RenderAPI } from "@testing-library/react-native";
+import { fireEvent, render, screen, waitFor, within, type RenderAPI } from "@testing-library/react-native";
 import type { ReactElement } from "react";
 
 import BehaviorMapRoute from "../../../app/journey/behavior-map";
@@ -72,7 +72,7 @@ test("the production routes expose all seven screens offline without an eighth r
       await journeyRuntime.service.navigateTo(pageId);
       view = await openRoute(route, journeyRuntime);
       expect(screen.getByTestId(`journey-page-${pageId}`)).toBeTruthy();
-      expect(screen.getByText(`${pageNumber} / 7`)).toBeTruthy();
+      expect(within(screen.getByTestId("progress-center")).getByText(`${pageNumber} / 7`)).toBeTruthy();
       expect(screen.queryByText(/8\s*\/\s*8|共\s*8\s*页/u)).toBeNull();
       expect(screen.getByRole("button", { name: "退出旅程" })).toBeTruthy();
       view.unmount();
@@ -90,7 +90,8 @@ test("the production underage route exits without creating an active draft", asy
   const journeyRuntime = runtime();
   const view = await openRoute(<WelcomeRoute />, journeyRuntime);
 
-  fireEvent.press(screen.getByText("我未满18岁"));
+  fireEvent.press(screen.getByText("我未满 18 岁"));
+  fireEvent.press(screen.getByText("退出体验"));
 
   await waitFor(() => expect(mockRouter.replace).toHaveBeenCalledWith("/journey/underage-exit"));
   expect(await journeyRuntime.drafts.loadActive()).toBeNull();
@@ -104,8 +105,11 @@ test("clipboard failure is structured and visible on the production final screen
   await journeyRuntime.service.navigateTo("final-preparation");
   const view = await openRoute(<FinalPreparationRoute />, journeyRuntime);
 
-  fireEvent.press(screen.getByText("复制当前卡片"));
+  fireEvent.press(screen.getByText("复制已确认内容"));
+  expect(screen.getByText("请先查看最终预览，再次确认后复制。")).toBeTruthy();
+  expect(clipboard.setStringAsync).not.toHaveBeenCalled();
+  fireEvent.press(screen.getByText("复制已确认内容"));
 
-  expect(await screen.findByText("复制失败，请重试")).toBeTruthy();
+  expect(await screen.findByText("复制失败，请重试或手写记录。")).toBeTruthy();
   view.unmount();
 });
