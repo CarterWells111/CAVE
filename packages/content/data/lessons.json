@@ -24,7 +24,8 @@
       "scenario-preview-space",
       "scenario-preview-request"
     ],
-    "reviewStatus": "draft",
+    "reviewStatus": "reviewed",
+    "reviewedAt": "2026-08-27",
     "sourceRefs": ["source-editorial-draft"]
   }
 ]

@@ -4,7 +4,8 @@
     "version": 1,
     "title": "身体与声音基础",
     "moduleIds": ["lesson-boundaries"],
-    "reviewStatus": "draft",
+    "reviewStatus": "reviewed",
+    "reviewedAt": "2026-08-27",
     "sourceRefs": ["source-editorial-draft"]
   }
 ]

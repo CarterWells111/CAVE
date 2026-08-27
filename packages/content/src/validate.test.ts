@@ -27,9 +27,35 @@ describe("versioned content validation", () => {
     expect(() => validateCatalog(loadCatalog(), { mode: "draft" })).not.toThrow();
   });
 
-  it("rejects draft content in production", () => {
+  it("accepts all seven content-owner reviewed entries in production", () => {
+    const catalog = loadCatalog();
+    const reviewableEntries = [
+      ...catalog.courses,
+      ...catalog.lessons,
+      ...catalog.scenarios,
+      ...catalog.guide.categories
+    ];
+
+    expect(reviewableEntries).toHaveLength(7);
     expect(
-      issueCodes(() => validateCatalog(loadCatalog(), { mode: "production" }))
+      reviewableEntries.every(
+        (entry) =>
+          entry.reviewStatus === "reviewed" &&
+          entry.reviewedAt === "2026-08-27"
+      )
+    ).toBe(true);
+    expect(() =>
+      validateCatalog(catalog, { mode: "production" })
+    ).not.toThrow();
+  });
+
+  it("rejects draft content in production", () => {
+    const catalog = loadCatalog();
+    catalog.courses[0]!.reviewStatus = "draft";
+    delete catalog.courses[0]!.reviewedAt;
+
+    expect(
+      issueCodes(() => validateCatalog(catalog, { mode: "production" }))
     ).toContain("DRAFT_CONTENT");
   });
 

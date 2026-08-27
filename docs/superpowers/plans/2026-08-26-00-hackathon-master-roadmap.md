@@ -61,7 +61,7 @@ Plan 03 与 Plan 04 可在 Plan 02 完成后并行；其余均是顺序验收门
 | ID | 文件 | 负责人 | 工时 | 解锁条件 | 状态 | 输入 | 输出 | 验收证据 | Git commit |
 |---|---|---|---:|---|---|---|---|---|---|
 | 01 | `2026-08-26-01-repository-infrastructure-ios-build.md` | Engineer | 4h | 无 | `blocked` | 空仓库、账号、iPhone | workspace、CI、dev build、`/health` | Gate 01A `pass`；Gate 01B `external_pending` | `17554bb`, `44a3609`, `f547cad`, `b21d9d8`, `03c1808`, `1fb7b44` |
-| 02 | `2026-08-26-02-contracts-content-domain.md` | Engineer + Content | 3-4h | Gate 01A pass | `blocked` | Package shells、内容草稿 | v1 contracts、内容校验、状态机 | Gate 02A `pass`；Gate 02B `content_review_pending` | `9d48b68`, `73d28d2`, `a51a8a1`, `05ce733`, `ca6586b`, `cc1495e`, `32123c5` |
+| 02 | `2026-08-26-02-contracts-content-domain.md` | Engineer + Content | 3-4h | Gate 01A pass | `complete` | Package shells、内容草稿 | v1 contracts、内容校验、状态机 | Gate 02A `pass`；Gate 02B `pass` | `9d48b68`, `73d28d2`, `a51a8a1`, `05ce733`, `ca6586b`, `cc1495e`, `32123c5` |
 | 03 | `2026-08-26-03-ai-gateway-prompt-spec.md` | Engineer | 4-5h | 02 complete | `not_started` | v1 contracts、scenario fixtures | routes、providers、prompts | provider/route tests | 执行后填写 |
 | 04 | `2026-08-26-04-security-privacy-code-hardening.md` | Engineer + Content | 4h | 02 complete | `not_started` | v1 safety/storage shapes | encrypted repo、安全策略、CI security | device/log/scan evidence | 执行后填写 |
 | 05 | `2026-08-26-05-mobile-mvp-integration.md` | Engineer | 6-7h | 03、04 complete | `not_started` | gateway、安全存储、内容 | 端到端移动闭环 | iPhone integration evidence | 执行后填写 |
@@ -254,6 +254,23 @@ Interim acceptance scope: observe whether the JS bundle opens without a red erro
 Non-substitution rule: Expo Go does not prove bundle identifier, Apple Team/signing, device provisioning, Development Build inclusion/installation, or two launches after Metro is stopped
 Gate status: Gate 01A=pass; Gate 01B=external_pending until membership is active and the planned Development Build, installation, and Metro-disconnected launch evidence are complete
 Next action: execute the Expo Go observation now; do not run EAS device registration or build while membership remains Pending
+```
+
+### Plan 02 / Gate 02B 内容负责人审核（2026-08-27）
+
+```text
+Plan: 02 Contracts/Content/Domain
+Review authority: the user explicitly confirmed content-owner signing authority; no reviewer name was recorded
+Approved production entries: cave-basics; lesson-boundaries; scenario-boundary; scenario-preview-space; scenario-preview-request; guide-boundaries; guide-next-steps
+Approved related fixtures: quiz-boundary-clear; quiz-boundary-next-step; golden-clear-boundary; golden-danger-stop; golden-violence-stop; golden-self-harm-stop; golden-medical-stop; golden-minor-stop; four-dimension debrief expectations
+Source decision: source-editorial-draft is an approved internal original-editorial source identifier
+Scope boundary: approval is for the current app display and flow framework; safety Golden cases are synthetic stop-routing expectations, not medical, legal, or crisis-response conclusions
+Requested content changes: none
+Review date applied to the seven production entries: 2026-08-27
+Commands run: corepack pnpm validate:content:draft; corepack pnpm validate:content; corepack pnpm test:contracts; corepack pnpm test:content; corepack pnpm --filter @cave/scenario-engine test; corepack pnpm --filter @cave/test-fixtures test; corepack pnpm typecheck; corepack pnpm lint
+Observed result: draft and production validation exit 0 for 1 course / 1 lesson / 3 scenarios; contracts 19/19; content 12/12; scenario engine 18/18; fixture/domain 11/11; workspace typecheck and lint exit 0
+Gate result: Gate 02B pass
+Next plan unlocked: Plan 03 and Plan 04; neither is executed by this review
 ```
 
 ## P0 唯一归属
