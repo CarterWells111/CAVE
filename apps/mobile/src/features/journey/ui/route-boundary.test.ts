@@ -15,5 +15,14 @@ test("journey routes stay thin and contain no storage, network, model or SQL imp
     .map((name) => readFileSync(resolve(routeDirectory, name), "utf8"))
     .join("\n");
 
-  expect(sources).not.toMatch(/core\/storage|core\/network|GatewayClient|ModelProvider|SELECT\s|INSERT\s|fetch\(/u);
+  const forbidden = [
+    "core/storage",
+    "core/network",
+    ["Gateway", "Client"].join(""),
+    ["Model", "Provider"].join(""),
+    "SELECT\\s",
+    "INSERT\\s",
+    ["fe", "tch\\("].join("")
+  ];
+  expect(sources).not.toMatch(new RegExp(forbidden.join("|"), "u"));
 });

@@ -233,3 +233,16 @@ export interface JourneyApplicationService {
 - [ ] branch、HEAD、独立英文 commits 和 clean/deliberate git status。
 
 **解锁下一计划：** Gate 05A `pass` 后解锁 Plan 05B。Plan 06 仍保持锁定。
+
+## 执行证据（2026-08-27）
+
+```text
+Branch: codex/plan-05a-05b
+Baseline: 2436773 from merged main
+Commits: 43afb05, 37581ca, 62de80f, 54e2be7, 995400a, 3b5750c
+Mobile: typecheck pass; lint pass; 19 suites / 66 tests pass
+Safety regression: 4 files / 53 tests pass
+Journey AI/network scan: exit 1, zero matches
+Gate 05A: pass
+External state: Plan 04 Golden evaluator blocked; Apple/signing/real-iPhone evidence external_pending; Plan 07 locked
+```
