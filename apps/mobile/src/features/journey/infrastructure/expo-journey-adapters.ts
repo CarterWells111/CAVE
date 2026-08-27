@@ -86,6 +86,15 @@ function toFileUri(path: string): string {
   throw new Error("Expo SQLite default database directory must be an absolute path");
 }
 
+function isExpoFileNotFoundError(error: unknown): boolean {
+  if (typeof error !== "object" || error === null) return false;
+  const candidate = error as { code?: unknown; message?: unknown };
+  return candidate.code === "ERR_UNABLE_TO_DELETE"
+    && typeof candidate.message === "string"
+    && /Unable to delete file or directory: (?:path|uri '[^'\r\n]+') does not exist$/u
+      .test(candidate.message);
+}
+
 export function createExpoJourneyAdapters(
   overrides: Partial<ExpoJourneyAdapterDependencies> = {}
 ): ExpoJourneyAdapters {
@@ -105,11 +114,10 @@ export function createExpoJourneyAdapters(
 
   function deleteIfPresent(name: string): void {
     const file = databaseFile(name);
-    if (!file.exists) return;
     try {
       file.delete();
     } catch (error) {
-      if (file.exists) throw error;
+      if (!isExpoFileNotFoundError(error)) throw error;
     }
   }
 

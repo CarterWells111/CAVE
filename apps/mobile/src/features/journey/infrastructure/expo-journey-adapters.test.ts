@@ -1,6 +1,10 @@
 import { SECRET_NAMES } from "../../../core/storage/key-store";
 import { createExpoJourneyAdapters } from "./expo-journey-adapters";
 
+function expoFileSystemError(code: string, message: string) {
+  return Object.assign(new Error(message), { code });
+}
+
 function makeDatabase() {
   return {
     execAsync: jest.fn(async () => undefined),
@@ -20,6 +24,7 @@ function makeModules(options: {
   const database = makeDatabase();
   const constructedFileUris: string[][] = [];
   const deletedFiles: string[] = [];
+  const deleteAttempts: string[] = [];
   const existingFiles = new Set(options.existingFiles ?? []);
 
   class File {
@@ -35,12 +40,20 @@ function makeModules(options: {
     }
 
     delete() {
+      deleteAttempts.push(this.name);
       const error = options.deleteErrors?.[this.name];
       if (error !== undefined) {
         if (options.disappearBeforeDeleteError?.includes(this.name)) {
           existingFiles.delete(this.name);
         }
         throw error;
+      }
+      if (!existingFiles.has(this.name)) {
+        throw expoFileSystemError(
+          "ERR_UNABLE_TO_DELETE",
+          "Call to function 'FileSystemFile.delete' has been rejected.\n"
+            + "→ Caused by: Unable to delete file or directory: path does not exist"
+        );
       }
       deletedFiles.push(this.name);
       existingFiles.delete(this.name);
@@ -66,6 +79,7 @@ function makeModules(options: {
   return {
     database,
     constructedFileUris,
+    deleteAttempts,
     deletedFiles,
     dependencies: { sqlite, fileSystem: { File }, secureStore, clipboard, randomBytes },
     sqlite,
@@ -119,6 +133,10 @@ describe("Expo journey adapters", () => {
     await adapters.files.removeDatabaseFiles("cave.db");
 
     expect(harness.deletedFiles).toEqual([]);
+    expect(harness.deleteAttempts).toEqual([
+      "cave.db", "cave.db-wal", "cave.db-shm",
+      "cave.db", "cave.db-wal", "cave.db-shm"
+    ]);
   });
 
   test("removes orphaned WAL and SHM files when the main database is absent", async () => {
@@ -130,8 +148,11 @@ describe("Expo journey adapters", () => {
     expect(harness.deletedFiles).toEqual(["cave.db-wal", "cave.db-shm"]);
   });
 
-  test("tolerates a file disappearing between the existence check and delete", async () => {
-    const missing = new Error("path does not exist");
+  test("tolerates a coded not-found failure when a file disappears during delete", async () => {
+    const missing = expoFileSystemError(
+      "ERR_UNABLE_TO_DELETE",
+      "Unable to delete file or directory: uri 'file:///sqlite/cave.db' does not exist"
+    );
     const harness = makeModules({
       existingFiles: ["cave.db"],
       deleteErrors: { "cave.db": missing },
@@ -140,6 +161,20 @@ describe("Expo journey adapters", () => {
     const adapters = createExpoJourneyAdapters(harness.dependencies);
 
     await expect(adapters.files.removeDatabaseFiles("cave.db")).resolves.toBeUndefined();
+  });
+
+  test("propagates a permission error even when File.exists is false", async () => {
+    const denied = expoFileSystemError(
+      "ERR_INVALID_PERMISSION",
+      "Missing 'WRITE' permission for accessing the file."
+    );
+    const harness = makeModules({
+      deleteErrors: { "cave.db": denied }
+    });
+    const adapters = createExpoJourneyAdapters(harness.dependencies);
+
+    await expect(adapters.files.removeDatabaseFiles("cave.db")).rejects.toBe(denied);
+    expect(harness.deleteAttempts).toEqual(["cave.db"]);
   });
 
   test("propagates delete failures while the file still exists", async () => {
