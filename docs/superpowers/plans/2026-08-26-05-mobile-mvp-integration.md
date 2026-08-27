@@ -1,165 +1,114 @@
-# 05 Expo 移动端核心闭环实施计划
+# 05 八页移动端 MVP 总实施计划
 
-> 执行要求：route 只负责导航与 presentation；SQL、network 与领域规则必须留在 Repository、Gateway Client 或 Use Case。
+> 本文件是 Plan 05 的执行索引与联合 Gate。具体实现只在 05A、05B 中安排，避免同一能力在多份计划中重复负责。
 
-**目标（Goal）：** 把本地内容、确定性练习状态、加密 Repository 与 AI 网关集成成一个可恢复的 iPhone 完整闭环。
+**目标（Goal）：** 在不依赖 Apple 会员状态和模型 API 的条件下，把 CAVE 建成可离线完成、可返回修改、可本地恢复的八页 MVP。
 
-**架构（Architecture）：** Expo Router 文件保持薄层并调用 feature-level application use cases；Zustand 管 transient session；TanStack Query 管可取消 gateway operations；Repository interfaces 隔离 SQLite/SecureStore 与 UI。
+**架构（Architecture）：** Expo Router 薄页面调用移动端私有的 `JourneyApplicationService`；`JourneyReducer` 管原始选择，确定性 builder 生成清单和沟通卡，`JourneyDraftRepository` 通过 Plan 04 的 SQLCipher 底座保存 v1 草稿。
 
-**技术栈（Tech Stack）：** Expo SDK 57、Expo Router、React Native、Zustand、TanStack Query、Zod、SQLCipher SQLite、SecureStore、Jest、React Native Testing Library。
+**技术栈（Tech Stack）：** Expo SDK 57、Expo Router、React Native、TypeScript strict、SQLCipher SQLite、SecureStore、Jest、React Native Testing Library。
 
----
+## 依赖、输入与输出
 
-**依赖计划：** Plan 03 与 Plan 04 complete。  
-**输入：** frozen contracts/content/state engine、gateway routes、safety policy、encrypted repositories。  
-**输出：** offline content/progress、完整 Mock/Live practice flow、debrief、显式 save/delete、error/safety states。  
-**明确排除：** 最终视觉打磨、额外动画、account/cloud sync、新公共契约。  
-**预计时间：** 6—7 小时。**负责人：** 全栈工程师。
+**依赖计划：** Gate 02A/02B `pass`；Plan 04 的本地 database、key lifecycle、delete-all tests `pass`。Plan 04 的 Golden evaluator blocker、Apple 签名、真实 iPhone SQLCipher 证据在发布前仍需关闭，但不阻止不依赖它们的 05A/05B 本地实现。
+
+**输入：** reviewed local content 基础设施、Plan 04 加密存储、已批准的[八页 MVP 框架设计](../specs/2026-08-27-eight-page-mvp-framework-design.md)。
+
+**输出：** 八页 route/state/persistence 框架、基础交互、预设练习、确定性清单与沟通卡、幂等积分、离线恢复和本机数据控制。
+
+**明确排除：** 最终视觉与文案、医学插图成品、AI 调用、账号、云同步、准备度评分、社区、商城、CMS。
+
+**预计时间：** 6—7 小时，其中 05A 2.5—3 小时、05B 3.5—4 小时。
+**负责人：** 全栈工程师；内容与产品队友并行审核 catalog key、来源和基础措辞。
 
 ## 准确文件路径
 
 ```text
-apps/mobile/app/_layout.tsx
-apps/mobile/app/(tabs)/{index,learn,practice,profile}.tsx
-apps/mobile/app/lesson/[lessonId].tsx
-apps/mobile/app/practice/{setup,session,debrief}.tsx
-apps/mobile/src/app/providers.tsx
-apps/mobile/src/core/config/env.ts
-apps/mobile/src/core/network/{gateway-client,errors}.ts
-apps/mobile/src/core/network/*.test.ts
-apps/mobile/src/features/courses/{domain,application,infrastructure,ui}/**
-apps/mobile/src/features/practice/{domain,application,infrastructure,ui}/**
-apps/mobile/src/features/privacy/{application,ui}/**
-apps/mobile/src/test/render.tsx
+docs/superpowers/specs/2026-08-27-eight-page-mvp-framework-design.md
+docs/superpowers/plans/2026-08-27-05a-eight-page-mvp-framework.md
+docs/superpowers/plans/2026-08-27-05b-eight-page-mvp-functions.md
+apps/mobile/app/journey/**
+apps/mobile/src/features/journey/**
+apps/mobile/src/core/storage/**
+packages/content/data/journey-*.json
 ```
 
-## Application Use Cases（规范性定义）
+## 子计划和执行顺序
 
-```ts
-interface CourseUseCases {
-  listCourses(): Promise<Course[]>;
-  getLesson(lessonId: string): Promise<Lesson>;
-  completeLesson(input: CourseProgressRecord): Promise<void>;
-  getProgress(): Promise<CourseProgressRecord[]>;
-}
+| 子计划 | 文件 | 输入 | 输出 | 解锁门槛 |
+|---|---|---|---|---|
+| 05A | `2026-08-27-05a-eight-page-mvp-framework.md` | storage/content 基线 | routes、draft、reducer、repository、派生同步、页面薄壳 | Gate 05A `pass` |
+| 05B | `2026-08-27-05b-eight-page-mvp-functions.md` | Gate 05A | 八页基础功能与完整本地演示路径 | Gate 05B `pass` |
 
-interface PracticeUseCases {
-  startPractice(scenarioId: string, selectedOptions: Record<string, string>): void;
-  sendPracticeTurn(message: string): Promise<void>;
-  cancelPracticeTurn(): void;
-  finishPractice(): Promise<void>;
-  createDebrief(): Promise<DebriefResponse>;
-  savePractice(options: { includeTranscript: boolean }): Promise<void>;
-  resetPractice(): void;
-}
+05A 必须先冻结移动端私有接口；05B 只能消费这些接口。05B 如需修改 `JourneyDraft`、repository 或派生规则，先返回 05A 更新测试和本文件的接口登记。
 
-interface PrivacyUseCases {
-  acknowledgeLiveModel(): Promise<void>;
-  listSavedRecords(): Promise<SavedPracticeRecord[]>;
-  deleteRecord(id: string): Promise<void>;
-  deleteAllData(): Promise<void>;
-}
+## 固定运行时边界
+
+- 八页 routes 不得 import `GatewayClient`、`ModelProvider`、raw SQL 或 `@cave/scenario-engine`。
+- Page 6 使用 `PresetPracticeEngine`；Page 7—8 使用纯本地 builder。
+- `EXPO_PUBLIC_MODEL_MODE` 不影响八页流程，断网不禁用八页任何 P0 action。
+- 云端保存只渲染 `coming-soon` 状态，控件必须 disabled，点击不能写网络或改变保存方式。
+- Journey 类型只存在于 `apps/mobile/src/features/journey/domain/`，不修改 `@cave/contracts`。
+- 未满18岁不创建草稿；年龄确认不记录生日或具体年龄。
+
+## 联合执行 Gate
+
+### Gate 05A：框架
+
+- [ ] 八页 route、guard、返回和恢复测试通过。
+- [ ] `JourneyDraft` v1、reducer、repository migration 和 delete-all 测试通过。
+- [ ] 上游修改会重算下游；用户编辑字段被保留并标记复核。
+- [ ] 页面薄壳不包含最终视觉、长文案或 AI/network import。
+
+### Gate 05B：基础闭环
+
+- [ ] 从 Page 1 到 Page 8 的本地 integration test 通过。
+- [ ] Page 6 明示预设对话，所有分支可由 fixture 完成。
+- [ ] Page 7—8 输出可编辑，且无准备度分数。
+- [ ] 积分幂等，且不读取开放程度、私密文字或文字长度。
+- [ ] local save、resume、delete-all、offline 和 app restart 测试通过。
+
+### Gate 05C：联合验收
+
+在 05A、05B 各自命令通过后新鲜运行：
+
+```powershell
+corepack pnpm --filter @cave/mobile typecheck
+corepack pnpm --filter @cave/mobile lint
+corepack pnpm --filter @cave/mobile test
+corepack pnpm test:content
+corepack pnpm validate:content:draft
+corepack pnpm test:safety
+git diff --check
+git status --short
 ```
 
-`CourseProgressRecord` 与 `SavedPracticeRecord` 从 Plan 04 的 storage types 导入，不得在 feature 中复制。
+预期：除 `git status --short` 仅显示当前计划预期文件外，其余命令退出码均为 0；mobile tests 明确报告 journey domain、storage、screens 和 full-flow suites。新增八页内容若尚未由内容负责人审核，production validation 真实记录为 `content_review_pending`，由 Plan 06 关闭，不阻塞 05A/05B 框架验收。
 
-## 任务 1：App providers 与公开环境变量
+## 提交节点
 
-- [ ] 先写失败测试：缺少/非法 `EXPO_PUBLIC_GATEWAY_URL`、`EXPO_PUBLIC_MODEL_MODE` 时显示 blocking configuration error。
-- [ ] 实现 client env schema，只允许 `mock | live`；明确所有 `EXPO_PUBLIC_*` 都是公开值。
-- [ ] 在 `src/app/providers.tsx` 组合 SafeArea、QueryClient、SQLite provider、theme、global error boundary。
-- [ ] `app/_layout.tsx` 只组合 Provider 与 routes。
-- [ ] 创建 deterministic QueryClient 与 in-memory repository fakes 的 test renderer。
-- [ ] 运行 mobile tests，预期 env/provider tests 通过；提交：`git commit -am "feat: compose mobile application providers"`。
+05A 和 05B 按各自计划为每项独立能力使用英文 commit。联合 Gate 证据单独提交：
 
-## 任务 2：本地内容与课程进度
-
-- [ ] 先写失败测试：offline listing、missing lesson、idempotent completion、restart 后 progress 保留。
-- [ ] 实现 `CourseUseCases`，只消费 `@cave/content` 与 `LocalDataRepository`。
-- [ ] domain/application code 禁止 import React Native；repository adapter 隔离基础设施。
-- [ ] 添加薄 `learn` 与 lesson routes，使用 view model 并提供稳定 accessibility labels。
-- [ ] 模拟无网络，catalog、lesson、quiz fixture、progress 必须行为不变。
-- [ ] 提交：`git commit -am "feat: integrate offline learning progress"`。
-
-## 任务 3：Gateway Client 与 error mapping
-
-- [ ] 先写 fetch-mocked 失败测试：valid response、timeout、cancel、429 retry-after、wrong contract version、5xx、invalid JSON、safety stop。
-- [ ] 本地生成 request ID，从 `SecretRepository` 读取 installation token。
-- [ ] 每个 response 进入 application code 前必须通过 shared Zod schema。
-- [ ] 固定 15 秒 AbortController timeout；只对 network error/5xx 重试一次，user cancellation 不重试。
-- [ ] 把 `ApiErrorCode` 映射为 typed client error，只带 retryability 与 safe UI message key，不带 server body。
-- [ ] practice mutation result 的 TanStack Query cache time 固定为 0。
-- [ ] 运行 network tests；提交：`git commit -am "feat: add resilient gateway client"`。
-
-## 任务 4：Transient practice session store
-
-- [ ] 先写失败测试：start、append turn、cancel pending、legal transition、max-turn end、safety stop、reset、app-background reset policy。
-- [ ] Zustand state 仅含 scenario ID/version、options、stage、turn count、transient turns、request status、completion reason。
-- [ ] raw turns 禁止进入 persistence middleware；storage mock 在普通练习期间必须零 transcript writes。
-- [ ] stage transition 只调用 `@cave/scenario-engine`；store 不得直接赋值 stage。
-- [ ] 提交：`git commit -am "feat: manage transient practice sessions"`。
-
-## 任务 5：Practice Use Cases
-
-- [ ] 先用 Mock gateway fixtures 写 setup → turns → debrief 的完整 integration test，预期 use cases 未实现时失败。
-- [ ] 实现 `startPractice`、`sendPracticeTurn`、`cancelPracticeTurn`、`finishPractice`、`createDebrief`、`resetPractice`。
-- [ ] send 顺序固定为：append user turn → call gateway → validate → scenario engine accept state → append assistant turn。
-- [ ] `safety.level === "stop"` 时禁止追加普通 roleplay continuation，记录 completion reason 并进入 safety state。
-- [ ] timeout/unavailable 时保留 unsent text 与 local progress，提供 retry、透明 Mock switch 或 exit。
-- [ ] explicit exit 先 abort pending network，再清除 transient state。
-- [ ] 提交：`git commit -am "feat: integrate constrained practice workflow"`。
-
-## 任务 6：连接 setup/session/debrief routes
-
-- [ ] 增加 ESLint restriction：route 不得 import storage、raw network、scenario reducer。
-- [ ] 先写 component tests：setup validation、pending 时 send disabled、cancel、retry、safety stop、debrief load、pending send 时 back prevention。
-- [ ] 用已测 Use Cases 实现 `practice/setup`、`practice/session`、`practice/debrief`。
-- [ ] UI 显示 model mode 与 request failure，不向普通用户暴露 provider internals。
-- [ ] 增加 developer-only diagnostics sheet，显示 contract/prompt/policy/app versions。
-- [ ] 提交：`git commit -am "feat: connect mobile practice routes"`。
-
-## 任务 7：显式保存与删除
-
-- [ ] 先写失败 integration tests，证明 debrief/transcript 默认不持久化。
-- [ ] save action 提供 expression card only 或 card + transcript；默认选 card only，且每次重新选择。
-- [ ] 断言 Repository 只收到用户本次选定 payload。
-- [ ] 为 list、detail、per-record delete、delete-all 建 profile/history view models。
-- [ ] `deleteAllData()` 必须顺序清理 Query cache、Zustand state、database、database connection、installation token。
-- [ ] 提交：`git commit -am "feat: add explicit local record controls"`。
-
-## 任务 8：Offline 与 failure states
-
-- [ ] 先写 view-state tests：offline、timeout、rate-limit countdown、contract mismatch、model unavailable、invalid output、storage reset、safety stop。
-- [ ] offline 时课程/进度继续可用，practice send disabled 并说明原因。
-- [ ] rate limit 使用 server `retryAfterSeconds`，不得自动切 provider。
-- [ ] contract mismatch 阻止 online practice，并提示安装匹配 preview build。
-- [ ] Mock switch 必须可见确认“下一段回复为预设演示内容”。
-- [ ] 提交：`git commit -am "feat: handle mobile recovery states"`。
-
-## 执行命令与预期结果
-
-- [ ] `pnpm --filter @cave/mobile typecheck`：退出码 0。
-- [ ] `pnpm --filter @cave/mobile lint`：无 route boundary violation。
-- [ ] `pnpm --filter @cave/mobile test`：全部 unit/component/integration tests 通过。
-- [ ] 重跑 Plan 02—04 contract/security tests：无回归。
-- [ ] 真实 iPhone 连续三次：Mock success、Live success（凭证可用时）、forced-timeout recovery。
-- [ ] 关闭网络：local course/progress 全部可操作。
-- [ ] 检查 SQLCipher tables：普通练习后无 transcript rows。
+```powershell
+git add docs/superpowers/plans/2026-08-26-00-hackathon-master-roadmap.md docs/superpowers/plans/2026-08-26-05-mobile-mvp-integration.md
+git commit -m "docs: record eight-page MVP gate"
+```
 
 ## 故障、回滚与降级
 
-- LiveProvider 不可用：只切换可见 Mock mode，不改变 route/state logic。
-- encrypted saved records 失败：关闭 save-record P1 UI，禁止 plaintext persistence。
-- 新 mobile 需求需要 public type：停止实现，先修订 Plan 02。
-- route 需要直接 SQL/network：把操作移入 Use Case，不放宽 boundary。
+- Apple 会员、签名或真机安装不可用：记录 Gate 01B/05C device evidence 为 `external_pending`，继续完成 simulator/Jest 范围；不得声称真机通过。
+- Plan 04 Golden evaluator 未关闭：八页流程不调用 evaluator，可继续；Plan 07 发布 Gate 仍保持阻塞。
+- SQLCipher adapter 在开发环境不可加载：使用只注入测试的 in-memory fake 验证领域逻辑；Preview Build 不得降级为明文数据库。
+- 新需求需要云端或模型：记录到 Plan 09，不在 05A/05B 接入隐藏开关。
+- 内容尚未审核：保留 draft fixture 和 production validation 的真实失败，不伪造 `reviewedAt`。
 
 ## 验收证据清单
 
-- [ ] 真实 iPhone 从 first launch 到 debrief 连续完成三次。
-- [ ] Mock/Live 切换只影响配置/provider，不分叉业务逻辑。
-- [ ] offline course/progress 可用。
-- [ ] timeout、429、mismatch、unavailable、invalid output、safety stop 都有测试 UI。
-- [ ] raw transcript 默认不持久化。
-- [ ] delete-all 后 database 有效且为空，installation token 已重生。
+- [ ] 05A、05B commit 清单和全部 fresh command exit code。
+- [ ] 八页 full-flow 测试数量与输出。
+- [ ] offline、restart、back-edit-recompute、underage-exit 的自动化证据。
+- [ ] source tree scan 证明八页 feature 不 import Gateway/Provider。
+- [ ] database migration、local-only 保存和 delete-all 证据。
+- [ ] 真实 iPhone 证据；不可取得时明确标记 `external_pending`。
 
-**解锁下一计划：** 验收完成后解锁 Plan 06。
+**解锁下一计划：** Gate 05A 与 05B 完成后解锁 Plan 06；Gate 05C 的真机部分必须在 Plan 07 前补齐。

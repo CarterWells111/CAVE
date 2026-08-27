@@ -10,10 +10,10 @@
 
 ---
 
-**依赖计划：** Plan 06 complete。  
-**输入：** feature-frozen build、完整 state matrix、安全 tests、主 iPhone。  
-**输出：** passing verification matrix、performance evidence、三轮彩排、无 P0/P1 defect、frozen release commit candidate。  
-**明确排除：** 新功能、公共接口变化、内容扩展、redesign。  
+**依赖计划：** Plan 06 complete；Gate 01B 真实 iPhone证据完成；Plan 04 Golden evaluator、SQLCipher 真机和日志安全 Gate 完成。
+**输入：** feature-frozen 八页 build、完整 state matrix、安全 tests、主 iPhone。
+**输出：** passing verification matrix、performance evidence、三轮彩排、无 P0/P1 defect、frozen release commit candidate。
+**明确排除：** 新功能、公共接口变化、内容扩展、redesign。
 **预计时间：** 3—4 小时。**负责人：** 两人共同。
 
 ## 准确文件路径
@@ -45,18 +45,20 @@ apps/mobile/src/test/performance/**
 
 ## 任务 3：Maestro flows
 
-- [ ] 先创建 `core-flow.yaml`：launch → local content → interaction → Mock practice → debrief → save card → verify saved record。
-- [ ] 创建 `offline-delete.yaml`：offline launch → content → records → delete all → relaunch → empty state。
+- [ ] 先创建 `core-flow.yaml`：launch → adult confirm → Page 2—6 local interaction → checklist → communication card → save → verify saved card。
+- [ ] 创建 `offline-delete.yaml`：offline launch → resume journey → card records → delete all → relaunch → welcome/empty state。
+- [ ] 创建 `back-edit.yaml`：Page 8 → 返回 Page 4 修改 → Page 7/8 重算 → edited field 保留并显示 review state。
 - [ ] 使用 UI 组件已有 accessibility IDs/text，不增加 test-only business branch。
 - [ ] 在主 iPhone 或匹配 simulator build 跑 iOS core/offline flows。
 - [ ] 保存 report/screenshot/video；提交：`git commit -am "test: cover release critical mobile flows"`。
 
-## 任务 4：Network 与 AI failure matrix
+## 任务 4：八页状态、离线与派生一致性矩阵
 
-- [ ] 逐项触发 Mock success、Live success（有凭证时）、no network、DNS failure、15-second timeout、429、5xx retry、invalid JSON、wrong contract、safety stop。
-- [ ] cancel 后不得出现 stale assistant message；仅在设计允许的场景保留 user input。
-- [ ] scripted response 前必须出现 visible Mock confirmation。
-- [ ] `safety_stop` 不能通过 back navigation 回到普通 roleplay。
+- [ ] 逐项触发 adult/underage、fresh/resume、empty selection、storage failure、copy failure、reset confirmation、no network、app background/foreground。
+- [ ] Page 6 每个回应都显示预设标识；`ignores-pause` 不能通过返回导航进入继续推进分支。
+- [ ] Page 7/8 在每个上游修改组合后保持确定性；用户编辑字段不得被静默覆盖。
+- [ ] 全程拦截 fetch，八页主路径预期网络调用次数为 0。
+- [ ] 另行重跑 Plan 03 provider/route 和 Plan 04 safety suites，证明未使用的 AI 基础设施无回归；不把它们加入主演示。
 - [ ] 每个新发现先写失败 regression test，再修复；记录 observed UI 与 recovery action。
 
 ## 任务 5：隐私与代码安全复验
@@ -74,14 +76,14 @@ apps/mobile/src/test/performance/**
 
 - cold launch 到 interactive home ≤ 3.0 秒；
 - local navigation 视觉响应 ≤ 200 ms；
-- send action 到 waiting state ≤ 100 ms；
-- AI request 在 15 秒进入 terminal timeout；
-- 连续十次 practice start/reset 无 monotonic transcript/store growth；
+- local command 到保存中状态 ≤ 100 ms；
+- Page 7/8 确定性重算 ≤ 100 ms；
+- 连续十次 journey reset/resume 无 monotonic store growth；
 - largest Dynamic Type 的最长 P0 screen 无 clipped actionable control。
 
 - [ ] cold start 与 local navigation 各测三次，记录 median/worst。
-- [ ] practice start/reset 十次，检查 JS/native memory 是否无界增长。
-- [ ] profile 最长 list/screen；budget 失败时先减少 rerender 或替换 list container。
+- [ ] journey reset/resume 十次，检查 JS/native memory 是否无界增长。
+- [ ] Page 7 checklist 和 Page 8 communication card 最长 list/screen；budget 失败时先减少 rerender 或替换 list container。
 - [ ] optional animation 导致 interaction/accessibility failure 时删除。
 - [ ] 每个 performance fix 都补 regression test 或可重复 measurement record。
 
@@ -95,9 +97,9 @@ apps/mobile/src/test/performance/**
 
 ## 任务 8：三轮完整演示彩排
 
-- [ ] Rehearsal A：LiveProvider + normal network。
-- [ ] Rehearsal B：visible MockProvider + Wi-Fi off。
-- [ ] Rehearsal C：forced model timeout 后按 Runbook 进入 approved fallback。
+- [ ] Rehearsal A：installed Preview Build，从 Page 1 完成八页并保存沟通卡。
+- [ ] Rehearsal B：Wi-Fi off，从已有草稿恢复，返回修改并验证 Page 7/8 同步。
+- [ ] Rehearsal C：模拟本地保存失败后按 Runbook 恢复，并切换到已验证录屏兜底。
 - [ ] 每轮记录 start/end、build/version、failure、recovery、presenter notes。
 - [ ] 最后一次 code/config change 后必须重新获得三轮连续成功。
 - [ ] unresolved P2 可记录接受；任何 unresolved P0/P1 保持本计划未完成。
@@ -113,7 +115,7 @@ apps/mobile/src/test/performance/**
 
 - P0 failure：revert 最小 offending commit，或关闭受影响 P1 surface；不得绕过 safety/data rules。
 - performance failure：先删除 optional animation/assets，不引入新 cache/architecture。
-- LiveProvider failure：transparent Mock demo + 已有 live evidence 仍可形成有效 release。
+- Worker/LiveProvider failure：不影响本地八页主演示；保留 Plan 03 基础设施测试事实，不现场切入 AI。
 - iOS build/runtime mismatch：重建正确 runtime，不发布 incompatible OTA update。
 
 ## 验收证据清单
