@@ -8,7 +8,7 @@ function deferred() {
   return { promise, resolve };
 }
 
-test("keeps the latest edit visible and flushes it before save or copy", async () => {
+test("keeps the latest edit visible and serializes save then copy while it is pending", async () => {
   const edit = deferred();
   const onEdit = jest.fn(() => edit.promise);
   const onSave = jest.fn(async () => undefined);
@@ -37,6 +37,7 @@ test("keeps the latest edit visible and flushes it before save or copy", async (
   expect(screen.getByDisplayValue("最新文字")).toBeTruthy();
 
   fireEvent.press(screen.getByText("本机保存"));
+  expect(screen.getByRole("button", { name: "复制当前卡片" }).props.accessibilityState.disabled).toBe(false);
   fireEvent.press(screen.getByText("复制当前卡片"));
   expect(onSave).not.toHaveBeenCalled();
   expect(onCopy).not.toHaveBeenCalled();
