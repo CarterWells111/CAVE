@@ -195,3 +195,90 @@ test("changes communication visibility only through the four explicit privacy st
   expect(privateAgain.communicationCard["communication-not-this-time"].visibility).toBe("private");
   expect(privateAgain.sourceRevision).toBe(0);
 });
+
+test("persists address preference and explicit-content consent as adult-owned state", () => {
+  const addressed = reduceJourneyDraft(adultDraft(), {
+    type: "set-address-preference",
+    preference: "妳",
+  });
+  const consented = reduceJourneyDraft(addressed, {
+    type: "set-explicit-content-consent",
+    consented: false,
+  });
+
+  expect(consented.addressPreference).toBe("妳");
+  expect(consented.explicitContentConsent).toBe(false);
+  expect(consented.sourceRevision).toBe(2);
+});
+
+test("atomically saves all reflection fields and clears journal content when it is not saved", () => {
+  const saved = reduceJourneyDraft(adultDraft(), {
+    type: "save-reflection",
+    motivationIds: ["draft-curious", "draft-curious"],
+    comfortNeedIds: ["draft-privacy"],
+    expressionSupportNeeded: true,
+    reflection: {
+      pressureWithoutDisappointment: "slow-down",
+      refusalSafety: "difficult-but-possible",
+      expressionDifficulty: "needs-phrase",
+      comfortClarity: "need-space",
+      comfortNote: "先给我一点空间",
+    },
+    journal: {
+      promptId: "journal-hesitation",
+      text: "只留在本机",
+      saveChoice: "device",
+      savedAt: NOW,
+    },
+  });
+
+  expect(saved).toMatchObject({
+    motivationIds: ["draft-curious"],
+    comfortNeedIds: ["draft-privacy"],
+    expressionSupportNeeded: true,
+    journalSaveChoice: "device",
+    reflection: { comfortNote: "先给我一点空间", expressionDifficulty: "needs-phrase" },
+    journal: { promptId: "journal-hesitation", text: "只留在本机", saveChoice: "device", savedAt: NOW },
+    sourceRevision: 1,
+  });
+
+  const notSaved = reduceJourneyDraft(saved, {
+    type: "save-reflection",
+    motivationIds: [],
+    comfortNeedIds: [],
+    expressionSupportNeeded: null,
+    reflection: saved.reflection,
+    journal: { promptId: "journal-hesitation", text: "不得保留", saveChoice: "not-saved" },
+  });
+  expect(notSaved.journal).toEqual({ promptId: "journal-hesitation", text: "", saveChoice: "not-saved" });
+  expect(notSaved.journalSaveChoice).toBe("not-saved");
+});
+
+test("stores the canonical Page 6 submission without erasing legacy-compatible practice state", () => {
+  const base = {
+    ...adultDraft(),
+    practice: { ...adultDraft().practice, selectedPhraseId: "legacy-phrase" },
+  };
+  const result = reduceJourneyDraft(base, {
+    type: "save-practice-submission",
+    submission: {
+      behaviorId: null,
+      intent: "pause-to-feel",
+      phrase: "先停一下。",
+      aftercareId: "space",
+      optionalBranch: "ignores-or-blocks-exit",
+      safetyTerminal: true,
+      completed: true,
+    },
+  });
+
+  expect(result.practice).toMatchObject({
+    selectedPhraseId: "legacy-phrase",
+    intent: "pause-to-feel",
+    phrase: "先停一下。",
+    aftercareId: "space",
+    optionalBranch: "ignores-or-blocks-exit",
+    safetyTerminal: true,
+    completed: true,
+  });
+});

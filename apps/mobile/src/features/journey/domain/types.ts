@@ -24,6 +24,25 @@ export type AddressPreference = null | "你" | "妳";
 export type SharingVisibility = "pending" | "included" | "private" | "deleted";
 export type OvernightStage = "expectations" | "concerns";
 
+export type JourneyReflection = {
+  pressureWithoutDisappointment: string | null;
+  refusalSafety: string | null;
+  expressionDifficulty: string | null;
+  comfortClarity: string | null;
+  comfortNote: string;
+};
+
+export type JourneyPracticeSubmission = {
+  behaviorId: string | null;
+  intent: string;
+  phrase: string;
+  aftercareId: string;
+  optionalBranch?: string;
+  optionalResponse?: string;
+  safetyTerminal: boolean;
+  completed: true;
+};
+
 export const COMMUNICATION_SECTION_IDS = [
   "communication-night-expectations",
   "communication-possible-closeness",
@@ -81,13 +100,7 @@ export type JourneyDraft = {
   motivationIds: string[];
   comfortNeedIds: string[];
   expressionSupportNeeded: boolean | null;
-  reflection: {
-    pressureWithoutDisappointment: string | null;
-    refusalSafety: string | null;
-    expressionDifficulty: string | null;
-    comfortClarity: string | null;
-    comfortNote: string;
-  };
+  reflection: JourneyReflection;
   journalSaveChoice: JournalSaveChoice;
   journal: {
     promptId?: string;
@@ -105,6 +118,11 @@ export type JourneyDraft = {
     responseId?: string;
     catalogVersion?: string;
     reflectionNote?: string;
+    phrase?: string;
+    aftercareId?: string;
+    optionalBranch?: string;
+    optionalResponse?: string;
+    safetyTerminal?: boolean;
     mirrorRehearsed: boolean;
     completed: boolean;
   };

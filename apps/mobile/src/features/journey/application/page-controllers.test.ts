@@ -156,7 +156,7 @@ test("updates private preparation and copies only explicitly included final-page
   expect(cards.save).toHaveBeenCalledWith(expect.objectContaining({ id: "card:journey-1", journeyId: "journey-1" }));
   const copied = clipboard.setStringAsync.mock.calls[0]?.[0] ?? "";
   expect(copied).toContain("draft-card.night-expectations");
-  expect(copied).toContain("每种行为都需要独立、持续且可撤回的同意");
+  expect(copied).toContain("任何人都可以随时改变主意，每一种靠近仍然需要当时再次确认");
   expect(copied).not.toContain("private marker");
 });
 
@@ -168,4 +168,103 @@ test("returns a typed clipboard failure that the route can render", async () => 
     status: "error",
     code: "clipboard-write-failed"
   });
+});
+
+test("persists address preference and explicit-content consent through typed controller commands", async () => {
+  const { controller, service } = harness();
+
+  await controller.setAddressPreference("妳");
+  await controller.setExplicitContentConsent(true);
+
+  expect(service.dispatch).toHaveBeenCalledWith({ type: "set-address-preference", preference: "妳" });
+  expect(service.dispatch).toHaveBeenCalledWith({ type: "set-explicit-content-consent", consented: true });
+});
+
+test("saves the complete Page 5 payload atomically and gives unsaved journals no timestamp or body", async () => {
+  const { controller, service } = harness();
+
+  await controller.saveReflection({
+    motivationIds: ["draft-curious"],
+    comfortNeedIds: ["draft-privacy"],
+    pressureWithoutDisappointment: "slow-down",
+    refusalSafety: "difficult-but-possible",
+    expressionDifficulty: "needs-phrase",
+    comfortClarity: "need-space",
+    comfortNote: "需要自己的空间",
+    journalPromptId: "journal-hesitation",
+    journalText: "不得写入",
+    journalSaveChoice: "not-saved",
+  });
+
+  expect(service.dispatch).toHaveBeenCalledWith({
+    type: "save-reflection",
+    motivationIds: ["draft-curious"],
+    comfortNeedIds: ["draft-privacy"],
+    expressionSupportNeeded: true,
+    reflection: {
+      pressureWithoutDisappointment: "slow-down",
+      refusalSafety: "difficult-but-possible",
+      expressionDifficulty: "needs-phrase",
+      comfortClarity: "need-space",
+      comfortNote: "需要自己的空间",
+    },
+    journal: { promptId: "journal-hesitation", text: "", saveChoice: "not-saved" },
+  });
+});
+
+test("persists the canonical Page 6 submission and awards only a valid participation key", async () => {
+  const { controller, service } = harness();
+
+  await controller.completePractice({
+    behaviorId: null,
+    intent: "pause-to-feel",
+    phrase: "先停一下。",
+    aftercareId: "space",
+    completed: true,
+    optionalBranch: "disappointed-but-stops",
+    optionalResponse: "我现在想停。",
+    pointEventKey: "practice:seven-screen-v1:first-completion",
+  });
+
+  expect(service.dispatch).toHaveBeenCalledWith({
+    type: "save-practice-submission",
+    submission: expect.objectContaining({
+      phrase: "先停一下。",
+      aftercareId: "space",
+      optionalBranch: "disappointed-but-stops",
+      optionalResponse: "我现在想停。",
+      safetyTerminal: false,
+      completed: true,
+    }),
+  });
+  expect(service.dispatch).toHaveBeenCalledWith({
+    type: "record-point-event",
+    key: "practice:seven-screen-v1:first-completion",
+  });
+
+  jest.mocked(service.dispatch).mockClear();
+  await controller.completePractice({
+    behaviorId: null,
+    intent: "stop-current-action",
+    phrase: "请停下。",
+    aftercareId: "end-night",
+    completed: true,
+    optionalBranch: "ignores-or-blocks-exit",
+  });
+  expect(service.dispatch).toHaveBeenCalledWith(expect.objectContaining({
+    type: "save-practice-submission",
+    submission: expect.objectContaining({ safetyTerminal: true }),
+  }));
+  expect(service.dispatch).not.toHaveBeenCalledWith(expect.objectContaining({ type: "record-point-event" }));
+
+  jest.mocked(service.dispatch).mockClear();
+  await controller.completePractice({
+    behaviorId: null,
+    intent: "pause-to-feel",
+    phrase: "先停一下。",
+    aftercareId: "space",
+    completed: true,
+    pointEventKey: "practice:free-points",
+  });
+  expect(service.dispatch).not.toHaveBeenCalledWith(expect.objectContaining({ type: "record-point-event" }));
 });

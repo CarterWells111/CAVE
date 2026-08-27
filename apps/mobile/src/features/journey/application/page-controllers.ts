@@ -1,4 +1,11 @@
-import type { BehaviorAttitude, ChecklistItemStatus, JournalSaveChoice, JourneyDraft } from "../domain/types";
+import type {
+  AddressPreference,
+  BehaviorAttitude,
+  ChecklistItemStatus,
+  JournalSaveChoice,
+  JourneyDraft,
+  JourneyPracticeSubmission,
+} from "../domain/types";
 import { selectConfirmedCommunicationCard } from "../domain/derive-communication-card";
 import type {
   PartnerResponseBranch,
@@ -24,6 +31,39 @@ type Dependencies = {
   now(): string;
 };
 
+type ReflectionInput = {
+  motivationIds: string[];
+  comfortNeedIds: string[];
+  expressionSupportNeeded?: boolean | null;
+  pressureWithoutDisappointment?: string | null;
+  refusalSafety?: string | null;
+  expressionDifficulty?: string | null;
+  comfortClarity?: string | null;
+  comfortNote?: string;
+  journalPromptId?: string;
+  journalText?: string;
+  journalSaveChoice: JournalSaveChoice;
+};
+
+type LegacyPracticeInput = {
+  behaviorId: string;
+  intent: PracticeIntent;
+  phraseId: string;
+  editedPhrase?: string;
+  branch: PartnerResponseBranch;
+};
+
+type CanonicalPracticeInput = {
+  behaviorId: string | null;
+  intent: PracticeIntent;
+  phrase: string;
+  aftercareId: string;
+  completed: true;
+  pointEventKey?: string;
+  optionalBranch?: string;
+  optionalResponse?: string;
+};
+
 export class JourneyPageController {
   constructor(private readonly dependencies: Dependencies) {}
 
@@ -33,6 +73,14 @@ export class JourneyPageController {
     await this.dependencies.service.dispatch({ type: "set-preface-read", read: prefaceRead });
     await this.dependencies.service.navigateTo("overnight");
     return "overnight" as const;
+  }
+
+  setAddressPreference(preference: Exclude<AddressPreference, null>) {
+    return this.dependencies.service.dispatch({ type: "set-address-preference", preference });
+  }
+
+  setExplicitContentConsent(consented: boolean) {
+    return this.dependencies.service.dispatch({ type: "set-explicit-content-consent", consented });
   }
 
   async saveOvernight(input: { expectationIds: string[]; concernIds: string[]; customNote: string }) {
@@ -54,26 +102,50 @@ export class JourneyPageController {
     return this.dependencies.service.dispatch({ type: "set-behavior-attitude", behaviorId, attitude });
   }
 
-  async saveReflection(input: {
-    motivationIds: string[];
-    comfortNeedIds: string[];
-    expressionSupportNeeded: boolean | null;
-    journalSaveChoice: JournalSaveChoice;
-  }) {
-    await this.dependencies.service.dispatch({ type: "set-motivation-ids", ids: input.motivationIds });
-    await this.dependencies.service.dispatch({ type: "set-comfort-need-ids", ids: input.comfortNeedIds });
-    await this.dependencies.service.dispatch({ type: "set-expression-support-needed", needed: input.expressionSupportNeeded });
-    await this.dependencies.service.dispatch({ type: "set-journal-save-choice", choice: input.journalSaveChoice });
+  async saveReflection(input: ReflectionInput) {
+    const draft = this.requireDraft();
+    const expressionSupportNeeded = input.expressionSupportNeeded !== undefined
+      ? input.expressionSupportNeeded
+      : input.expressionDifficulty !== undefined
+        ? input.expressionDifficulty === null ? null : input.expressionDifficulty === "needs-phrase"
+        : draft.expressionSupportNeeded;
+    const reflection = {
+      pressureWithoutDisappointment: input.pressureWithoutDisappointment === undefined
+        ? draft.reflection.pressureWithoutDisappointment
+        : input.pressureWithoutDisappointment,
+      refusalSafety: input.refusalSafety === undefined ? draft.reflection.refusalSafety : input.refusalSafety,
+      expressionDifficulty: input.expressionDifficulty === undefined
+        ? draft.reflection.expressionDifficulty
+        : input.expressionDifficulty,
+      comfortClarity: input.comfortClarity === undefined ? draft.reflection.comfortClarity : input.comfortClarity,
+      comfortNote: input.comfortNote === undefined ? draft.reflection.comfortNote : input.comfortNote,
+    };
+    const promptId = input.journalPromptId ?? draft.journal.promptId;
+    const journal = input.journalSaveChoice === "not-saved"
+      ? {
+          ...(promptId ? { promptId } : {}),
+          text: "",
+          saveChoice: "not-saved" as const,
+        }
+      : {
+          ...(promptId ? { promptId } : {}),
+          text: input.journalText ?? draft.journal.text,
+          saveChoice: "device" as const,
+          savedAt: this.dependencies.now(),
+        };
+    await this.dependencies.service.dispatch({
+      type: "save-reflection",
+      motivationIds: input.motivationIds,
+      comfortNeedIds: input.comfortNeedIds,
+      expressionSupportNeeded,
+      reflection,
+      journal,
+    });
     await this.dependencies.service.dispatch({ type: "record-point-event", key: "reflection:page-5:v1" });
   }
 
-  async completePractice(input: {
-    behaviorId: string;
-    intent: PracticeIntent;
-    phraseId: string;
-    editedPhrase?: string;
-    branch: PartnerResponseBranch;
-  }) {
+  async completePractice(input: LegacyPracticeInput | CanonicalPracticeInput) {
+    if ("completed" in input) return this.completeCanonicalPractice(input);
     const draft = this.requireDraft();
     const selected = Object.hasOwn(draft.behaviorAttitudes, input.behaviorId)
       || draft.customBehaviors.some(({ id }) => id === input.behaviorId);
@@ -97,6 +169,37 @@ export class JourneyPageController {
       type: "record-point-event",
       key: `practice:${completed.scenarioId}:${completed.catalogVersion}`
     });
+  }
+
+  private async completeCanonicalPractice(input: CanonicalPracticeInput) {
+    const draft = this.requireDraft();
+    if (input.behaviorId !== null) {
+      const selected = Object.hasOwn(draft.behaviorAttitudes, input.behaviorId)
+        || draft.customBehaviors.some(({ id }) => id === input.behaviorId);
+      if (!selected) throw new Error("practice-behavior-not-selected");
+    }
+    const phrase = input.phrase.trim();
+    const aftercareId = input.aftercareId.trim();
+    if (!phrase || !aftercareId) throw new Error("practice-completion-required");
+    const safetyTerminal = input.optionalBranch === "ignores-or-blocks-exit";
+    const submission: JourneyPracticeSubmission = {
+      behaviorId: input.behaviorId,
+      intent: input.intent,
+      phrase,
+      aftercareId,
+      ...(input.optionalBranch ? { optionalBranch: input.optionalBranch } : {}),
+      ...(input.optionalResponse ? { optionalResponse: input.optionalResponse } : {}),
+      safetyTerminal,
+      completed: true,
+    };
+    await this.dependencies.service.dispatch({ type: "save-practice-submission", submission });
+    if (
+      !safetyTerminal
+      && input.pointEventKey !== undefined
+      && /^practice:[^:]+:first-completion$/u.test(input.pointEventKey)
+    ) {
+      await this.dependencies.service.dispatch({ type: "record-point-event", key: input.pointEventKey });
+    }
   }
 
   updateChecklist(itemId: string, status: ChecklistItemStatus, userNote?: string) {

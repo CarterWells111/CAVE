@@ -1,6 +1,9 @@
 import type {
   BehaviorAttitude,
+  AddressPreference,
   ChecklistItemStatus,
+  JourneyPracticeSubmission,
+  JourneyReflection,
   JournalSaveChoice,
   JourneyDraft,
   OvernightStage
@@ -9,6 +12,8 @@ import type { SharingVisibility } from "./types";
 
 export type JourneyCommand =
   | { type: "set-preface-read"; read: boolean }
+  | { type: "set-address-preference"; preference: Exclude<AddressPreference, null> }
+  | { type: "set-explicit-content-consent"; consented: boolean }
   | { type: "set-expectation-ids"; ids: string[] }
   | { type: "set-concern-ids"; ids: string[] }
   | { type: "set-overnight-stage"; stage: OvernightStage }
@@ -22,7 +27,16 @@ export type JourneyCommand =
   | { type: "set-comfort-need-ids"; ids: string[] }
   | { type: "set-expression-support-needed"; needed: boolean | null }
   | { type: "set-journal-save-choice"; choice: JournalSaveChoice }
+  | {
+      type: "save-reflection";
+      motivationIds: string[];
+      comfortNeedIds: string[];
+      expressionSupportNeeded: boolean | null;
+      reflection: JourneyReflection;
+      journal: JourneyDraft["journal"];
+    }
   | { type: "set-practice"; practice: JourneyDraft["practice"] }
+  | { type: "save-practice-submission"; submission: JourneyPracticeSubmission }
   | { type: "update-checklist-item"; itemId: string; status: ChecklistItemStatus; userNote?: string }
   | { type: "edit-communication-card-field"; sectionId: string; userText: string }
   | { type: "set-communication-card-visibility"; sectionId: string; visibility: SharingVisibility }
