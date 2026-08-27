@@ -1,5 +1,5 @@
 import { fireEvent, render, screen } from "@testing-library/react-native";
-import { AccessibilityInfo, findNodeHandle, Text } from "react-native";
+import { AccessibilityInfo, Text } from "react-native";
 
 import { BottomSheet } from "./bottom-sheet";
 import { SourceDrawer } from "./source-drawer";
@@ -32,13 +32,11 @@ test("BottomSheet exposes verifiable initial-focus and focus-restore callbacks",
 test("BottomSheet moves initial accessibility focus to close and supports accessibility escape", () => {
   const onClose = jest.fn();
   const focus = jest.spyOn(AccessibilityInfo, "setAccessibilityFocus").mockImplementation(jest.fn());
-  jest.spyOn(require("react-native"), "findNodeHandle").mockReturnValue(42);
-  render(<BottomSheet onClose={onClose} title="来源" visible />);
+  render(<BottomSheet onClose={onClose} resolveFocusHandle={() => 42} title="来源" visible />);
   fireEvent(screen.getByTestId("bottom-sheet-modal"), "show");
   expect(focus).toHaveBeenCalledWith(42);
   fireEvent(screen.getByTestId("bottom-sheet-panel"), "accessibilityEscape");
   expect(onClose).toHaveBeenCalledTimes(1);
-  expect(findNodeHandle).toBeDefined();
 });
 
 test("BottomSheet uses bottom safe-area insets and disables motion when requested", () => {

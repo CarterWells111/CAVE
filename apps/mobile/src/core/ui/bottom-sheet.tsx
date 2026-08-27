@@ -21,6 +21,7 @@ export type BottomSheetProps = PropsWithChildren<{
   onRestoreFocus?: () => void;
   closeLabel?: string;
   reducedMotion?: boolean;
+  resolveFocusHandle?: typeof findNodeHandle;
 }>;
 
 export function BottomSheet({
@@ -32,6 +33,7 @@ export function BottomSheet({
   onRestoreFocus,
   closeLabel = `关闭${title}`,
   reducedMotion = false,
+  resolveFocusHandle = findNodeHandle,
 }: BottomSheetProps) {
   const wasVisible = useRef(false);
   const closeRef = useRef<View>(null);
@@ -42,7 +44,7 @@ export function BottomSheet({
   }, [onRestoreFocus, visible]);
 
   const handleShow = () => {
-    const closeNode = findNodeHandle(closeRef.current);
+    const closeNode = resolveFocusHandle(closeRef.current);
     if (closeNode !== null) AccessibilityInfo.setAccessibilityFocus(closeNode);
     onInitialFocus?.();
   };

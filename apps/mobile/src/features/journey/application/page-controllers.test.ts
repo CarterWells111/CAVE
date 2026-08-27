@@ -40,7 +40,7 @@ function harness() {
     delete: jest.fn(async () => undefined)
   };
   const clipboard: { setStringAsync: jest.MockedFunction<ClipboardAdapter["setStringAsync"]> } = {
-    setStringAsync: jest.fn(async (_value: string) => undefined)
+    setStringAsync: jest.fn(async (value: string) => { void value; })
   };
   const practiceState: PresetPracticeState = {
     scenarioId: "draft-scenario",

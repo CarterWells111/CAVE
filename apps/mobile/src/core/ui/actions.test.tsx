@@ -3,7 +3,7 @@ import { Text } from "react-native";
 
 import { theme } from "../design/theme";
 import { SecondaryButton } from "./secondary-button";
-import { StickyActionBar } from "./sticky-action-bar";
+import { StickyActionBar, StickyActionSpacer, STICKY_ACTION_BAR_CONTENT_INSET } from "./sticky-action-bar";
 import { TextAction } from "./text-action";
 
 test("SecondaryButton has a 48-point bordered target and explicit disabled/loading semantics", () => {
@@ -77,7 +77,6 @@ test("StickyActionBar provides a raised continuous surface without swallowing ch
 });
 
 test("StickyActionSpacer exposes the minimum content inset that prevents action overlap", () => {
-  const { StickyActionSpacer, STICKY_ACTION_BAR_CONTENT_INSET } = require("./sticky-action-bar") as typeof import("./sticky-action-bar");
   render(<StickyActionSpacer bottomInset={12} testID="spacer" />);
   expect(STICKY_ACTION_BAR_CONTENT_INSET).toBe(76);
   expect(screen.getByTestId("spacer")).toHaveStyle({ height: 88 });
