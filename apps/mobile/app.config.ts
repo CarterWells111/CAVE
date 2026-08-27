@@ -6,10 +6,14 @@ function getEnvironment() {
 
 function getDisplayName(environment: string) {
   if (environment === "production") {
-    return "Body Voice";
+    return "内界 CAVE";
   }
 
-  return `Body Voice (${environment})`;
+  if (environment === "preview") {
+    return "内界 CAVE Preview";
+  }
+
+  return "内界 CAVE Dev";
 }
 
 export default ({ config }: ConfigContext): ExpoConfig => {
@@ -18,20 +22,18 @@ export default ({ config }: ConfigContext): ExpoConfig => {
   return {
     ...config,
     name: getDisplayName(environment),
-    slug: "body-voice",
-    version: "0.0.0",
-    scheme: "bodyvoice",
+    owner: "carter_wells",
+    slug: "cave",
+    version: "0.1.0",
+    scheme: "cave",
     orientation: "portrait",
     plugins: ["expo-router"],
     experiments: {
       typedRoutes: true
     },
     ios: {
-      bundleIdentifier: "com.shenicest.bodyvoice",
+      bundleIdentifier: "com.neijie.cave",
       supportsTablet: false
-    },
-    android: {
-      package: "com.shenicest.bodyvoice"
     },
     extra: {
       build: process.env.EAS_BUILD_ID ?? "local",

@@ -14,7 +14,7 @@ export default function IndexRoute() {
     <HealthScreen
       build={extra.build ?? "local"}
       environment={extra.environment ?? "development"}
-      version={Constants.expoConfig?.version ?? "0.0.0"}
+      version={Constants.expoConfig?.version ?? "0.1.0"}
     />
   );
 }
