@@ -1,13 +1,13 @@
-import { getPointSummary } from "../application/points-ledger";
-import { DefaultJourneyApplicationService } from "../application/journey-application-service";
-import { JourneyPageController } from "../application/page-controllers";
-import { LocalPresetPracticeEngine } from "../domain/preset-practice-engine";
-import type { JourneyDraft, SavedCommunicationCardRecord } from "../domain/types";
+import { getPointSummary } from "./application/points-ledger";
+import { DefaultJourneyApplicationService } from "./application/journey-application-service";
+import { JourneyPageController } from "./application/page-controllers";
+import { LocalPresetPracticeEngine } from "./domain/preset-practice-engine";
+import type { JourneyDraft, SavedCommunicationCardRecord } from "./domain/types";
 import type {
   CommunicationCardRepository,
   JourneyDraftRepository
-} from "../infrastructure/journey-draft-repository";
-import { loadJourneyContentCatalog } from "../infrastructure/journey-content-catalog";
+} from "./infrastructure/journey-draft-repository";
+import { loadJourneyContentCatalog } from "./infrastructure/journey-content-catalog";
 
 function localStorageHarness() {
   let active: JourneyDraft | null = null;
