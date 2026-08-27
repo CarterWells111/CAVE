@@ -38,4 +38,14 @@ describe("Expo app identity", () => {
     expect(config.ios?.supportsTablet).toBe(false);
     expect(config.android).toBeUndefined();
   });
+
+  it("is linked to one EAS project", () => {
+    const projectId = configFor("development").extra?.eas?.projectId;
+
+    expect(projectId).toEqual(
+      expect.stringMatching(
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu
+      )
+    );
+  });
 });

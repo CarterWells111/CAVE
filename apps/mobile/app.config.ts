@@ -36,6 +36,9 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       supportsTablet: false
     },
     extra: {
+      eas: {
+        projectId: "1ddc0761-af43-491c-b969-ec2f6c415013"
+      },
       build: process.env.EAS_BUILD_ID ?? "local",
       environment
     }
