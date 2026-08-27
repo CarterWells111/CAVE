@@ -48,6 +48,20 @@ export class SqlReviewHistoryRepository<Payload> implements ReviewHistoryReposit
     );
   }
 
+  async appendVersionAndClearActive(version: ReviewVersionInput<Payload>): Promise<void> {
+    const db = await this.database.initialize();
+    await db.execAsync("BEGIN IMMEDIATE");
+    try {
+      await db.runAsync(
+        "INSERT INTO journey_review_versions (id, root_id, parent_version_id, title, review_date, status, payload, source_revision, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        version.id, version.rootId, version.parentVersionId, version.title, version.createdAt.slice(0, 10), version.status,
+        JSON.stringify(version.payload), (version.payload as { sourceRevision?: number }).sourceRevision ?? 0, version.createdAt,
+      );
+      await db.runAsync("DELETE FROM journey_active_review WHERE singleton_id = 1");
+      await db.execAsync("COMMIT");
+    } catch (error) { await db.execAsync("ROLLBACK"); throw error; }
+  }
+
   async listMetadata(): Promise<ReadonlyArray<ReviewVersionMetadata>> {
     const db = await this.database.initialize();
     const rows = await db.getAllAsync<MetadataRow>("SELECT id, root_id, parent_version_id, title, review_date, status, created_at FROM journey_review_versions ORDER BY review_date DESC, created_at DESC");

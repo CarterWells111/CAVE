@@ -37,7 +37,7 @@ export default function ReviewDetailRoute() {
       if (seed === null) throw new Error("review-not-found");
       const current = await runtime.reviewHistory.loadActive();
       if (current !== null) {
-        await runtime.reviewHistory.appendVersion({ id: `review:${current.payload.id}:incomplete`, rootId: current.rootId, parentVersionId: current.sourceVersionId, title: current.title, createdAt: current.updatedAt, status: "incomplete", payload: current.payload });
+        await runtime.reviewHistory.appendVersionAndClearActive({ id: `review:${current.payload.id}:incomplete`, rootId: current.rootId, parentVersionId: current.sourceVersionId, title: current.title, createdAt: current.updatedAt, status: "incomplete", payload: current.payload });
         await runtime.restart();
       }
       const now = new Date().toISOString();

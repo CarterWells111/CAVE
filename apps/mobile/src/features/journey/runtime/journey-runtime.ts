@@ -106,7 +106,7 @@ export function composeJourneyRuntime({
     if (active !== null) {
       const id = `review:${active.payload.id}:incomplete`;
       if (await reviewHistory.loadDetail(id) === null) {
-        await reviewHistory.appendVersion({ id, rootId: active.rootId, parentVersionId: active.sourceVersionId, title: active.title, createdAt: active.updatedAt, status: "incomplete", payload: active.payload });
+        await reviewHistory.appendVersionAndClearActive({ id, rootId: active.rootId, parentVersionId: active.sourceVersionId, title: active.title, createdAt: active.updatedAt, status: "incomplete", payload: active.payload });
       }
     }
     await service.resetJourney();

@@ -34,6 +34,7 @@ export interface ReviewHistoryRepository<Payload> {
   saveActive(review: ActiveReview<Payload>): Promise<void>;
   clearActive(): Promise<void>;
   appendVersion(version: ReviewVersionInput<Payload>): Promise<void>;
+  appendVersionAndClearActive(version: ReviewVersionInput<Payload>): Promise<void>;
   listMetadata(): Promise<ReadonlyArray<ReviewVersionMetadata>>;
   loadDetail(id: string): Promise<ReviewVersionDetail<Payload> | null>;
   loadBranchSeed(id: string): Promise<ReviewBranchSeed<Payload> | null>;

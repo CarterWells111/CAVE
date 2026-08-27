@@ -11,6 +11,10 @@ export class InMemoryPayloadReviewHistoryRepository<Payload> implements ReviewHi
   async appendVersion(version: ReviewVersionInput<Payload>) {
     if (!this.versions.has(version.id)) this.versions.set(version.id, clone(version));
   }
+  async appendVersionAndClearActive(version: ReviewVersionInput<Payload>) {
+    await this.appendVersion(version);
+    this.active = null;
+  }
   async listMetadata() {
     return [...this.versions.values()].sort((a, b) => b.createdAt.localeCompare(a.createdAt)).map((value) => ({
       id: value.id, rootId: value.rootId, parentVersionId: value.parentVersionId,

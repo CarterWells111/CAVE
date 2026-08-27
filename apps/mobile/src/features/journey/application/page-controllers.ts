@@ -270,7 +270,7 @@ export class JourneyPageController {
     if (this.dependencies.reviewHistory !== undefined
       && await this.dependencies.reviewHistory.loadDetail(versionId) === null) {
       const active = await this.dependencies.reviewHistory.loadActive();
-      await this.dependencies.reviewHistory.appendVersion({
+      await this.dependencies.reviewHistory.appendVersionAndClearActive({
         id: versionId,
         rootId: active?.rootId ?? draft.id,
         parentVersionId: active?.sourceVersionId ?? null,

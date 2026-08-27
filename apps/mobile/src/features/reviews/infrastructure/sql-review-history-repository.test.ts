@@ -36,3 +36,16 @@ test("detaches both child versions and the active branch before deleting its bas
   );
   expect(connection.execAsync).toHaveBeenLastCalledWith("COMMIT");
 });
+
+test("rolls back the version and active transition together", async () => {
+  const { connection, repository } = harness();
+  (connection.runAsync as jest.Mock)
+    .mockResolvedValueOnce({ changes: 1 })
+    .mockRejectedValueOnce(new Error("active clear failed"));
+  await expect(repository.appendVersionAndClearActive({
+    id: "v2", rootId: "r1", parentVersionId: "v1", title: "新回顾",
+    createdAt: "2026-08-27T13:00:00.000Z", status: "completed", payload: { sourceRevision: 2 },
+  })).rejects.toThrow("active clear failed");
+  expect(connection.execAsync).toHaveBeenNthCalledWith(1, "BEGIN IMMEDIATE");
+  expect(connection.execAsync).toHaveBeenLastCalledWith("ROLLBACK");
+});
