@@ -47,5 +47,6 @@ describe("Expo app identity", () => {
         /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu
       )
     );
+    expect(projectId).toBe("1ddc0761-af43-491c-b969-ec2f6c415013");
   });
 });
