@@ -99,6 +99,15 @@ test("starts a legacy welcome draft at the expectations stage", () => {
   });
 });
 
+test("maps legacy no-expression-support into the legal can-say UI value", () => {
+  const migrated = migrateJourneyDraftV1ToV2({
+    ...legacyDraft(),
+    expressionSupportNeeded: false
+  });
+
+  expect(migrated.reflection.expressionDifficulty).toBe("can-say");
+});
+
 test("migrates a legacy saved card without treating it as a seven-section record", () => {
   const migrated = migrateLegacyCommunicationCard({
     boundaries: {

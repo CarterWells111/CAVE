@@ -132,7 +132,7 @@ export function migrateJourneyDraftV1ToV2(input: JourneyDraftV1): JourneyDraft {
       ...base.reflection,
       expressionDifficulty: input.expressionSupportNeeded === null
         ? null
-        : input.expressionSupportNeeded ? "needs-phrase" : "can-express"
+        : input.expressionSupportNeeded ? "needs-phrase" : "can-say"
     },
     journalSaveChoice: input.journalSaveChoice,
     journal: { text: "", saveChoice: input.journalSaveChoice },

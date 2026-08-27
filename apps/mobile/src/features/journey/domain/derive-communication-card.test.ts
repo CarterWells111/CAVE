@@ -28,6 +28,37 @@ test("derives seven pending local sections at the current source revision", () =
   expect(JSON.stringify(card)).not.toMatch(/score|percentage|readiness/iu);
 });
 
+test("generates user-readable Chinese without leaking template keys or raw option ids", () => {
+  const input = {
+    ...draft(),
+    expectationIds: ["draft-expect-rest"],
+    comfortNeedIds: ["draft-comfort-privacy"],
+    behaviorAttitudes: { "draft-kissing": "looking-forward" as const }
+  };
+
+  const serialized = JSON.stringify(buildCommunicationCard(input));
+
+  expect(serialized).toMatch(/[\u3400-\u9fff]/u);
+  expect(serialized).not.toMatch(/draft-card|draft-expect-rest|draft-comfort-privacy|draft-kissing/u);
+});
+
+test("uses the canonical Page 6 phrase before legacy phrase fields", () => {
+  const input = {
+    ...draft(),
+    practice: {
+      ...draft().practice,
+      phrase: "我现在想先停一下。",
+      editedPhrase: "legacy edited phrase",
+      selectedPhraseId: "draft-phrase-pause"
+    }
+  };
+
+  const field = buildCommunicationCard(input)["communication-changed-feelings"];
+
+  expect(field.generatedText).toContain("我现在想先停一下。");
+  expect(field.generatedText).not.toMatch(/legacy edited phrase|draft-phrase-pause/u);
+});
+
 test("refreshes untouched fields but preserves user text and flags it for review", () => {
   const original = buildCommunicationCard(draft());
   const edited = {

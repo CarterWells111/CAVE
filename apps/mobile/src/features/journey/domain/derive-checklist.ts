@@ -2,7 +2,8 @@ import type { ChecklistItem, JourneyDraft } from "./types";
 
 const HEALTH_RELATED_BEHAVIOR_IDS = new Set([
   "draft-penetrative-sex",
-  "draft-oral-sex"
+  "draft-oral-sex",
+  "behavior-oral-genital-contact"
 ]);
 
 type ChecklistSeed = Pick<ChecklistItem, "id" | "category" | "sourceIds">;

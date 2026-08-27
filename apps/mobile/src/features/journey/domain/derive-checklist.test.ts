@@ -38,6 +38,19 @@ test("only adds a sourced health item for a locally related selected behavior", 
   expect(buildChecklist(draft()).some(({ category }) => category === "health")).toBe(false);
 });
 
+test("uses the canonical content id for oral-genital contact health preparation", () => {
+  const result = buildChecklist({
+    ...draft(),
+    behaviorAttitudes: { "behavior-oral-genital-contact": "decide-in-moment" }
+  });
+
+  expect(result).toContainEqual(expect.objectContaining({
+    id: "checklist:health:behavior-oral-genital-contact",
+    category: "health",
+    sourceIds: ["draft-source-sexual-health"]
+  }));
+});
+
 test("preserves edits for still-applicable items and removes stale derived items", () => {
   const existing = buildChecklist(draft()).map((item) => item.id === "checklist:expression"
     ? { ...item, status: "considered" as const, userNote: "I want a pause phrase" }
