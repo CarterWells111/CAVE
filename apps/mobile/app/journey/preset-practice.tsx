@@ -58,9 +58,8 @@ export default function PresetPracticeRoute() {
           {...(initialIntent === undefined ? {} : { initialIntent })}
           {...(initialBranch === undefined ? {} : { initialBranch })}
           {...(snapshot?.practice.editedPhrase === undefined ? {} : { initialEditedPhrase: snapshot.practice.editedPhrase })}
-          onComplete={(input) => {
-            void runAndRefresh(() => controller.completePractice(input)).then(() => goTo("checklist"));
-          }}
+          onComplete={(input) => runAndRefresh(() => controller.completePractice(input))
+            .then(() => goTo("checklist"))}
         />;
       }}
     </JourneyRouteScreen>

@@ -33,6 +33,14 @@ function runtime() {
   });
 }
 
+function deferred<T>() {
+  let resolve!: (value: T | PromiseLike<T>) => void;
+  const promise = new Promise<T>((resolvePromise) => {
+    resolve = resolvePromise;
+  });
+  return { promise, resolve };
+}
+
 async function openRoute(element: ReactElement, journeyRuntime: JourneyRuntime): Promise<RenderAPI> {
   const view = render(
     <JourneyRuntimeProvider createRuntime={async () => journeyRuntime}>
@@ -70,8 +78,12 @@ test("the production Welcome route confirms restart before resetting and returni
   await journeyRuntime.service.navigateTo("reflection");
   const view = await openRoute(<WelcomeRoute />, journeyRuntime);
 
-  fireEvent.press(screen.getByText("重新开始（需要确认）"));
+  const restartAction = screen.getByText("重新开始（需要确认）");
+  fireEvent.press(restartAction);
+  fireEvent.press(restartAction);
 
+  expect(alert).toHaveBeenCalledTimes(1);
+  expect(screen.getByText("正在重新开始…")).toBeTruthy();
   expect(alert).toHaveBeenCalledWith(
     "确认重新开始",
     "当前旅程草稿会被清除。",
@@ -83,6 +95,66 @@ test("the production Welcome route confirms restart before resetting and returni
   await waitFor(() => expect(journeyRuntime.service.getSnapshot()).toBeNull());
   expect(mockRouter.replace).toHaveBeenCalledWith("/journey/welcome");
   view.unmount();
+});
+
+test("the production Welcome route resolves restart cancellation without clearing the draft", async () => {
+  const alert = jest.spyOn(Alert, "alert").mockImplementation(() => undefined);
+  const journeyRuntime = runtime();
+  await journeyRuntime.service.confirmAdult();
+  await journeyRuntime.service.navigateTo("reflection");
+  const resetJourney = jest.spyOn(journeyRuntime.service, "resetJourney");
+  const view = await openRoute(<WelcomeRoute />, journeyRuntime);
+
+  fireEvent.press(screen.getByText("重新开始（需要确认）"));
+  const cancel = alert.mock.calls[0]?.[2]?.find(({ style }) => style === "cancel");
+  await act(async () => { cancel?.onPress?.(); });
+
+  await waitFor(() => expect(screen.getByText("重新开始（需要确认）")).toBeTruthy());
+  expect(resetJourney).not.toHaveBeenCalled();
+  expect(journeyRuntime.service.getSnapshot()?.currentPage).toBe("reflection");
+  expect(mockRouter.replace).not.toHaveBeenCalledWith("/journey/welcome");
+  view.unmount();
+});
+
+test("the production Welcome route hides restart rejection details and allows retry", async () => {
+  const alert = jest.spyOn(Alert, "alert").mockImplementation(() => undefined);
+  const journeyRuntime = runtime();
+  await journeyRuntime.service.confirmAdult();
+  jest.spyOn(journeyRuntime.service, "resetJourney")
+    .mockRejectedValueOnce(new Error("private restart failure"));
+  const view = await openRoute(<WelcomeRoute />, journeyRuntime);
+
+  fireEvent.press(screen.getByText("重新开始（需要确认）"));
+  const destructive = alert.mock.calls[0]?.[2]?.find(({ style }) => style === "destructive");
+  await act(async () => { destructive?.onPress?.(); });
+
+  expect(await screen.findByText("操作失败，请重试。")).toBeTruthy();
+  expect(screen.queryByText("private restart failure")).toBeNull();
+  await waitFor(() => expect(
+    screen.getByRole("button", { name: "重新开始（需要确认）" }).props.accessibilityState.disabled
+  ).toBe(false));
+  view.unmount();
+});
+
+test("the production Welcome route keeps adult confirmation pending and blocks duplicate presses", async () => {
+  const journeyRuntime = runtime();
+  const entering = deferred<"overnight" | "underage-exit">();
+  const enterWelcome = jest.spyOn(journeyRuntime.controller, "enterWelcome")
+    .mockReturnValue(entering.promise);
+  const view = await openRoute(<WelcomeRoute />, journeyRuntime);
+
+  const adultAction = screen.getByRole("button", { name: "我已满18岁" });
+  fireEvent.press(adultAction);
+  fireEvent.press(adultAction);
+
+  expect(enterWelcome).toHaveBeenCalledTimes(1);
+  expect(screen.getByText("正在继续…")).toBeTruthy();
+  expect(screen.getByRole("button", { name: "正在继续…" }).props.accessibilityState).toEqual(
+    expect.objectContaining({ busy: true, disabled: true })
+  );
+
+  view.unmount();
+  entering.resolve("overnight");
 });
 
 test("production back navigation can edit Page 4 and recompute derived output without losing user text", async () => {

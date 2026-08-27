@@ -13,10 +13,8 @@ export default function OvernightRoute() {
           initialConcernIds={snapshot?.concernIds ?? []}
           initialCustomNote={snapshot?.overnightCustomNote ?? ""}
           initialExpectationIds={snapshot?.expectationIds ?? []}
-          onContinue={(input) => {
-            void runAndRefresh(() => controller.saveOvernight(input))
-              .then(() => goTo("body-knowledge"));
-          }}
+          onContinue={(input) => runAndRefresh(() => controller.saveOvernight(input))
+            .then(() => goTo("body-knowledge"))}
         />
       )}
     </JourneyRouteScreen>

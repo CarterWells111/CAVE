@@ -14,10 +14,8 @@ export default function ReflectionRoute() {
           initialJournalSaveChoice={snapshot?.journalSaveChoice ?? "device"}
           initialMotivationIds={snapshot?.motivationIds ?? []}
           motivationOptions={options.filter(({ group }) => group === "motivation")}
-          onComplete={(input) => {
-            void runAndRefresh(() => controller.saveReflection(input))
-              .then(() => goTo("preset-practice"));
-          }}
+          onComplete={(input) => runAndRefresh(() => controller.saveReflection(input))
+            .then(() => goTo("preset-practice"))}
         />
       )}
     </JourneyRouteScreen>
