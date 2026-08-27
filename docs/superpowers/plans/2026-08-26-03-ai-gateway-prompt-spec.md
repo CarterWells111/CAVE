@@ -6,7 +6,7 @@
 
 **架构（Architecture）：** Hono routes 使用 Plan 02 的 Zod schema 校验请求与响应，再委托 application service。Provider adapter 只返回 provider-neutral candidate；prompt builder 与 scenario engine 在返回客户端前进行约束和最终裁决。
 
-**技术栈（Tech Stack）：** Cloudflare Workers、Hono、TypeScript、Zod、Vitest、native `fetch`、`@hackathon/contracts`、`@hackathon/scenario-engine`、`@hackathon/test-fixtures`。
+**技术栈（Tech Stack）：** Cloudflare Workers、Hono、TypeScript、Zod、Vitest、native `fetch`、`@cave/contracts`、`@cave/scenario-engine`、`@cave/test-fixtures`。
 
 ---
 
@@ -66,7 +66,7 @@ interface ModelProvider {
 - [ ] 先写失败测试：缺少 `MODEL_MODE`、非法 mode、live mode 缺少 `MODEL_BASE_URL`/`MODEL_API_KEY`/`MODEL_NAME`、malformed URL 均拒绝启动。
 - [ ] 实现 `GatewayEnvSchema`：mock 只要求 versions；live 额外要求三项 model variables。
 - [ ] 从 `app.ts` 导出 `createApp(env)`；`src/index.ts` 只把 Worker `fetch` 绑定到 composed app。
-- [ ] 运行 `pnpm --filter @hackathon/gateway test`，预期环境测试通过。
+- [ ] 运行 `pnpm --filter @cave/gateway test`，预期环境测试通过。
 - [ ] 提交：`git commit -am "feat: validate gateway environment"`。
 
 ## 任务 2：metadata routes
@@ -132,8 +132,8 @@ interface ModelProvider {
 
 ## 执行命令与预期结果
 
-- [ ] `pnpm --filter @hackathon/gateway test`：全部 provider、route、prompt、evidence tests 通过。
-- [ ] `pnpm test:contracts && pnpm --filter @hackathon/scenario-engine test`：公共契约与状态机无回归。
+- [ ] `pnpm --filter @cave/gateway test`：全部 provider、route、prompt、evidence tests 通过。
+- [ ] `pnpm test:contracts && pnpm --filter @cave/scenario-engine test`：公共契约与状态机无回归。
 - [ ] `pnpm build:gateway`：Worker build 退出码 0。
 - [ ] Wrangler local 下调用四个 routes 的 valid/invalid fixtures：返回 exact status/schema。
 - [ ] 搜索 provider SDK、API key、prompt body：source 无 SDK，response/log fixture 无 secret/body。

@@ -6,13 +6,13 @@
 
 **架构（Architecture）：** release artifacts 从 Plan 07 的 verified commit 产生。Runtime code sponsor-neutral；submission narrative、screenshots 与 video scripts 分目录维护并引用同一 release manifest。
 
-**技术栈（Tech Stack）：** EAS Build/Update、Cloudflare Wrangler、GitHub、Markdown、screen recording、Android APK、iOS internal distribution。
+**技术栈（Tech Stack）：** EAS Build/Update、Cloudflare Wrangler、GitHub、Markdown、screen recording、iOS internal distribution。
 
 ---
 
 **依赖计划：** Plan 07 complete 且无 P0/P1 defect。  
 **输入：** tagged RC、三轮 rehearsal evidence、organizer submission checklist。  
-**输出：** installed iOS preview、deployed Worker、Android APK、Mock path、recording、README/docs、两套 submission directories。  
+**输出：** installed iOS preview、deployed Worker、Mock path、polished full-flow video、本地关键路径 screen recording 副本、README/docs、两套 submission directories。
 **明确排除：** 非 release blocker 的 feature fix、App Store production submission、sponsor-specific code fork。  
 **预计时间：** 3 小时。**负责人：** 工程师负责 artifacts；队友负责 narratives 与 video。
 
@@ -31,7 +31,7 @@ submissions/{sappho,eazo}/assets/**
 ## 任务 1：锁定 Release Manifest
 
 - [ ] 确认 Git clean，HEAD 等于 Plan 07 verified commit。
-- [ ] 在 `release-manifest.md` 把该 commit 记录为 `runtimeCommit`，并记录 app semantic version、iOS build number、Android version code、Expo runtime、API contract、prompt、policy、model mode/name、content version。
+- [ ] 在 `release-manifest.md` 把该 commit 记录为 `runtimeCommit`，并记录 app semantic version、iOS build number、Expo runtime、API contract、prompt、policy、model mode/name、content version。
 - [ ] 记录 accepted P2 issues 与明确 non-features。
 - [ ] 后续允许 docs/assets commits，但 `runtimeCommit` 固定；任何 runtime code/config change 都使 Plan 07 rehearsal evidence 失效，必须重跑受影响 checks 与三轮彩排。
 - [ ] 提交：`git add submissions/shared && git commit -m "docs: lock hackathon release manifest"`。
@@ -53,19 +53,18 @@ submissions/{sappho,eazo}/assets/**
 - [ ] 断网验证 local content 与 visible Mock fallback。
 - [ ] 在 manifest 记录 EAS build ID/URL、device、iOS version、install time 与 observed versions。
 
-## 任务 4：生成 Android 备用 APK
+## 任务 4：记录 Android 延期边界
 
-- [ ] 从相同 `runtimeCommit` 与配置族生成 internal-distribution Android APK。
-- [ ] emulator/device 安装并执行 Plan 07 smoke flow。
-- [ ] 在 `docs/runbooks/install.md` 记录 EAS build URL 与 QR/install instructions。
-- [ ] Android 非 smoke-path 问题保持 P2，除非影响 shared code 或 safety。
+- [ ] 在 release manifest 与 `docs/runbooks/install.md` 记录 Android 已延期，不属于当前黑客松 release scope。
+- [ ] 本轮不配置 Android package、不运行 Android build、不生成或发布 Android artifact。
+- [ ] Android 安装、smoke 与发布验收均不执行，也不作为 Plan 08 Gate；启用前必须另走固定决策变更。
 
 ## 任务 5：准备四层演示降级
 
 1. Live iPhone + LiveProvider。
 2. Installed iPhone + visibly enabled MockProvider。
-3. Pre-recorded full-flow video。
-4. Android APK 或 screen recording。
+3. Polished pre-recorded full-flow video：完整流程成片，带提交叙事与剪辑。
+4. 本地可用的关键路径 screen recording 副本：只覆盖主演示关键路径，无需网络或外部链接即可播放。
 
 - [ ] `demo.md` 固定 launch state、settings、demo inputs、expected outputs、time checkpoints、presenter handoff。
 - [ ] `model-outage.md` 固定 health/network/rate/provider checks、mode switch 与 disclosure wording。
@@ -102,6 +101,7 @@ submissions/{sappho,eazo}/assets/**
 - [ ] 使用 installed preview build 录制，画面可核对 app/build 且无通知或个人数据。
 - [ ] 只有 live 时才称 real AI；使用 Mock footage 时在画面中明确标记 scripted Mock。
 - [ ] 保存 clean master recording，再生成萨福/Eazo 不同开头与结尾的 edits。
+- [ ] 另存本地关键路径 screen recording 副本；它与完整流程成片分离，并在无网络、无外部链接时独立播放验证。
 - [ ] 两个 exported videos 从头到尾带声音播放；links/QR 在第二设备验证。
 - [ ] screenshots 不含 API key、device identifier、private dialogue、debug overlay、无关 account data。
 
@@ -109,7 +109,7 @@ submissions/{sappho,eazo}/assets/**
 
 - [ ] 对照 organizer checklist 检查两目录：command、name、slogan、description、image、repository/topic、project document、video、optional experience link。
 - [ ] repository 与 shared links 无需开发者本地 session 即可访问。
-- [ ] 最后一次验证 iPhone launch、Worker health、Mock mode、video、Android artifact。
+- [ ] 最后一次验证 iPhone launch、Worker health，以及 Live、Mock、polished full-flow video、本地关键路径 screen recording 四层。
 - [ ] 更新 Plan 00 状态与证据；提交：`git commit -am "docs: finalize dual hackathon submissions"`。
 - [ ] 在该 final submission commit 创建 annotated tag `hackathon-submission`；确认其中 manifest 仍记录 tested/built `runtimeCommit`。
 
@@ -124,7 +124,7 @@ submissions/{sappho,eazo}/assets/**
 
 - [ ] 主 iPhone 脱离开发电脑运行。
 - [ ] Worker versions 与 manifest 一致。
-- [ ] Live、Mock、video、Android 四层可独立使用。
+- [ ] Live、Mock、polished full-flow video、本地关键路径 screen recording 四层可独立使用。
 - [ ] README、architecture 与 security docs 完整准确。
 - [ ] 萨福/Eazo 叙事不同，technical facts 与 links 相同。
 - [ ] organizer checklist 每项有 verified artifact/link。

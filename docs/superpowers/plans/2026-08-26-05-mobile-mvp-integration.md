@@ -75,7 +75,7 @@ interface PrivacyUseCases {
 ## 任务 2：本地内容与课程进度
 
 - [ ] 先写失败测试：offline listing、missing lesson、idempotent completion、restart 后 progress 保留。
-- [ ] 实现 `CourseUseCases`，只消费 `@hackathon/content` 与 `LocalDataRepository`。
+- [ ] 实现 `CourseUseCases`，只消费 `@cave/content` 与 `LocalDataRepository`。
 - [ ] domain/application code 禁止 import React Native；repository adapter 隔离基础设施。
 - [ ] 添加薄 `learn` 与 lesson routes，使用 view model 并提供稳定 accessibility labels。
 - [ ] 模拟无网络，catalog、lesson、quiz fixture、progress 必须行为不变。
@@ -96,7 +96,7 @@ interface PrivacyUseCases {
 - [ ] 先写失败测试：start、append turn、cancel pending、legal transition、max-turn end、safety stop、reset、app-background reset policy。
 - [ ] Zustand state 仅含 scenario ID/version、options、stage、turn count、transient turns、request status、completion reason。
 - [ ] raw turns 禁止进入 persistence middleware；storage mock 在普通练习期间必须零 transcript writes。
-- [ ] stage transition 只调用 `@hackathon/scenario-engine`；store 不得直接赋值 stage。
+- [ ] stage transition 只调用 `@cave/scenario-engine`；store 不得直接赋值 stage。
 - [ ] 提交：`git commit -am "feat: manage transient practice sessions"`。
 
 ## 任务 5：Practice Use Cases
@@ -138,9 +138,9 @@ interface PrivacyUseCases {
 
 ## 执行命令与预期结果
 
-- [ ] `pnpm --filter @hackathon/mobile typecheck`：退出码 0。
-- [ ] `pnpm --filter @hackathon/mobile lint`：无 route boundary violation。
-- [ ] `pnpm --filter @hackathon/mobile test`：全部 unit/component/integration tests 通过。
+- [ ] `pnpm --filter @cave/mobile typecheck`：退出码 0。
+- [ ] `pnpm --filter @cave/mobile lint`：无 route boundary violation。
+- [ ] `pnpm --filter @cave/mobile test`：全部 unit/component/integration tests 通过。
 - [ ] 重跑 Plan 02—04 contract/security tests：无回归。
 - [ ] 真实 iPhone 连续三次：Mock success、Live success（凭证可用时）、forced-timeout recovery。
 - [ ] 关闭网络：local course/progress 全部可操作。

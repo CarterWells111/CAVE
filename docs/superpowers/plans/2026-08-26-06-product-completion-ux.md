@@ -41,7 +41,7 @@ apps/mobile/src/**/*.test.tsx
 
 ## 任务 2：可替换 Brand 与 Design Tokens
 
-- [ ] 定义 `brand.ts`：technical slug、display name、slogan、support URL、privacy URL、sponsor-neutral default copy；route 禁止 hardcode display name。
+- [ ] 定义 `brand.ts`，固定 `slug = "cave"`、`displayName = "内界 CAVE"`、`slogan = "听见身体，确认边界。"`、`description = "面向年轻女性的身体认知与亲密关系成长应用。"`，并包含 support URL、privacy URL、sponsor-neutral default copy；route 禁止 hardcode display name。
 - [ ] 定义 semantic colors、typography scale、spacing、radii、shadows、elevation、minimum touch size、reduced-motion durations。
 - [ ] 先写 contrast tests：正文/背景组合不满足 WCAG AA 时失败。
 - [ ] 替换 P0 screens 的 raw color/spacing literal；只允许一个记录清楚的 platform system color exception。

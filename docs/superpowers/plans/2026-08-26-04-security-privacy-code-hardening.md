@@ -84,7 +84,7 @@ interface SecretRepository {
 
 ## 任务 3：SQLCipher 与 key lifecycle
 
-- [ ] 开启 `expo-sqlite` config plugin 的 `useSQLCipher: true`，iOS/Android 同配置。
+- [ ] 开启 `expo-sqlite` config plugin 的 `useSQLCipher: true`，本轮仅验证 iOS；Android 配置与验证延期至独立固定决策获批并配置 Android package 后。
 - [ ] 加入 `expo-secure-store`，配置 iOS encryption declaration 与 device-only accessibility。
 - [ ] 先写失败测试：first creation、stable reread、explicit deletion、key/database mismatch。
 - [ ] 生成 32-byte random key，只 encode 一次，以 `db.key.v1` 保存，禁止 logging。

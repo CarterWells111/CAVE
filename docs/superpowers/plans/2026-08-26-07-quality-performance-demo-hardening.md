@@ -19,7 +19,7 @@
 ## 准确文件路径
 
 ```text
-.maestro/{core-flow,offline-delete,android-smoke}.yaml
+.maestro/{core-flow,offline-delete}.yaml
 docs/runbooks/verification-matrix.md
 docs/runbooks/demo-rehearsal-log.md
 docs/runbooks/known-issues.md
@@ -47,9 +47,8 @@ apps/mobile/src/test/performance/**
 
 - [ ] 先创建 `core-flow.yaml`：launch → local content → interaction → Mock practice → debrief → save card → verify saved record。
 - [ ] 创建 `offline-delete.yaml`：offline launch → content → records → delete all → relaunch → empty state。
-- [ ] 创建 `android-smoke.yaml`：launch → learning → practice setup → no crash。
 - [ ] 使用 UI 组件已有 accessibility IDs/text，不增加 test-only business branch。
-- [ ] 在主 iPhone 或匹配 simulator build 跑 iOS flows；Android 只在 APK/emulator 跑 smoke。
+- [ ] 在主 iPhone 或匹配 simulator build 跑 iOS core/offline flows。
 - [ ] 保存 report/screenshot/video；提交：`git commit -am "test: cover release critical mobile flows"`。
 
 ## 任务 4：Network 与 AI failure matrix
@@ -89,7 +88,7 @@ apps/mobile/src/test/performance/**
 ## 任务 7：Accessibility 与设备矩阵
 
 - [ ] 主 iPhone：VoiceOver main path、largest Dynamic Type、reduced motion、支持时 light/dark、offline、fresh install、previous preview upgrade。
-- [ ] Android：clean APK install 与 core-flow smoke，仅此两项。
+- Android 验收延期：本轮不配置 Android package、不生成 Android artifact、不执行安装或 smoke，且不阻塞当前 Gate。
 - [ ] smallest available iPhone class 与主演示手机检查 keyboard/input。
 - [ ] status 不只靠颜色；destructive action 会朗读后果。
 - [ ] 记录 device、OS、build version 与 pass/fail。
@@ -120,7 +119,7 @@ apps/mobile/src/test/performance/**
 ## 验收证据清单
 
 - [ ] clean install 后 full automated suite 通过。
-- [ ] Maestro iOS core/offline 与 Android smoke 通过。
+- [ ] Maestro iOS core/offline flows 通过。
 - [ ] security、log、bundle、SQLCipher、deletion checks 通过。
 - [ ] performance budgets 通过，或只剩无 demo 影响的明确 P2 acceptance。
 - [ ] final fix 后三轮连续完整彩排成功。

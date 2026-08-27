@@ -12,15 +12,20 @@
 
 | 决策 | 固定值 |
 |---|---|
+| 产品品牌 | `内界 CAVE` |
 | GitHub Repository | `https://github.com/CarterWells111/CAVE` |
 | 仓库结构 | pnpm workspace；不使用 Nx/Turborepo |
-| Package scope | `@hackathon/*` |
+| Expo owner/project | `carter_wells/cave` |
+| Expo slug | `cave` |
+| URL scheme | `cave` |
+| Package scope | `@cave/*` |
 | 移动端路径 | `apps/mobile` |
 | 网关路径 | `apps/gateway` |
-| iOS Bundle ID | `com.shenicest.bodyvoice` |
-| Android package | `com.shenicest.bodyvoice` |
+| iOS Bundle ID | `com.neijie.cave` |
+| Android package | 本轮不配置；启用 Android 前另走固定决策变更 |
+| Worker name | `neijie-cave-gateway` |
 | 主验收 | 使用 Apple Developer 凭证的真实 iPhone |
-| Android 验收 | 安装 + 核心路径 smoke test |
+| Android 验收 | 延期；仅在未来独立固定决策获批并配置 Android package 后定义与执行 |
 | 模型协议 | 通过原生 `fetch` 调用 OpenAI-compatible HTTP |
 | AI 输出 | non-streaming structured JSON |
 | AI 限时 | 15 秒；一次网络重试；一次结构修复 |
@@ -106,7 +111,8 @@ Day 4 只修 P0/P1 缺陷，不增加功能。
 ### P1
 
 - 多个 scenario fixture、保存 expression card、guide 内容。
-- SQLCipher 真机验证、Worker rate limit、Android smoke test。
+- SQLCipher 真机验证、Worker rate limit。
+- Android smoke test 延期，不属于当前黑客松 Gate；仅在未来独立固定决策获批并配置 Android package 后执行。
 - Maestro core flow 与 EAS preview update。
 
 ### P2
@@ -151,24 +157,31 @@ Plan 01 先创建基础 scripts；Plan 02 与 Plan 04 补齐内容和安全 scri
 ```json
 {
   "scripts": {
-    "dev:mobile": "pnpm --filter @hackathon/mobile start",
-    "dev:gateway": "pnpm --filter @hackathon/gateway dev",
+    "dev:mobile": "pnpm --filter @cave/mobile start",
+    "dev:gateway": "pnpm --filter @cave/gateway dev",
     "typecheck": "pnpm -r typecheck",
     "lint": "pnpm -r lint",
     "test": "pnpm -r test",
-    "test:contracts": "pnpm --filter @hackathon/contracts test",
-    "test:content": "pnpm --filter @hackathon/content test",
-    "test:safety": "pnpm --filter @hackathon/gateway test:safety",
-    "validate:content": "pnpm --filter @hackathon/content validate:content",
+    "test:contracts": "pnpm --filter @cave/contracts test",
+    "test:content": "pnpm --filter @cave/content test",
+    "test:safety": "pnpm --filter @cave/gateway test:safety",
+    "validate:content": "pnpm --filter @cave/content validate:content",
     "security:audit": "pnpm audit --prod",
     "security:scan-bundle": "node scripts/scan-bundle-secrets.mjs",
-    "build:gateway": "pnpm --filter @hackathon/gateway build",
+    "build:gateway": "pnpm --filter @cave/gateway build",
     "verify": "pnpm typecheck && pnpm lint && pnpm test && pnpm validate:content && pnpm build:gateway"
   }
 }
 ```
 
 ## 跨计划变更流程
+
+### CR-2026-08-27：发布前产品标识迁移
+
+- 原因：仓库初始 `Body Voice` 标识与批准的“内界 CAVE”产品定义不符，且尚未创建 EAS 项目或发行记录。
+- 决策：采用 `carter_wells/cave`、`com.neijie.cave`、`@cave/*`、`neijie-cave-gateway` 与 `cave-basics`；本轮删除 Android package。
+- 影响：Plan 01 App/EAS/Worker Gate、Plan 02 内容主 ID、Plan 04 SQLCipher 平台边界、Plans 03/05/06 的消费者名称，以及 Plans 07/08 的质量与发布验收边界。
+- 验收：本地 identity tests、完整 Plan 01—02 技术验证、feature-branch CI、EAS 项目差异审查和真实 iPhone Development Build。
 
 - [ ] 在本文件记录 change request、原因与受影响的 acceptance criterion。
 - [ ] 类型、enum、route、error code 或 environment variable 变化时，先改 Plan 02 或 Plan 03。
