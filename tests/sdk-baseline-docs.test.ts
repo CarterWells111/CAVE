@@ -38,4 +38,15 @@ describe("Expo SDK documentation baseline", () => {
       "SDK 57 baseline was superseded by the user-authorized Expo SDK 54 decision"
     );
   });
+
+  it("keeps Gate 02B aligned with the completed content-owner review", () => {
+    const identityMigrationPlan = readDocument(
+      "docs/superpowers/plans/2026-08-27-cave-product-identity-migration.md"
+    );
+
+    expect(identityMigrationPlan).not.toContain("content_review_pending");
+    expect(identityMigrationPlan).toContain(
+      "Gate 02B: is `pass` after the 2026-08-27 content-owner review"
+    );
+  });
 });

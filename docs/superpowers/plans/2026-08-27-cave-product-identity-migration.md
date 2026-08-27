@@ -636,13 +636,13 @@ git status --short
 
 Expected: all exit 0. `git status --short` is empty.
 
-- [ ] **Step 3: Reconfirm the honest production content blocker**
+- [ ] **Step 3: Reconfirm the reviewed production content state**
 
 ```powershell
 corepack pnpm validate:content
 ```
 
-Expected: exit 1 only for the seven unsigned draft entries, now including course `cave-basics`; keep Gate 02B as `content_review_pending`.
+Expected: exit 0 after the 2026-08-27 content-owner review recorded in commit `abb0fd4`; all seven production entries are reviewed and Gate 02B remains `pass`.
 
 - [ ] **Step 4: Push the feature branch and verify CI**
 
@@ -656,7 +656,7 @@ Expected: the latest feature-branch `foundation` job passes. Do not merge `main`
 
 - [ ] **Step 5: Record the exact migration evidence**
 
-Append a dated identity-migration evidence block to the master roadmap containing the commits from Tasks 1—6, command exit codes/test counts, and the exact CI URL returned by GitHub. State that Gate 01A remains pass, Gate 01B still awaits EAS/iPhone, Gate 02A remains pass, and Gate 02B remains `content_review_pending`.
+Append a dated identity-migration evidence block to the master roadmap containing the commits from Tasks 1—6, command exit codes/test counts, and the exact CI URL returned by GitHub. State that Gate 01A remains pass, Gate 01B still awaits EAS/iPhone, Gate 02A remains pass, and Gate 02B is `pass` after the 2026-08-27 content-owner review recorded in commit `abb0fd4`.
 
 ```powershell
 git add docs/superpowers/plans/2026-08-26-00-hackathon-master-roadmap.md
@@ -820,7 +820,7 @@ Expected: roadmap evidence is truthful, latest CI passes, and the feature branch
 - Real iPhone installation and two Metro-disconnected launches: must be reported from observation, never inferred.
 - Android: must remain unconfigured and unbuilt in this migration.
 - Gate 02A: must remain `pass` after `cave-basics` migration.
-- Gate 02B: remains `content_review_pending` until a content owner signs the seven draft entries and Golden outcomes.
+- Gate 02B: is `pass` after the 2026-08-27 content-owner review signed the seven production entries and Golden outcomes.
 
 ## Official EAS references
 
