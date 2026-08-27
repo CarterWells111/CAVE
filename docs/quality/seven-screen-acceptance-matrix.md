@@ -73,3 +73,17 @@ Status: `local_automated_pass`
 - Focused shell and repository tests passed, followed by mobile typecheck, lint, and 82 suites / 525 tests.
 
 The shell checkpoint remains stacked on the first-run PR. Immutable review versions, explicit later-review completion lifecycle, branching, and transactional history deletion are owned by the following version-history checkpoint, not claimed here.
+
+## Versioned reviews and history checkpoint
+
+Status: `local_automated_pass`
+
+- Additive database schema v5 adds one active-review singleton and immutable review versions without dropping earlier tables.
+- Replacing an active review first preserves an incomplete version; successful final-page completion preserves a completed version and clears the active draft.
+- History metadata queries exclude payload. Explicit detail routes load the selected version before displaying journal and confirmed communication content.
+- Branching clones the selected historical payload, preserves user-authored text, and deterministic recomputation marks changed generated fields `needsReview` with sharing visibility reset to `pending`.
+- Single-version deletion detaches child ancestry in one SQL transaction and rolls back on failure. Delete-all also clears active/version history and reports partial cleanup honestly when a native cleanup step fails.
+- History loading, empty/error/retry, detail, branching, deletion confirmation, pending/error/success, large-text scrolling, 44-point targets, and VoiceOver semantics have focused tests.
+- Participation events remain idempotent keys and do not create a readiness score or reward private content, saving choices, openness, or text length.
+
+Physical-device SQLCipher upgrade, rollback, delete recovery, and VoiceOver evidence remain `device_external_pending` until a signed native build is tested.
