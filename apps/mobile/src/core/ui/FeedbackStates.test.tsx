@@ -107,4 +107,14 @@ describe("feedback states", () => {
 
     expect(screen.queryByRole("button")).toBeNull();
   });
+
+  it("keeps error recovery normal text off the muted safety tone", () => {
+    render(<ErrorState actionLabel="重试" message="请稍后再试" onAction={jest.fn()} title="读取失败" />);
+    const action = screen.getByRole("button", { name: "重试" });
+    expect(action).toHaveStyle({
+      backgroundColor: theme.color.surface,
+      borderColor: theme.color.safetyMuted,
+    });
+    expect(screen.getByText("重试")).toHaveStyle({ color: theme.color.text });
+  });
 });

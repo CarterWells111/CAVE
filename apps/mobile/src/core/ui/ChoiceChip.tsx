@@ -38,7 +38,7 @@ export function ChoiceChip({
       onPress={onPress}
       style={({ pressed }) => ({
         alignItems: "center",
-        alignSelf: "flex-start",
+        alignSelf: "stretch",
         backgroundColor: disabled
           ? theme.color.surfaceMuted
           : pressed
@@ -46,20 +46,22 @@ export function ChoiceChip({
             : selected
               ? theme.color.surfaceAccent
               : theme.color.surface,
-        borderColor: selected ? theme.color.primary : theme.color.border,
-        borderRadius: theme.radius.pill,
-        borderWidth: theme.border.width,
+        borderColor: selected ? theme.color.brandSoft : theme.color.border,
+        borderCurve: "continuous",
+        borderRadius: theme.radius.control,
+        borderWidth: selected ? theme.border.selectedWidth : theme.border.width,
         flexDirection: "row",
         gap: theme.space.sm,
         maxWidth: "100%",
-        minHeight: theme.size.minimumTouchTarget,
+        minHeight: 56,
         minWidth: theme.size.minimumTouchTarget,
         opacity: disabled ? 0.55 : pressed ? 0.82 : 1,
         outlineColor: theme.color.focus,
-        outlineOffset: theme.space.xs,
+        outlineOffset: theme.border.focusOffset,
         outlineWidth: focused ? theme.border.focusWidth : 0,
         paddingHorizontal: theme.space.md,
-        paddingVertical: theme.space.xs
+        paddingVertical: theme.space.compact,
+        width: "100%"
       })}
       testID={testID}
     >
@@ -79,6 +81,11 @@ export function ChoiceChip({
       >
         {label}
       </Text>
+      {disabled ? (
+        <Text style={{ ...theme.typography.caption, color: theme.color.disabledText }}>
+          不可用
+        </Text>
+      ) : null}
     </Pressable>
   );
 }

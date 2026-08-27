@@ -1,18 +1,12 @@
 import { useEffect, useState } from "react";
-import {
-  AccessibilityInfo,
-  Pressable,
-  Text,
-  useWindowDimensions,
-  View
-} from "react-native";
+import { AccessibilityInfo, Pressable, Text, useWindowDimensions, View } from "react-native";
 
 import { theme } from "../design/theme";
 
-const TOTAL_PAGES = 8;
-
 type ProgressHeaderProps = {
   currentPage: number;
+  totalPages?: number;
+  showProgress?: boolean;
   onBack?: () => void;
   onExit?: () => void;
   backLabel?: string;
@@ -29,15 +23,9 @@ type HeaderActionProps = {
   disabled?: boolean;
 };
 
-function HeaderAction({
-  label,
-  onPress,
-  busy = false,
-  disabled = false
-}: HeaderActionProps) {
+function HeaderAction({ label, onPress, busy = false, disabled = false }: HeaderActionProps) {
   const [focused, setFocused] = useState(false);
   const unavailable = busy || disabled;
-
   return (
     <Pressable
       accessibilityLabel={label}
@@ -46,146 +34,100 @@ function HeaderAction({
       disabled={unavailable}
       onBlur={() => setFocused(false)}
       onFocus={() => setFocused(true)}
-      onPress={() => {
-        if (!unavailable) {
-          onPress();
-        }
-      }}
+      onPress={() => { if (!unavailable) onPress(); }}
       style={({ pressed }) => ({
         alignItems: "center",
-        backgroundColor: pressed ? theme.color.surfacePressed : theme.color.surface,
-        borderColor: theme.color.surface,
-        borderRadius: theme.radius.md,
-        borderWidth: theme.border.width,
+        backgroundColor: pressed ? theme.color.surfacePressed : "transparent",
+        borderColor: unavailable ? theme.color.disabledText : "transparent",
+        borderCurve: "continuous",
+        borderRadius: theme.radius.control,
+        borderWidth: unavailable ? theme.border.width : 0,
         flexShrink: 1,
         justifyContent: "center",
         maxWidth: "100%",
         minHeight: theme.size.minimumTouchTarget,
         minWidth: theme.size.minimumTouchTarget,
-        opacity: pressed ? 0.82 : 1,
+        opacity: unavailable ? 0.55 : pressed ? 0.82 : 1,
         outlineColor: theme.color.focus,
-        outlineOffset: theme.space.xs,
+        outlineOffset: theme.border.focusOffset,
         outlineWidth: focused ? theme.border.focusWidth : 0,
-        paddingHorizontal: theme.space.sm
+        paddingHorizontal: theme.space.sm,
       })}
     >
-      <Text
-        style={{
-          ...theme.typography.button,
-          color: theme.color.primary,
-          flexShrink: 1,
-          flexWrap: "wrap",
-          maxWidth: "100%",
-          textAlign: "center"
-        }}
-      >
+      <Text style={{ ...theme.typography.button, color: theme.color.textSecondary, flexShrink: 1, flexWrap: "wrap", maxWidth: "100%", textAlign: "center" }}>
         {label}
       </Text>
+      {busy ? <Text style={{ ...theme.typography.numericLabel, color: theme.color.textSecondary }}>加载中</Text> : null}
+      {disabled && !busy ? <Text style={{ ...theme.typography.numericLabel, color: theme.color.disabledText }}>不可用</Text> : null}
     </Pressable>
   );
 }
 
+export function progressHeaderUsesStackedLayout(width: number, fontScale: number): boolean {
+  return width <= 360 || fontScale >= 1.5;
+}
+
 export function ProgressHeader({
   currentPage,
+  totalPages = 7,
+  showProgress = currentPage !== 1,
   onBack,
   onExit,
   backLabel = "返回上一页",
   exitLabel = "退出旅程",
   backBusy = false,
   backDisabled = false,
-  testID
+  testID,
 }: ProgressHeaderProps) {
   const { fontScale, width } = useWindowDimensions();
-  const validCurrentPage =
-    Number.isInteger(currentPage) && currentPage >= 1 && currentPage <= TOTAL_PAGES;
-  const announcement = `第 ${currentPage} 页，共 ${TOTAL_PAGES} 页`;
-  const useTwoLineLayout = width <= 360 || fontScale >= 1.5;
+  const validTotal = Number.isInteger(totalPages) && totalPages > 0;
+  const validCurrent = validTotal && Number.isInteger(currentPage) && currentPage >= 1 && currentPage <= totalPages;
+  const announcement = `第 ${currentPage} 页，共 ${totalPages} 页`;
+  const useTwoLineLayout = progressHeaderUsesStackedLayout(width, fontScale);
 
   useEffect(() => {
-    if (validCurrentPage && process.env.EXPO_OS === "ios") {
+    if (validCurrent && showProgress && process.env.EXPO_OS === "ios") {
       AccessibilityInfo.announceForAccessibility(announcement);
     }
-  }, [announcement, validCurrentPage]);
+  }, [announcement, showProgress, validCurrent]);
 
-  if (!validCurrentPage) {
-    throw new RangeError("ProgressHeader currentPage must be an integer from 1 through 8.");
+  if (!validCurrent) {
+    throw new RangeError("ProgressHeader currentPage must be an integer from 1 through totalPages.");
   }
 
-  const leadingSlot = (
-    <View
-      style={{ alignItems: "flex-start", flex: 1 }}
-      testID="progress-leading-slot"
-    >
-      {onBack ? (
-        <HeaderAction
-          busy={backBusy}
-          disabled={backDisabled}
-          label={backLabel}
-          onPress={onBack}
-        />
-      ) : null}
+  const leading = (
+    <View style={{ alignItems: "flex-start", flex: 1 }} testID="progress-leading-slot">
+      {onBack ? <HeaderAction busy={backBusy} disabled={backDisabled} label={backLabel} onPress={onBack} /> : null}
     </View>
   );
-  const progress = (
+  const trailing = (
+    <View style={{ alignItems: "flex-end", flex: 1 }} testID="progress-trailing-slot">
+      {onExit ? <HeaderAction label={exitLabel} onPress={onExit} /> : null}
+    </View>
+  );
+  const progress = showProgress ? (
     <Text
       accessibilityLabel={announcement}
       accessibilityLiveRegion="polite"
       accessibilityRole="header"
-      style={{
-        ...theme.typography.label,
-        color: theme.color.textMuted,
-        flexShrink: 1,
-        flexWrap: "wrap",
-        fontVariant: ["tabular-nums"],
-        maxWidth: "100%",
-        textAlign: "center"
-      }}
+      style={{ ...theme.typography.numericLabel, color: theme.color.textSecondary, flexShrink: 1, flexWrap: "wrap", fontVariant: ["tabular-nums"], maxWidth: "100%", textAlign: "center" }}
       testID="progress-center"
     >
-      {announcement}
+      {currentPage} / {totalPages}
     </Text>
-  );
-  const trailingSlot = (
-    <View
-      style={{ alignItems: "flex-end", flex: 1 }}
-      testID="progress-trailing-slot"
-    >
-      {onExit ? <HeaderAction label={exitLabel} onPress={onExit} /> : null}
-    </View>
-  );
+  ) : null;
 
   return (
-    <View
-      style={{
-        alignItems: "center",
-        flexDirection: useTwoLineLayout ? "column" : "row",
-        gap: theme.space.sm,
-        width: "100%"
-      }}
-      testID={testID}
-    >
+    <View style={{ alignItems: "center", flexDirection: useTwoLineLayout ? "column" : "row", gap: theme.space.sm, minHeight: theme.size.navigationHeight, width: "100%" }} testID={testID}>
       {useTwoLineLayout ? (
         <>
-          <View
-            style={{
-              alignItems: "flex-start",
-              flexDirection: "row",
-              gap: theme.space.sm,
-              width: "100%"
-            }}
-            testID="progress-actions-row"
-          >
-            {leadingSlot}
-            {trailingSlot}
+          <View style={{ alignItems: "flex-start", flexDirection: "row", gap: theme.space.sm, width: "100%" }} testID="progress-actions-row">
+            {leading}{trailing}
           </View>
           {progress}
         </>
       ) : (
-        <>
-          {leadingSlot}
-          {progress}
-          {trailingSlot}
-        </>
+        <>{leading}{progress}{trailing}</>
       )}
     </View>
   );

@@ -17,7 +17,8 @@ test("exposes checkbox semantics and a visible checked marker", () => {
   expect(chip).toHaveProp("accessibilityState", { checked: true, disabled: false });
   expect(screen.getByText("带上安全套")).toBeTruthy();
   expect(screen.getByText("✓")).toBeTruthy();
-  expect(chip).toHaveStyle({ minHeight: 44, minWidth: 44 });
+  expect(chip).toHaveStyle({ minHeight: 56, minWidth: 44, width: "100%" });
+  expect(chip).toHaveStyle({ borderColor: theme.color.brandSoft, borderWidth: 2 });
 });
 
 test("exposes radio semantics and visible selected and unselected markers", () => {
@@ -69,6 +70,7 @@ test("does not activate while disabled", () => {
   fireEvent.press(screen.getByRole("checkbox", { name: "暂不选择" }));
 
   expect(onPress).not.toHaveBeenCalled();
+  expect(screen.getByText("不可用")).toBeTruthy();
 });
 
 test("shows color and non-color pressed signals", () => {
@@ -126,7 +128,7 @@ test("wraps a long choice label within the available narrow-screen width", () =>
   const chip = screen.getByRole("checkbox", { name: label });
   const text = screen.getByText(label);
 
-  expect(chip).toHaveStyle({ maxWidth: "100%", minHeight: 44, minWidth: 44 });
+  expect(chip).toHaveStyle({ maxWidth: "100%", minHeight: 56, minWidth: 44, width: "100%" });
   expect(text).toHaveStyle({
     flexShrink: 1,
     flexWrap: "wrap",

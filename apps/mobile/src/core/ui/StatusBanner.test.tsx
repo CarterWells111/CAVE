@@ -83,6 +83,17 @@ test("renders a labelled recovery action with a minimum 44 point target", () => 
   expect(onAction).toHaveBeenCalledTimes(1);
 });
 
+test.each(["info", "success", "warning", "error"] as const)(
+  "keeps %s recovery action normal text on the primary text pairing",
+  (variant) => {
+    render(<StatusBanner actionLabel="继续" message="状态" onAction={jest.fn()} variant={variant} />);
+    expect(screen.getByText("继续")).toHaveStyle({ color: theme.color.text });
+    expect(screen.getByRole("button", { name: "继续" })).toHaveStyle({
+      borderColor: theme.color.interactiveBorder,
+    });
+  },
+);
+
 test("shows color and non-color pressed signals on the recovery action", () => {
   render(
     <StatusBanner

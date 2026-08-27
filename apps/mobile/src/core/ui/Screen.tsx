@@ -1,4 +1,5 @@
-import { ScrollView, type ScrollViewProps } from "react-native";
+import { ScrollView, StyleSheet, type ScrollViewProps, useWindowDimensions } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 import { theme } from "../design/theme";
 
@@ -6,10 +7,29 @@ type LockedScrollProp = "horizontal" | "contentInsetAdjustmentBehavior" | "keybo
 
 export type ScreenProps = Omit<ScrollViewProps, LockedScrollProp>;
 
+export function contentHorizontalPadding(width: number): number {
+  return width < 375 ? theme.space.md : theme.space.card;
+}
+
 export function Screen({ children, contentContainerStyle, style, ...props }: ScreenProps) {
+  const { width } = useWindowDimensions();
+  const horizontalPadding = contentHorizontalPadding(width);
+  const callerPresentation = { ...(StyleSheet.flatten(contentContainerStyle) ?? {}) };
+  for (const lockedKey of [
+    "maxWidth", "minWidth", "width", "paddingHorizontal", "paddingLeft", "paddingRight", "paddingStart", "paddingEnd",
+  ] as const) {
+    delete callerPresentation[lockedKey];
+  }
+
   return (
-    <ScrollView
+    <SafeAreaView
+      edges={["top", "bottom"]}
+      style={{ backgroundColor: theme.color.background, flex: 1 }}
+      testID="screen-safe-area"
+    >
+      <ScrollView
       {...props}
+      automaticallyAdjustKeyboardInsets
       horizontal={false}
       contentInsetAdjustmentBehavior="automatic"
       keyboardShouldPersistTaps="handled"
@@ -19,15 +39,18 @@ export function Screen({ children, contentContainerStyle, style, ...props }: Scr
           alignSelf: "center",
           flexGrow: 1,
           gap: theme.space.lg,
-          maxWidth: theme.size.readableContentMax,
-          paddingHorizontal: theme.space.lg,
           paddingVertical: theme.space.xl,
+        },
+        callerPresentation,
+        {
+          maxWidth: theme.size.readableContentMax,
+          paddingHorizontal: horizontalPadding,
           width: "100%",
         },
-        contentContainerStyle,
       ]}
     >
       {children}
-    </ScrollView>
+      </ScrollView>
+    </SafeAreaView>
   );
 }

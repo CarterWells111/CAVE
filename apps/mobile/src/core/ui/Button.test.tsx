@@ -20,13 +20,13 @@ function contrastRatio(first: string, second: string) {
   return (lighter + 0.05) / (darker + 0.05);
 }
 
-test("renders a labelled button with a minimum 44 point target", () => {
+test("renders a labelled 52-point primary action", () => {
   render(<Button label="继续" onPress={jest.fn()} />);
 
   const button = screen.getByRole("button", { name: "继续" });
   expect(screen.getByText("继续")).toBeTruthy();
   expect(button).toHaveProp("accessibilityState", { disabled: false, busy: false });
-  expect(button).toHaveStyle({ minHeight: 44, minWidth: 44 });
+  expect(button).toHaveStyle({ minHeight: 52, minWidth: 44, width: "100%" });
 });
 
 test("shows color and non-color pressed signals", () => {
@@ -83,6 +83,8 @@ test("keeps custom accessibility semantics on the focused interaction node", () 
       selected: true
     })
   );
+  expect(button).toHaveStyle({ borderWidth: 2 });
+  expect(screen.getByText("✓ 已选中")).toBeTruthy();
 
   fireEvent(button, "focus");
   expect(button.props.style.outlineColor).toBe(theme.color.focus);
@@ -100,6 +102,7 @@ test("does not activate while disabled", () => {
   expect(onPress).not.toHaveBeenCalled();
   expect(button).toHaveProp("accessibilityState", { disabled: true, busy: false });
   expect(button.props.style.opacity).toBeLessThan(1);
+  expect(screen.getByText("不可用")).toBeTruthy();
 });
 
 test("keeps its visible label and blocks duplicate activation while loading", () => {
@@ -139,7 +142,7 @@ test("wraps a long label inside a narrow large-text layout without truncation", 
     flexShrink: 1,
     flexWrap: "wrap",
     maxWidth: "100%",
-    minHeight: 44,
+    minHeight: 52,
     minWidth: 44
   });
   expect(text).toHaveStyle({

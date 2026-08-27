@@ -62,7 +62,7 @@ export function ErrorState({ title, message, actionLabel, onAction }: ErrorState
           onPress={onAction}
           style={{
             alignItems: "center",
-            backgroundColor: theme.color.danger,
+            backgroundColor: theme.color.surface,
             borderColor: theme.color.danger,
             borderCurve: "continuous",
             borderRadius: theme.radius.md,
@@ -77,7 +77,7 @@ export function ErrorState({ title, message, actionLabel, onAction }: ErrorState
             paddingHorizontal: theme.space.lg,
           }}
         >
-          <Text style={{ color: theme.color.onDanger, ...theme.typography.label }}>{actionLabel}</Text>
+          <Text style={{ color: theme.color.text, ...theme.typography.label }}>{actionLabel}</Text>
         </Pressable>
       ) : null}
     </View>

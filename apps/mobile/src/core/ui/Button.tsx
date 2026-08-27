@@ -58,36 +58,38 @@ export function Button({
       style={({ pressed }) => ({
         alignItems: "center",
         backgroundColor: disabled
-          ? theme.color.disabled
+          ? theme.color.disabledFill
           : loading
             ? theme.color.primary
           : pressed
             ? theme.color.primaryPressed
             : theme.color.primary,
         borderColor: theme.color.primary,
-        borderRadius: theme.radius.md,
-        borderWidth: theme.border.width,
+        borderCurve: "continuous",
+        borderRadius: theme.radius.control,
+        borderWidth: selected ? theme.border.selectedWidth : theme.border.width,
         flexDirection: "row",
         flexShrink: 1,
         flexWrap: "wrap",
         gap: theme.space.sm,
         justifyContent: "center",
         maxWidth: "100%",
-        minHeight: theme.size.minimumTouchTarget,
+        minHeight: theme.size.primaryActionHeight,
         minWidth: theme.size.minimumTouchTarget,
         opacity: disabled ? 0.55 : pressed ? 0.82 : 1,
         outlineColor: theme.color.focus,
-        outlineOffset: theme.space.xs,
+        outlineOffset: theme.border.focusOffset,
         outlineWidth: focused ? theme.border.focusWidth : 0,
         paddingHorizontal: theme.space.lg,
-        paddingVertical: theme.space.sm
+        paddingVertical: theme.space.compact,
+        width: "100%"
       })}
       testID={testID}
     >
       <Text
         style={{
           ...theme.typography.button,
-          color: disabled ? theme.color.textMuted : theme.color.onPrimary,
+          color: disabled ? theme.color.disabledText : theme.color.onPrimary,
           flexShrink: 1,
           flexWrap: "wrap",
           maxWidth: "100%",
@@ -107,6 +109,16 @@ export function Button({
           }}
         >
           加载中
+        </Text>
+      ) : null}
+      {disabled && !loading ? (
+        <Text style={{ ...theme.typography.caption, color: theme.color.disabledText }}>
+          不可用
+        </Text>
+      ) : null}
+      {selected ? (
+        <Text style={{ ...theme.typography.caption, color: disabled ? theme.color.disabledText : theme.color.onPrimary }}>
+          ✓ 已选中
         </Text>
       ) : null}
     </Pressable>

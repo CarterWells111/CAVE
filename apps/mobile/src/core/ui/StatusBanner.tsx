@@ -97,7 +97,7 @@ export function StatusBanner({
             alignItems: "center",
             alignSelf: "flex-start",
             backgroundColor: pressed ? theme.color.surfacePressed : theme.color.surface,
-            borderColor: theme.color.surface,
+            borderColor: theme.color.interactiveBorder,
             borderRadius: theme.radius.md,
             borderWidth: theme.border.width,
             justifyContent: "center",
@@ -110,7 +110,7 @@ export function StatusBanner({
             paddingHorizontal: theme.space.md
           })}
         >
-          <Text style={{ ...theme.typography.button, color: presentation.tone }}>{actionLabel}</Text>
+          <Text style={{ ...theme.typography.button, color: theme.color.text }}>{actionLabel}</Text>
         </Pressable>
       ) : null}
     </View>
