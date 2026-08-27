@@ -101,11 +101,10 @@ function contrastRatio(foreground: unknown, background: unknown) {
 test("uses 44 point back target and baseline AA text contrast", () => {
   render(<JourneyScreenShell pageId="overnight" onBack={jest.fn()} />);
 
-  const rootStyle = StyleSheet.flatten(screen.getByTestId("journey-page-overnight").props.style);
   const back = screen.getByRole("button", { name: "返回上一页" });
   const backStyle = StyleSheet.flatten(back.props.style);
   const backLabelStyle = StyleSheet.flatten(screen.getByText("返回修改").props.style);
 
   expect(backStyle).toEqual(expect.objectContaining({ minHeight: 44, minWidth: 44 }));
-  expect(contrastRatio(backLabelStyle.color, rootStyle.backgroundColor)).toBeGreaterThanOrEqual(4.5);
+  expect(contrastRatio(backLabelStyle.color, backStyle.backgroundColor)).toBeGreaterThanOrEqual(4.5);
 });

@@ -1,11 +1,13 @@
 import type { PropsWithChildren } from "react";
-import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { JOURNEY_PAGE_IDS } from "../application/journey-navigation";
 import type { JourneyPageId } from "../domain/types";
 import type { JourneyRuntimeNotice } from "./journey-ui-contracts";
+import type { JourneyAction as JourneyActionCallback } from "./journey-ui-contracts";
 import { journeyColors, journeySizes, journeySpacing } from "./journey-ui-tokens";
+import { JourneyAction } from "./components/JourneyAction";
 import { JourneyStatusBanner } from "./components/JourneyStatusBanner";
 
 const JOURNEY_PAGE_TITLES: Record<JourneyPageId, string> = {
@@ -21,7 +23,7 @@ const JOURNEY_PAGE_TITLES: Record<JourneyPageId, string> = {
 
 type Props = PropsWithChildren<{
   pageId: JourneyPageId;
-  onBack?: () => void;
+  onBack?: JourneyActionCallback | undefined;
   runtimeNotice?: JourneyRuntimeNotice;
 }>;
 
@@ -44,17 +46,15 @@ export function JourneyScreenShell({ pageId, onBack, runtimeNotice, children }: 
             <View style={styles.header}>
               <Text style={styles.progress}>{`第 ${pageNumber} 页，共 8 页`}</Text>
               {pageNumber > 1 ? (
-                <Pressable
+                <JourneyAction
                   accessibilityLabel="返回上一页"
-                  accessibilityRole="button"
-                  accessibilityState={{ disabled: !onBack }}
                   disabled={!onBack}
-                  onPress={onBack}
-                  style={styles.backTarget}
+                  errorMessage="返回失败，请重试。"
+                  label="返回修改"
+                  loadingLabel="正在返回…"
+                  onAction={onBack}
                   testID="journey-back"
-                >
-                  <Text style={styles.backLabel}>返回修改</Text>
-                </Pressable>
+                />
               ) : (
                 <View
                   style={styles.backTarget}
@@ -99,7 +99,6 @@ const styles = StyleSheet.create({
     minWidth: journeySizes.minimumTouchTarget,
     paddingVertical: journeySpacing.sm
   },
-  backLabel: { color: journeyColors.text, fontSize: 16, lineHeight: 22 },
   title: {
     color: journeyColors.text,
     fontSize: 24,

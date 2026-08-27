@@ -12,35 +12,31 @@ export default function WelcomeRoute() {
   const runtime = useJourneyRuntime();
   const [prefaceRead, setPrefaceRead] = useState(false);
 
-  const restart = () => {
+  const restart = () => new Promise<void>((resolve, reject) => {
     Alert.alert("确认重新开始", "当前旅程草稿会被清除。", [
-      { text: "取消", style: "cancel" },
+      { text: "取消", style: "cancel", onPress: () => resolve() },
       {
         text: "确认重新开始",
         style: "destructive",
-        onPress: () => {
-          void runtime.restart().then(() => router.replace("/journey/welcome"));
-        }
+        onPress: () => runtime.restart()
+          .then(() => router.replace("/journey/welcome"))
+          .then(() => resolve(), reject)
       }
     ]);
-  };
+  });
 
   return (
     <JourneyRouteScreen pageId="welcome">
       {({ controller, runAndRefresh, snapshot }) => (
         <WelcomePage
-          onAdult={() => {
-            void runAndRefresh(() => controller.enterWelcome({ adult: true, prefaceRead }))
-              .then(() => router.replace("/journey/overnight"));
-          }}
+          onAdult={() => runAndRefresh(() => controller.enterWelcome({ adult: true, prefaceRead }))
+            .then(() => router.replace("/journey/overnight"))}
           onOpenPreface={() => {
             setPrefaceRead(true);
             router.push("/journey/preface");
           }}
-          onUnderage={() => {
-            void controller.enterWelcome({ adult: false, prefaceRead })
-              .then(() => router.replace("/journey/underage-exit"));
-          }}
+          onUnderage={() => controller.enterWelcome({ adult: false, prefaceRead })
+            .then(() => router.replace("/journey/underage-exit"))}
           onRestart={restart}
           onResume={() => router.replace(getResumePath(snapshot))}
           resumeAvailable={snapshot?.ageConfirmed === true}
