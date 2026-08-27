@@ -261,9 +261,9 @@ SDK 54 implementation commits: c17d2bb aligns the Expo-managed mobile dependency
 Local software evidence: package contract RED on Expo ~57.0.17 then GREEN on Expo ~54.0.37 / Router ~6.0.24 / React 19.1.0 / React Native 0.81.5 / Jest Expo ~54.0.18; documentation contract RED then GREEN; Gate 01A fresh pass with 7 workspaces, verify:foundation exit 0, Expo Doctor 18/18, gateway 1/1 and Wrangler dry-run 62.70 KiB / gzip 15.40 KiB; Gate 02A/02B fresh pass with 60/60 focused domain tests and both draft/production validation exit 0
 Manifest/bundle evidence: SDK 54 Expo Go LAN server at exp://172.20.10.3:8082 returned manifest HTTP 200 with runtime exposdk:54.0.0, project ID 1ddc0761-af43-491c-b969-ec2f6c415013, slug cave, version 0.1.0, scheme cave, bundle ID com.neijie.cave, and environment name 内界 CAVE Dev; the initial SDK 54 bundle request correctly failed on a pnpm-selected @expo/metro-runtime 57.0.14 peer, then after the tested 6.1.2 repair the iOS Hermes bundle returned HTTP 200, 6198888 bytes, application/javascript
 Real-device SDK 54 observation: supplemental pass — after the visible LAN server was restarted, the user reported that the project opened successfully in Expo Go; device model, iOS version, exact rendered copy, and screen details were not supplied, so no stronger claim is recorded
-Current-head CI: pending push and exact-HEAD GitHub Actions observation
+Feature-branch CI evidence: exact HEAD 334691a passed the foundation job at https://github.com/CarterWells111/CAVE/actions/runs/33063767869; any later review-fix HEAD must also pass before merge
 Gate status: Gate 01A=pass; Gate 01B=external_pending until membership is active and the planned Development Build, installation, and Metro-disconnected launch evidence are complete
-Next action: install or update Apple App Store Expo Go, restart Metro with the SDK 54 project, scan the current QR code, and record the real-device observation; do not run EAS app device registration or build while membership remains Pending
+Next action: optionally supplement the Expo Go observation with device model, iOS version, and exact rendered copy; after Apple Developer membership becomes active, perform device registration, signed Development Build, installation, and Metro-disconnected launch acceptance
 ```
 
 ### Plan 02 / Gate 02B 内容负责人审核（2026-08-27）
