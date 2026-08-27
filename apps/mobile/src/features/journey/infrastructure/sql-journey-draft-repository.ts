@@ -16,6 +16,7 @@ import {
 } from "./journey-draft-repository";
 
 type DraftRow = { schema_version: number; payload: string };
+type MigrationReceiptRow = { migration_id: string };
 type CardRow = { id: string; journey_id: string; payload: string; saved_at: string };
 
 function isStringArray(value: unknown): value is string[] {
@@ -255,6 +256,14 @@ export class SqlJourneyDraftRepository implements JourneyDraftRepository {
       if (legacyRow.schema_version !== 1) throw new JourneyStorageError("unsupported-schema");
       const legacyValue = parseJson(legacyRow.payload);
       if (!isJourneyDraftV1(legacyValue)) throw new JourneyStorageError("malformed-payload");
+      const receipt = await connection.getFirstAsync<MigrationReceiptRow>(
+        "SELECT migration_id FROM journey_migration_receipts WHERE source_draft_id = ? AND source_schema_version = 1 AND target_schema_version = 2 LIMIT 1",
+        legacyValue.id
+      );
+      if (receipt !== null) {
+        await connection.execAsync("COMMIT");
+        return null;
+      }
       const migrated = migrateJourneyDraftV1ToV2(legacyValue);
       if (!isJourneyDraft(migrated)) throw new JourneyStorageError("malformed-payload");
 
@@ -297,7 +306,15 @@ export class SqlJourneyDraftRepository implements JourneyDraftRepository {
 
   async deleteActive(): Promise<void> {
     const connection = await this.database.initialize();
-    await connection.runAsync("DELETE FROM journey_drafts_v2");
+    await connection.execAsync("BEGIN IMMEDIATE");
+    try {
+      await connection.runAsync("DELETE FROM journey_drafts_v2");
+      await connection.runAsync("DELETE FROM journey_drafts");
+      await connection.execAsync("COMMIT");
+    } catch (error) {
+      await connection.execAsync("ROLLBACK");
+      throw error;
+    }
   }
 }
 

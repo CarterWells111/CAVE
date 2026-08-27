@@ -4,14 +4,38 @@ import { createJourneyDraft, type SavedCommunicationCardRecord } from "../domain
 import { JourneyStorageError } from "./journey-draft-repository";
 import { SqlCommunicationCardRepository, SqlJourneyDraftRepository } from "./sql-journey-draft-repository";
 
-function harness(options: { failV2InsertOnce?: boolean } = {}) {
+function harness(options: { failLegacyDeleteOnce?: boolean; failV2InsertOnce?: boolean } = {}) {
   let draftRow: Record<string, unknown> | null = null;
   let legacyDraftRow: Record<string, unknown> | null = null;
+  let transactionSnapshot: {
+    draftRow: Record<string, unknown> | null;
+    legacyDraftRow: Record<string, unknown> | null;
+    receiptSourceIds: Set<string>;
+  } | null = null;
+  let failLegacyDeleteOnce = options.failLegacyDeleteOnce ?? false;
   let failV2InsertOnce = options.failV2InsertOnce ?? false;
+  const receiptSourceIds = new Set<string>();
   const cards = new Map<string, Record<string, unknown>>();
   const sqlCalls: string[] = [];
   const connection: DatabaseConnection = {
-    execAsync: jest.fn(async (sql: string) => { sqlCalls.push(sql); }),
+    execAsync: jest.fn(async (sql: string) => {
+      sqlCalls.push(sql);
+      if (sql === "BEGIN IMMEDIATE") {
+        transactionSnapshot = {
+          draftRow,
+          legacyDraftRow,
+          receiptSourceIds: new Set(receiptSourceIds),
+        };
+      } else if (sql === "COMMIT") {
+        transactionSnapshot = null;
+      } else if (sql === "ROLLBACK" && transactionSnapshot !== null) {
+        draftRow = transactionSnapshot.draftRow;
+        legacyDraftRow = transactionSnapshot.legacyDraftRow;
+        receiptSourceIds.clear();
+        for (const id of transactionSnapshot.receiptSourceIds) receiptSourceIds.add(id);
+        transactionSnapshot = null;
+      }
+    }),
     runAsync: jest.fn(async (sql: string, ...params: unknown[]) => {
       sqlCalls.push(sql);
       if (sql.startsWith("INSERT INTO journey_drafts_v2")) {
@@ -22,6 +46,14 @@ function harness(options: { failV2InsertOnce?: boolean } = {}) {
         draftRow = { id: params[0], schema_version: params[1], payload: params[2] };
       } else if (sql === "DELETE FROM journey_drafts_v2") {
         draftRow = null;
+      } else if (sql === "DELETE FROM journey_drafts") {
+        if (failLegacyDeleteOnce) {
+          failLegacyDeleteOnce = false;
+          throw new Error("legacy delete failed");
+        }
+        legacyDraftRow = null;
+      } else if (sql.startsWith("INSERT INTO journey_migration_receipts")) {
+        receiptSourceIds.add(String(params[1]));
       } else if (sql.startsWith("INSERT INTO journey_cards")) {
         cards.set(String(params[0]), {
           id: params[0], journey_id: params[1], payload: params[2], saved_at: params[3]
@@ -32,8 +64,11 @@ function harness(options: { failV2InsertOnce?: boolean } = {}) {
       return { changes: 1 };
     }),
     getAllAsync: jest.fn(async () => [...cards.values()] as never[]),
-    getFirstAsync: jest.fn(async (sql: string) => {
+    getFirstAsync: jest.fn(async (sql: string, ...params: unknown[]) => {
       sqlCalls.push(sql);
+      if (sql.includes("journey_migration_receipts")) {
+        return (receiptSourceIds.has(String(params[0])) ? { migration_id: `receipt:${String(params[0])}` } : null) as never;
+      }
       return (sql.includes("journey_drafts_v2") ? draftRow : legacyDraftRow) as never;
     }),
     closeAsync: jest.fn(async () => undefined)
@@ -131,6 +166,63 @@ describe("SqlJourneyDraftRepository", () => {
     const receiptCount = fake.sqlCalls.filter((sql) => sql.startsWith("INSERT INTO journey_migration_receipts")).length;
     await expect(repository.loadActive()).resolves.toEqual(migrated);
     expect(fake.sqlCalls.filter((sql) => sql.startsWith("INSERT INTO journey_migration_receipts"))).toHaveLength(receiptCount);
+  });
+
+  test("does not repeat a legacy migration when its receipt exists but the v2 row is absent", async () => {
+    const fake = harness();
+    const legacy = legacyDraft();
+    fake.setLegacyDraftRow({ schema_version: 1, payload: JSON.stringify(legacy) });
+    const repository = new SqlJourneyDraftRepository(fake.manager);
+
+    await expect(repository.loadActive()).resolves.toMatchObject({ id: legacy.id, schemaVersion: 2 });
+    fake.setDraftRow(null);
+
+    await expect(repository.loadActive()).resolves.toBeNull();
+    expect(fake.sqlCalls.some((sql) => sql.includes("FROM journey_migration_receipts"))).toBe(true);
+  });
+
+  test("migrate then reset cannot revive the legacy draft on a cold load", async () => {
+    const fake = harness();
+    fake.setLegacyDraftRow({ schema_version: 1, payload: JSON.stringify(legacyDraft()) });
+
+    await expect(new SqlJourneyDraftRepository(fake.manager).loadActive()).resolves.toMatchObject({ schemaVersion: 2 });
+    await new SqlJourneyDraftRepository(fake.manager).deleteActive();
+
+    await expect(new SqlJourneyDraftRepository(fake.manager).loadActive()).resolves.toBeNull();
+    expect(fake.sqlCalls).toContain("DELETE FROM journey_drafts");
+  });
+
+  test("rolls back reset when deleting the legacy row fails", async () => {
+    const fake = harness({ failLegacyDeleteOnce: true });
+    const legacy = legacyDraft();
+    fake.setLegacyDraftRow({ schema_version: 1, payload: JSON.stringify(legacy) });
+    const repository = new SqlJourneyDraftRepository(fake.manager);
+    const migrated = await repository.loadActive();
+
+    await expect(repository.deleteActive()).rejects.toThrow("legacy delete failed");
+    await expect(repository.loadActive()).resolves.toEqual(migrated);
+    expect(fake.sqlCalls).toContain("ROLLBACK");
+  });
+
+  test("does not log legacy sensitive payloads during migration or reset", async () => {
+    const fake = harness();
+    fake.setLegacyDraftRow({ schema_version: 1, payload: JSON.stringify(legacyDraft()) });
+    const repository = new SqlJourneyDraftRepository(fake.manager);
+    const log = jest.spyOn(console, "log").mockImplementation(() => undefined);
+    const warn = jest.spyOn(console, "warn").mockImplementation(() => undefined);
+    const error = jest.spyOn(console, "error").mockImplementation(() => undefined);
+
+    try {
+      await repository.loadActive();
+      await repository.deleteActive();
+      expect(log).not.toHaveBeenCalled();
+      expect(warn).not.toHaveBeenCalled();
+      expect(error).not.toHaveBeenCalled();
+    } finally {
+      log.mockRestore();
+      warn.mockRestore();
+      error.mockRestore();
+    }
   });
 
   test("rolls back a failed legacy migration and can retry without losing the v1 payload", async () => {
