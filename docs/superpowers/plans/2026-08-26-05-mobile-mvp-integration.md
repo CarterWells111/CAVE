@@ -1,6 +1,6 @@
 # 05 八页移动端 MVP 总实施计划
 
-> 本文件是 Plan 05 的执行索引与联合 Gate。具体实现只在 05A、05B 中安排，避免同一能力在多份计划中重复负责。
+> 本文件是 Plan 05 的执行索引与联合 Gate。具体领域与基础页面实现由 05A、05B 负责；05C 只关闭 production runtime composition 与 Expo Go 演示接线缺口，避免重做已提交能力。
 
 **目标（Goal）：** 在不依赖 Apple 会员状态和模型 API 的条件下，把 CAVE 建成可离线完成、可返回修改、可本地恢复的八页 MVP。
 
@@ -27,6 +27,7 @@
 docs/superpowers/specs/2026-08-27-eight-page-mvp-framework-design.md
 docs/superpowers/plans/2026-08-27-05a-eight-page-mvp-framework.md
 docs/superpowers/plans/2026-08-27-05b-eight-page-mvp-functions.md
+docs/superpowers/plans/2026-08-27-05c-expo-go-demo-composition.md
 apps/mobile/app/journey/**
 apps/mobile/src/features/journey/**
 apps/mobile/src/core/storage/**
@@ -39,8 +40,9 @@ packages/content/data/journey-*.json
 |---|---|---|---|---|
 | 05A | `2026-08-27-05a-eight-page-mvp-framework.md` | storage/content 基线 | routes、draft、reducer、repository、派生同步、页面薄壳 | Gate 05A `pass` |
 | 05B | `2026-08-27-05b-eight-page-mvp-functions.md` | Gate 05A | 八页基础功能与完整本地演示路径 | Gate 05B `pass` |
+| 05C | `2026-08-27-05c-expo-go-demo-composition.md` | 05A/05B local core | Expo Go 内存演示与 Development/Preview secure production composition | Gate 05C local `pass`；native evidence `external_pending` |
 
-05A 必须先冻结移动端私有接口；05B 只能消费这些接口。05B 如需修改 `JourneyDraft`、repository 或派生规则，先返回 05A 更新测试和本文件的接口登记。
+05A 必须先冻结移动端私有接口；05B 只能消费这些接口。05C 只能装配和消费现有 domain/repository/controller，并可增加明确的 runtime/adapters/UI hydration contracts；不得复制 05A/05B 领域能力。若 05C 确需修改 `JourneyDraft`、repository 或派生规则，先返回 05A 更新测试和本文件的接口登记。
 
 ## 固定运行时边界
 

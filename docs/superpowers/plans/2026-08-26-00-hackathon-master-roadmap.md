@@ -54,6 +54,8 @@
       05A Framework ----|
               |
       05B Basic Functions
+              |
+      05C Demo Composition
         |
 06 Product Completion
         |
@@ -75,6 +77,7 @@ Plan 03 与 Plan 04 可在 Plan 02 完成后并行。八页 MVP 不消费 Plan 0
 | 05 | `2026-08-26-05-mobile-mvp-integration.md` | Engineer | 6-7h | 02 complete；04 local storage pass | `in_progress` | 八页设计、安全存储、local content | 八页本地端到端闭环 | 05A/05B local core pass；production composition pending；05C pending | `43afb05`…`d8fd1be` |
 | 05A | `2026-08-27-05a-eight-page-mvp-framework.md` | Engineer | 2.5-3h | 02 complete；04 local storage pass | `in_progress` | storage/content 基线 | routes、draft、repository、同步框架 | mobile 25 suites / 106 tests；core pass；route composition/guard consumption pending | `43afb05`, `37581ca`, `62de80f`, `54e2be7`, `995400a`, `3b5750c`, `d76f7a8`, `0d86225` |
 | 05B | `2026-08-27-05b-eight-page-mvp-functions.md` | Engineer + Content | 3.5-4h | 05A core interfaces | `in_progress` | 冻结接口、local catalogs | 八页基础功能、预设练习、卡片 | local harness/offline pass；production routes/native adapters pending | `12a83be`, `3e28838`, `7420113`, `407b979`, `14c029c`, `186752b`, `cd98348`, `d8fd1be` |
+| 05C | `2026-08-27-05c-expo-go-demo-composition.md` | Engineer | 3-5h | 05A/05B local core；PR #6 merged | `in_progress` | 已提交 domain/repository/controller/pages | Expo Go memory demo、native secure composition、production routes | RED/GREEN、full-flow、offline、Doctor 与边界 scan；native device `external_pending` | 执行后填写 |
 | 06 | `2026-08-26-06-product-completion-ux.md` | Both | 5h | Gate 05B pass | `not_started` | 可运行八页闭环、最终内容 | 完整 UI、医学图示、可访问性、披露 | state/accessibility matrix | 执行后填写 |
 | 07 | `2026-08-26-07-quality-performance-demo-hardening.md` | Both | 3-4h | 06、Gate 01B、Plan 04 final Gate complete | `not_started` | feature-frozen build | RC、三轮彩排 | test/rehearsal matrix | 执行后填写 |
 | 08 | `2026-08-26-08-release-demo-submissions.md` | Both | 3h | 07 complete | `not_started` | verified RC | build、gateway、四层降级、双提交 | URLs、manifest、checklists | 执行后填写 |
@@ -145,6 +148,8 @@ Day 4 只修 P0/P1 缺陷，不增加功能。
 
 **Plan 05B 独占：** `PresetPracticeEngine`、`PracticeIntent`、`PartnerResponseBranch`、`PointEvent`、八页 page controllers 和 local catalog assembly；不得创建 Gateway Client 消费路径。
 
+**Plan 05C 独占：** runtime composition、Expo Go in-memory adapters、Development/Preview native adapter 装配、provider/route 接线与 recovered form hydration；不得重做 05A/05B 领域规则或把 Expo Go 当作 SQLCipher 验收。
+
 **Plan 06 独占：** UI component contracts、design tokens、最终 content/asset assembly；不得改变 05A mobile domain/repository 或 Plan 02 API 契约。
 
 **Plan 07—08：** 只验证和发布，不新增公共接口。
@@ -201,6 +206,14 @@ Plan 01 先创建基础 scripts；Plan 02 与 Plan 04 补齐内容和安全 scri
 - 影响：Plan 05/06 的目标、P0 唯一归属、Day 2—3 进度和 Plan 07 演示验收。Plan 02/03/04 的现有公共接口与实现不回退。
 - 验收：八页 offline full-flow、underage guard、back/edit/recompute、source validation、points independence、local save/delete 和 no-AI import scan 全部提供 fresh evidence。
 - 分支策略：从 `codex/plan-03-04-implementation` 的已提交 HEAD 建立独立文档/实现分支，不 merge `main`，不覆盖已有 Plan 03/04 commits。
+
+### CR-2026-08-27-03：Plan 05C Expo Go 演示装配
+
+- 原因：05A/05B 的领域核心与 test harness 已完成，但 production routes 仍使用硬编码 props/no-op，且 Expo Go 不能承担 SQLCipher/SecureStore 真机验收。
+- 决策：Expo Go 明确使用不落盘的 in-memory draft/card repositories 并持续显示临时数据提示；Development/Preview 继续只装配 SQLCipher + SecureStore，失败不降级；05C 负责 provider/controller/routes/hydration/clipboard 的最终接线。
+- 内容边界：23 条 journey fixtures 保持 `content_review_paused/draft`，不修改 `reviewedAt`，production validation 继续真实非零。
+- 验收：Page 1→8、underage、resume/guard/back-edit-recompute、reset、clipboard failure 与 offline tests；typecheck、lint、mobile/content draft/safety、Expo Doctor、diff check；Apple/签名/SQLCipher 真机保持 `external_pending`。
+- 分支策略：从已合并 PR #6 的 `origin/main@faffd0544b89a5562d16e1f9dac3ef02595c1c37` 在独立 `codex/plan-05c-expo-go-demo` worktree 执行；不 force push、不部署、不合并 main。
 
 ### CR-2026-08-27：发布前产品标识迁移
 
