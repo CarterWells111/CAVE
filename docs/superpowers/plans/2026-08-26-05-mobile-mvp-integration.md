@@ -57,20 +57,22 @@ packages/content/data/journey-*.json
 
 ### Gate 05A：框架
 
-- [ ] 八页 route、guard、返回和恢复测试通过。
-- [ ] `JourneyDraft` v1、reducer、repository migration 和 delete-all 测试通过。
-- [ ] 上游修改会重算下游；用户编辑字段被保留并标记复核。
-- [ ] 页面薄壳不包含最终视觉、长文案或 AI/network import。
+- [x] 八页 route、guard、返回和恢复测试通过。
+- [x] `JourneyDraft` v1、reducer、repository migration 和 delete-all 测试通过。
+- [x] 上游修改会重算下游；用户编辑字段被保留并标记复核。
+- [x] 页面薄壳不包含最终视觉、长文案或 AI/network import。
 
 ### Gate 05B：基础闭环
 
-- [ ] 从 Page 1 到 Page 8 的本地 integration test 通过。
-- [ ] Page 6 明示预设对话，所有分支可由 fixture 完成。
-- [ ] Page 7—8 输出可编辑，且无准备度分数。
-- [ ] 积分幂等，且不读取开放程度、私密文字或文字长度。
-- [ ] local save、resume、delete-all、offline 和 app restart 测试通过。
+- [x] 从 Page 1 到 Page 8 的本地 integration test 通过。
+- [x] Page 6 明示预设对话，所有分支可由 fixture 完成。
+- [x] Page 7—8 输出可编辑，且无准备度分数。
+- [x] 积分幂等，且不读取开放程度、私密文字或文字长度。
+- [x] local save、resume、delete-all、offline 和 app restart 测试通过。
 
 ### Gate 05C：联合验收
+
+**当前状态：** Gate 05A/05B/05C local `pass`；Development/Preview 真机证据 `external_pending`。Expo Go `memory-only` 装配、Development/Preview SQLCipher + SecureStore 不降级装配、provider/route 生产接线、恢复/guard/back/reset 和根页“进入八屏演示”入口均已完成并通过本地 Gate。
 
 在 05A、05B 各自命令通过后新鲜运行：
 
@@ -85,7 +87,7 @@ git diff --check
 git status --short
 ```
 
-预期：typecheck、lint、mobile/content/journey tests、draft validation 与 diff check 退出码均为 0；mobile tests 明确报告 journey domain、storage、screens 和 full-flow suites。`test:safety` 不得出现 journey 引入的新回归；已登记的 Plan 04 Golden evaluator blocker继续如实保留，且阻塞 Plan 07/release，不阻塞 05A/05B 本地 Gate。新增八页内容若尚未由内容负责人审核，production validation 真实记录为 `content_review_pending`，由 Plan 06 关闭，不阻塞 05A/05B 框架验收。
+预期：typecheck、lint、mobile/content/journey tests、draft validation 与 diff check 退出码均为 0；mobile tests 明确报告 journey domain、storage、screens 和 full-flow suites。`test:safety` 不得出现 journey 引入的新回归；已登记的 Plan 04 Golden evaluator blocker继续如实保留，且阻塞 Plan 07/release，不阻塞 Expo Go 八屏演示。23 条 journey fixtures 保持 `content_review_paused/draft`，production validation 的非零结果由主代理 fresh Gate 如实回填，不修改 `reviewedAt`。
 
 ## 提交节点
 
@@ -106,16 +108,16 @@ git commit -m "docs: record eight-page MVP gate"
 
 ## 验收证据清单
 
-- [ ] 05A、05B commit 清单和全部 fresh command exit code。
-- [ ] 八页 full-flow 测试数量与输出。
-- [ ] offline、restart、back-edit-recompute、underage-exit 的自动化证据。
-- [ ] source tree scan 证明八页 feature 不 import Gateway/Provider。
-- [ ] database migration、local-only 保存和 delete-all 证据。
-- [ ] 真实 iPhone 证据；不可取得时明确标记 `external_pending`。
+- [x] 05A、05B commit 清单和全部 fresh command exit code。
+- [x] 八页 full-flow 测试数量与输出。
+- [x] offline、restart、back-edit-recompute、underage-exit 的自动化证据。
+- [x] source tree scan 证明八页 feature 不 import Gateway/Provider。
+- [x] database migration、local-only 保存和 delete-all 证据。
+- [x] 真实 iPhone 证据不可取得，已明确标记 `external_pending`。
 
 **解锁下一计划：** Gate 05A 与 05B 完成后解锁 Plan 06；Gate 05C 的真机部分必须在 Plan 07 前补齐。
 
-## 缩减范围联合 Gate 记录（2026-08-27）
+## 历史缩减范围 Gate 记录（2026-08-27，已由 05C 工作树接线取代）
 
 ```text
 Branch: codex/plan-05a-05b
@@ -127,4 +129,22 @@ Gate 05C: not run as a passing Gate because 05A/05B product wiring is incomplete
 Plan 06/07: locked
 No deploy, no main merge, no secret output
 No PR created; Expo SDK 54 remains the active technical baseline
+```
+
+## Plan 05C 工作树实现检查点（2026-08-27）
+
+```text
+Branch: codex/plan-05c-expo-go-demo
+Status: local_pass — native device evidence external_pending；PR/CI URL pending push
+Expo Go: storeClient selects a process-lifetime in-memory draft/card runtime and visibly labels temporary data; it does not claim SQLCipher persistence
+Development/Preview: native-secure composition uses SQLCipher + SecureStore and Expo clipboard; initialization failures remain visible and do not fall back to memory
+Production wiring: one JourneyRuntimeProvider mounts the journey layout; Page 1—8 routes consume runtime snapshot/controller/actions; guard/resume/back/reset and recovered form values are wired
+Entry: app root explicitly renders “进入八屏演示” and routes to /journey/welcome
+Content: content_review_paused/draft; 23 journey fixtures remain draft and reviewedAt is unchanged
+Plan 04: Golden evaluator remains blocked, does not enter the eight-page runtime, and does not block the Expo Go demo; it still blocks Plan 07/release
+External pending: Apple membership/signing, Development/Preview build/install, real-iPhone SQLCipher/no-key and cold-start delete-all
+Final fresh Gate: PASS — workspace 65 files / 399 tests；mobile 38 suites / 172 tests；typecheck/lint/content draft/safety/diff exit 0；Expo Doctor 18/18；production validation expected exit 1 with exactly 23 DRAFT_CONTENT
+Implementation commits: `725dcb9`, `b852f42`, `1a8600b`, `d88d927`, `3336a5d`, `50ec3f0`, `ac289a0`, `421e60a`, `39663cc`
+CI / PR: PENDING push 后回填
+Plan 06: unlocked but not started；content_review_paused/draft remains；Plan 07 remains locked by Plan 04/native/external prerequisites
 ```

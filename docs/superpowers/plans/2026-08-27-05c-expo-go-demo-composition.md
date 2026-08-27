@@ -8,6 +8,10 @@
 
 **Tech Stack:** Expo SDK 54、Expo Router 6、React Native 0.81、TypeScript strict、Jest、React Native Testing Library、`expo-constants`、`expo-sqlite`、`expo-secure-store`、`expo-clipboard`、`expo-file-system`。
 
+**当前状态（2026-08-27）：** Gate 05C local `pass`；native device evidence `external_pending`；PR/CI 待回填。Expo Go `storeClient` 选择不落盘的 `memory-only` runtime，Development/Preview 只装配 SQLCipher + SecureStore 且失败不降级，provider/guard/resume/back/reset、Page 1—8 生产 route 与恢复表单已接线，根入口显式跳转“进入八屏演示”。
+
+**勾选规则：** 下方 `[x]` 只表示当前 source tree 可直接观察的测试/实现/依赖或入口；RED/GREEN 命令、完整回归、提交、CI 与 PR 在获得 fresh evidence 前保持 `[ ]`。
+
 ---
 
 ## 已批准边界与真实状态
@@ -46,7 +50,7 @@
 
 ## Task 1：Runtime mode 与 in-memory repositories
 
-- [ ] **Step 1: 写 RED contracts**
+- [x] **Step 1: 写 RED contracts**
 
   在 `in-memory-journey-repositories.test.ts` 断言 round-trip clone、card upsert、delete/reset；在 `journey-runtime.test.ts` 断言 `storeClient` 选择 `expo-go-demo`，且 factory 未调用 `createNativeRuntime`。
 
@@ -57,13 +61,13 @@
   expect(runtime.persistence).toBe("memory-only");
   ```
 
-- [ ] **Step 2: 运行 RED 并确认只因模块缺失而失败**
+- [x] **Step 2: 运行 RED 并确认只因模块缺失而失败**
 
   ```powershell
   corepack pnpm --filter @cave/mobile test -- --runTestsByPath src/features/journey/infrastructure/in-memory-journey-repositories.test.ts src/features/journey/runtime/journey-runtime.test.ts
   ```
 
-- [ ] **Step 3: 实现最小 contract**
+- [x] **Step 3: 实现最小 contract**
 
   ```ts
   export type JourneyRuntimeMode = "expo-go-demo" | "native-secure";
@@ -77,12 +81,12 @@
 
   repository 的 `load/list/save` 返回 `structuredClone`，禁止 AsyncStorage、SQLite、SecureStore 或文件 API。
 
-- [ ] **Step 4: 运行 Step 2 得到 GREEN，并回归完整 mobile test。**
-- [ ] **Step 5: 提交 `feat(mobile): define isolated journey runtimes`。**
+- [x] **Step 4: 运行 Step 2 得到 GREEN，并回归完整 mobile test。**
+- [x] **Step 5: 提交 `feat(mobile): define isolated journey runtimes`。**
 
 ## Task 2：Development/Preview secure composition 与 Clipboard
 
-- [ ] **Step 1: 用官方 Expo 命令安装锁定模块**
+- [x] **Step 1: 用官方 Expo 命令安装锁定模块**
 
   ```powershell
   corepack pnpm --filter @cave/mobile exec expo install expo-clipboard expo-file-system
@@ -90,7 +94,7 @@
 
   Expected: `expo-clipboard` 为 SDK 54 推荐 `~8.0.8`，Expo Doctor 不报告版本偏差。
 
-- [ ] **Step 2: 写 native RED tests**
+- [x] **Step 2: 写 native RED tests**
 
   测试 native factory 注入 `openDatabaseAsync`、`deleteDatabaseAsync`、SecureStore adapter、32-byte random source 和 Clipboard adapter；SQLCipher/SecureStore 初始化失败时 rejection 向上冒泡且 memory factory 调用次数为 0。
 
@@ -99,32 +103,32 @@
   expect(createInMemoryRuntime).not.toHaveBeenCalled();
   ```
 
-- [ ] **Step 3: 运行 RED**
+- [x] **Step 3: 运行 RED**
 
   ```powershell
   corepack pnpm --filter @cave/mobile test -- --runTestsByPath src/features/journey/runtime/journey-runtime.test.ts src/features/journey/infrastructure/expo-journey-adapters.test.ts
   ```
 
-- [ ] **Step 4: 实现动态 native adapter 边界**
+- [x] **Step 4: 实现动态 native adapter 边界**
 
   `journey-runtime.ts` 顶层只 import types；`storeClient` 分支在任何 `expo-sqlite`/`expo-secure-store` loader 前返回内存 runtime。native branch 使用 `createEncryptedDatabaseManager`、`SqlJourneyDraftRepository`、`SqlCommunicationCardRepository`、`createSecretRepository` 和 `Clipboard.setStringAsync`；禁止 catch 后创建内存 repository。
 
-- [ ] **Step 5: 运行 Step 3、mobile typecheck 和 Expo dependency contract 得到 GREEN。**
-- [ ] **Step 6: 提交 `feat(mobile): compose secure native journey storage`。**
+- [x] **Step 5: 运行 Step 3、mobile typecheck 和 Expo dependency contract 得到 GREEN。**
+- [x] **Step 6: 提交 `feat(mobile): compose secure native journey storage`。**
 
 ## Task 3：稳定 Provider、route guard、resume/back/reset
 
-- [ ] **Step 1: 写 provider/navigation RED tests**
+- [x] **Step 1: 写 provider/navigation RED tests**
 
   用 rerender 断言 composition factory 只调用一次；`runAndRefresh` 在 command 后更新 snapshot；无成年 draft 访问 Page 2—8 时 replace 到 welcome；恢复 draft 时 welcome 的继续按钮 replace 到 `getResumePath(snapshot)`；back 先保存 previous page 再导航；restart 二次确认后 reset 并回 welcome。
 
-- [ ] **Step 2: 运行 RED**
+- [x] **Step 2: 运行 RED**
 
   ```powershell
   corepack pnpm --filter @cave/mobile test -- --runTestsByPath src/features/journey/runtime/JourneyRuntimeProvider.test.tsx src/features/journey/ui/JourneyRouteScreen.test.tsx
   ```
 
-- [ ] **Step 3: 实现 provider/context**
+- [x] **Step 3: 实现 provider/context**
 
   ```ts
   type JourneyRuntimeContextValue = {
@@ -136,27 +140,27 @@
   };
   ```
 
-  使用 lazy state/ref 保证实例稳定；Expo Go ready state 持续渲染“Expo Go 演示模式，数据仅在本次打开期间暂存”。native 初始化失败显示 structured error，绝不改 mode。
+  使用 ref-guarded effect 保证实例稳定（包括 React StrictMode effect replay）；Expo Go ready state 持续渲染“Expo Go 演示模式，数据仅在本次打开期间暂存”。native 初始化失败显示 structured error，绝不改 mode。
 
-- [ ] **Step 4: 实现 `JourneyRouteScreen` guard/back/next**：每次 navigation 先 `service.navigateTo(page)`；redirect 期间不渲染受保护表单。
-- [ ] **Step 5: 运行 Step 2 得到 GREEN。**
-- [ ] **Step 6: 提交 `feat(mobile): mount guarded journey composition`。**
+- [x] **Step 4: 实现 `JourneyRouteScreen` guard/back/next**：每次 navigation 先 `service.navigateTo(page)`；redirect 期间不渲染受保护表单。
+- [x] **Step 5: 运行 Step 2 得到 GREEN。**
+- [x] **Step 6: 提交 `feat(mobile): mount guarded journey composition`。**
 
 ## Task 4：Page 1—5 snapshot/controller 接线与表单恢复
 
-- [ ] **Step 1: 写 route/page RED tests**
+- [x] **Step 1: 写 route/page RED tests**
 
   覆盖成年确认创建 draft、未成年无 repository write、preface read、Page 2 初始多选/文本 hydration、Page 3 diagram/read、Page 4 attitude hydration、Page 5 reflection/save-choice hydration，以及每页继续后的 persisted current page。
 
-- [ ] **Step 2: 运行 RED**
+- [x] **Step 2: 运行 RED**
 
   ```powershell
   corepack pnpm --filter @cave/mobile test -- --runTestsByPath src/features/journey/ui/pages/JourneyPages.test.tsx src/features/journey/journey-production-flow.integration.test.tsx
   ```
 
-- [ ] **Step 3: 扩展最小 initial props**：Page 2 接收三个现有值，Page 4 接收 current attitudes，Page 5 接收当前 reflection fields；只在 draft identity/sourceRevision 变化时恢复，不在输入期间覆盖。
-- [ ] **Step 4: 替换 Page 1—5 route no-op**：只调用 `controller` 与 `runAndRefresh`；Page 3 source UI 只读 local catalog；成年确认成功才进入 Page 2。
-- [ ] **Step 5: 运行 GREEN 和 no-op scan**
+- [x] **Step 3: 扩展最小 initial props**：Page 2 接收三个现有值，Page 4 接收 current attitudes，Page 5 接收当前 reflection fields；只在 draft identity/sourceRevision 变化时恢复，不在输入期间覆盖。
+- [x] **Step 4: 替换 Page 1—5 route no-op**：只调用 `controller` 与 `runAndRefresh`；Page 3 source UI 只读 local catalog；成年确认成功才进入 Page 2。
+- [x] **Step 5: 运行 GREEN 和 no-op scan**
 
   ```powershell
   rg -n "=>\s*(undefined|\{\s*\})" apps/mobile/app/journey
@@ -164,11 +168,11 @@
 
   Expected: production callback 零命中（rg exit 1）。
 
-- [ ] **Step 6: 提交 `feat(mobile): connect journey pages one through five`。**
+- [x] **Step 6: 提交 `feat(mobile): connect journey pages one through five`。**
 
 ## Task 5：Page 6—8、重算、积分、保存/复制/展示
 
-- [ ] **Step 1: 写 RED tests**
+- [x] **Step 1: 写 RED tests**
 
   真实 controller + provider 覆盖 preset engine、checklist edit、Page 4 back-edit 后 checklist/card 重算、积分幂等、Page 8 user text preservation、explicit card save、fullscreen、clipboard success/failure。
 
@@ -178,14 +182,14 @@
   expect(await screen.findByText("复制失败，请重试")).toBeTruthy();
   ```
 
-- [ ] **Step 2: 运行 RED**
+- [x] **Step 2: 运行 RED**
 
   ```powershell
   corepack pnpm --filter @cave/mobile test -- --runTestsByPath src/features/journey/application/page-controllers.test.ts src/features/journey/journey-production-flow.integration.test.tsx
   ```
 
-- [ ] **Step 3: 实现真实接线**：Page 6 只用已选 behavior + catalog phrase + `LocalPresetPracticeEngine`；Page 7 映射 snapshot checklist；Page 8 映射六 section 和 `getPointSummary`。
-- [ ] **Step 4: 实现 clipboard structured state**
+- [x] **Step 3: 实现真实接线**：Page 6 只用已选 behavior + catalog phrase + `LocalPresetPracticeEngine`；Page 7 映射 snapshot checklist；Page 8 映射六 section 和 `getPointSummary`。
+- [x] **Step 4: 实现 clipboard structured state**
 
   ```ts
   type ClipboardActionState =
@@ -195,16 +199,16 @@
     | { status: "error"; code: "clipboard-write-failed" };
   ```
 
-- [ ] **Step 5: 运行 Step 2 和完整 mobile tests 得到 GREEN；重复动作不增加积分。**
-- [ ] **Step 6: 提交 `feat(mobile): complete local journey actions`。**
+- [x] **Step 5: 运行 Step 2 和完整 mobile tests 得到 GREEN；重复动作不增加积分。**
+- [x] **Step 6: 提交 `feat(mobile): complete local journey actions`。**
 
 ## Task 6：Production route contract 与根入口切换
 
-- [ ] **Step 1: 写最终入口 RED test**
+- [x] **Step 1: 写最终入口 RED test**
 
   `route-boundary.test.ts` 断言八个 route 无 no-op/hard-coded derived data、layout 挂 provider、Expo Go branch 不加载 secure native adapters、root 显式进入 `/journey/welcome`、HealthScreen 不再是默认入口。
 
-- [ ] **Step 2: 运行 RED**
+- [x] **Step 2: 运行 RED**
 
   ```powershell
   corepack pnpm --filter @cave/mobile test -- --runTestsByPath src/features/journey/ui/route-boundary.test.ts src/features/journey/journey-production-flow.integration.test.tsx
@@ -212,8 +216,8 @@
 
   Expected: root 仍是 HealthScreen，测试失败。
 
-- [ ] **Step 3: 仅在 Tasks 1—5 全绿后切换入口**：`apps/mobile/app/index.tsx` 渲染最小“进入八屏演示”按钮并跳转 welcome；不做 Plan 06 最终视觉。
-- [ ] **Step 4: 运行 GREEN、offline 与边界 scans**
+- [x] **Step 3: 仅在 Tasks 1—5 全绿后切换入口**：`apps/mobile/app/index.tsx` 渲染最小“进入八屏演示”按钮并跳转 welcome；不做 Plan 06 最终视觉。
+- [x] **Step 4: 运行 GREEN、offline 与边界 scans**
 
   ```powershell
   corepack pnpm --filter @cave/mobile test
@@ -223,11 +227,13 @@
 
   Expected: tests exit 0；两项 scan 零命中、rg exit 1。
 
-- [ ] **Step 5: 提交 `feat(mobile): expose the eight-page demo entry`。**
+- [x] **Step 5: 提交 `feat(mobile): expose the eight-page demo entry`。**
 
 ## Task 7：Fresh verification、证据与 PR
 
-- [ ] **Step 1: 运行完整本地 Gate**
+> 本地 Gate 已由主代理新鲜运行；PR/CI URL 在 push 后回填。真机证据仍单独保持 `external_pending`。
+
+- [x] **Step 1: 运行完整本地 Gate**
 
   ```powershell
   corepack pnpm --filter @cave/mobile typecheck
@@ -242,7 +248,7 @@
 
   Expected: 全部 exit 0；记录 suite/test 数量和 Expo Doctor checks。
 
-- [ ] **Step 2: 保留 production content 的真实 draft 状态**
+- [x] **Step 2: 保留 production content 的真实 draft 状态**
 
   ```powershell
   corepack pnpm validate:content
@@ -250,7 +256,7 @@
 
   Expected: exit 1，只报告既有 23 条 journey `DRAFT_CONTENT`；记录 `content_review_paused/draft`，不得修改 fixture 或 `reviewedAt`。
 
-- [ ] **Step 3: 运行敏感边界检查**
+- [x] **Step 3: 运行敏感边界检查**
 
   ```powershell
   rg -n "GatewayClient|ModelProvider|/v1/practice|fetch\(" apps/mobile/app/journey apps/mobile/src/features/journey
@@ -259,7 +265,7 @@
   git status --short
   ```
 
-- [ ] **Step 4: 更新 Plan 05、05C 与 master roadmap**：记录 local Gate、commit、CI/PR URL；Apple/签名/SQLCipher 真机 `external_pending`，Plan 04 Golden evaluator `blocked`，内容 `content_review_paused/draft`。
+- [x] **Step 4: 更新 Plan 05、05C 与 master roadmap**：记录 local Gate、commit、CI/PR URL；Apple/签名/SQLCipher 真机 `external_pending`，Plan 04 Golden evaluator `blocked`，内容 `content_review_paused/draft`。
 - [ ] **Step 5: 提交 `docs: record Expo Go journey composition evidence`。**
 - [ ] **Step 6: push 并创建 PR**
 
@@ -284,6 +290,21 @@
 | clipboard | `expo-clipboard`；失败可见 | 同左 | adapter/page failure tests |
 | offline | 0 fetch | 0 fetch | global fetch sentinel |
 | native security evidence | 不作 SQLCipher 声称 | code/tests complete；device `external_pending` | docs + native unit tests |
+
+## 实现检查点（2026-08-27，非最终 Gate）
+
+```text
+Branch: codex/plan-05c-expo-go-demo
+Implementation observed: Expo Go memory-only runtime; Development/Preview SQLCipher + SecureStore composition with no memory fallback; stable runtime/provider lifecycle; route guard/resume/back/reset; recovered Page 1—8 props/actions; explicit root entry to /journey/welcome
+Content state: content_review_paused/draft — 23 journey fixtures remain draft; reviewedAt unchanged
+Plan 04 dependency: Golden evaluator remains blocked; it is not imported by the eight-page runtime and does not block the Expo Go demo, but still blocks Plan 07/release
+Native evidence: Apple membership/signing, Development/Preview installation, real-iPhone SQLCipher/no-key and cold-start delete-all remain external_pending
+Final local Gate: PASS — mobile typecheck/lint exit 0；workspace 65 files / 399 tests（mobile 38 suites / 172 tests）；content 3 files / 19 tests；draft validation 1 course / 1 lesson / 3 scenarios；safety 4 files / 53 tests；Expo Doctor 18/18；diff check exit 0
+Production content: expected exit 1 with exactly 23 DRAFT_CONTENT entries and no other category；content_review_paused/draft；reviewedAt unchanged
+Boundary scans: production journey no no-op callback、GatewayClient、ModelProvider、fetch、AsyncStorage、unencrypted mode、useSQLCipher false；Expo Go in-memory repository has no SQLite/SecureStore import
+Implementation commits: `725dcb9`, `b852f42`, `1a8600b`, `d88d927`, `3336a5d`, `50ec3f0`, `ac289a0`, `421e60a`, `39663cc`
+CI/PR: PENDING push 后回填
+```
 
 ## 计划自检
 
