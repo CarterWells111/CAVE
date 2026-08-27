@@ -24,7 +24,7 @@ export default function FinalPreparationRoute() {
           onEdit={(sectionId, userText) => runAndRefresh(
             () => controller.editCommunicationCard(sectionId, userText)
           )}
-          onFinish={(card) => controller.saveCommunicationCard(card)}
+          onFinish={(card) => controller.completeInitialJourney(card)}
           onOpenImageSettings={() => cardImagePermissionRecovery.openSettings()}
           onSaveDraft={() => controller.saveCommunicationCard()}
           onSaveImage={(_card, imageUri) => saveCardImageToLibrary(imageUri)}

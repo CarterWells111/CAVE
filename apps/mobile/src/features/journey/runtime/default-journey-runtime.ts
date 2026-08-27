@@ -8,6 +8,7 @@ import {
   SqlCommunicationCardRepository,
   SqlJourneyDraftRepository
 } from "../infrastructure/sql-journey-draft-repository";
+import { SqlAppShellStateRepository } from "../../shell/infrastructure/sql-app-shell-state-repository";
 import {
   composeJourneyRuntime,
   createJourneyRuntime,
@@ -48,6 +49,7 @@ export function createComposedJourneyRuntime({
         persistence: "sqlcipher-secure-store",
         drafts: new SqlJourneyDraftRepository(database),
         cards: new SqlCommunicationCardRepository(database),
+        shellState: new SqlAppShellStateRepository(database),
         clipboard: adapters.clipboard,
         createId,
         now

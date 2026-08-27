@@ -14,6 +14,7 @@ import type {
   PresetPracticeEngine
 } from "../domain/practice-types";
 import type { CommunicationCardRepository } from "../infrastructure/journey-draft-repository";
+import type { AppShellStateRepository } from "../../shell/infrastructure/app-shell-state-repository";
 import type { JourneyApplicationService } from "./journey-application-service";
 
 export interface ClipboardAdapter {
@@ -27,6 +28,7 @@ export type ClipboardCopyResult =
 type Dependencies = {
   service: JourneyApplicationService;
   cards: CommunicationCardRepository;
+  shellState: AppShellStateRepository;
   clipboard: ClipboardAdapter;
   practice: PresetPracticeEngine;
   now(): string;
@@ -256,6 +258,15 @@ export class JourneyPageController {
       journeyId: draft.id,
       card,
       savedAt: this.dependencies.now()
+    });
+  }
+
+  async completeInitialJourney(confirmedCard: ConfirmedCommunicationCard) {
+    const draft = this.requireDraft();
+    await this.saveCommunicationCard(confirmedCard);
+    await this.dependencies.shellState.completeInitialJourney({
+      initialJourneyId: draft.id,
+      initialJourneyCompletedAt: this.dependencies.now()
     });
   }
 

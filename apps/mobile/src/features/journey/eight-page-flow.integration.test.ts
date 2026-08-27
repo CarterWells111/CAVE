@@ -9,6 +9,7 @@ import type {
   JourneyDraftRepository
 } from "./infrastructure/journey-draft-repository";
 import { loadJourneyContentCatalog } from "./infrastructure/journey-content-catalog";
+import { InMemoryAppShellStateRepository } from "../shell/infrastructure/in-memory-app-shell-state-repository";
 
 function localStorageHarness() {
   let active: JourneyDraft | null = null;
@@ -40,6 +41,7 @@ async function completeLocalFlow() {
   const controller = new JourneyPageController({
     service: app,
     cards: storage.cards,
+    shellState: new InMemoryAppShellStateRepository(),
     clipboard,
     practice: new LocalPresetPracticeEngine(loadJourneyContentCatalog().practice),
     now: () => "2026-08-27T11:00:00.000Z"

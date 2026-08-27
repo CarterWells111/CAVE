@@ -2,6 +2,7 @@ import { buildCommunicationCard, selectConfirmedCommunicationCard } from "../dom
 import type { PresetPracticeEngine, PresetPracticeState } from "../domain/practice-types";
 import { createJourneyDraft, type JourneyDraft } from "../domain/types";
 import type { CommunicationCardRepository } from "../infrastructure/journey-draft-repository";
+import type { AppShellStateRepository } from "../../shell/infrastructure/app-shell-state-repository";
 import type { JourneyApplicationService } from "./journey-application-service";
 import { JourneyPageController, type ClipboardAdapter } from "./page-controllers";
 
@@ -39,6 +40,11 @@ function harness() {
     save: jest.fn(async () => undefined),
     delete: jest.fn(async () => undefined)
   };
+  const shellState: AppShellStateRepository = {
+    load: jest.fn(async () => null),
+    completeInitialJourney: jest.fn(async (state) => state),
+    clear: jest.fn(async () => undefined)
+  };
   const clipboard: { setStringAsync: jest.MockedFunction<ClipboardAdapter["setStringAsync"]> } = {
     setStringAsync: jest.fn(async (value: string) => { void value; })
   };
@@ -65,11 +71,12 @@ function harness() {
   const controller = new JourneyPageController({
     service,
     cards,
+    shellState,
     clipboard,
     practice,
     now: () => "2026-08-27T10:00:00.000Z"
   });
-  return { cards, clipboard, controller, practice, service };
+  return { cards, clipboard, controller, practice, service, shellState };
 }
 
 test("keeps the underage exit unsaved and creates only an adult journey", async () => {
@@ -167,6 +174,33 @@ test("updates private preparation and copies only explicitly included final-page
   expect(copied).not.toMatch(/draft-card|draft-/u);
   expect(copied).toContain("任何人都可以随时改变主意，每一种靠近仍然需要当时再次确认");
   expect(copied).not.toContain("private marker");
+});
+
+test("persists the confirmed card before recording first-run completion", async () => {
+  const { cards, controller, shellState } = harness();
+  const confirmed = selectConfirmedCommunicationCard(activeDraft());
+
+  await controller.completeInitialJourney(confirmed);
+
+  expect(cards.save).toHaveBeenCalledTimes(1);
+  expect(shellState.completeInitialJourney).toHaveBeenCalledWith({
+    initialJourneyId: "journey-1",
+    initialJourneyCompletedAt: "2026-08-27T10:00:00.000Z"
+  });
+  const saveCard = cards.save as jest.MockedFunction<CommunicationCardRepository["save"]>;
+  const complete = shellState.completeInitialJourney as jest.MockedFunction<AppShellStateRepository["completeInitialJourney"]>;
+  expect(saveCard.mock.invocationCallOrder[0]).toBeLessThan(complete.mock.invocationCallOrder[0] ?? 0);
+});
+
+test("does not write a completion marker when confirmed-card persistence fails", async () => {
+  const { cards, controller, shellState } = harness();
+  (cards.save as jest.MockedFunction<CommunicationCardRepository["save"]>)
+    .mockRejectedValueOnce(new Error("card-write-failed"));
+
+  await expect(controller.completeInitialJourney(selectConfirmedCommunicationCard(activeDraft())))
+    .rejects.toThrow("card-write-failed");
+
+  expect(shellState.completeInitialJourney).not.toHaveBeenCalled();
 });
 
 test("returns a typed clipboard failure that the route can render", async () => {
