@@ -1,7 +1,7 @@
 # CAVE Expo SDK 54 Baseline Design
 
-**Date:** 2026-08-27  
-**Status:** Direction approved; implementation starts after written-spec review  
+**Date:** 2026-08-27
+**Status:** Approved for implementation
 **Scope:** Replace the repository's Expo SDK 57 baseline with Expo SDK 54 on the current `codex/plan-01-02-implementation` branch.
 
 ## Context
@@ -60,8 +60,7 @@ Gate 01A must be re-verified after the dependency migration. Expo Go real-device
 
 Implementation will use separate English commits:
 
-1. `test: lock expo sdk 54 baseline` — RED test only.
-2. `chore: align mobile with expo sdk 54` — dependency and lockfile alignment.
-3. `docs: adopt expo sdk 54 baseline` — README, plans, decision, and verification evidence.
+1. `chore: align mobile with expo sdk 54` — the regression test after its observed RED failure, followed by the dependency and lockfile GREEN implementation.
+2. `docs: adopt expo sdk 54 baseline` — the documentation regression test after its observed RED failure, followed by README, plans, decision, and verification evidence.
 
 No merge to `main`, force push, production deployment, EAS app build, or Android build is included.
