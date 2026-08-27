@@ -6,6 +6,11 @@ describe("Expo SDK baseline", () => {
     expect(packageJson.dependencies.react).toBe("19.1.0");
     expect(packageJson.dependencies["react-native"]).toMatch(/^0\.81\./u);
     expect(packageJson.dependencies["expo-router"]).toMatch(/^~6\./u);
+    expect(
+      (packageJson.dependencies as Record<string, string | undefined>)[
+        "@expo/metro-runtime"
+      ]
+    ).toMatch(/^~6\.1\./u);
     expect(packageJson.devDependencies["jest-expo"]).toMatch(/^~54\./u);
   });
 });
