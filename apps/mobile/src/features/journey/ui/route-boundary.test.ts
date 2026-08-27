@@ -26,3 +26,20 @@ test("journey routes stay thin and contain no storage, network, model or SQL imp
   ];
   expect(sources).not.toMatch(new RegExp(forbidden.join("|"), "u"));
 });
+
+test("each canonical route composes its matching basic page component", () => {
+  const routeDirectory = resolve(__dirname, "../../../../app/journey");
+  const expected = {
+    welcome: "WelcomePage",
+    overnight: "OvernightPage",
+    "body-knowledge": "BodyKnowledgePage",
+    "behavior-attitudes": "BehaviorAttitudesPage",
+    reflection: "ReflectionPage",
+    "preset-practice": "PresetPracticePage",
+    checklist: "ChecklistPage",
+    "communication-card": "CommunicationCardPage"
+  };
+  for (const [route, component] of Object.entries(expected)) {
+    expect(readFileSync(resolve(routeDirectory, `${route}.tsx`), "utf8")).toContain(`<${component}`);
+  }
+});
