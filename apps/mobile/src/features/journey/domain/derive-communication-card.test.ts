@@ -43,3 +43,18 @@ test("refreshes untouched fields but preserves user text and flags it for review
   expect(changed.intentions?.userText).toBeUndefined();
   expect(changed.intentions?.needsReview).toBe(false);
 });
+
+test("produces the same generated text for semantically identical unordered selections", () => {
+  const first = createJourneyDraft({ id: "journey-1", now: "now" });
+  first.expectationIds = ["draft-rest", "draft-connection"];
+  first.concernIds = ["draft-privacy", "draft-pressure"];
+  first.behaviorAttitudes = { "draft-oral-sex": "unsure", "draft-kissing": "looking-forward" };
+  first.comfortNeedIds = ["draft-quiet", "draft-breaks"];
+  const second = createJourneyDraft({ id: "journey-1", now: "now" });
+  second.expectationIds = [...first.expectationIds].reverse();
+  second.concernIds = [...first.concernIds].reverse();
+  second.behaviorAttitudes = { "draft-kissing": "looking-forward", "draft-oral-sex": "unsure" };
+  second.comfortNeedIds = [...first.comfortNeedIds].reverse();
+
+  expect(buildCommunicationCard(first)).toEqual(buildCommunicationCard(second));
+});

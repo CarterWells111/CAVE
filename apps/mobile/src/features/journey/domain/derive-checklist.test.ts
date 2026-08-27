@@ -61,3 +61,14 @@ test("preserves edits for still-applicable items and removes stale derived items
   expect(result.some(({ id }) => id === "checklist:logistics")).toBe(false);
   expect(result.some(({ id }) => id === "checklist:comfort:draft-privacy")).toBe(false);
 });
+
+test("produces the same checklist for semantically identical unordered input", () => {
+  const first = createJourneyDraft({ id: "journey-1", now: "now" });
+  first.behaviorAttitudes = { "draft-oral-sex": "unsure", "draft-kissing": "looking-forward" };
+  first.comfortNeedIds = ["draft-quiet", "draft-breaks"];
+  const second = createJourneyDraft({ id: "journey-1", now: "now" });
+  second.behaviorAttitudes = { "draft-kissing": "looking-forward", "draft-oral-sex": "unsure" };
+  second.comfortNeedIds = ["draft-breaks", "draft-quiet"];
+
+  expect(buildChecklist(first)).toEqual(buildChecklist(second));
+});

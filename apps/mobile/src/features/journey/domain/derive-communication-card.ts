@@ -11,13 +11,14 @@ export const COMMUNICATION_CARD_SECTION_IDS = [
 
 function templates(draft: JourneyDraft): Record<(typeof COMMUNICATION_CARD_SECTION_IDS)[number], string> {
   const attitudes = Object.entries(draft.behaviorAttitudes)
+    .sort(([left], [right]) => left.localeCompare(right))
     .map(([behaviorId, attitude]) => `${behaviorId}=${attitude}`)
     .join(",");
   return {
-    intentions: `draft-card.intentions:${draft.expectationIds.join(",")}`,
-    boundaries: `draft-card.boundaries:${draft.concernIds.join(",")}`,
+    intentions: `draft-card.intentions:${[...draft.expectationIds].sort().join(",")}`,
+    boundaries: `draft-card.boundaries:${[...draft.concernIds].sort().join(",")}`,
     pace: `draft-card.pace:${attitudes}`,
-    comfort: `draft-card.comfort:${draft.comfortNeedIds.join(",")}`,
+    comfort: `draft-card.comfort:${[...draft.comfortNeedIds].sort().join(",")}`,
     practical: `draft-card.practical:${draft.overnightCustomNote}`,
     aftercare: `draft-card.aftercare:${draft.practice.intent ?? ""}`
   };

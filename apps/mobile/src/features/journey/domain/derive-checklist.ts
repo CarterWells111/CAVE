@@ -13,16 +13,17 @@ function seedItems(draft: JourneyDraft): ChecklistSeed[] {
   if (draft.expectationIds.length > 0 || draft.concernIds.length > 0 || draft.overnightCustomNote.length > 0) {
     items.push({ id: "checklist:logistics", category: "logistics", sourceIds: [] });
   }
-  for (const behaviorId of Object.keys(draft.behaviorAttitudes)) {
+  const behaviorIds = Object.keys(draft.behaviorAttitudes).sort();
+  for (const behaviorId of behaviorIds) {
     items.push({ id: `checklist:attitude:${behaviorId}`, category: "attitude", sourceIds: [] });
   }
   if (draft.expressionSupportNeeded === true || draft.practice.completed) {
     items.push({ id: "checklist:expression", category: "expression", sourceIds: [] });
   }
-  for (const comfortId of draft.comfortNeedIds) {
+  for (const comfortId of [...draft.comfortNeedIds].sort()) {
     items.push({ id: `checklist:comfort:${comfortId}`, category: "comfort", sourceIds: [] });
   }
-  for (const behaviorId of Object.keys(draft.behaviorAttitudes)) {
+  for (const behaviorId of behaviorIds) {
     if (HEALTH_RELATED_BEHAVIOR_IDS.has(behaviorId)) {
       items.push({
         id: `checklist:health:${behaviorId}`,
