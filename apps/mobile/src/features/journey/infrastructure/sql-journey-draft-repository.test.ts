@@ -59,6 +59,26 @@ describe("SqlJourneyDraftRepository", () => {
     fake.setDraftRow({ id: "journey-1", schema_version: 1, payload: "{}" });
     await expect(repository.loadActive()).rejects.toEqual(new JourneyStorageError("malformed-payload"));
   });
+
+  test.each([
+    ["unknown page", { currentPage: "page-nine" }],
+    ["invalid attitude", { behaviorAttitudes: { "draft-kissing": "maybe" } }],
+    ["malformed custom behavior", { customBehaviors: [{ id: "custom-1" }] }],
+    ["invalid checklist status", {
+      checklistItems: [{ id: "checklist:logistics", category: "logistics", sourceIds: [], status: "later" }]
+    }],
+    ["malformed communication field", {
+      communicationCard: { intentions: { generatedText: "text", sourceRevision: 0 } }
+    }],
+    ["non-integer revision", { sourceRevision: 0.5 }]
+  ])("rejects a persisted draft with %s", async (_label, patch) => {
+    const fake = harness();
+    const repository = new SqlJourneyDraftRepository(fake.manager);
+    const malformed = { ...createJourneyDraft({ id: "journey-1", now: "now" }), ...patch };
+    fake.setDraftRow({ id: "journey-1", schema_version: 1, payload: JSON.stringify(malformed) });
+
+    await expect(repository.loadActive()).rejects.toEqual(new JourneyStorageError("malformed-payload"));
+  });
 });
 
 describe("SqlCommunicationCardRepository", () => {
