@@ -1,4 +1,4 @@
-export const CURRENT_SCHEMA_VERSION = 4;
+export const CURRENT_SCHEMA_VERSION = 5;
 
 export const SCHEMA_V1 = `
 CREATE TABLE IF NOT EXISTS course_progress (
@@ -57,4 +57,32 @@ CREATE TABLE IF NOT EXISTS app_shell_state (
   singleton_id INTEGER PRIMARY KEY NOT NULL CHECK (singleton_id = 1),
   initial_journey_completed_at TEXT NOT NULL,
   initial_journey_id TEXT NOT NULL
+);`;
+
+export const SCHEMA_V5 = `
+CREATE TABLE IF NOT EXISTS journey_active_review (
+  singleton_id INTEGER PRIMARY KEY NOT NULL CHECK (singleton_id = 1),
+  root_id TEXT NOT NULL,
+  base_version_id TEXT,
+  payload TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS journey_review_versions (
+  id TEXT PRIMARY KEY NOT NULL,
+  root_id TEXT NOT NULL,
+  parent_version_id TEXT REFERENCES journey_review_versions(id) ON DELETE SET NULL,
+  title TEXT NOT NULL,
+  review_date TEXT NOT NULL,
+  status TEXT NOT NULL CHECK (status IN ('completed', 'incomplete')),
+  payload TEXT NOT NULL,
+  source_revision INTEGER NOT NULL,
+  created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS journey_review_versions_metadata
+  ON journey_review_versions(review_date DESC, created_at DESC);
+CREATE TABLE IF NOT EXISTS review_migration_receipts (
+  source_id TEXT PRIMARY KEY NOT NULL,
+  target_version_id TEXT NOT NULL,
+  migrated_at TEXT NOT NULL
 );`;
