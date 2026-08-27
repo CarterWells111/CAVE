@@ -8,6 +8,10 @@ import { z } from "zod";
 
 import courses from "../data/courses.json";
 import guide from "../data/guide.json";
+import journeyKnowledge from "../data/journey-knowledge.json";
+import journeyOptions from "../data/journey-options.json";
+import journeyPractice from "../data/journey-practice.json";
+import journeySources from "../data/journey-sources.json";
 import lessons from "../data/lessons.json";
 import quizzes from "../data/quizzes.json";
 import scenarios from "../data/scenarios.json";
@@ -23,6 +27,56 @@ const GuideCategorySchema = z
   })
   .strict();
 
+const JourneyReviewFields = {
+  reviewStatus: z.enum(["draft", "reviewed"]),
+  reviewedAt: z.string().min(1).optional()
+};
+
+const JourneyOptionSchema = z.object({
+  id: z.string().min(1),
+  group: z.enum(["expectation", "concern", "behavior", "motivation", "comfort", "health"]),
+  order: z.number().int().positive(),
+  label: z.string().min(1),
+  sourceIds: z.array(z.string().min(1)),
+  ...JourneyReviewFields
+}).strict();
+
+const JourneyKnowledgeSchema = z.object({
+  id: z.string().min(1),
+  order: z.number().int().positive(),
+  title: z.string().min(1),
+  body: z.string().min(1),
+  sourceIds: z.array(z.string().min(1)),
+  ...JourneyReviewFields
+}).strict();
+
+const JourneyPracticeSchema = z.object({
+  version: z.string().min(1),
+  scripted: z.literal(true),
+  phrases: z.array(z.object({
+    id: z.string().min(1),
+    intent: z.string().min(1),
+    order: z.number().int().positive(),
+    text: z.string().min(1),
+    ...JourneyReviewFields
+  }).strict()),
+  responses: z.array(z.object({
+    id: z.string().min(1),
+    branch: z.string().min(1),
+    text: z.string().min(1),
+    scripted: z.literal(true),
+    safeTerminal: z.boolean(),
+    ...JourneyReviewFields
+  }).strict())
+}).strict();
+
+const JourneySourceSchema = z.object({
+  id: z.string().min(1),
+  title: z.string().min(1),
+  url: z.string().url(),
+  ...JourneyReviewFields
+}).strict();
+
 export const ContentCatalogSchema = z
   .object({
     courses: z.array(CourseSchema),
@@ -33,7 +87,13 @@ export const ContentCatalogSchema = z
       .object({
         categories: z.array(GuideCategorySchema)
       })
-      .strict()
+      .strict(),
+    journey: z.object({
+      options: z.array(JourneyOptionSchema),
+      knowledge: z.array(JourneyKnowledgeSchema),
+      practice: JourneyPracticeSchema,
+      sources: z.array(JourneySourceSchema)
+    }).strict()
   })
   .strict();
 
@@ -42,7 +102,13 @@ const checkedInCatalog = {
   lessons,
   quizzes,
   scenarios,
-  guide
+  guide,
+  journey: {
+    options: journeyOptions,
+    knowledge: journeyKnowledge,
+    practice: journeyPractice,
+    sources: journeySources
+  }
 };
 
 export function loadCatalog(): ContentCatalog {

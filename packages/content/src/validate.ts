@@ -51,7 +51,12 @@ function validateUniqueIds(catalog: ContentCatalog, issues: ContentValidationIss
     ...catalog.scenarios.map((item) => [item.id, `scenarios.${item.id}`] as const),
     ...catalog.guide.categories.map(
       (item) => [item.id, `guide.categories.${item.id}`] as const
-    )
+    ),
+    ...catalog.journey.options.map((item) => [item.id, `journey.options.${item.id}`] as const),
+    ...catalog.journey.knowledge.map((item) => [item.id, `journey.knowledge.${item.id}`] as const),
+    ...catalog.journey.practice.phrases.map((item) => [item.id, `journey.practice.phrases.${item.id}`] as const),
+    ...catalog.journey.practice.responses.map((item) => [item.id, `journey.practice.responses.${item.id}`] as const),
+    ...catalog.journey.sources.map((item) => [item.id, `journey.sources.${item.id}`] as const)
   ];
 
   for (const [id, path] of entities) {
@@ -61,6 +66,37 @@ function validateUniqueIds(catalog: ContentCatalog, issues: ContentValidationIss
     } else {
       ids.set(id, path);
     }
+  }
+}
+
+function validateJourney(catalog: ContentCatalog, mode: ContentValidationMode, issues: ContentValidationIssue[]) {
+  const sourceIds = new Set(catalog.journey.sources.map(({ id }) => id));
+  const orderedCollections = [catalog.journey.options, catalog.journey.knowledge, catalog.journey.practice.phrases];
+  for (const items of orderedCollections) {
+    const orders = new Set<number>();
+    for (const item of items) {
+      if (orders.has(item.order)) addIssue(issues, "DUPLICATE_ORDER", `journey.${item.id}.order`, `${item.order} is duplicated`);
+      orders.add(item.order);
+    }
+  }
+
+  for (const item of [...catalog.journey.knowledge, ...catalog.journey.options.filter(({ group }) => group === "health")]) {
+    if (item.sourceIds.length === 0) addIssue(issues, "MISSING_SOURCE_REFS", `journey.${item.id}`, `${item.id} has no source ids`);
+    for (const sourceId of item.sourceIds) {
+      if (!sourceIds.has(sourceId)) addIssue(issues, "MISSING_SOURCE", `journey.${item.id}.sourceIds`, `missing source ${sourceId}`);
+    }
+  }
+
+  const reviewables = [
+    ...catalog.journey.options,
+    ...catalog.journey.knowledge,
+    ...catalog.journey.practice.phrases,
+    ...catalog.journey.practice.responses,
+    ...catalog.journey.sources
+  ];
+  for (const item of reviewables) {
+    if (item.reviewStatus === "reviewed" && !item.reviewedAt) addIssue(issues, "REVIEW_DATE_REQUIRED", `journey.${item.id}`, `${item.id} is reviewed without reviewedAt`);
+    if (mode === "production" && item.reviewStatus === "draft") addIssue(issues, "DRAFT_CONTENT", `journey.${item.id}`, `${item.id} is still draft`);
   }
 }
 
@@ -249,6 +285,7 @@ export function validateCatalog(
   validateCourseOrder(catalog, issues);
   validateReferences(catalog, issues);
   validateScenarioRounds(catalog, issues);
+  validateJourney(catalog, options.mode, issues);
 
   for (const [collection, items] of [
     ["courses", catalog.courses],

@@ -1,0 +1,5 @@
+[
+  { "id": "draft-knowledge-body-signals", "order": 1, "title": "身体信号", "body": "草稿：留意放松、紧张和想暂停的感觉。", "sourceIds": ["draft-source-consent"], "reviewStatus": "draft" },
+  { "id": "draft-knowledge-consent", "order": 2, "title": "同意可以改变", "body": "草稿：任何时刻都可以慢下来、改变或停止。", "sourceIds": ["draft-source-consent"], "reviewStatus": "draft" },
+  { "id": "draft-knowledge-health", "order": 3, "title": "基础健康准备", "body": "草稿：按相关行为查看可靠的健康资料。", "sourceIds": ["draft-source-sexual-health"], "reviewStatus": "draft" }
+]
