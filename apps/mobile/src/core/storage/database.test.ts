@@ -55,6 +55,23 @@ describe("encrypted database lifecycle", () => {
     expect(harness.calls.join("\n")).not.toContain("transcript_history");
   });
 
+  test("migrates the encrypted database to v2 without replacing v1 tables", async () => {
+    const harness = makeHarness();
+    const manager = createEncryptedDatabaseManager(
+      harness as unknown as Parameters<typeof createEncryptedDatabaseManager>[0]
+    );
+
+    await manager.initialize();
+
+    const schemaSql = harness.calls.join("\n");
+    expect(schemaSql).toContain("CREATE TABLE IF NOT EXISTS course_progress");
+    expect(schemaSql).toContain("CREATE TABLE IF NOT EXISTS saved_records");
+    expect(schemaSql).toContain("CREATE TABLE IF NOT EXISTS privacy_settings");
+    expect(schemaSql).toContain("CREATE TABLE IF NOT EXISTS journey_drafts");
+    expect(schemaSql).toContain("CREATE TABLE IF NOT EXISTS journey_cards");
+    expect(harness.calls).toContain("PRAGMA user_version = 2");
+  });
+
   test.each([
     ["old key without database", false, VALID_DATABASE_KEY],
     ["database without key", true, null]

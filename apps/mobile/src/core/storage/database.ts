@@ -1,5 +1,5 @@
 import type { DatabaseSecretRepository } from "./key-store";
-import { CURRENT_SCHEMA_VERSION, SCHEMA_V1 } from "./migrations";
+import { CURRENT_SCHEMA_VERSION, SCHEMA_V1, SCHEMA_V2 } from "./migrations";
 
 export interface DatabaseConnection {
   execAsync(sql: string): Promise<void>;
@@ -71,9 +71,13 @@ export function createEncryptedDatabaseManager({
       await opened.execAsync("PRAGMA journal_mode = WAL");
       const version = await opened.getFirstAsync<UserVersionRow>("PRAGMA user_version");
       const currentVersion = version?.user_version ?? 0;
-      if (currentVersion < CURRENT_SCHEMA_VERSION) {
+      if (currentVersion < 1) {
         await opened.execAsync(SCHEMA_V1);
         await opened.execAsync("PRAGMA user_version = 1");
+      }
+      if (currentVersion < CURRENT_SCHEMA_VERSION) {
+        await opened.execAsync(SCHEMA_V2);
+        await opened.execAsync("PRAGMA user_version = 2");
       }
       return opened;
     } catch (error) {
