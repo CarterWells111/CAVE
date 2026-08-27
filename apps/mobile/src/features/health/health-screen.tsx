@@ -13,7 +13,8 @@ export function HealthScreen({
 }: HealthScreenProps) {
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Body Voice</Text>
+      <Text style={styles.title}>内界 CAVE</Text>
+      <Text style={styles.tagline}>听见身体，确认边界。</Text>
       <Text>version {version}</Text>
       <Text>build {build}</Text>
       <Text>{environment}</Text>
@@ -32,5 +33,9 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontWeight: "600"
+  },
+  tagline: {
+    fontSize: 16,
+    textAlign: "center"
   }
 });
