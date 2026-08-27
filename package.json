@@ -15,8 +15,11 @@
     "test:ci-config": "vitest run tests",
     "test:contracts": "pnpm --filter @cave/contracts test",
     "test:content": "pnpm --filter @cave/content test",
+    "test:safety": "pnpm --filter @cave/gateway test:safety",
     "validate:content": "pnpm --filter @cave/content validate:content",
     "validate:content:draft": "pnpm --filter @cave/content validate:content:draft",
+    "security:audit": "pnpm audit --prod",
+    "security:scan-bundle": "node scripts/scan-bundle-secrets.mjs",
     "build:gateway": "pnpm --filter @cave/gateway build",
     "verify:foundation": "pnpm typecheck && pnpm lint && pnpm test && pnpm build:gateway",
     "verify": "pnpm typecheck && pnpm lint && pnpm test && pnpm validate:content && pnpm build:gateway"
