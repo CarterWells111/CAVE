@@ -252,8 +252,12 @@ Current project evidence: EAS project @carter_wells/cave is linked at https://ex
 Interim command: from apps/mobile run .\node_modules\.bin\expo.CMD start --go, then scan the QR code with Expo Go on the intended iPhone
 Interim acceptance scope: observe whether the JS bundle opens without a red error and record the exact product name, slogan, version, build, and environment displayed on the real device
 Non-substitution rule: Expo Go does not prove bundle identifier, Apple Team/signing, device provisioning, Development Build inclusion/installation, or two launches after Metro is stopped
+Observed first attempt: the iPhone reached exp://172.20.10.3:8082 over the phone-hotspot connection with Tailscale enabled, but at 16:48 Expo Go displayed "Project is incompatible with this version of Expo Go" and said the project requires a newer version; the JavaScript shell did not launch
+Diagnostic evidence: the initial Metro session also logged a request for missing apps/mobile/assets/images; after a clean network-authorized restart, the repository had no assets/images reference, the Expo manifest returned HTTP 200 with zero assets, and the iOS bundle returned HTTP 200; this asset symptom remains subject to a compatible-client retest rather than being declared fixed
+Compatibility decision: CAVE remains on the fixed Expo SDK 57 baseline; the Apple App Store Expo Go build stops at SDK 54, so an App Store update alone is not an acceptance path and the project will not be downgraded
+Interim installation path: on the physical iPhone use https://sign.expo.dev/ to install the SDK 57 Expo Go build with free Apple developer provisioning; this does not require active paid membership and its certificate is valid for about seven days
 Gate status: Gate 01A=pass; Gate 01B=external_pending until membership is active and the planned Development Build, installation, and Metro-disconnected launch evidence are complete
-Next action: execute the Expo Go observation now; do not run EAS device registration or build while membership remains Pending
+Next action: complete the official sign.expo.dev flow, reopen exp://172.20.10.3:8082 in the SDK 57-compatible client, and record the real-device observation; do not run EAS app device registration or build while membership remains Pending
 ```
 
 ### Plan 02 / Gate 02B 内容负责人审核（2026-08-27）

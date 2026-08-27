@@ -746,13 +746,15 @@ Require the new feature-branch CI run to pass.
 
 This is an interim real-device check of the JavaScript bundle only. It does not replace the signed iOS Development Build, installation, or Metro-disconnected launch requirements below, and Gate 01B remains `external_pending` until those requirements are observed.
 
+For SDK 57 on a physical iPhone, do not rely on the Apple App Store build of Expo Go: the store build currently stops at SDK 54. On the intended iPhone, open `https://sign.expo.dev/` in Safari, select SDK 57, sign in to the Expo account, select the intended device, and follow the official Apple ID signing and installation flow. This uses free Apple developer provisioning, does not require an active paid Apple Developer Program membership, and produces a certificate valid for about seven days. Enter Apple credentials only in the official site flow, never in chat or logs.
+
 From `apps/mobile`, run the Expo CLI shim explicitly so the existing `start --dev-client` package script remains unchanged:
 
 ```powershell
 .\node_modules\.bin\expo.CMD start --go
 ```
 
-Open the QR code in the current Expo Go app on the intended iPhone. Record the device model and iOS version from Settings, whether the bundle opens without a red error, and the exact displayed product name, slogan, version, build, and environment. Expo Go may verify the current JavaScript shell and copy, but it cannot prove the configured bundle identifier, Apple signing, provisioning profile, EAS Development Build inclusion, installed standalone app behavior, or launch behavior after Metro stops.
+After installing the SDK 57-compatible Expo Go build, open the QR code on the intended iPhone. Record the device model and iOS version from Settings, the compatible Expo Go installation outcome, whether the bundle opens without a red error, and the exact displayed product name, slogan, version, build, and environment. Expo Go may verify the current JavaScript shell and copy, but it cannot prove the configured bundle identifier, the app's Apple Team/signing, the app's device provisioning profile, EAS Development Build inclusion, installed standalone app behavior, or launch behavior after Metro stops.
 
 If LAN discovery fails, stop this Metro process and retry the same check once with `--tunnel`; record which transport was actually used. Do not run `device:create` or an EAS build until the Apple Developer membership is active.
 
