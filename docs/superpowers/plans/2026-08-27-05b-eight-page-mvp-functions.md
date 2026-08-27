@@ -192,3 +192,18 @@ Page 7/8 不新增第二套生成器，必须调用 05A 的 `buildChecklist()` �
 - [ ] branch、HEAD、独立英文 commits 与 git status。
 
 **解锁下一计划：** Gate 05B 与 Plan 05 联合 Gate 的本地部分通过后解锁 Plan 06；发布前仍需补齐真实 iPhone 验收。
+
+## 缩减范围执行证据（2026-08-27）
+
+```text
+Branch: codex/plan-05a-05b
+Commits: 12a83be, 3e28838, 7420113, 407b979, 14c029c, 186752b, cd98348, d8fd1be
+Implemented: draft local catalogs, explicit PresetPracticeEngine, idempotent points, page controllers, basic Page 1—8 components, deterministic checklist/card, explicit local save/copy/display contracts, and zero-fetch offline integration
+Fresh mobile evidence: typecheck pass; lint pass; 25 suites / 106 tests pass
+Fresh content evidence: 3 files / 18 tests pass; draft validation pass; production validation exits 1 only for 23 genuine DRAFT_CONTENT journey entries
+Fresh affected Plan 02—04 evidence: contracts 4/19; scenario 2/18; fixtures 2/11; gateway 16/160; safety subset 4/53; CI config 4/15; typecheck/lint pass; Wrangler dry-run 692.70 KiB / gzip 113.77 KiB
+Boundary scans: journey GatewayClient/ModelProvider/fetch scan has zero matches; production-only readiness/score/percentage/cloudEnabled scan has zero matches
+Gate 05B: in_progress — local core and test-harness flow pass, but production routes still use hard-coded props/no-op callbacks; native service/repository/controller composition, recovered form state, clipboard failure state, and route-level resume/guard/back behavior remain unwired
+Environment blocker: the host minimum-release-age policy rejects 49 merged-main lockfile entries, so standard pnpm fresh commands could not be restored after node_modules relinking; verification used existing binaries for the same pinned dependency tree and did not modify pnpm-lock.yaml
+External state: content_review_pending; Plan 04 Golden evaluator blocked; Apple/signing/real-iPhone SQLCipher evidence external_pending; Plan 06 and Plan 07 locked
+```

@@ -239,10 +239,12 @@ export interface JourneyApplicationService {
 ```text
 Branch: codex/plan-05a-05b
 Baseline: 2436773 from merged main
-Commits: 43afb05, 37581ca, 62de80f, 54e2be7, 995400a, 3b5750c
-Mobile: typecheck pass; lint pass; 19 suites / 66 tests pass
+Commits: 43afb05, 37581ca, 62de80f, 54e2be7, 995400a, 3b5750c, d76f7a8, 0d86225
+Mobile core at initial checkpoint: typecheck pass; lint pass; 19 suites / 66 tests pass
+Fresh shared mobile verification after 05B hardening: typecheck pass; lint pass; 25 suites / 106 tests pass
 Safety regression: 4 files / 53 tests pass
 Journey AI/network scan: exit 1, zero matches
-Gate 05A: pass
-External state: Plan 04 Golden evaluator blocked; Apple/signing/real-iPhone evidence external_pending; Plan 07 locked
+Gate 05A: in_progress — domain/reducer/builders/SQLCipher repository/application/provider shells pass, but production routes do not yet mount the provider/service composition root or consume resume/guard/back navigation
+Environment blocker: standard pnpm fresh commands cannot currently restore this worktree because the host minimum-release-age policy rejects 49 entries already pinned on merged main; direct lockfile-equivalent test binaries were used without changing the lockfile
+External state: Plan 04 Golden evaluator blocked; Apple/signing/real-iPhone evidence external_pending; Plan 06 and Plan 07 locked
 ```
