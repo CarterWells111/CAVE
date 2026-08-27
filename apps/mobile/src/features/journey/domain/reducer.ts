@@ -45,6 +45,13 @@ export function reduceJourneyDraft(draft: JourneyDraft, command: JourneyCommand)
       return changed(draft, { concernIds: unique(command.ids) });
     case "set-overnight-stage":
       return userChanged(draft, { overnight: { stage: command.stage, resumeStage: command.stage } });
+    case "save-overnight":
+      return changed(draft, {
+        overnight: { stage: "concerns", resumeStage: "concerns" },
+        expectationIds: unique(command.expectationIds),
+        concernIds: unique(command.concernIds),
+        overnightCustomNote: command.customNote,
+      });
     case "set-overnight-custom-note":
       return changed(draft, { overnightCustomNote: command.note });
     case "mark-knowledge-card-read":
@@ -84,7 +91,6 @@ export function reduceJourneyDraft(draft: JourneyDraft, command: JourneyCommand)
     case "save-reflection": {
       const journal = command.journal.saveChoice === "not-saved"
         ? {
-            ...(command.journal.promptId ? { promptId: command.journal.promptId } : {}),
             text: "",
             saveChoice: "not-saved" as const,
           }

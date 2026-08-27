@@ -93,6 +93,12 @@ test("translates Page 2-5 events into page-owned commands and idempotent task ke
   await controller.setBehaviorAttitude("draft-kissing", "unsure");
   await controller.saveReflection({ motivationIds: ["draft-curious"], comfortNeedIds: ["draft-privacy"], expressionSupportNeeded: true, journalSaveChoice: "device" });
 
+  expect(service.dispatch).toHaveBeenCalledWith({
+    type: "save-overnight",
+    expectationIds: ["draft-rest"],
+    concernIds: [],
+    customNote: "",
+  });
   expect(service.dispatch).toHaveBeenCalledWith({ type: "record-point-event", key: "learning:draft-knowledge-consent:v1" });
   expect(service.dispatch).toHaveBeenCalledWith({ type: "record-point-event", key: "reflection:page-5:v1" });
   expect(service.dispatch).toHaveBeenCalledWith({ type: "set-behavior-attitude", behaviorId: "draft-kissing", attitude: "unsure" });
@@ -155,7 +161,8 @@ test("updates private preparation and copies only explicitly included final-page
   expect(service.dispatch).toHaveBeenCalledWith({ type: "record-point-event", key: "review:checklist:v1" });
   expect(cards.save).toHaveBeenCalledWith(expect.objectContaining({ id: "card:journey-1", journeyId: "journey-1" }));
   const copied = clipboard.setStringAsync.mock.calls[0]?.[0] ?? "";
-  expect(copied).toContain("draft-card.night-expectations");
+  expect(copied).toContain("我对这个夜晚暂时没有具体想象。");
+  expect(copied).not.toMatch(/draft-card|draft-/u);
   expect(copied).toContain("任何人都可以随时改变主意，每一种靠近仍然需要当时再次确认");
   expect(copied).not.toContain("private marker");
 });
@@ -208,7 +215,7 @@ test("saves the complete Page 5 payload atomically and gives unsaved journals no
       comfortClarity: "need-space",
       comfortNote: "需要自己的空间",
     },
-    journal: { promptId: "journal-hesitation", text: "", saveChoice: "not-saved" },
+    journal: { text: "", saveChoice: "not-saved" },
   });
 });
 

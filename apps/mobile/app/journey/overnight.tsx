@@ -19,17 +19,12 @@ export default function OvernightRoute() {
           initialExpectationIds={snapshot?.expectationIds ?? []}
           initialStage={snapshot?.overnight.resumeStage ?? "expectations"}
           {...(consentSource ? { consentSource } : {})}
-          onContinue={(input) => runAndRefresh(async () => {
-            await runtime.service.dispatch({ type: "set-overnight-stage", stage: "concerns" });
-            await controller.saveOvernight(input);
-          })
+          onContinue={(input) => runAndRefresh(() => controller.saveOvernight(input))
             .then(() => goTo("body-knowledge"))}
           onSourceAction={(source) => Linking.openURL(source.url)}
-          onStageChange={(stage) => {
-            void runtime.runAndRefresh(
-              () => runtime.service.dispatch({ type: "set-overnight-stage", stage }),
-            ).catch(() => null);
-          }}
+          onStageChange={(stage) => runtime.runAndRefresh(
+            () => runtime.service.dispatch({ type: "set-overnight-stage", stage }),
+          )}
         />
       )}
     </JourneyRouteScreen>

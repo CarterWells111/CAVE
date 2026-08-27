@@ -84,9 +84,12 @@ export class JourneyPageController {
   }
 
   async saveOvernight(input: { expectationIds: string[]; concernIds: string[]; customNote: string }) {
-    await this.dependencies.service.dispatch({ type: "set-expectation-ids", ids: input.expectationIds });
-    await this.dependencies.service.dispatch({ type: "set-concern-ids", ids: input.concernIds });
-    await this.dependencies.service.dispatch({ type: "set-overnight-custom-note", note: input.customNote });
+    await this.dependencies.service.dispatch({
+      type: "save-overnight",
+      expectationIds: input.expectationIds,
+      concernIds: input.concernIds,
+      customNote: input.customNote,
+    });
   }
 
   async readKnowledge(cardId: string) {
@@ -120,15 +123,15 @@ export class JourneyPageController {
       comfortClarity: input.comfortClarity === undefined ? draft.reflection.comfortClarity : input.comfortClarity,
       comfortNote: input.comfortNote === undefined ? draft.reflection.comfortNote : input.comfortNote,
     };
-    const promptId = input.journalPromptId ?? draft.journal.promptId;
     const journal = input.journalSaveChoice === "not-saved"
       ? {
-          ...(promptId ? { promptId } : {}),
           text: "",
           saveChoice: "not-saved" as const,
         }
       : {
-          ...(promptId ? { promptId } : {}),
+          ...((input.journalPromptId ?? draft.journal.promptId)
+            ? { promptId: input.journalPromptId ?? draft.journal.promptId }
+            : {}),
           text: input.journalText ?? draft.journal.text,
           saveChoice: "device" as const,
           savedAt: this.dependencies.now(),

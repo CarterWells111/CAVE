@@ -17,6 +17,7 @@ export type JourneyCommand =
   | { type: "set-expectation-ids"; ids: string[] }
   | { type: "set-concern-ids"; ids: string[] }
   | { type: "set-overnight-stage"; stage: OvernightStage }
+  | { type: "save-overnight"; expectationIds: string[]; concernIds: string[]; customNote: string }
   | { type: "set-overnight-custom-note"; note: string }
   | { type: "mark-knowledge-card-read"; cardId: string }
   | { type: "set-medical-diagram-opened"; opened: boolean }

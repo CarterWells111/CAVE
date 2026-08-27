@@ -178,6 +178,22 @@ test("stores and resumes the overnight screen's two-stage local progress", () =>
   expect(concerns.sourceRevision).toBe(0);
 });
 
+test("saves all overnight answers and the resume stage in one domain transition", () => {
+  const result = reduceJourneyDraft(adultDraft(), {
+    type: "save-overnight",
+    expectationIds: ["expect-rest", "expect-rest"],
+    concernIds: ["concern-space"],
+    customNote: "想保留一点独处时间",
+  });
+
+  expect(result).toMatchObject({
+    expectationIds: ["expect-rest"],
+    concernIds: ["concern-space"],
+    overnightCustomNote: "想保留一点独处时间",
+    overnight: { stage: "concerns", resumeStage: "concerns" },
+  });
+});
+
 test("changes communication visibility only through the four explicit privacy states", () => {
   const base = adultDraft();
   const included = reduceJourneyDraft(base, {
@@ -250,7 +266,7 @@ test("atomically saves all reflection fields and clears journal content when it 
     reflection: saved.reflection,
     journal: { promptId: "journal-hesitation", text: "不得保留", saveChoice: "not-saved" },
   });
-  expect(notSaved.journal).toEqual({ promptId: "journal-hesitation", text: "", saveChoice: "not-saved" });
+  expect(notSaved.journal).toEqual({ text: "", saveChoice: "not-saved" });
   expect(notSaved.journalSaveChoice).toBe("not-saved");
 });
 

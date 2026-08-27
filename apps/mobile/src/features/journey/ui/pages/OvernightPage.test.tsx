@@ -96,3 +96,17 @@ test("failed continuation stays recoverable instead of becoming a dead end", asy
     "accessibilityState", expect.objectContaining({ disabled: false }),
   );
 });
+
+test("does not advance or hide a failed stage write and permits retry", async () => {
+  const onStageChange = jest.fn()
+    .mockRejectedValueOnce(new Error("storage unavailable"))
+    .mockResolvedValueOnce(undefined);
+  render(<OvernightPage onContinue={jest.fn()} onStageChange={onStageChange} options={options} />);
+
+  fireEvent.press(screen.getByRole("button", { name: "继续看看我的在意" }));
+  await waitFor(() => expect(screen.getByText("阶段暂时无法保存，请重试。")).toBeTruthy());
+  expect(screen.getByText("想到这次过夜，你有一点期待的是……")).toBeTruthy();
+
+  fireEvent.press(screen.getByRole("button", { name: "继续看看我的在意" }));
+  expect(await screen.findByText("同时，你也有一些在意的是……")).toBeTruthy();
+});
