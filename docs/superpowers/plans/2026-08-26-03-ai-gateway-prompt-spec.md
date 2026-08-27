@@ -155,3 +155,12 @@ interface ModelProvider {
 - [ ] 无 API 时 Mock 完成 turn + debrief 全流程。
 
 **解锁下一计划：** 与 Plan 04 同时验收完成后解锁 Plan 05。
+
+## 2026-08-27 执行结果
+
+- 状态：`complete`（本地 P0）；Plan 05 仍因 Plan 04 `blocked` 而未解锁。
+- Commit：`3e83282`、`fbbb749`、`fe2c024`、`4c96f5d`、`aed8270`；依赖 commit `248b87d`。
+- 已实现：validated mock/live env、`/health`、`/v1/meta`、turn/debrief routes、deterministic MockProvider、native-fetch OpenAI-compatible provider、版本化 prompts、state-machine 最终裁决、evidence verification、一次 repair、prompt injection/timeout/retry/body-bound tests。
+- 联合验证：gateway strict typecheck/lint 通过；16 files / 160 tests；Wrangler dry-run 687.67 KiB / gzip 113.48 KiB；无真实模型 API 时 MockProvider 与 mocked fetch 完成 P0。
+- 约束证据：`installationToken` 不进入 provider input；provider response 限制 64 KiB；provider-authored text 最长 2,000 chars；logs 不保存正文；turn 与 debrief 均接入 server-owned output guard。
+- Review：spec review `APPROVED`；code-quality review `APPROVED`；共享集成 review `APPROVED`。

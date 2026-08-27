@@ -61,9 +61,9 @@ Plan 03 与 Plan 04 可在 Plan 02 完成后并行；其余均是顺序验收门
 | ID | 文件 | 负责人 | 工时 | 解锁条件 | 状态 | 输入 | 输出 | 验收证据 | Git commit |
 |---|---|---|---:|---|---|---|---|---|---|
 | 01 | `2026-08-26-01-repository-infrastructure-ios-build.md` | Engineer | 4h | 无 | `blocked` | 空仓库、账号、iPhone | workspace、CI、dev build、`/health` | Gate 01A `pass`；Gate 01B `external_pending` | `17554bb`, `44a3609`, `f547cad`, `b21d9d8`, `03c1808`, `1fb7b44` |
-| 02 | `2026-08-26-02-contracts-content-domain.md` | Engineer + Content | 3-4h | Gate 01A pass | `blocked` | Package shells、内容草稿 | v1 contracts、内容校验、状态机 | Gate 02A `pass`；Gate 02B `content_review_pending` | `9d48b68`, `73d28d2`, `a51a8a1`, `05ce733`, `ca6586b`, `cc1495e`, `32123c5` |
-| 03 | `2026-08-26-03-ai-gateway-prompt-spec.md` | Engineer | 4-5h | 02 complete | `not_started` | v1 contracts、scenario fixtures | routes、providers、prompts | provider/route tests | 执行后填写 |
-| 04 | `2026-08-26-04-security-privacy-code-hardening.md` | Engineer + Content | 4h | 02 complete | `not_started` | v1 safety/storage shapes | encrypted repo、安全策略、CI security | device/log/scan evidence | 执行后填写 |
+| 02 | `2026-08-26-02-contracts-content-domain.md` | Engineer + Content | 3-4h | Gate 01A pass | `complete` | Package shells、内容草稿 | v1 contracts、内容校验、状态机 | Gate 02A `pass`；Gate 02B `pass` | `9d48b68`, `73d28d2`, `a51a8a1`, `05ce733`, `ca6586b`, `cc1495e`, `32123c5`, `a1c03e8` |
+| 03 | `2026-08-26-03-ai-gateway-prompt-spec.md` | Engineer | 4-5h | 02 complete | `complete` | v1 contracts、scenario fixtures | routes、providers、prompts | local provider/route/prompt/evidence suites `pass`；live API credential not required for P0 | `3e83282`, `fbbb749`, `fe2c024`, `4c96f5d`, `aed8270` |
+| 04 | `2026-08-26-04-security-privacy-code-hardening.md` | Engineer + Content | 4h | 02 complete | `blocked` | v1 safety/storage shapes | encrypted repo、安全策略、CI security | local storage/guard/log/bundle checks `pass`；Golden evaluator integration `blocked`；native checks `external_pending` | `dc90739`, `6f642c9`, `3c875c1`, `dbc085e`, `371c905` |
 | 05 | `2026-08-26-05-mobile-mvp-integration.md` | Engineer | 6-7h | 03、04 complete | `not_started` | gateway、安全存储、内容 | 端到端移动闭环 | iPhone integration evidence | 执行后填写 |
 | 06 | `2026-08-26-06-product-completion-ux.md` | Both | 5h | 05 complete | `not_started` | 可运行闭环、最终内容 | 完整 UI、可访问性、披露 | state/accessibility matrix | 执行后填写 |
 | 07 | `2026-08-26-07-quality-performance-demo-hardening.md` | Both | 3-4h | 06 complete | `not_started` | feature-frozen build | RC、三轮彩排 | test/rehearsal matrix | 执行后填写 |
@@ -254,6 +254,32 @@ Interim acceptance scope: observe whether the JS bundle opens without a red erro
 Non-substitution rule: Expo Go does not prove bundle identifier, Apple Team/signing, device provisioning, Development Build inclusion/installation, or two launches after Metro is stopped
 Gate status: Gate 01A=pass; Gate 01B=external_pending until membership is active and the planned Development Build, installation, and Metro-disconnected launch evidence are complete
 Next action: execute the Expo Go observation now; do not run EAS device registration or build while membership remains Pending
+```
+
+### Plan 02 / Gate 02B 内容审核闭环（2026-08-27）
+
+```text
+Approval source: 当前 Codex 任务中的用户明确回复“批准，本地相关修改，计划内的都批准”
+Reviewed at: 2026-08-27T05:51:49Z
+Reviewed entries: courses.cave-basics; lessons.lesson-boundaries; scenarios.scenario-boundary; scenarios.scenario-preview-space; scenarios.scenario-preview-request; guide.categories.guide-boundaries; guide.categories.guide-next-steps
+Golden outcome checklist: approved by the same user instruction; no claim is made about Plan 04's later evaluator implementation
+Commit: a1c03e8
+Verification: content tests 11/11; production validation passes for 1 course / 1 lesson / 3 scenarios; Golden fixture/domain tests 11/11
+Gate status: Gate 02A=pass; Gate 02B=pass
+```
+
+### Plan 03 / Plan 04 本地联合实现（2026-08-27）
+
+```text
+Branch: codex/plan-03-04-implementation
+Baseline: 1df9d66773c59bacd1c6f88dcd19e0a79802d1d2 from codex/plan-01-02-implementation (descendant of 3badcd7); main was not merged
+Plan 03 commits: 3e83282, fbbb749, fe2c024, 4c96f5d, aed8270
+Plan 04 commits: dc90739, 6f642c9, 3c875c1, dbc085e, 371c905; shared dependency commit 248b87d
+Local evidence: gateway typecheck/lint pass; gateway 16 files / 160 tests; mobile 9 suites / 26 tests; safety 4 files / 53 tests; repository security config/scanner 4 files / 15 tests; exported iOS JS bundle 1101 modules / 2.3 MB and bundle scan passed 25 files; Wrangler dry-run 687.67 KiB / gzip 113.48 KiB with independent 10/min turn and 5/min debrief bindings
+Plan 03 status: complete locally with deterministic MockProvider and mocked-fetch LiveProvider; no real model credential was requested, emitted, or required for P0
+Plan 04 status: blocked — createTurnSafetyEvaluator still classifies the Golden clear-boundary text as uncertain/safety_stop instead of safe/resolution after two root-cause fix rounds; no third masking fix was attempted
+External pending: Gate 01B Apple membership/Development Build/iPhone evidence; SQLCipher/no-key and delete-all cold-start checks on a real iPhone; deployed Worker canary-log inspection; repository Secret Scanning setting; npm production audit pending explicit approval to send package/version metadata to the public npm advisory endpoint
+Next plan unlocked: none; Plan 05 remains locked until Plan 04's Golden evaluator issue and required native evidence are closed
 ```
 
 ## P0 唯一归属
