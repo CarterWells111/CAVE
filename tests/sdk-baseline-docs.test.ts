@@ -11,6 +11,9 @@ const activeDocuments = [
   "docs/superpowers/plans/2026-08-26-00-hackathon-master-roadmap.md",
   "docs/superpowers/plans/2026-08-26-01-repository-infrastructure-ios-build.md",
   "docs/superpowers/plans/2026-08-26-05-mobile-mvp-integration.md",
+  "docs/superpowers/plans/2026-08-27-05a-eight-page-mvp-framework.md",
+  "docs/superpowers/plans/2026-08-27-05b-eight-page-mvp-functions.md",
+  "docs/superpowers/plans/2026-08-27-09-post-mvp-cloud-ai-expansion.md",
   "docs/superpowers/plans/2026-08-27-cave-product-identity-migration.md"
 ] as const;
 
@@ -37,6 +40,12 @@ describe("Expo SDK documentation baseline", () => {
     expect(masterRoadmap).toContain(
       "SDK 57 baseline was superseded by the user-authorized Expo SDK 54 decision"
     );
+  });
+
+  it("does not prescribe SDK 57 package versions in active plans", () => {
+    const activePlanText = activeDocuments.map(readDocument).join("\n");
+
+    expect(activePlanText).not.toMatch(/@[~^]?57\.0\./u);
   });
 
   it("keeps Gate 02B aligned with the completed content-owner review", () => {

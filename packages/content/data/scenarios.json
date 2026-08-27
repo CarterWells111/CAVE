@@ -30,7 +30,7 @@
     },
     "linkedLessonIds": ["lesson-boundaries"],
     "reviewStatus": "reviewed",
-    "reviewedAt": "2026-08-27",
+    "reviewedAt": "2026-08-27T05:51:49Z",
     "sourceRefs": ["source-editorial-draft"]
   },
   {
@@ -59,7 +59,7 @@
     },
     "linkedLessonIds": ["lesson-boundaries"],
     "reviewStatus": "reviewed",
-    "reviewedAt": "2026-08-27",
+    "reviewedAt": "2026-08-27T05:51:49Z",
     "sourceRefs": ["source-editorial-draft"]
   },
   {
@@ -88,7 +88,7 @@
     },
     "linkedLessonIds": ["lesson-boundaries"],
     "reviewStatus": "reviewed",
-    "reviewedAt": "2026-08-27",
+    "reviewedAt": "2026-08-27T05:51:49Z",
     "sourceRefs": ["source-editorial-draft"]
   }
 ]

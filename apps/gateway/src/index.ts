@@ -1,12 +1,19 @@
-import { Hono } from "hono";
+import {
+  createApp,
+  createWorkerRateLimitStore,
+  type WorkerBindings
+} from "./app";
 
-const app = new Hono();
+const worker = {
+  fetch(request, env, context) {
+    const app = createApp(env, {
+      rateLimitStore: createWorkerRateLimitStore(env),
+      logger(line) {
+        console.log(line);
+      }
+    });
+    return app.fetch(request, env, context);
+  }
+} satisfies ExportedHandler<WorkerBindings>;
 
-app.get("/health", (context) =>
-  context.json({
-    contractVersion: "1",
-    status: "ok"
-  })
-);
-
-export default app;
+export default worker;

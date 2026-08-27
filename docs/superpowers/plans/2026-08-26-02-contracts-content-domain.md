@@ -187,11 +187,15 @@ type ApiErrorResponse = {
 
 **解锁下一计划：** 完成后同时解锁 Plan 03 与 Plan 04。
 
-## 内容负责人审核记录（2026-08-27）
+## 2026-08-27 Gate 02B 审核结果
 
+- 状态：Gate 02A `pass`；Gate 02B `pass`；Plan 02 `complete`。
 - 审核权限：审核会话中的用户明确确认具备内容负责人签署权限；未记录审核人姓名。
-- 批准的 production 条目：`cave-basics`、`lesson-boundaries`、`scenario-boundary`、`scenario-preview-space`、`scenario-preview-request`、`guide-boundaries`、`guide-next-steps`。
+- 审核来源：用户明确批准 7 条 draft 与计划内 Golden outcomes；`reviewedAt` 记录为 `2026-08-27T05:51:49Z`。
+- 7 条内容：`cave-basics`、`lesson-boundaries`、`scenario-boundary`、`scenario-preview-space`、`scenario-preview-request`、`guide-boundaries`、`guide-next-steps`。
 - 批准的相关内容：两道 quiz、`golden-clear-boundary`、五条高风险停止路由 Golden cases，以及四维 debrief 预期。
 - 来源结论：`source-editorial-draft` 被确认是认可的内部原创编辑来源标识。
 - 范围限制：批准仅用于当前 app 展示与流程框架；安全 Golden cases 是合成停止路由预期，不构成医学、法律或危机处置结论。
 - 要求修改项：无。
+- Commits：`a1c03e8`、`abb0fd4`。
+- 证据：content tests 11/11；production content validation 通过 1 course / 1 lesson / 3 scenarios；Golden fixture/domain tests 11/11。

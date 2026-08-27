@@ -23,7 +23,7 @@ describe("versioned content validation", () => {
     ]);
   });
 
-  it("accepts the checked-in draft catalog", () => {
+  it("accepts the checked-in catalog in draft mode", () => {
     expect(() => validateCatalog(loadCatalog(), { mode: "draft" })).not.toThrow();
   });
 
@@ -41,7 +41,7 @@ describe("versioned content validation", () => {
       reviewableEntries.every(
         (entry) =>
           entry.reviewStatus === "reviewed" &&
-          entry.reviewedAt === "2026-08-27"
+          entry.reviewedAt === "2026-08-27T05:51:49Z"
       )
     ).toBe(true);
     expect(() =>
