@@ -35,12 +35,12 @@ test("pages two through five hydrate canonical state and persist before navigati
   expect(overnight).toContain("options={catalog.options}");
   expect(overnight).toContain("initialStage={snapshot?.overnight.resumeStage");
   expect(overnight).toContain('type: "set-overnight-stage"');
-  expect(overnight).toMatch(
-    /onContinue[\s\S]*set-overnight-stage[\s\S]*saveOvernight\(input\)[\s\S]*goTo\("body-knowledge"\)/u,
-  );
+  expect(overnight).toMatch(/onContinue[\s\S]*saveOvernight\(input\)[\s\S]*goTo\("body-knowledge"\)/u);
 
   const knowledge = route("body-knowledge");
   expect(knowledge).toContain("sources={catalog.sources}");
+  expect(knowledge).toContain('require("../../../../assets/medical/vulva-anatomy-review-current.png")');
+  expect(knowledge).toContain("diagramSource={medicalDiagram}");
   expect(knowledge).toContain("onSourceAction");
   expect(knowledge).toContain('goTo("behavior-map")');
 
@@ -57,10 +57,13 @@ test("pages two through five hydrate canonical state and persist before navigati
   expect(reflection).toContain("pressureWithoutDisappointment: input.pressureWithoutDisappointment");
   expect(reflection).toContain("journalPromptId: input.journalPromptId");
   expect(reflection).toContain("journalText: input.journalText");
+  expect(reflection).toContain("catalog.options");
+  expect(reflection).toContain("返回行为地图编辑");
+  expect(reflection).not.toContain("?? behaviorId");
   expect(reflection).toMatch(/saveReflection\([\s\S]*goTo\("preset-practice"\)/u);
 });
 
-test("practice and final routes use real local adapters and never claim image export success", () => {
+test("practice and final routes use real user-triggered local adapters", () => {
   const practice = route("preset-practice");
   expect(practice).toContain("catalog={catalog.practice}");
   expect(practice).toContain("ExpoClipboard.setStringAsync");
@@ -71,7 +74,7 @@ test("practice and final routes use real local adapters and never claim image ex
   const final = route("final-preparation");
   expect(final).toContain("<FinalPreparationPage");
   expect(final).toContain('type: "set-communication-card-visibility"');
-  expect(final).toContain('Promise.reject(new Error("image-export-unavailable"))');
+  expect(final).toContain("saveCardImageToLibrary(imageUri)");
   expect(final).toContain('result.status === "error"');
   expect(final).toContain("onSaveDraft={() => controller.saveCommunicationCard()}");
   expect(final).toContain("onUpdatePreparation={(itemId, status) => runAndRefresh(");

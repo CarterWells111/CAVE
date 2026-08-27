@@ -1,4 +1,5 @@
 import { useJourneyRuntime } from "../../src/features/journey/runtime/JourneyRuntimeProvider";
+import { saveCardImageToLibrary } from "../../src/features/journey/infrastructure/expo-card-image-adapter";
 import { JourneyRouteScreen } from "../../src/features/journey/ui/JourneyRouteScreen";
 import { FinalPreparationPage } from "../../src/features/journey/ui/pages/FinalPreparationPage";
 
@@ -18,7 +19,7 @@ export default function FinalPreparationRoute() {
           )}
           onFinish={() => controller.saveCommunicationCard()}
           onSaveDraft={() => controller.saveCommunicationCard()}
-          onSaveImage={() => Promise.reject(new Error("image-export-unavailable"))}
+          onSaveImage={(_card, imageUri) => saveCardImageToLibrary(imageUri)}
           onSetVisibility={(sectionId, visibility) => runtime.runAndRefresh(
             () => runtime.service.dispatch({ type: "set-communication-card-visibility", sectionId, visibility })
           )}

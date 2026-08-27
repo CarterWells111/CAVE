@@ -1,6 +1,7 @@
 import { loadCatalog } from "@cave/content";
 import { useRef, useState } from "react";
 import { Text, TextInput, View } from "react-native";
+import { captureRef } from "react-native-view-shot";
 
 import { paperTheme, theme } from "../../../../core/design/theme";
 import { Button } from "../../../../core/ui/Button";
@@ -23,7 +24,7 @@ type Props = {
   onEdit(sectionId: CommunicationSectionId, userText: string): void | Promise<void>;
   onSetVisibility(sectionId: CommunicationSectionId, visibility: SharingVisibility): void | Promise<void>;
   onCopy(card: ConfirmedCommunicationCard): void | Promise<void>;
-  onSaveImage(card: ConfirmedCommunicationCard): void | Promise<void>;
+  onSaveImage(card: ConfirmedCommunicationCard, imageUri: string): void | Promise<void>;
   onFinish(card: ConfirmedCommunicationCard): void | Promise<void>;
   onSaveDraft?(): void | Promise<void>;
   onUpdatePreparation?(itemId: string, status: ChecklistItemStatus): void | Promise<void>;
@@ -97,6 +98,7 @@ export function FinalPreparationPage({
   onUpdatePreparation
 }: Props) {
   const draftRef = useRef(cloneDraft(draft));
+  const previewRef = useRef<View>(null);
   const queueRef = useRef<Promise<void>>(Promise.resolve());
   const failedWritesRef = useRef<Array<() => void | Promise<void>>>([]);
   const [, renderVersion] = useState(0);
@@ -304,7 +306,11 @@ export function FinalPreparationPage({
       </View>
 
       <Button label="预览分享卡" onPress={() => setPreviewVisible(true)} />
-      {previewVisible ? <SharePreview card={confirmed} /> : null}
+      {previewVisible ? (
+        <View collapsable={false} ref={previewRef}>
+          <SharePreview card={confirmed} />
+        </View>
+      ) : null}
       {previewVisible ? <Text style={{ ...theme.typography.body, color: theme.color.textSecondary }}>文字会进入系统剪贴板。CAVE 不会自动发送，你可以粘贴到自己选择的应用中。</Text> : null}
       <Button disabled={activeOperation !== undefined && activeOperation !== "copy"} label={activeOperation === "copy" ? "正在复制…" : "复制已确认内容"} loading={activeOperation === "copy"} onPress={requestCopy} />
       <SecondaryButton disabled={activeOperation !== undefined} label="保存为图片" onPress={requestImageConfirmation} />
@@ -314,7 +320,13 @@ export function FinalPreparationPage({
           <Button
             label={activeOperation === "image" ? "正在保存图片…" : "确认并保存图片"}
             loading={activeOperation === "image"}
-            onPress={() => { void afterFlush("image", onSaveImage, "图片已保存。", "图片保存失败，请检查权限后重试。"); }}
+            onPress={() => {
+              void afterFlush("image", async (card) => {
+                if (previewRef.current === null) throw new Error("preview-not-ready");
+                const imageUri = await captureRef(previewRef, { format: "png", quality: 1, result: "tmpfile" });
+                await onSaveImage(card, imageUri);
+              }, "图片已保存。", "图片保存失败，请检查权限后重试。");
+            }}
           />
         </View>
       ) : null}

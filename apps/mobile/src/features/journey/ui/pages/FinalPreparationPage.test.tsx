@@ -5,6 +5,10 @@ import { selectConfirmedCommunicationCard, type ConfirmedCommunicationCard } fro
 import { createJourneyDraft, type CommunicationSectionId } from "../../domain/types";
 import { FinalPreparationPage } from "./FinalPreparationPage";
 
+jest.mock("react-native-view-shot", () => ({
+  captureRef: jest.fn(async () => "file:///cave-card.png"),
+}));
+
 function draft() {
   const value = createJourneyDraft({ id: "journey-1", now: "now" });
   value.privatePreparation.items = [{
@@ -29,7 +33,7 @@ test("starts all seven sections pending and exposes explicit non-color visibilit
 
 test("uses the confirmed selector for preview, clipboard and image export", async () => {
   const onCopy = jest.fn<Promise<void>, [ConfirmedCommunicationCard]>(async (card) => { void card; });
-  const onSaveImage = jest.fn<Promise<void>, [ConfirmedCommunicationCard]>(async (card) => { void card; });
+  const onSaveImage = jest.fn<Promise<void>, [ConfirmedCommunicationCard, string]>(async (card, uri) => { void card; void uri; });
   render(<FinalPreparationPage draft={draft()} onCopy={onCopy} onEdit={jest.fn()} onFinish={jest.fn()} onSaveImage={onSaveImage} onSetVisibility={jest.fn()} />);
 
   fireEvent.press(screen.getByRole("radio", { name: "加入分享：我对这个夜晚的期待" }));
@@ -52,6 +56,7 @@ test("uses the confirmed selector for preview, clipboard and image export", asyn
   await waitFor(() => expect(onSaveImage).toHaveBeenCalledTimes(1));
   expect(await screen.findByText("图片已保存。")).toBeTruthy();
   expect(onCopy.mock.calls[0]?.[0]).toEqual(onSaveImage.mock.calls[0]?.[0]);
+  expect(onSaveImage.mock.calls[0]?.[1]).toBe("file:///cave-card.png");
   const expectedDraft = draft();
   expectedDraft.communicationCard["communication-night-expectations"].visibility = "included";
   expectedDraft.communicationCard["communication-comfort"].visibility = "private";
