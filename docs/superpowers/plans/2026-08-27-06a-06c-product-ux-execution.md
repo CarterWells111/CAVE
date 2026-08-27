@@ -1,5 +1,7 @@
 # Plan 06A—06C Product UX Execution Plan
 
+> **Historical checkpoint:** `origin/main@ccb188b` replaced the eight-screen product scope with the approved seven-screen specification. Preserve the completed primitive/async/accessibility commits, but use `2026-08-27-seven-screen-complete-product-implementation.md` for all further implementation.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use `superpowers:test-driven-development` for implementation and `superpowers:verification-before-completion` before every phase commit. Parallel workers must stay inside their assigned write sets and must not commit independently.
 
 **Goal:** Complete Plan 06 in three independently auditable phases while Plan 05D continues in an isolated branch.
