@@ -6,9 +6,12 @@ import {
   chooseOptionalBranch,
   completeMirror,
   completePractice,
+  editOptionalUserResponse,
   editPracticePhrase,
+  selectOptionalUserResponse,
   selectPracticeBehavior,
   selectPracticeNeed,
+  skipMirror,
   showRespectfulResponse
 } from "./seven-screen-practice-machine";
 
@@ -89,6 +92,21 @@ test("offers all six deterministic need phrases without generating text", () => 
   }
 });
 
+test("skips mirror practice safely from both entry and editable phrase", () => {
+  const fromEntry = skipMirror(beginPractice(catalog()));
+  expect(fromEntry.stage).toBe("behavior");
+
+  const editing = selectPracticeNeed(
+    selectPracticeBehavior(completeMirror(beginPractice(catalog())), null),
+    "pause-to-feel",
+  );
+  expect(skipMirror(editing)).toMatchObject({
+    stage: "editable-phrase",
+    intent: "pause-to-feel",
+    phrase: "phrase pause-to-feel",
+  });
+});
+
 test("keeps the disappointed branch optional and gives it no additional point event", () => {
   let state = selectPracticeNeed(selectPracticeBehavior(completeMirror(beginPractice(catalog())), null), "pause-and-decide");
   state = showRespectfulResponse(state, catalog());
@@ -98,6 +116,24 @@ test("keeps the disappointed branch optional and gives it no additional point ev
   expect(state).toMatchObject({ stage: "optional-response", optionalBranch: "disappointed-but-stops" });
   expect(state.optionalUserTexts).toEqual(["one", "two", "three"]);
   expect(state.pointEventKey).toBeUndefined();
+
+  state = selectOptionalUserResponse(state, "two");
+  state = editOptionalUserResponse(state, "  my own response  ");
+  state = completePractice(state);
+  expect(state).toMatchObject({
+    optionalUserResponse: "my own response",
+    optionalUserResponseEdited: true,
+    stage: "completed",
+  });
+});
+
+test("requires a selected optional response before completing a non-terminal branch", () => {
+  let state = selectPracticeNeed(selectPracticeBehavior(completeMirror(beginPractice(catalog())), null), "pause-and-decide");
+  state = showRespectfulResponse(state, catalog());
+  state = chooseAftercare(state, "space");
+  state = chooseOptionalBranch(state, catalog(), "disappointed-but-stops");
+
+  expect(() => completePractice(state)).toThrow("optional-practice-response-required");
 });
 
 test("ends ordinary language practice immediately when exit is ignored or blocked", () => {

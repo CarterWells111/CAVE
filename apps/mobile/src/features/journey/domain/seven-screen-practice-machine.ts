@@ -34,6 +34,8 @@ export type SevenScreenPracticeState = {
   optionalBranch?: Exclude<OptionalPracticeBranch, "skip">;
   optionalPartnerText?: string;
   optionalUserTexts?: string[];
+  optionalUserResponse?: string;
+  optionalUserResponseEdited?: boolean;
   optionalGuidance?: string;
   safetyEnded: boolean;
   pointEventKey?: string;
@@ -78,6 +80,11 @@ export function completeMirror(state: SevenScreenPracticeState): SevenScreenPrac
 export function startScenario(state: SevenScreenPracticeState): SevenScreenPracticeState {
   requireStage(state, ["entry"]);
   return { ...state, stage: "behavior" };
+}
+
+export function skipMirror(state: SevenScreenPracticeState): SevenScreenPracticeState {
+  requireStage(state, ["entry", "editable-phrase"]);
+  return state.stage === "entry" ? { ...state, stage: "behavior" } : state;
 }
 
 export function selectPracticeBehavior(
@@ -141,20 +148,51 @@ export function chooseOptionalBranch(
   if (branch === "skip") return { ...state, stage: "completed" };
   const scenario = catalog.safetyBranches.find((candidate) => candidate.branch === branch);
   if (scenario === undefined) throw new Error(`missing-safety-branch:${branch}`);
+  const resetState = { ...state };
+  delete resetState.optionalUserResponse;
   return {
-    ...state,
+    ...resetState,
     optionalBranch: branch,
     optionalPartnerText: scenario.partnerText,
     optionalUserTexts: [...scenario.userTexts],
+    optionalUserResponseEdited: false,
     optionalGuidance: scenario.guidance,
     safetyEnded: scenario.safeTerminal,
     stage: scenario.safeTerminal ? "safety-resources" : "optional-response"
   };
 }
 
+export function selectOptionalUserResponse(
+  state: SevenScreenPracticeState,
+  response: string
+): SevenScreenPracticeState {
+  requireStage(state, ["optional-response"]);
+  if (!state.optionalUserTexts?.includes(response)) {
+    throw new Error("unknown-optional-practice-response");
+  }
+  return { ...state, optionalUserResponse: response, optionalUserResponseEdited: false };
+}
+
+export function editOptionalUserResponse(
+  state: SevenScreenPracticeState,
+  response: string
+): SevenScreenPracticeState {
+  requireStage(state, ["optional-response"]);
+  const trimmed = response.trim();
+  if (trimmed.length === 0) throw new Error("optional-practice-response-required");
+  return { ...state, optionalUserResponse: trimmed, optionalUserResponseEdited: true };
+}
+
 export function completePractice(state: SevenScreenPracticeState): SevenScreenPracticeState {
   if (state.stage === "safety-resources") throw new Error("safety-resources-must-close-explicitly");
   requireStage(state, ["completed", "optional-response"]);
+  if (
+    state.stage === "optional-response"
+    && (state.optionalUserTexts?.length ?? 0) > 0
+    && state.optionalUserResponse === undefined
+  ) {
+    throw new Error("optional-practice-response-required");
+  }
   return {
     ...state,
     stage: "completed",
