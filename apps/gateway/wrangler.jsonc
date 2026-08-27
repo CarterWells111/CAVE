@@ -1,6 +1,6 @@
 {
   "$schema": "../../node_modules/wrangler/config-schema.json",
-  "name": "body-voice-gateway",
+  "name": "neijie-cave-gateway",
   "main": "src/index.ts",
   "compatibility_date": "2026-08-26",
   "vars": {

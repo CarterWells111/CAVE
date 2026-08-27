@@ -45,4 +45,14 @@ describe("CAVE workspace identity", () => {
       );
     }
   });
+
+  it("uses the approved Worker name", () => {
+    const wrangler = readFileSync(
+      resolve(workspaceRoot, "apps/gateway/wrangler.jsonc"),
+      "utf8"
+    );
+
+    expect(wrangler).toContain('"name": "neijie-cave-gateway"');
+    expect(wrangler).not.toContain("body-voice-gateway");
+  });
 });
