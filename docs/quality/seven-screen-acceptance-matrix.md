@@ -57,3 +57,19 @@ Status: `local_automated_pass`
 - `device_external_pending`: physical iPhone cold start, VoiceOver, system keyboard/Dynamic Type settings, SQLCipher migration/persistence, SecureStore/Keychain, photo-library save and permission recovery, system share, external links/telephone behavior, and Apple signing were not executed by this local run.
 
 These pending gates do not invalidate local product implementation, but they must not be reported as release evidence.
+
+## Long-term app shell checkpoint
+
+Status: `local_automated_pass`
+
+- The first-run completion marker, rather than the presence of an active draft, selects the cold-start route.
+- First-run users remain in the full-screen seven-screen journey. Completed users receive exactly four destinations: Home, Reviews, Practice, and Cards.
+- A later incomplete review does not take over cold start or lock the other destinations. The four-destination navigation remains available while a later full review is open.
+- Starting a replacement full review requires an explicit confirmation when an active later draft exists.
+- Standalone topic reflection and deterministic practice routes do not depend on seven-screen route prerequisites; practice remains labelled as preset, local, non-AI, and non-recording.
+- Home and list screens load only neutral card metadata. Sensitive card payload is loaded only after an explicit card selection.
+- Saved-card detail, copy, local edit, and full-screen presentation use only explicitly included sections; private and deleted fields are not accepted by the detail component.
+- Settings stays outside the tab bar. Delete-all has explicit confirmation, safe failure UI, no optimistic success, and refreshes the shared runtime snapshot after success.
+- Focused shell and repository tests passed, followed by mobile typecheck, lint, and 82 suites / 525 tests.
+
+The shell checkpoint remains stacked on the first-run PR. Immutable review versions, explicit later-review completion lifecycle, branching, and transactional history deletion are owned by the following version-history checkpoint, not claimed here.
