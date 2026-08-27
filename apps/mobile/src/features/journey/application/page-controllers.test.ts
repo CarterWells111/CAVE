@@ -86,6 +86,14 @@ test("translates Page 2-5 events into page-owned commands and idempotent task ke
   expect(service.dispatch).toHaveBeenCalledWith({ type: "set-behavior-attitude", behaviorId: "draft-kissing", attitude: "unsure" });
 });
 
+test("marks the medical diagram opened through the controller", async () => {
+  const { controller, service } = harness();
+
+  await controller.openMedicalDiagram();
+
+  expect(service.dispatch).toHaveBeenCalledWith({ type: "set-medical-diagram-opened", opened: true });
+});
+
 test("runs Page 6 only through the scripted engine and records one versioned practice event", async () => {
   const { controller, practice, service } = harness();
 
@@ -129,10 +137,20 @@ test("updates Page 7 and explicitly saves or copies only the current visible Pag
   expect(cards.save).not.toHaveBeenCalled();
 
   await controller.saveCommunicationCard();
-  await controller.copyCommunicationCard();
+  await expect(controller.copyCommunicationCard()).resolves.toEqual({ status: "success" });
 
   expect(service.dispatch).toHaveBeenCalledWith(expect.objectContaining({ type: "update-checklist-item" }));
   expect(service.dispatch).toHaveBeenCalledWith({ type: "record-point-event", key: "review:checklist:v1" });
   expect(cards.save).toHaveBeenCalledWith(expect.objectContaining({ id: "card:journey-1", journeyId: "journey-1" }));
   expect(clipboard.setStringAsync).toHaveBeenCalledWith(expect.stringContaining("draft-card.intentions"));
+});
+
+test("returns a typed clipboard failure that the route can render", async () => {
+  const { clipboard, controller } = harness();
+  clipboard.setStringAsync.mockRejectedValueOnce(new Error("denied"));
+
+  await expect(controller.copyCommunicationCard()).resolves.toEqual({
+    status: "error",
+    code: "clipboard-write-failed"
+  });
 });
