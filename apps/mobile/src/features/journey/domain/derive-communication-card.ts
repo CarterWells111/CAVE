@@ -33,7 +33,7 @@ export function buildCommunicationCard(draft: JourneyDraft): Record<string, Edit
       generatedText,
       ...(userEdited ? { userText: previous.userText } : {}),
       sourceRevision: draft.sourceRevision,
-      needsReview: userEdited && previous.generatedText !== generatedText
+      needsReview: userEdited && (previous.needsReview || previous.generatedText !== generatedText)
     } satisfies EditableDerivedField];
   }));
 }
