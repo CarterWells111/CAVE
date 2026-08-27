@@ -10,6 +10,8 @@ import {
   SqlJourneyDraftRepository
 } from "../infrastructure/sql-journey-draft-repository";
 import { SqlAppShellStateRepository } from "../../shell/infrastructure/sql-app-shell-state-repository";
+import { SqlReviewHistoryRepository } from "../../reviews/infrastructure/sql-review-history-repository";
+import type { JourneyDraft } from "../domain/types";
 import {
   composeJourneyRuntime,
   createJourneyRuntime,
@@ -51,6 +53,7 @@ export function createComposedJourneyRuntime({
         drafts: new SqlJourneyDraftRepository(database),
         cards: new SqlCommunicationCardRepository(database),
         shellState: new SqlAppShellStateRepository(database),
+        reviewHistory: new SqlReviewHistoryRepository<JourneyDraft>(database),
         deleteStorage: () => deleteAllLocalData({ database, secrets: adapters.secrets }),
         clipboard: adapters.clipboard,
         createId,

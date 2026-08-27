@@ -15,6 +15,7 @@ import type {
 } from "../domain/practice-types";
 import type { CommunicationCardRepository } from "../infrastructure/journey-draft-repository";
 import type { AppShellStateRepository } from "../../shell/infrastructure/app-shell-state-repository";
+import type { ReviewHistoryRepository } from "../../reviews/infrastructure/review-history-repository";
 import type { JourneyApplicationService } from "./journey-application-service";
 
 export interface ClipboardAdapter {
@@ -32,6 +33,7 @@ type Dependencies = {
   clipboard: ClipboardAdapter;
   practice: PresetPracticeEngine;
   now(): string;
+  reviewHistory?: ReviewHistoryRepository<JourneyDraft>;
 };
 
 type ReflectionInput = {
@@ -264,10 +266,25 @@ export class JourneyPageController {
   async completeInitialJourney(confirmedCard: ConfirmedCommunicationCard) {
     const draft = this.requireDraft();
     await this.saveCommunicationCard(confirmedCard);
+    const versionId = `review:${draft.id}:completed`;
+    if (this.dependencies.reviewHistory !== undefined
+      && await this.dependencies.reviewHistory.loadDetail(versionId) === null) {
+      const active = await this.dependencies.reviewHistory.loadActive();
+      await this.dependencies.reviewHistory.appendVersion({
+        id: versionId,
+        rootId: active?.rootId ?? draft.id,
+        parentVersionId: active?.sourceVersionId ?? null,
+        title: active?.title ?? `回顾 ${draft.updatedAt.slice(0, 10)}`,
+        createdAt: this.dependencies.now(),
+        status: "completed",
+        payload: draft,
+      });
+    }
     await this.dependencies.shellState.completeInitialJourney({
       initialJourneyId: draft.id,
       initialJourneyCompletedAt: this.dependencies.now()
     });
+    await this.dependencies.service.resetJourney();
   }
 
   async copyCommunicationCard(): Promise<ClipboardCopyResult> {

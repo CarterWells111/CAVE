@@ -80,7 +80,7 @@ test("keeps the settings screen on failure, hides private errors and retries tru
   fireEvent.press(screen.getByRole("button", { name: "删除全部本机数据" }));
   fireEvent.press(screen.getByRole("button", { name: "确认删除全部本机数据" }));
 
-  expect(await screen.findByRole("alert")).toHaveTextContent("删除失败，请重试。你的当前画面会保留。");
+  expect(await screen.findByRole("alert")).toHaveTextContent("删除尚未完成；部分本机清理步骤可能已经完成。当前画面会保留，请安全重试直到显示完成。");
   expect(screen.queryByText(/private database path/u)).toBeNull();
   expect(screen.getByRole("header", { name: "设置" })).toBeTruthy();
   fireEvent.press(screen.getByRole("button", { name: "重试删除" }));
