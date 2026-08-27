@@ -1,14 +1,22 @@
 import { loadJourneyContentCatalog } from "../../src/features/journey/infrastructure/journey-content-catalog";
+import { JourneyContinueButton, JourneyRouteScreen } from "../../src/features/journey/ui/JourneyRouteScreen";
 import { BehaviorAttitudesPage } from "../../src/features/journey/ui/pages/JourneyPages";
-import { JourneyScreenShell } from "../../src/features/journey/ui/JourneyScreenShell";
 
 export default function BehaviorAttitudesRoute() {
   return (
-    <JourneyScreenShell pageId="behavior-attitudes">
-      <BehaviorAttitudesPage
-        behaviors={loadJourneyContentCatalog().options.filter(({ group }) => group === "behavior")}
-        onSet={() => undefined}
-      />
-    </JourneyScreenShell>
+    <JourneyRouteScreen pageId="behavior-attitudes">
+      {({ controller, goTo, runAndRefresh, snapshot }) => (
+        <>
+          <BehaviorAttitudesPage
+            behaviors={loadJourneyContentCatalog().options.filter(({ group }) => group === "behavior")}
+            currentAttitudes={snapshot?.behaviorAttitudes ?? {}}
+            onSet={(behaviorId, attitude) => {
+              void runAndRefresh(() => controller.setBehaviorAttitude(behaviorId, attitude));
+            }}
+          />
+          <JourneyContinueButton onPress={() => { void goTo("reflection"); }} />
+        </>
+      )}
+    </JourneyRouteScreen>
   );
 }

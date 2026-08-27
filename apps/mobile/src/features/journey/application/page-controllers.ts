@@ -11,6 +11,10 @@ export interface ClipboardAdapter {
   setStringAsync(value: string): Promise<void>;
 }
 
+export type ClipboardCopyResult =
+  | { status: "success" }
+  | { status: "error"; code: "clipboard-write-failed" };
+
 type Dependencies = {
   service: JourneyApplicationService;
   cards: CommunicationCardRepository;
@@ -39,6 +43,10 @@ export class JourneyPageController {
   async readKnowledge(cardId: string) {
     await this.dependencies.service.dispatch({ type: "mark-knowledge-card-read", cardId });
     await this.dependencies.service.dispatch({ type: "record-point-event", key: `learning:${cardId}:v1` });
+  }
+
+  openMedicalDiagram() {
+    return this.dependencies.service.dispatch({ type: "set-medical-diagram-opened", opened: true });
   }
 
   setBehaviorAttitude(behaviorId: string, attitude: BehaviorAttitude) {
@@ -116,8 +124,14 @@ export class JourneyPageController {
     });
   }
 
-  async copyCommunicationCard() {
-    await this.dependencies.clipboard.setStringAsync(formatCommunicationCard(this.requireDraft()));
+  async copyCommunicationCard(): Promise<ClipboardCopyResult> {
+    const cardText = formatCommunicationCard(this.requireDraft());
+    try {
+      await this.dependencies.clipboard.setStringAsync(cardText);
+      return { status: "success" };
+    } catch {
+      return { status: "error", code: "clipboard-write-failed" };
+    }
   }
 
   private requireDraft(): JourneyDraft {

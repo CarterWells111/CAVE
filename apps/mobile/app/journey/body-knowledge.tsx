@@ -1,16 +1,27 @@
+import { Alert } from "react-native";
+
 import { loadJourneyContentCatalog } from "../../src/features/journey/infrastructure/journey-content-catalog";
+import { JourneyContinueButton, JourneyRouteScreen } from "../../src/features/journey/ui/JourneyRouteScreen";
 import { BodyKnowledgePage } from "../../src/features/journey/ui/pages/JourneyPages";
-import { JourneyScreenShell } from "../../src/features/journey/ui/JourneyScreenShell";
 
 export default function BodyKnowledgeRoute() {
+  const catalog = loadJourneyContentCatalog();
   return (
-    <JourneyScreenShell pageId="body-knowledge">
-      <BodyKnowledgePage
-        cards={loadJourneyContentCatalog().knowledge}
-        onOpenDiagram={() => undefined}
-        onOpenSources={() => undefined}
-        onRead={() => undefined}
-      />
-    </JourneyScreenShell>
+    <JourneyRouteScreen pageId="body-knowledge">
+      {({ controller, goTo, runAndRefresh }) => (
+        <>
+          <BodyKnowledgePage
+            cards={catalog.knowledge}
+            onOpenDiagram={() => { void runAndRefresh(() => controller.openMedicalDiagram()); }}
+            onOpenSources={(sourceIds) => {
+              const titles = sourceIds.map((id) => catalog.sources.find((source) => source.id === id)?.title ?? id);
+              Alert.alert("本地来源", titles.join("\n"));
+            }}
+            onRead={(cardId) => { void runAndRefresh(() => controller.readKnowledge(cardId)); }}
+          />
+          <JourneyContinueButton onPress={() => { void goTo("behavior-attitudes"); }} />
+        </>
+      )}
+    </JourneyRouteScreen>
   );
 }

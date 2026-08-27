@@ -27,15 +27,16 @@ test("journey routes stay thin and contain no storage, network, model or SQL imp
   expect(sources).not.toMatch(new RegExp(forbidden.join("|"), "u"));
 });
 
-test("an in-progress journey does not replace the working app entry route", () => {
+test("the completed journey runtime is reachable from an explicit demo entry", () => {
   const indexSource = readFileSync(
     resolve(__dirname, "../../../../app/index.tsx"),
     "utf8"
   );
 
-  expect(indexSource).toContain("<HealthScreen");
+  expect(indexSource).toContain("进入八屏演示");
+  expect(indexSource).toContain('router.push("/journey/welcome")');
+  expect(indexSource).not.toContain("<HealthScreen");
   expect(indexSource).not.toContain("<Redirect");
-  expect(indexSource).not.toContain("/journey/");
 });
 
 test("each canonical route composes its matching basic page component", () => {

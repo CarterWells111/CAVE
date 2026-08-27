@@ -1,11 +1,26 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 
+import type { PartnerResponseBranch, PracticeIntent } from "../../domain/practice-types";
 import type { BehaviorAttitude, ChecklistItemStatus, JournalSaveChoice } from "../../domain/types";
 
-function Action({ label, onPress, disabled = false }: { label: string; onPress?: () => void; disabled?: boolean }) {
+function Action({ label, onPress, disabled = false, selected, role = "button" }: {
+  label: string;
+  onPress?: () => void;
+  disabled?: boolean;
+  selected?: boolean;
+  role?: "button" | "checkbox" | "radio";
+}) {
   return (
-    <Pressable accessibilityRole="button" accessibilityState={{ disabled }} disabled={disabled} onPress={onPress}>
+    <Pressable
+      accessibilityRole={role}
+      accessibilityState={{
+        disabled,
+        ...(selected === undefined ? {} : role === "button" ? { selected } : { checked: selected })
+      }}
+      disabled={disabled}
+      onPress={onPress}
+    >
       <Text style={styles.action}>{label}</Text>
     </Pressable>
   );
@@ -34,11 +49,14 @@ export function WelcomePage(props: {
 export function OvernightPage(props: {
   expectationOptions: Array<{ id: string; label: string }>;
   concernOptions: Array<{ id: string; label: string }>;
+  initialExpectationIds?: string[];
+  initialConcernIds?: string[];
+  initialCustomNote?: string;
   onContinue(input: { expectationIds: string[]; concernIds: string[]; customNote: string }): void;
 }) {
-  const [expectationIds, setExpectationIds] = useState<string[]>([]);
-  const [concernIds, setConcernIds] = useState<string[]>([]);
-  const [customNote, setCustomNote] = useState("");
+  const [expectationIds, setExpectationIds] = useState<string[]>(() => [...(props.initialExpectationIds ?? [])]);
+  const [concernIds, setConcernIds] = useState<string[]>(() => [...(props.initialConcernIds ?? [])]);
+  const [customNote, setCustomNote] = useState(props.initialCustomNote ?? "");
   const toggle = (ids: string[], id: string, update: (next: string[]) => void) => {
     update(ids.includes(id) ? ids.filter((value) => value !== id) : [...ids, id]);
   };
@@ -46,11 +64,23 @@ export function OvernightPage(props: {
     <View style={styles.group}>
       <Text>我对过夜情境的期待</Text>
       {props.expectationOptions.map((option) => (
-        <Action key={option.id} label={option.label} onPress={() => toggle(expectationIds, option.id, setExpectationIds)} />
+        <Action
+          key={option.id}
+          label={option.label}
+          role="checkbox"
+          selected={expectationIds.includes(option.id)}
+          onPress={() => toggle(expectationIds, option.id, setExpectationIds)}
+        />
       ))}
       <Text>我在意或担心的事</Text>
       {props.concernOptions.map((option) => (
-        <Action key={option.id} label={option.label} onPress={() => toggle(concernIds, option.id, setConcernIds)} />
+        <Action
+          key={option.id}
+          label={option.label}
+          role="checkbox"
+          selected={concernIds.includes(option.id)}
+          onPress={() => toggle(concernIds, option.id, setConcernIds)}
+        />
       ))}
       <TextInput maxLength={240} onChangeText={setCustomNote} placeholder="可选补充" value={customNote} />
       <Action label="继续" onPress={() => props.onContinue({ expectationIds, concernIds, customNote })} />
@@ -90,6 +120,7 @@ const ATTITUDES: Array<{ value: BehaviorAttitude; label: string }> = [
 
 export function BehaviorAttitudesPage(props: {
   behaviors: Array<{ id: string; label: string }>;
+  currentAttitudes?: Record<string, BehaviorAttitude>;
   onSet(id: string, attitude: BehaviorAttitude): void;
 }) {
   return (
@@ -98,8 +129,17 @@ export function BehaviorAttitudesPage(props: {
       {props.behaviors.map((behavior) => (
         <View key={behavior.id}>
           <Text>{behavior.label}</Text>
+          {props.currentAttitudes?.[behavior.id] === undefined
+            ? null
+            : <Text>{`当前选择：${ATTITUDES.find(({ value }) => value === props.currentAttitudes?.[behavior.id])?.label}`}</Text>}
           {ATTITUDES.map(({ value, label }) => (
-            <Action key={value} label={label} onPress={() => props.onSet(behavior.id, value)} />
+            <Action
+              key={value}
+              label={label}
+              role="radio"
+              selected={props.currentAttitudes?.[behavior.id] === value}
+              onPress={() => props.onSet(behavior.id, value)}
+            />
           ))}
         </View>
       ))}
@@ -107,27 +147,123 @@ export function BehaviorAttitudesPage(props: {
   );
 }
 
-export function ReflectionPage({ onComplete }: {
+export function ReflectionPage(props: {
+  motivationOptions?: Array<{ id: string; label: string }>;
+  comfortNeedOptions?: Array<{ id: string; label: string }>;
+  initialMotivationIds?: string[];
+  initialComfortNeedIds?: string[];
+  initialExpressionSupportNeeded?: boolean | null;
+  initialJournalSaveChoice?: JournalSaveChoice;
   onComplete(input: { motivationIds: string[]; comfortNeedIds: string[]; expressionSupportNeeded: boolean | null; journalSaveChoice: JournalSaveChoice }): void;
 }) {
+  const [motivationIds, setMotivationIds] = useState<string[]>(() => [...(props.initialMotivationIds ?? [])]);
+  const [comfortNeedIds, setComfortNeedIds] = useState<string[]>(() => [...(props.initialComfortNeedIds ?? [])]);
+  const [expressionSupportNeeded, setExpressionSupportNeeded] = useState<boolean | null>(
+    props.initialExpressionSupportNeeded ?? null
+  );
+  const [journalSaveChoice, setJournalSaveChoice] = useState<JournalSaveChoice>(
+    props.initialJournalSaveChoice ?? "device"
+  );
+  const toggle = (ids: string[], id: string, update: (next: string[]) => void) => {
+    update(ids.includes(id) ? ids.filter((value) => value !== id) : [...ids, id]);
+  };
   return (
     <View style={styles.group}>
       <Text>回看动机、压力和安心条件（草稿）</Text>
-      <Text>本机加密保存</Text>
-      <Action label="完成反思" onPress={() => onComplete({
-        motivationIds: [],
-        comfortNeedIds: [],
-        expressionSupportNeeded: null,
-        journalSaveChoice: "device"
+      <Text>我的动机</Text>
+      {(props.motivationOptions ?? []).map((option) => (
+        <Action
+          key={option.id}
+          label={option.label}
+          role="checkbox"
+          selected={motivationIds.includes(option.id)}
+          onPress={() => toggle(motivationIds, option.id, setMotivationIds)}
+        />
+      ))}
+      <Text>让我更安心的条件</Text>
+      {(props.comfortNeedOptions ?? []).map((option) => (
+        <Action
+          key={option.id}
+          label={option.label}
+          role="checkbox"
+          selected={comfortNeedIds.includes(option.id)}
+          onPress={() => toggle(comfortNeedIds, option.id, setComfortNeedIds)}
+        />
+      ))}
+      <Text>表达支持</Text>
+      <Action
+        label="需要表达支持"
+        role="radio"
+        selected={expressionSupportNeeded === true}
+        onPress={() => setExpressionSupportNeeded(true)}
+      />
+      <Action
+        label="不需要表达支持"
+        role="radio"
+        selected={expressionSupportNeeded === false}
+        onPress={() => setExpressionSupportNeeded(false)}
+      />
+      <Action
+        label="暂不确定"
+        role="radio"
+        selected={expressionSupportNeeded === null}
+        onPress={() => setExpressionSupportNeeded(null)}
+      />
+      <Text>反思记录</Text>
+      <Action
+        label="本机加密保存"
+        role="radio"
+        selected={journalSaveChoice === "device"}
+        onPress={() => setJournalSaveChoice("device")}
+      />
+      <Action
+        label="不保存反思记录"
+        role="radio"
+        selected={journalSaveChoice === "not-saved"}
+        onPress={() => setJournalSaveChoice("not-saved")}
+      />
+      <Action label="完成反思" onPress={() => props.onComplete({
+        motivationIds,
+        comfortNeedIds,
+        expressionSupportNeeded,
+        journalSaveChoice
       })} />
       <Action label="云端保存（即将提供）" disabled />
     </View>
   );
 }
 
-export function PresetPracticePage({ phrase, onComplete }: { phrase: string; onComplete(editedPhrase: string): void }) {
-  const [editedPhrase, setEditedPhrase] = useState(phrase);
+export function PresetPracticePage(props: {
+  behaviors: Array<{ id: string; label: string }>;
+  intents: Array<{ intent: PracticeIntent; label: string; phraseId: string; phrase: string }>;
+  branches: Array<{ branch: PartnerResponseBranch; label: string }>;
+  initialBehaviorId?: string;
+  initialIntent?: PracticeIntent;
+  initialBranch?: PartnerResponseBranch;
+  initialEditedPhrase?: string;
+  onComplete(input: {
+    behaviorId: string;
+    intent: PracticeIntent;
+    phraseId: string;
+    editedPhrase: string;
+    branch: PartnerResponseBranch;
+  }): void;
+}) {
+  const firstIntent = props.intents.find(({ intent }) => intent === props.initialIntent) ?? props.intents[0];
+  const [behaviorId, setBehaviorId] = useState(
+    props.behaviors.some(({ id }) => id === props.initialBehaviorId) ? props.initialBehaviorId : props.behaviors[0]?.id
+  );
+  const [intent, setIntent] = useState<PracticeIntent | undefined>(firstIntent?.intent);
+  const [branch, setBranch] = useState<PartnerResponseBranch | undefined>(
+    props.branches.some(({ branch: value }) => value === props.initialBranch)
+      ? props.initialBranch
+      : props.branches[0]?.branch
+  );
+  const [editedPhrase, setEditedPhrase] = useState(props.initialEditedPhrase ?? firstIntent?.phrase ?? "");
   const [pauseCard, setPauseCard] = useState(false);
+  const [mirrorPractice, setMirrorPractice] = useState(false);
+  const selectedIntent = props.intents.find(({ intent: value }) => value === intent);
+  const ready = behaviorId !== undefined && selectedIntent !== undefined && branch !== undefined;
   if (pauseCard) {
     return (
       <View style={styles.fullscreen}>
@@ -136,12 +272,65 @@ export function PresetPracticePage({ phrase, onComplete }: { phrase: string; onC
       </View>
     );
   }
+  if (mirrorPractice) {
+    return (
+      <View style={styles.fullscreen}>
+        <Text>对镜练习中</Text>
+        <Text>{editedPhrase}</Text>
+        <Action label="结束对镜练习" onPress={() => setMirrorPractice(false)} />
+      </View>
+    );
+  }
   return (
     <View style={styles.group}>
       <Text>预设对话 · 本地练习</Text>
-      <TextInput onChangeText={setEditedPhrase} value={editedPhrase} />
-      <Action label="采用这句话" onPress={() => onComplete(editedPhrase)} />
-      <Action label="对镜练习" />
+      <Text>选择要练习的行为</Text>
+      {props.behaviors.map((behavior) => (
+        <Action
+          key={behavior.id}
+          label={behavior.label}
+          role="radio"
+          selected={behaviorId === behavior.id}
+          onPress={() => setBehaviorId(behavior.id)}
+        />
+      ))}
+      <Text>选择练习意图</Text>
+      {props.intents.map((option) => (
+        <Action
+          key={option.intent}
+          label={option.label}
+          role="radio"
+          selected={intent === option.intent}
+          onPress={() => {
+            setIntent(option.intent);
+            setEditedPhrase(option.phrase);
+          }}
+        />
+      ))}
+      <TextInput accessibilityLabel="练习表达" onChangeText={setEditedPhrase} value={editedPhrase} />
+      <Text>选择对方回应</Text>
+      {props.branches.map((option) => (
+        <Action
+          key={option.branch}
+          label={option.label}
+          role="radio"
+          selected={branch === option.branch}
+          onPress={() => setBranch(option.branch)}
+        />
+      ))}
+      <Action
+        label="采用这句话"
+        disabled={!ready}
+        {...(ready ? { onPress: () => props.onComplete({
+            behaviorId,
+            intent: selectedIntent.intent,
+            phraseId: selectedIntent.phraseId,
+            editedPhrase,
+            branch
+          }) }
+          : {})}
+      />
+      <Action label="开始对镜练习" onPress={() => setMirrorPractice(true)} />
       <Action label="打开暂停卡" onPress={() => setPauseCard(true)} />
     </View>
   );
@@ -149,37 +338,183 @@ export function PresetPracticePage({ phrase, onComplete }: { phrase: string; onC
 
 export function ChecklistPage(props: {
   items: Array<{ id: string; status: ChecklistItemStatus; userNote: string; label: string }>;
-  onUpdate(id: string, status: ChecklistItemStatus, note: string): void;
-  onFinish(): void;
+  onUpdate(id: string, status: ChecklistItemStatus, note: string): void | Promise<void>;
+  onFinish(): void | Promise<void>;
 }) {
+  type PendingUpdate = { status: ChecklistItemStatus; note: string };
+  type InFlightWrite = { update: PendingUpdate; promise: Promise<boolean> };
+  const pendingUpdates = useRef(new Map<string, PendingUpdate>());
+  const inFlightWrites = useRef(new Map<string, InFlightWrite>());
+
+  const persist = (id: string, update: PendingUpdate): Promise<boolean> => {
+    const existing = inFlightWrites.current.get(id);
+    if (existing?.update === update) return existing.promise;
+
+    const write = async () => {
+      try {
+        await props.onUpdate(id, update.status, update.note);
+        if (pendingUpdates.current.get(id) === update) pendingUpdates.current.delete(id);
+        return true;
+      } catch {
+        return false;
+      }
+    };
+    const work = existing === undefined ? write() : existing.promise.then(write);
+    const inFlight: InFlightWrite = { update, promise: Promise.resolve(false) };
+    inFlight.promise = work.then((succeeded) => {
+      if (inFlightWrites.current.get(id) === inFlight) inFlightWrites.current.delete(id);
+      return succeeded;
+    });
+    inFlightWrites.current.set(id, inFlight);
+    return inFlight.promise;
+  };
+
+  const commit = (id: string, status: ChecklistItemStatus, note: string) => {
+    const update = { status, note };
+    pendingUpdates.current.set(id, update);
+    void persist(id, update);
+  };
+
+  const flushNotesAndFinish = async () => {
+    while (pendingUpdates.current.size > 0) {
+      const writes = [...pendingUpdates.current].map(async ([id, update]) => {
+        const succeeded = await persist(id, update);
+        if (succeeded || pendingUpdates.current.get(id) !== update) return true;
+        return persist(id, update);
+      });
+      if ((await Promise.all(writes)).some((succeeded) => !succeeded)) return;
+    }
+    await props.onFinish();
+  };
   return (
     <View style={styles.group}>
       <Text>这不是需要全部勾选的通关表</Text>
       {props.items.map((item) => (
-        <View key={item.id}>
-          <Text>{item.label}</Text>
-          <Action label="已考虑" onPress={() => props.onUpdate(item.id, "considered", item.userNote)} />
-          <Action label="还想准备" onPress={() => props.onUpdate(item.id, "prepare-more", item.userNote)} />
-          <Action label="与我无关" onPress={() => props.onUpdate(item.id, "not-relevant", item.userNote)} />
-        </View>
+        <ChecklistItemRow
+          key={item.id}
+          item={item}
+          onNoteChange={(id, status, note) => pendingUpdates.current.set(id, { status, note })}
+          onUpdate={commit}
+        />
       ))}
-      <Action label="完成回顾" onPress={props.onFinish} />
+      <Action label="完成回顾" onPress={flushNotesAndFinish} />
     </View>
   );
 }
 
+function ChecklistItemRow({ item, onNoteChange, onUpdate }: {
+  item: { id: string; status: ChecklistItemStatus; userNote: string; label: string };
+  onNoteChange(id: string, status: ChecklistItemStatus, note: string): void;
+  onUpdate(id: string, status: ChecklistItemStatus, note: string): void | Promise<void>;
+}) {
+  const [status, setStatus] = useState(item.status);
+  const [userNote, setUserNote] = useState(item.userNote);
+  const update = (nextStatus: ChecklistItemStatus) => {
+    setStatus(nextStatus);
+    onUpdate(item.id, nextStatus, userNote);
+  };
+  return (
+    <View>
+      <Text>{item.label}</Text>
+      <TextInput
+        accessibilityLabel={`${item.label}补充说明`}
+        maxLength={240}
+        onChangeText={(note) => {
+          setUserNote(note);
+          onNoteChange(item.id, status, note);
+        }}
+        placeholder="补充说明（可选）"
+        value={userNote}
+      />
+      <Action label="已考虑" role="radio" selected={status === "considered"} onPress={() => update("considered")} />
+      <Action label="还想准备" role="radio" selected={status === "prepare-more"} onPress={() => update("prepare-more")} />
+      <Action label="与我无关" role="radio" selected={status === "not-relevant"} onPress={() => update("not-relevant")} />
+    </View>
+  );
+}
+
+export type ClipboardActionState =
+  | { status: "idle" }
+  | { status: "pending" }
+  | { status: "success" }
+  | { status: "error"; code: "clipboard-write-failed" };
+
 export function CommunicationCardPage(props: {
   fields: Array<{ id: string; text: string; needsReview: boolean }>;
   pointTotal: number;
-  onEdit(id: string, text: string): void;
-  onSave(): void;
-  onCopy(): void;
+  copyState?: ClipboardActionState;
+  onEdit(id: string, text: string): void | Promise<void>;
+  onSave(): void | Promise<void>;
+  onCopy(): void | Promise<void>;
 }) {
   const [fullscreen, setFullscreen] = useState(false);
+  const [fieldTexts, setFieldTexts] = useState<Record<string, string>>(
+    () => Object.fromEntries(props.fields.map(({ id, text }) => [id, text]))
+  );
+  const [editFailed, setEditFailed] = useState(false);
+  const pendingEdits = useRef(new Map<string, string>());
+  const inFlightEdits = useRef(new Map<string, { text: string; promise: Promise<boolean> }>());
+
+  useEffect(() => {
+    setFieldTexts((current) => Object.fromEntries(props.fields.map(({ id, text }) => [
+      id,
+      pendingEdits.current.has(id) || inFlightEdits.current.has(id)
+        ? current[id] ?? text
+        : text
+    ])));
+  }, [props.fields]);
+
+  const persistEdit = (id: string, text: string): Promise<boolean> => {
+    const existing = inFlightEdits.current.get(id);
+    if (existing?.text === text) return existing.promise;
+    const write = async () => {
+      if (pendingEdits.current.get(id) !== text) return true;
+      try {
+        await props.onEdit(id, text);
+        if (pendingEdits.current.get(id) === text) pendingEdits.current.delete(id);
+        return true;
+      } catch {
+        return false;
+      }
+    };
+    const work = existing === undefined
+      ? write()
+      : existing.promise.then(write, write);
+    const inFlight = { text, promise: Promise.resolve(false) };
+    inFlight.promise = work.then((succeeded) => {
+      if (inFlightEdits.current.get(id) === inFlight) inFlightEdits.current.delete(id);
+      return succeeded;
+    });
+    inFlightEdits.current.set(id, inFlight);
+    return inFlight.promise;
+  };
+
+  const updateField = (id: string, text: string) => {
+    setEditFailed(false);
+    setFieldTexts((current) => ({ ...current, [id]: text }));
+    pendingEdits.current.set(id, text);
+    void persistEdit(id, text);
+  };
+
+  const flushEdits = async () => {
+    while (pendingEdits.current.size > 0) {
+      const writes = [...pendingEdits.current].map(([id, text]) => persistEdit(id, text));
+      if ((await Promise.all(writes)).some((succeeded) => !succeeded)) {
+        setEditFailed(true);
+        return false;
+      }
+    }
+    return true;
+  };
+
+  const afterEdits = async (action: () => void | Promise<void>) => {
+    if (await flushEdits()) await action();
+  };
+
   if (fullscreen) {
     return (
       <View style={styles.fullscreen}>
-        {props.fields.map((field) => <Text key={field.id}>{field.text}</Text>)}
+        {props.fields.map((field) => <Text key={field.id}>{fieldTexts[field.id] ?? field.text}</Text>)}
         <Text>暂停与确认表达保持可见</Text>
         <Action label="退出展示" onPress={() => setFullscreen(false)} />
       </View>
@@ -190,13 +525,32 @@ export function CommunicationCardPage(props: {
       <Text>根据妳刚才的选择整理</Text>
       {props.fields.map((field) => (
         <View key={field.id}>
-          <TextInput value={field.text} onChangeText={(text) => props.onEdit(field.id, text)} />
+          <TextInput
+            value={fieldTexts[field.id] ?? field.text}
+            onChangeText={(text) => updateField(field.id, text)}
+          />
           {field.needsReview ? <Text>需要复核</Text> : null}
         </View>
       ))}
       <Text>{`探索积分：${props.pointTotal}`}</Text>
-      <Action label="本机保存" onPress={props.onSave} />
-      <Action label="复制当前卡片" onPress={props.onCopy} />
+      {editFailed
+        ? <Text accessibilityLiveRegion="assertive">更改尚未保存，请重试</Text>
+        : null}
+      <Action label="本机保存" onPress={() => { void afterEdits(props.onSave); }} />
+      <Action
+        label="复制当前卡片"
+        disabled={props.copyState?.status === "pending"}
+        onPress={() => { void afterEdits(props.onCopy); }}
+      />
+      {props.copyState?.status === "pending"
+        ? <Text accessibilityLiveRegion="polite">正在复制…</Text>
+        : null}
+      {props.copyState?.status === "success"
+        ? <Text accessibilityLiveRegion="polite">已复制</Text>
+        : null}
+      {props.copyState?.status === "error"
+        ? <Text accessibilityLiveRegion="assertive">复制失败，请重试</Text>
+        : null}
       <Action label="现场展示" onPress={() => setFullscreen(true)} />
       <Action label="云端保存（即将提供）" disabled />
     </View>
