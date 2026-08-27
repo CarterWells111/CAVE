@@ -16,11 +16,10 @@ const JOURNEY_PAGE_TITLES: Record<JourneyPageId, string> = {
   welcome: `欢迎来到${brand.displayName}`,
   overnight: "过夜期待与在意",
   "body-knowledge": "身体与安全知识",
-  "behavior-attitudes": "行为态度与边界",
+  "behavior-map": "行为地图与边界",
   reflection: "自我反思",
   "preset-practice": "预设沟通练习",
-  checklist: "行前检查清单",
-  "communication-card": "沟通卡片"
+  "final-preparation": "私密准备与沟通草稿"
 };
 
 type Props = PropsWithChildren<{
@@ -113,6 +112,8 @@ export function JourneyScreenShell({
             backBusy={backState === "loading"}
             backDisabled={backState === "loading"}
             currentPage={pageNumber}
+            showProgress={pageId !== "welcome"}
+            totalPages={7}
             onExit={onExit}
             testID="journey-progress-header"
             {...(pageNumber > 1 && onBack ? { onBack: handleBack } : {})}

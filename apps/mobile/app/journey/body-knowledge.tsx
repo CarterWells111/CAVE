@@ -11,7 +11,7 @@ export default function BodyKnowledgeRoute() {
       {({ controller, goTo, runAndRefresh }) => (
         <BodyKnowledgePage
           cards={catalog.knowledge}
-          onContinue={() => goTo("behavior-attitudes")}
+          onContinue={() => goTo("behavior-map")}
           onOpenDiagram={() => runAndRefresh(() => controller.openMedicalDiagram())}
           onOpenSources={(sourceIds) => {
             const titles = sourceIds.map((id) => catalog.sources.find((source) => source.id === id)?.title ?? id);

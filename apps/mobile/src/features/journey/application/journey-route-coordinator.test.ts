@@ -42,18 +42,18 @@ test("persists the target page before replacing the route for next and back", as
 
   expect(service.navigateTo).toHaveBeenNthCalledWith(1, "preset-practice");
   expect(router.replace).toHaveBeenNthCalledWith(1, "/journey/preset-practice");
-  expect(service.navigateTo).toHaveBeenNthCalledWith(2, "behavior-attitudes");
-  expect(router.replace).toHaveBeenNthCalledWith(2, "/journey/behavior-attitudes");
+  expect(service.navigateTo).toHaveBeenNthCalledWith(2, "behavior-map");
+  expect(router.replace).toHaveBeenNthCalledWith(2, "/journey/behavior-map");
   expect(navigateTo.mock.invocationCallOrder[0]).toBeLessThan(router.replace.mock.invocationCallOrder[0]!);
 });
 
 test("resumes at the snapshot page and restarts only after deleting the active draft", async () => {
-  const { coordinator, resetJourney, router, service } = harness(activeDraft("checklist"));
+  const { coordinator, resetJourney, router, service } = harness(activeDraft("final-preparation"));
 
   coordinator.resume();
   await coordinator.restart();
 
-  expect(router.replace).toHaveBeenNthCalledWith(1, "/journey/checklist");
+  expect(router.replace).toHaveBeenNthCalledWith(1, "/journey/final-preparation");
   expect(service.resetJourney).toHaveBeenCalledTimes(1);
   expect(router.replace).toHaveBeenNthCalledWith(2, "/journey/welcome");
   expect(resetJourney.mock.invocationCallOrder[0]).toBeLessThan(router.replace.mock.invocationCallOrder[1]!);

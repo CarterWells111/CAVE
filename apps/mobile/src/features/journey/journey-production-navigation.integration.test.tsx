@@ -2,7 +2,7 @@ import { act, fireEvent, render, screen, waitFor, type RenderAPI } from "@testin
 import type { ReactElement } from "react";
 import { Alert } from "react-native";
 
-import BehaviorAttitudesRoute from "../../../app/journey/behavior-attitudes";
+import BehaviorMapRoute from "../../../app/journey/behavior-map";
 import ReflectionRoute from "../../../app/journey/reflection";
 import WelcomeRoute from "../../../app/journey/welcome";
 import {
@@ -62,12 +62,12 @@ afterEach(() => {
 test("the production Welcome route resumes at the persisted journey page", async () => {
   const journeyRuntime = runtime();
   await journeyRuntime.service.confirmAdult();
-  await journeyRuntime.service.navigateTo("checklist");
+  await journeyRuntime.service.navigateTo("final-preparation");
   const view = await openRoute(<WelcomeRoute />, journeyRuntime);
 
   fireEvent.press(screen.getByText("继续本机旅程"));
 
-  expect(mockRouter.replace).toHaveBeenCalledWith("/journey/checklist");
+  expect(mockRouter.replace).toHaveBeenCalledWith("/journey/final-preparation");
   view.unmount();
 });
 
@@ -161,29 +161,33 @@ test("production back navigation can edit Page 4 and recompute derived output wi
   const journeyRuntime = runtime();
   await journeyRuntime.service.confirmAdult();
   await journeyRuntime.controller.setBehaviorAttitude("draft-kissing", "unsure");
-  await journeyRuntime.controller.editCommunicationCard("pace", "请保留我的节奏表达。");
+  await journeyRuntime.controller.editCommunicationCard(
+    "communication-decide-in-moment",
+    "请保留我的节奏表达。"
+  );
   await journeyRuntime.service.navigateTo("reflection");
-  const originalGenerated = journeyRuntime.service.getSnapshot()?.communicationCard.pace?.generatedText;
+  const originalGenerated = journeyRuntime.service.getSnapshot()
+    ?.communicationCard["communication-decide-in-moment"].generatedText;
   let view = await openRoute(<ReflectionRoute />, journeyRuntime);
 
   fireEvent.press(screen.getByRole("button", { name: "返回上一页" }));
   await waitFor(() => {
-    expect(journeyRuntime.service.getSnapshot()?.currentPage).toBe("behavior-attitudes");
-    expect(mockRouter.replace).toHaveBeenCalledWith("/journey/behavior-attitudes");
+    expect(journeyRuntime.service.getSnapshot()?.currentPage).toBe("behavior-map");
+    expect(mockRouter.replace).toHaveBeenCalledWith("/journey/behavior-map");
   });
   view.unmount();
 
-  view = await openRoute(<BehaviorAttitudesRoute />, journeyRuntime);
-  expect(screen.getAllByRole("radio", { name: "亲吻：这次不要" })).toHaveLength(1);
-  fireEvent.press(screen.getByRole("radio", { name: "亲吻：这次不要" }));
+  view = await openRoute(<BehaviorMapRoute />, journeyRuntime);
+  expect(screen.getAllByRole("radio", { name: "接吻：这次不要" })).toHaveLength(1);
+  fireEvent.press(screen.getByRole("radio", { name: "接吻：这次不要" }));
 
   await waitFor(() => expect(journeyRuntime.service.getSnapshot()?.behaviorAttitudes["draft-kissing"])
     .toBe("not-this-time"));
-  expect(journeyRuntime.service.getSnapshot()?.communicationCard.pace).toMatchObject({
+  expect(journeyRuntime.service.getSnapshot()?.communicationCard["communication-decide-in-moment"]).toMatchObject({
     userText: "请保留我的节奏表达。",
     needsReview: true
   });
-  expect(journeyRuntime.service.getSnapshot()?.communicationCard.pace?.generatedText)
+  expect(journeyRuntime.service.getSnapshot()?.communicationCard["communication-decide-in-moment"].generatedText)
     .not.toBe(originalGenerated);
 
   fireEvent.press(screen.getByText("继续"));

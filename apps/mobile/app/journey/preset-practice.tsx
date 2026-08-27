@@ -59,7 +59,7 @@ export default function PresetPracticeRoute() {
           {...(initialBranch === undefined ? {} : { initialBranch })}
           {...(snapshot?.practice.editedPhrase === undefined ? {} : { initialEditedPhrase: snapshot.practice.editedPhrase })}
           onComplete={(input) => runAndRefresh(() => controller.completePractice(input))
-            .then(() => goTo("checklist"))}
+            .then(() => goTo("final-preparation"))}
         />;
       }}
     </JourneyRouteScreen>

@@ -25,20 +25,36 @@ beforeEach(() => {
 });
 
 test.each([
-  ["welcome", 1],
   ["overnight", 2],
   ["body-knowledge", 3],
-  ["behavior-attitudes", 4],
+  ["behavior-map", 4],
   ["reflection", 5],
   ["preset-practice", 6],
-  ["checklist", 7],
-  ["communication-card", 8]
-] as const)("renders %s as page %i without readiness language", (pageId, pageNumber) => {
+  ["final-preparation", 7]
+] as const)("renders %s as step %i of the seven-screen journey", (pageId, pageNumber) => {
   render(<JourneyScreenShell pageId={pageId} onExit={onExit} />);
 
   expect(screen.getByTestId(`journey-page-${pageId}`)).toBeTruthy();
-  expect(screen.getByText(`第 ${pageNumber} 页，共 8 页`)).toBeTruthy();
+  expect(screen.getByText(`${pageNumber} / 7`)).toBeTruthy();
   expect(screen.queryByText(/准备度|readiness|score|percentage/iu)).toBeNull();
+});
+
+test("keeps Screen 1 unnumbered while preserving the exit action", () => {
+  render(<JourneyScreenShell pageId="welcome" onExit={onExit} />);
+
+  expect(screen.queryByTestId("progress-center")).toBeNull();
+  expect(screen.queryByText(/1\s*\/\s*7/u)).toBeNull();
+  expect(screen.getByRole("button", { name: "退出旅程" })).toBeTruthy();
+});
+
+test.each([
+  ["behavior-map", "行为地图与边界"],
+  ["final-preparation", "私密准备与沟通草稿"]
+] as const)("names the canonical %s screen without legacy page titles", (pageId, title) => {
+  render(<JourneyScreenShell pageId={pageId} onExit={onExit} />);
+
+  expect(screen.getByRole("header", { name: title })).toBeTruthy();
+  expect(screen.queryByText(/行前检查清单|沟通卡片/u)).toBeNull();
 });
 
 test("composes the shared 06A screen, card, progress and status primitives", () => {
