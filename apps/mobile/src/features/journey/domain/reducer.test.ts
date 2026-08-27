@@ -103,3 +103,61 @@ test("never mutates a frozen input draft", () => {
   expect(reduceJourneyDraft(draft, { type: "set-expectation-ids", ids: ["draft-rest"] }))
     .toMatchObject({ expectationIds: ["draft-rest"] });
 });
+
+test("updates page 6 practice through one page-owned command", () => {
+  const result = reduceJourneyDraft(adultDraft(), {
+    type: "set-practice",
+    practice: {
+      behaviorId: "draft-kissing",
+      intent: "slow-down",
+      selectedPhraseId: "draft-phrase-slow-down",
+      partnerResponseBranch: "supportive",
+      completed: true
+    }
+  });
+
+  expect(result.practice).toMatchObject({ behaviorId: "draft-kissing", completed: true });
+  expect(result.sourceRevision).toBe(1);
+});
+
+test("edits checklist/card overrides and records points without changing source revision", () => {
+  const base = {
+    ...adultDraft(),
+    checklistItems: [{
+      id: "checklist:expression",
+      category: "expression" as const,
+      sourceIds: [],
+      status: "prepare-more" as const
+    }],
+    communicationCard: {
+      boundaries: {
+        generatedText: "draft-card.boundaries",
+        sourceRevision: 0,
+        needsReview: true
+      }
+    }
+  };
+  let result = reduceJourneyDraft(base, {
+    type: "update-checklist-item",
+    itemId: "checklist:expression",
+    status: "considered",
+    userNote: "Use my pause phrase"
+  });
+  result = reduceJourneyDraft(result, {
+    type: "edit-communication-card-field",
+    sectionId: "boundaries",
+    userText: "Please ask before continuing."
+  });
+  result = reduceJourneyDraft(result, { type: "confirm-communication-card-field-review", sectionId: "boundaries" });
+  result = reduceJourneyDraft(result, { type: "record-point-event", key: "review:checklist:v1" });
+  result = reduceJourneyDraft(result, { type: "record-point-event", key: "review:checklist:v1" });
+
+  expect(result.checklistItems[0]).toMatchObject({ status: "considered", userNote: "Use my pause phrase" });
+  expect(result.communicationCard.boundaries).toMatchObject({
+    generatedText: "draft-card.boundaries",
+    userText: "Please ask before continuing.",
+    needsReview: false
+  });
+  expect(result.pointEventKeys).toEqual(["review:checklist:v1"]);
+  expect(result.sourceRevision).toBe(0);
+});

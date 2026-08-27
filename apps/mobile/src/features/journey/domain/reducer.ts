@@ -2,7 +2,12 @@ import type { JourneyCommand } from "./commands";
 import type { JourneyDraft } from "./types";
 
 export class JourneyDomainError extends Error {
-  constructor(readonly code: "adult-confirmation-required" | "invalid-custom-behavior" | "duplicate-custom-behavior") {
+  constructor(readonly code:
+    | "adult-confirmation-required"
+    | "invalid-custom-behavior"
+    | "duplicate-custom-behavior"
+    | "unknown-checklist-item"
+    | "unknown-card-section") {
     super(code);
     this.name = "JourneyDomainError";
   }
@@ -20,10 +25,16 @@ function changed(draft: JourneyDraft, patch: Partial<JourneyDraft>): JourneyDraf
   return { ...draft, ...patch, sourceRevision: draft.sourceRevision + 1 };
 }
 
+function userChanged(draft: JourneyDraft, patch: Partial<JourneyDraft>): JourneyDraft {
+  return { ...draft, ...patch };
+}
+
 export function reduceJourneyDraft(draft: JourneyDraft, command: JourneyCommand): JourneyDraft {
   requireAdult(draft);
 
   switch (command.type) {
+    case "set-preface-read":
+      return changed(draft, { prefaceRead: command.read });
     case "set-expectation-ids":
       return changed(draft, { expectationIds: unique(command.ids) });
     case "set-concern-ids":
@@ -64,5 +75,45 @@ export function reduceJourneyDraft(draft: JourneyDraft, command: JourneyCommand)
       return changed(draft, { expressionSupportNeeded: command.needed });
     case "set-journal-save-choice":
       return changed(draft, { journalSaveChoice: command.choice });
+    case "set-practice":
+      return changed(draft, { practice: { ...command.practice } });
+    case "update-checklist-item": {
+      if (!draft.checklistItems.some(({ id }) => id === command.itemId)) {
+        throw new JourneyDomainError("unknown-checklist-item");
+      }
+      return userChanged(draft, {
+        checklistItems: draft.checklistItems.map((item) => item.id === command.itemId
+          ? {
+              ...item,
+              status: command.status,
+              ...(command.userNote === undefined ? {} : { userNote: command.userNote })
+            }
+          : item)
+      });
+    }
+    case "edit-communication-card-field": {
+      const field = draft.communicationCard[command.sectionId];
+      if (field === undefined) throw new JourneyDomainError("unknown-card-section");
+      return userChanged(draft, {
+        communicationCard: {
+          ...draft.communicationCard,
+          [command.sectionId]: { ...field, userText: command.userText, needsReview: false }
+        }
+      });
+    }
+    case "confirm-communication-card-field-review": {
+      const field = draft.communicationCard[command.sectionId];
+      if (field === undefined) throw new JourneyDomainError("unknown-card-section");
+      return userChanged(draft, {
+        communicationCard: {
+          ...draft.communicationCard,
+          [command.sectionId]: { ...field, needsReview: false }
+        }
+      });
+    }
+    case "record-point-event":
+      return userChanged(draft, {
+        pointEventKeys: unique([...draft.pointEventKeys, command.key])
+      });
   }
 }
