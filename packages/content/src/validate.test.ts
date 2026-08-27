@@ -3,14 +3,18 @@ import { describe, expect, it } from "vitest";
 import { loadCatalog } from "./load";
 import { ContentValidationError, validateCatalog } from "./validate";
 
-function issueCodes(run: () => unknown) {
+function validationIssues(run: () => unknown) {
   try {
     run();
     return [];
   } catch (error) {
     expect(error).toBeInstanceOf(ContentValidationError);
-    return (error as ContentValidationError).issues.map((issue) => issue.code);
+    return (error as ContentValidationError).issues;
   }
+}
+
+function issueCodes(run: () => unknown) {
+  return validationIssues(run).map((issue) => issue.code);
 }
 
 describe("versioned content validation", () => {
@@ -27,7 +31,7 @@ describe("versioned content validation", () => {
     expect(() => validateCatalog(loadCatalog(), { mode: "draft" })).not.toThrow();
   });
 
-  it("accepts all seven content-owner reviewed entries in production", () => {
+  it("keeps seven reviewed entries while rejecting journey drafts in production", () => {
     const catalog = loadCatalog();
     const reviewableEntries = [
       ...catalog.courses,
@@ -44,9 +48,17 @@ describe("versioned content validation", () => {
           entry.reviewedAt === "2026-08-27T05:51:49Z"
       )
     ).toBe(true);
-    expect(() =>
+    const productionIssues = validationIssues(() =>
       validateCatalog(catalog, { mode: "production" })
-    ).not.toThrow();
+    );
+
+    expect(productionIssues).toHaveLength(23);
+    expect(productionIssues.every(({ code }) => code === "DRAFT_CONTENT")).toBe(
+      true
+    );
+    expect(productionIssues.every(({ path }) => path.startsWith("journey."))).toBe(
+      true
+    );
   });
 
   it("rejects draft content in production", () => {
