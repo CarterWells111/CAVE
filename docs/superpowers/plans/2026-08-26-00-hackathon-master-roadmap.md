@@ -200,8 +200,8 @@ Commit: 1fb7b44 (with prerequisite commits 17554bb, 44a3609, f547cad, b21d9d8, 0
 Commands run: corepack pnpm -r list --depth -1; corepack pnpm verify:foundation; corepack pnpm --filter @hackathon/mobile expo:doctor; corepack pnpm --filter @hackathon/gateway test; corepack pnpm --filter @hackathon/gateway build; git diff --check; git status --short
 Expected result: all local commands exit 0
 Observed result: Gate 01A pass; 7 workspaces listed; foundation tests 9/9; Expo Doctor 21/21; gateway 1/1; dry-run build 62.70 KiB / gzip 15.40 KiB; clean status
-Artifacts/build URLs: none
-Known non-blocking issues: Gate 01B external_pending — EAS owner/project linking, Apple Team/device registration, iPhone install/offline launch, and GitHub CI authentication/remote run
+Artifacts/build URLs: GitHub CI pass (2026-08-27), https://github.com/CarterWells111/CAVE/actions/runs/33026972088; EAS build URL pending
+Known non-blocking issues: Gate 01B external_pending — EAS owner/project linking, Apple Team/device registration, and iPhone install/offline launch
 Next plan unlocked: Plan 02 local implementation
 ```
 
