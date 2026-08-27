@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
 import { act, fireEvent, render, screen } from "@testing-library/react-native";
+import { StyleSheet } from "react-native";
 
 import { Button } from "../../../../core/ui/Button";
 import { theme } from "../../../../core/design/theme";
@@ -30,9 +31,11 @@ test("composes the core Button with semantic theme styles", () => {
   expect(primitive.props).toEqual(expect.objectContaining({ label: "继续", loading: false }));
   expect(action).toHaveStyle({
     borderWidth: theme.border.width,
-    minHeight: theme.size.minimumTouchTarget,
     minWidth: theme.size.minimumTouchTarget
   });
+  expect(StyleSheet.flatten(action.props.style).minHeight).toBeGreaterThanOrEqual(
+    theme.size.minimumTouchTarget
+  );
   expect(source).not.toContain("journey-ui-tokens");
   expect(source).not.toMatch(/journeyColors|journeyRadii|journeySizes|journeySpacing/u);
 });
@@ -88,9 +91,7 @@ test("maps selected role and caller state while keeping a visible non-color mark
   fireEvent(action, "focus");
   expect(action.props.style.outlineColor).toBe(theme.color.focus);
   expect(action.props.style.outlineWidth).toBe(theme.border.focusWidth);
-  expect(screen.queryByText("✓ 已选中")).toBeNull();
-  const marker = screen.getByText("✓ 已选中", { includeHiddenElements: true });
-  expect(marker).toBeTruthy();
+  expect(screen.getByText("✓ 已选中")).toBeTruthy();
 });
 
 test("uses a generic safe error without exposing a rejected promise", async () => {

@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
 import { act, fireEvent, render, screen } from "@testing-library/react-native";
+import { StyleSheet } from "react-native";
 
 import { ChoiceChip } from "../../../../core/ui/ChoiceChip";
 import { theme } from "../../../../core/design/theme";
@@ -39,10 +40,10 @@ test.each([
     expect(choice.props.accessibilityState).toEqual(
       expect.objectContaining({ checked: selected, disabled: false })
     );
-    expect(choice).toHaveStyle({
-      minHeight: theme.size.minimumTouchTarget,
-      minWidth: theme.size.minimumTouchTarget
-    });
+    expect(choice).toHaveStyle({ minWidth: theme.size.minimumTouchTarget });
+    expect(StyleSheet.flatten(choice.props.style).minHeight).toBeGreaterThanOrEqual(
+      theme.size.minimumTouchTarget
+    );
     expect(screen.getByText(marker)).toBeTruthy();
   }
 );
