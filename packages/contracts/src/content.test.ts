@@ -8,7 +8,7 @@ import {
 } from "./content";
 
 const course = {
-  id: "body-voice-basics",
+  id: "cave-basics",
   version: 1,
   title: "身体与声音基础",
   moduleIds: ["lesson-boundaries"],

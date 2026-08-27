@@ -14,6 +14,15 @@ function issueCodes(run: () => unknown) {
 }
 
 describe("versioned content validation", () => {
+  it("uses the CAVE course identity and lesson back-reference", () => {
+    const catalog = loadCatalog();
+
+    expect(catalog.courses.map((course) => course.id)).toEqual(["cave-basics"]);
+    expect(catalog.lessons.map((lesson) => lesson.courseId)).toEqual([
+      "cave-basics"
+    ]);
+  });
+
   it("accepts the checked-in draft catalog", () => {
     expect(() => validateCatalog(loadCatalog(), { mode: "draft" })).not.toThrow();
   });
