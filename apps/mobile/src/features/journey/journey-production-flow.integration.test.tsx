@@ -79,6 +79,7 @@ test("the production routes complete Page 1 through 8 offline with real snapshot
 
     view = await openRoute(<BehaviorAttitudesRoute />, journeyRuntime);
     fireEvent.press(screen.getAllByText("不确定")[0]!);
+    fireEvent.press(screen.getAllByText("不确定")[1]!);
     fireEvent.press(screen.getByText("继续"));
     await waitFor(() => expect(journeyRuntime.service.getSnapshot()?.currentPage).toBe("reflection"));
     view.unmount();
@@ -92,12 +93,25 @@ test("the production routes complete Page 1 through 8 offline with real snapshot
     view.unmount();
 
     view = await openRoute(<PresetPracticeRoute />, journeyRuntime);
-    fireEvent.changeText(screen.getByDisplayValue("我们可以慢一点吗？"), "请先慢一点。");
+    fireEvent.press(screen.getByText("插入式性行为"));
+    fireEvent.press(screen.getByText("我想停下现在这件事。"));
+    fireEvent.press(screen.getByText("草稿：练习再次清楚表达边界。"));
+    fireEvent.changeText(screen.getByDisplayValue("我想停下现在这件事。"), "请先停下来。");
     fireEvent.press(screen.getByText("采用这句话"));
     await waitFor(() => expect(journeyRuntime.service.getSnapshot()?.currentPage).toBe("checklist"));
+    expect(journeyRuntime.service.getSnapshot()?.practice).toMatchObject({
+      behaviorId: "draft-penetrative-sex",
+      intent: "stop-current-action",
+      selectedPhraseId: "draft-phrase-stop-current",
+      editedPhrase: "请先停下来。",
+      partnerResponseBranch: "disappointed-follow-up"
+    });
     view.unmount();
 
     view = await openRoute(<ChecklistRoute />, journeyRuntime);
+    expect(screen.getByText("关于「插入式性行为」的态度")).toBeTruthy();
+    expect(screen.getByText("健康准备：插入式性行为")).toBeTruthy();
+    expect(screen.queryByText(/checklist:/u)).toBeNull();
     fireEvent.changeText(screen.getAllByPlaceholderText("补充说明（可选）")[0]!, "先说出暂停句");
     fireEvent.press(screen.getAllByText("已考虑")[0]!);
     fireEvent.press(screen.getByText("完成回顾"));

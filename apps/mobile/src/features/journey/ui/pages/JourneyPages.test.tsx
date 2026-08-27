@@ -159,14 +159,51 @@ test("Page 5 hydrates and edits reflection choices from catalog-backed props", (
   });
 });
 
-test("Page 6 is visibly scripted and offers mirror practice plus a fullscreen pause card", () => {
+test("Page 6 submits the behavior, intent, phrase, and partner response chosen by the user", () => {
+  const onComplete = jest.fn();
   render(<PresetPracticePage
-    phrase="我们可以慢一点吗？"
+    behaviors={[
+      { id: "draft-kissing", label: "亲吻" },
+      { id: "draft-penetrative-sex", label: "插入式性行为" }
+    ]}
+    branches={[
+      { branch: "supportive", label: "对方愿意配合" },
+      { branch: "disappointed-follow-up", label: "对方失望，需要再次表达" }
+    ]}
+    intents={[
+      { intent: "slow-down", label: "放慢节奏", phraseId: "draft-phrase-slow-down", phrase: "我们可以慢一点吗？" },
+      { intent: "stop-current-action", label: "停止当前行为", phraseId: "draft-phrase-stop-current", phrase: "我想停下现在这件事。" }
+    ]}
+    onComplete={onComplete}
+  />);
+
+  fireEvent.press(screen.getByText("插入式性行为"));
+  fireEvent.press(screen.getByText("停止当前行为"));
+  fireEvent.press(screen.getByText("对方失望，需要再次表达"));
+  fireEvent.changeText(screen.getByDisplayValue("我想停下现在这件事。"), "现在先停下来。 ");
+  fireEvent.press(screen.getByText("采用这句话"));
+
+  expect(onComplete).toHaveBeenCalledWith({
+    behaviorId: "draft-penetrative-sex",
+    intent: "stop-current-action",
+    phraseId: "draft-phrase-stop-current",
+    editedPhrase: "现在先停下来。 ",
+    branch: "disappointed-follow-up"
+  });
+});
+
+test("Page 6 wires mirror practice and the fullscreen pause card to visible local states", () => {
+  render(<PresetPracticePage
+    behaviors={[{ id: "draft-kissing", label: "亲吻" }]}
+    branches={[{ branch: "supportive", label: "对方愿意配合" }]}
+    intents={[{ intent: "slow-down", label: "放慢节奏", phraseId: "draft-phrase-slow-down", phrase: "我们可以慢一点吗？" }]}
     onComplete={jest.fn()}
   />);
 
   expect(screen.getByText("预设对话 · 本地练习")).toBeTruthy();
-  expect(screen.getByText("对镜练习")).toBeTruthy();
+  fireEvent.press(screen.getByText("开始对镜练习"));
+  expect(screen.getByText("对镜练习中")).toBeTruthy();
+  fireEvent.press(screen.getByText("结束对镜练习"));
   fireEvent.press(screen.getByText("打开暂停卡"));
   expect(screen.getByText("暂停一下，我需要先感受和决定。")).toBeTruthy();
 });
@@ -193,7 +230,8 @@ test("Page 7 hydrates and submits an editable user note", () => {
   />);
 
   const note = screen.getByDisplayValue("先准备一句暂停表达");
-  expect(screen.getByLabelText("表达支持补充说明（checklist:expression）")).toBe(note);
+  expect(screen.getByLabelText("表达支持补充说明")).toBe(note);
+  expect(screen.queryByLabelText(/checklist:/u)).toBeNull();
   fireEvent.changeText(note, "先告诉对方我要慢一点");
   fireEvent.press(screen.getByText("已考虑"));
 
@@ -264,7 +302,7 @@ test("Page 7 persists a newer edit made while finish is awaiting an older write"
   expect(onUpdate.mock.invocationCallOrder[1]).toBeLessThan(onFinish.mock.invocationCallOrder[0]!);
 });
 
-test("Page 8 edits, saves, copies and shows the current card without adding a score", () => {
+test("Page 8 edits, saves, copies and shows the current card without adding a score", async () => {
   const onSave = jest.fn();
   const onCopy = jest.fn();
   render(<CommunicationCardPage
@@ -279,8 +317,8 @@ test("Page 8 edits, saves, copies and shows the current card without adding a sc
   expect(screen.getByText("需要复核")).toBeTruthy();
   fireEvent.press(screen.getByText("本机保存"));
   fireEvent.press(screen.getByText("复制当前卡片"));
-  expect(onSave).toHaveBeenCalledTimes(1);
-  expect(onCopy).toHaveBeenCalledTimes(1);
+  await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
+  await waitFor(() => expect(onCopy).toHaveBeenCalledTimes(1));
   fireEvent.press(screen.getByText("现场展示"));
   expect(screen.queryByText("本机保存")).toBeNull();
   expect(screen.getByText("请先问我")).toBeTruthy();

@@ -23,12 +23,12 @@ export default function CommunicationCardRoute() {
           })}
           onCopy={() => {
             setCopyState({ status: "pending" });
-            void controller.copyCommunicationCard().then(setCopyState);
+            return controller.copyCommunicationCard().then(setCopyState);
           }}
           onEdit={(sectionId, userText) => {
-            void runAndRefresh(() => controller.editCommunicationCard(sectionId, userText));
+            return runAndRefresh(() => controller.editCommunicationCard(sectionId, userText));
           }}
-          onSave={() => { void controller.saveCommunicationCard(); }}
+          onSave={() => controller.saveCommunicationCard()}
           pointTotal={getPointSummary(snapshot?.pointEventKeys ?? []).total}
         />
       )}
