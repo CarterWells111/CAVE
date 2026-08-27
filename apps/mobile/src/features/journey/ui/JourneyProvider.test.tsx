@@ -97,8 +97,8 @@ test("shows one loading state before initialization then exposes context", async
   const app = service();
   render(<JourneyProvider service={app}><Consumer /></JourneyProvider>);
 
-  const loadingStatus = screen.getByRole("status");
-  expect(loadingStatus).toHaveTextContent("正在恢复本机旅程…");
+  const loadingStatus = screen.getByRole("status", { name: "ⓘ 正在恢复本机旅程…" });
+  expect(screen.getByText("正在恢复本机旅程…")).toBeTruthy();
   expect(loadingStatus.props.accessibilityLiveRegion).toBe("polite");
   expect(await screen.findByText("journey-ready")).toBeTruthy();
 });
@@ -108,10 +108,13 @@ test("shows retry and reset actions instead of a blank screen after initializati
   app.initialize.mockRejectedValueOnce(new Error("storage unavailable"));
   render(<JourneyProvider service={app}><Consumer /></JourneyProvider>);
 
-  expect(await screen.findByText("无法读取本机旅程")).toBeTruthy();
-  expect(screen.getByRole("alert")).toBeTruthy();
+  expect(await screen.findByRole("header", { name: "无法读取本机旅程" })).toBeTruthy();
+  expect(screen.getByRole("alert", { name: "读取失败，请重试。" })).toHaveProp(
+    "accessibilityLiveRegion",
+    "assertive"
+  );
   expect(screen.getByText("错误代码：journey-runtime-initialization-failed")).toBeTruthy();
-  fireEvent.press(screen.getByText("重试"));
+  fireEvent.press(screen.getByRole("button", { name: "重试" }));
   await waitFor(() => expect(app.initialize).toHaveBeenCalledTimes(2));
   expect(await screen.findByText("journey-ready")).toBeTruthy();
 });
@@ -182,9 +185,8 @@ test("shows a safe generic initialization error without exposing the rejected er
   render(<JourneyProvider service={app}><Consumer /></JourneyProvider>);
 
   expect(await screen.findByText("无法读取本机旅程")).toBeTruthy();
-  const errorStatus = screen.getByRole("alert");
-  expect(errorStatus).toHaveTextContent("读取失败，请重试。");
-  expect(errorStatus.props.accessibilityLiveRegion).toBe("polite");
+  const errorStatus = screen.getByRole("alert", { name: "读取失败，请重试。" });
+  expect(errorStatus.props.accessibilityLiveRegion).toBe("assertive");
   expect(screen.queryByText(/private storage path|secret|journey\.db/u)).toBeNull();
 });
 
@@ -215,9 +217,11 @@ test("requires an explicit reset for an unsupported stored schema", async () => 
     .mockResolvedValueOnce("ready");
   render(<JourneyProvider service={app}><Consumer /></JourneyProvider>);
 
-  expect(await screen.findByText("本机旅程需要恢复")).toBeTruthy();
-  expect(screen.getByRole("alert")).toBeTruthy();
-  fireEvent.press(screen.getByText("重置本机旅程"));
+  expect(await screen.findByRole("header", { name: "本机旅程需要恢复" })).toBeTruthy();
+  expect(screen.getByRole("alert", {
+    name: "当前本机草稿版本无法继续使用。重置后可以安全重新开始。"
+  })).toHaveProp("accessibilityLiveRegion", "assertive");
+  fireEvent.press(screen.getByRole("button", { name: "重置本机旅程" }));
 
   await waitFor(() => expect(app.resetJourney).toHaveBeenCalledTimes(1));
   expect(app.initialize).toHaveBeenCalledTimes(2);
@@ -230,11 +234,14 @@ test("shows a structured error when an explicit recovery reset fails", async () 
   app.resetJourney.mockRejectedValue(new Error("delete-failed"));
   render(<JourneyProvider service={app}><Consumer /></JourneyProvider>);
 
-  expect(await screen.findByText("本机旅程需要恢复")).toBeTruthy();
-  fireEvent.press(screen.getByText("重置本机旅程"));
+  expect(await screen.findByRole("header", { name: "本机旅程需要恢复" })).toBeTruthy();
+  fireEvent.press(screen.getByRole("button", { name: "重置本机旅程" }));
 
   expect(await screen.findByText("错误代码：journey-runtime-reset-failed")).toBeTruthy();
-  expect(screen.getByRole("alert")).toBeTruthy();
+  expect(screen.getByRole("alert", { name: "重置失败，请重试。" })).toHaveProp(
+    "accessibilityLiveRegion",
+    "assertive"
+  );
   expect(app.initialize).toHaveBeenCalledTimes(1);
 });
 
@@ -254,7 +261,7 @@ test("guards reset while pending and exposes a recoverable safe failure", async 
   );
 
   await act(async () => { reset.reject(new Error("private reset failure")); });
-  expect(await screen.findByText("重置失败，请重试。")).toBeTruthy();
+  expect(await screen.findByRole("alert", { name: "重置失败，请重试。" })).toBeTruthy();
   expect(screen.queryByText("private reset failure")).toBeNull();
   expect(screen.getByRole("button", { name: "重置本机旅程" }).props.accessibilityState?.disabled).not.toBe(true);
 });
@@ -379,7 +386,7 @@ test("keeps the committed service current when a concurrent service render suspe
     });
   });
 
-  expect(screen.getByText("正在恢复本机旅程…")).toBeTruthy();
+  expect(screen.getByRole("status", { name: "ⓘ 正在恢复本机旅程…" })).toBeTruthy();
   expect(appB.initialize).not.toHaveBeenCalled();
 
   await act(async () => { initializeA.resolve("ready"); });
