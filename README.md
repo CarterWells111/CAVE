@@ -6,6 +6,9 @@
 
 ## 开工入口
 
+- [七屏产品与文案确认稿](docs/product/2026-08-27-seven-screen-product-spec.md)
+- [七屏 UI 装修施工蓝图](docs/design/2026-08-27-seven-screen-ui-renovation-blueprint.md)
+- [医学及教育内容来源台账](docs/content/source-registry.md)
 - [四天黑客松总路线图](docs/superpowers/plans/2026-08-26-00-hackathon-master-roadmap.md)
 - [01 仓库基础设施与 iOS 构建](docs/superpowers/plans/2026-08-26-01-repository-infrastructure-ios-build.md)
 - [02 共享契约、内容包与领域引擎](docs/superpowers/plans/2026-08-26-02-contracts-content-domain.md)
