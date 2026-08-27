@@ -6,7 +6,7 @@
 
 **架构（Architecture）：** `JourneyApplicationService` 是 UI 唯一写入口；它调用纯 TypeScript `JourneyReducer` 和 builders，再通过 `JourneyDraftRepository` 原子保存。Expo routes 只读取 view model、派发 command 和导航。
 
-**技术栈（Tech Stack）：** TypeScript strict、Expo SDK 57、Expo Router、React Context、SQLCipher SQLite、SecureStore、Jest、React Native Testing Library。
+**技术栈（Tech Stack）：** TypeScript strict、Expo SDK 54、Expo Router、React Context、SQLCipher SQLite、SecureStore、Jest、React Native Testing Library。
 
 ## 依赖、输入、输出与排除项
 

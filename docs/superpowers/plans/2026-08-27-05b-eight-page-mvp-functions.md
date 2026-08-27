@@ -6,7 +6,7 @@
 
 **架构（Architecture）：** 每页由 `JourneyPageController` 把 UI event 转成 05A command；内容来自版本化 local catalog；Page 6 使用 `PresetPracticeEngine`；Page 7/8 消费 05A builders；积分使用独立幂等 ledger selector。
 
-**技术栈（Tech Stack）：** Expo Router、React Native、TypeScript strict、React Native Testing Library、Jest、Expo Clipboard、Plan 04 SQLCipher storage。
+**技术栈（Tech Stack）：** Expo SDK 54、Expo Router、React Native、TypeScript strict、React Native Testing Library、Jest、Expo Clipboard、Plan 04 SQLCipher storage。
 
 ## 依赖、输入、输出与排除项
 
@@ -37,7 +37,7 @@ packages/content/src/{catalog,validate}.ts
 packages/content/src/*.test.ts
 ```
 
-若 `expo-clipboard` 尚未存在，只通过 `corepack pnpm --filter @cave/mobile add expo-clipboard@~57.0.1` 安装与 SDK 57 对齐的版本，并提交 lockfile。不得为了 copy action 引入通用 share/analytics SDK。
+若 `expo-clipboard` 尚未存在，只通过 `corepack pnpm --filter @cave/mobile exec expo install expo-clipboard` 安装与当前 Expo SDK 54 对齐的版本，并提交 lockfile。不得为了 copy action 引入通用 share/analytics SDK。
 
 ## 05B 消费的固定功能接口
 

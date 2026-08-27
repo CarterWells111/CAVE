@@ -6,7 +6,7 @@
 
 **架构（Architecture）：** pnpm workspace 包含 Expo 移动端、无状态 Cloudflare Worker 网关，以及共享契约、内容与领域 Package。客户端 local-first；成年确认后的八页草稿自动保存到本地加密数据库，沟通卡只在用户明确操作后保存。独立 AI 模块的原始 transcript 默认只在内存存在，网关永不保存会话正文。
 
-**技术栈（Tech Stack）：** TypeScript、Node 22、pnpm 10、Expo SDK 57、Expo Router、Cloudflare Workers、Hono、Zod、SQLCipher SQLite、SecureStore、Vitest/Jest、Maestro、EAS Build/Update。
+**技术栈（Tech Stack）：** TypeScript、Node 22、pnpm 10、Expo SDK 54、Expo Router、Cloudflare Workers、Hono、Zod、SQLCipher SQLite、SecureStore、Vitest/Jest、Maestro、EAS Build/Update。
 
 ## 不可随意修改的决策
 
@@ -69,7 +69,7 @@ Plan 03 与 Plan 04 可在 Plan 02 完成后并行。八页 MVP 不消费 Plan 0
 | ID | 文件 | 负责人 | 工时 | 解锁条件 | 状态 | 输入 | 输出 | 验收证据 | Git commit |
 |---|---|---|---:|---|---|---|---|---|---|
 | 01 | `2026-08-26-01-repository-infrastructure-ios-build.md` | Engineer | 4h | 无 | `blocked` | 空仓库、账号、iPhone | workspace、CI、dev build、`/health` | Gate 01A `pass`；Gate 01B `external_pending` | `17554bb`, `44a3609`, `f547cad`, `b21d9d8`, `03c1808`, `1fb7b44` |
-| 02 | `2026-08-26-02-contracts-content-domain.md` | Engineer + Content | 3-4h | Gate 01A pass | `complete` | Package shells、内容草稿 | v1 contracts、内容校验、状态机 | Gate 02A `pass`；Gate 02B `pass` | `9d48b68`, `73d28d2`, `a51a8a1`, `05ce733`, `ca6586b`, `cc1495e`, `32123c5`, `a1c03e8` |
+| 02 | `2026-08-26-02-contracts-content-domain.md` | Engineer + Content | 3-4h | Gate 01A pass | `complete` | Package shells、内容草稿 | v1 contracts、内容校验、状态机 | Gate 02A `pass`；Gate 02B `pass` | `9d48b68`, `73d28d2`, `a51a8a1`, `05ce733`, `ca6586b`, `cc1495e`, `32123c5`, `a1c03e8`, `abb0fd4` |
 | 03 | `2026-08-26-03-ai-gateway-prompt-spec.md` | Engineer | 4-5h | 02 complete | `complete` | v1 contracts、scenario fixtures | routes、providers、prompts | local provider/route/prompt/evidence suites `pass`；live API credential not required for P0 | `3e83282`, `fbbb749`, `fe2c024`, `4c96f5d`, `aed8270` |
 | 04 | `2026-08-26-04-security-privacy-code-hardening.md` | Engineer + Content | 4h | 02 complete | `blocked` | v1 safety/storage shapes | encrypted repo、安全策略、CI security | local storage/guard/log/bundle checks `pass`；Golden evaluator integration `blocked`；native checks `external_pending` | `dc90739`, `6f642c9`, `3c875c1`, `dbc085e`, `371c905` |
 | 05 | `2026-08-26-05-mobile-mvp-integration.md` | Engineer | 6-7h | 02 complete；04 local storage pass | `in_progress` | 八页设计、安全存储、local content | 八页本地端到端闭环 | 05A/05B local core pass；production composition pending；05C pending | `43afb05`…`d8fd1be` |
@@ -278,8 +278,35 @@ Current project evidence: EAS project @carter_wells/cave is linked at https://ex
 Interim command: from apps/mobile run .\node_modules\.bin\expo.CMD start --go, then scan the QR code with Expo Go on the intended iPhone
 Interim acceptance scope: observe whether the JS bundle opens without a red error and record the exact product name, slogan, version, build, and environment displayed on the real device
 Non-substitution rule: Expo Go does not prove bundle identifier, Apple Team/signing, device provisioning, Development Build inclusion/installation, or two launches after Metro is stopped
+Observed first attempt: the iPhone reached exp://172.20.10.3:8082 over the phone-hotspot connection with Tailscale enabled, but at 16:48 Expo Go displayed "Project is incompatible with this version of Expo Go" and said the project requires a newer version; the JavaScript shell did not launch
+Diagnostic evidence: the initial Metro session also logged a request for missing apps/mobile/assets/images; after a clean network-authorized restart, the repository had no assets/images reference, the Expo manifest returned HTTP 200 with zero assets, and the iOS bundle returned HTTP 200; this asset symptom remains subject to a compatible-client retest rather than being declared fixed
+Supersession: SDK 57 baseline was superseded by the user-authorized Expo SDK 54 decision
+Compatibility decision: CAVE now uses the fixed Expo SDK 54 baseline supported by the Apple App Store Expo Go client; the incompatible SDK 57 attempt above remains truthful historical evidence
+Interim installation path: on the physical iPhone install or update Expo Go from the Apple App Store, then use that SDK 54-compatible client for the supplemental JavaScript bundle check
+SDK 54 implementation commits: c17d2bb aligns the Expo-managed mobile dependency matrix and adds its executable contract; e22f102 updates every active README/plan constraint and adds the documentation contract; 8475fb8 adds the SDK 54 @expo/metro-runtime peer required by Expo Router 6 after a real bundle request exposed the otherwise undetected mismatch
+Local software evidence: package contract RED on Expo ~57.0.17 then GREEN on Expo ~54.0.37 / Router ~6.0.24 / React 19.1.0 / React Native 0.81.5 / Jest Expo ~54.0.18; documentation contract RED then GREEN; Gate 01A fresh pass with 7 workspaces, verify:foundation exit 0, Expo Doctor 18/18, gateway 1/1 and Wrangler dry-run 62.70 KiB / gzip 15.40 KiB; Gate 02A/02B fresh pass with 60/60 focused domain tests and both draft/production validation exit 0
+Manifest/bundle evidence: SDK 54 Expo Go LAN server at exp://172.20.10.3:8082 returned manifest HTTP 200 with runtime exposdk:54.0.0, project ID 1ddc0761-af43-491c-b969-ec2f6c415013, slug cave, version 0.1.0, scheme cave, bundle ID com.neijie.cave, and environment name 内界 CAVE Dev; the initial SDK 54 bundle request correctly failed on a pnpm-selected @expo/metro-runtime 57.0.14 peer, then after the tested 6.1.2 repair the iOS Hermes bundle returned HTTP 200, 6198888 bytes, application/javascript
+Real-device SDK 54 observation: supplemental pass — after the visible LAN server was restarted, the user reported that the project opened successfully in Expo Go; device model, iOS version, exact rendered copy, and screen details were not supplied, so no stronger claim is recorded
+Feature-branch CI evidence: exact review-fix HEAD b69485f passed the foundation job at https://github.com/CarterWells111/CAVE/actions/runs/33064308391; the conflict-resolution merge commit must also pass before PR merge
 Gate status: Gate 01A=pass; Gate 01B=external_pending until membership is active and the planned Development Build, installation, and Metro-disconnected launch evidence are complete
-Next action: execute the Expo Go observation now; do not run EAS device registration or build while membership remains Pending
+Next action: optionally supplement the Expo Go observation with device model, iOS version, and exact rendered copy; after Apple Developer membership becomes active, perform device registration, signed Development Build, installation, and Metro-disconnected launch acceptance
+```
+
+### Plan 02 / Gate 02B 内容负责人审核（2026-08-27）
+
+```text
+Plan: 02 Contracts/Content/Domain
+Review authority: the user explicitly confirmed content-owner signing authority; no reviewer name was recorded
+Approved production entries: cave-basics; lesson-boundaries; scenario-boundary; scenario-preview-space; scenario-preview-request; guide-boundaries; guide-next-steps
+Approved related fixtures: quiz-boundary-clear; quiz-boundary-next-step; golden-clear-boundary; golden-danger-stop; golden-violence-stop; golden-self-harm-stop; golden-medical-stop; golden-minor-stop; four-dimension debrief expectations
+Source decision: source-editorial-draft is an approved internal original-editorial source identifier
+Scope boundary: approval is for the current app display and flow framework; safety Golden cases are synthetic stop-routing expectations, not medical, legal, or crisis-response conclusions
+Requested content changes: none
+Review date applied to the seven production entries: 2026-08-27
+Commands run: corepack pnpm validate:content:draft; corepack pnpm validate:content; corepack pnpm test:contracts; corepack pnpm test:content; corepack pnpm --filter @cave/scenario-engine test; corepack pnpm --filter @cave/test-fixtures test; corepack pnpm typecheck; corepack pnpm lint
+Observed result: draft and production validation exit 0 for 1 course / 1 lesson / 3 scenarios; contracts 19/19; content 12/12; scenario engine 18/18; fixture/domain 11/11; workspace typecheck and lint exit 0
+Gate result: Gate 02B pass
+Next plan unlocked at review time: Plan 03 and Plan 04; their later execution state is recorded below
 ```
 
 ### Plan 02 / Gate 02B 内容审核闭环（2026-08-27）
@@ -305,7 +332,7 @@ Local evidence: gateway typecheck/lint pass; gateway 16 files / 160 tests; mobil
 Plan 03 status: complete locally with deterministic MockProvider and mocked-fetch LiveProvider; no real model credential was requested, emitted, or required for P0
 Plan 04 status: blocked — createTurnSafetyEvaluator still classifies the Golden clear-boundary text as uncertain/safety_stop instead of safe/resolution after two root-cause fix rounds; no third masking fix was attempted
 External pending: Gate 01B Apple membership/Development Build/iPhone evidence; SQLCipher/no-key and delete-all cold-start checks on a real iPhone; deployed Worker canary-log inspection; repository Code Scanning and Secret Scanning settings; CodeQL extracted/scanned 95/95 TypeScript, 2/2 Actions, and 2/2 JavaScript files but GitHub rejected SARIF upload because Code Scanning is disabled; npm production audit pending explicit approval to send package/version metadata to the public npm advisory endpoint
-Next plan unlocked: none; Plan 05 remains locked until Plan 04's Golden evaluator issue and required native evidence are closed
+Next plan unlocked: Plan 05A/05B local implementation may proceed because the Plan 04 storage/key/delete-all local baseline passed; the Golden evaluator, native and external evidence continue to block Plan 07/release
 ```
 
 ### Plan 05A / Gate 05A（2026-08-27）

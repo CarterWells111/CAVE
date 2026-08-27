@@ -168,7 +168,7 @@ interface SecretRepository {
 
 ## 2026-08-27 执行结果
 
-- 状态：`blocked`；不得声称 Plan 04 完整完成，Plan 05 未解锁。
+- 状态：`blocked`；不得声称 Plan 04 完整完成。已通过的本地 storage/key/delete-all 基线允许 Plan 05A/05B 本地实现继续，但本 blocker 与真机/外部证据必须在 Plan 07/release 前关闭。
 - Commit：`dc90739`、`6f642c9`、`3c875c1`、`dbc085e`、`371c905`；共享组合 commit `aed8270`；依赖 commit `248b87d`。
 - 已实现并本地通过：threat model/data classification；`LocalDataRepository`/`SecretRepository`；SQLCipher/SecureStore config 与 key lifecycle；per-record/delete-all semantics；16 KiB guards；hashed installation-token rate limits；output guard；redacted logs；CodeQL/Dependabot；fail-closed bundle-secret scanner。
 - 本地证据：mobile 9 suites / 26 tests；safety 4 files / 53 tests；repository security config/scanner 4 files / 15 tests；iOS JS export 1101 modules / 2.3 MB；扫描 25 files 无 provider credential/canary。

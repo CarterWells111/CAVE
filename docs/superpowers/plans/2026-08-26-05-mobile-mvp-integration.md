@@ -6,7 +6,7 @@
 
 **架构（Architecture）：** Expo Router 薄页面调用移动端私有的 `JourneyApplicationService`；`JourneyReducer` 管原始选择，确定性 builder 生成清单和沟通卡，`JourneyDraftRepository` 通过 Plan 04 的 SQLCipher 底座保存 v1 草稿。
 
-**技术栈（Tech Stack）：** Expo SDK 57、Expo Router、React Native、TypeScript strict、SQLCipher SQLite、SecureStore、Jest、React Native Testing Library。
+**技术栈（Tech Stack）：** Expo SDK 54、Expo Router、React Native、TypeScript strict、SQLCipher SQLite、SecureStore、Jest、React Native Testing Library。
 
 ## 依赖、输入与输出
 
@@ -83,7 +83,7 @@ git diff --check
 git status --short
 ```
 
-预期：除 `git status --short` 仅显示当前计划预期文件外，其余命令退出码均为 0；mobile tests 明确报告 journey domain、storage、screens 和 full-flow suites。新增八页内容若尚未由内容负责人审核，production validation 真实记录为 `content_review_pending`，由 Plan 06 关闭，不阻塞 05A/05B 框架验收。
+预期：typecheck、lint、mobile/content/journey tests、draft validation 与 diff check 退出码均为 0；mobile tests 明确报告 journey domain、storage、screens 和 full-flow suites。`test:safety` 不得出现 journey 引入的新回归；已登记的 Plan 04 Golden evaluator blocker继续如实保留，且阻塞 Plan 07/release，不阻塞 05A/05B 本地 Gate。新增八页内容若尚未由内容负责人审核，production validation 真实记录为 `content_review_pending`，由 Plan 06 关闭，不阻塞 05A/05B 框架验收。
 
 ## 提交节点
 
