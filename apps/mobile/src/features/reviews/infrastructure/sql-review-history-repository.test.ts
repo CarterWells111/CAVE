@@ -27,3 +27,12 @@ test("rolls back a failed transactional version deletion", async () => {
   expect(connection.execAsync).toHaveBeenNthCalledWith(1, "BEGIN IMMEDIATE");
   expect(connection.execAsync).toHaveBeenLastCalledWith("ROLLBACK");
 });
+
+test("detaches both child versions and the active branch before deleting its base", async () => {
+  const { connection, repository } = harness();
+  await expect(repository.deleteVersion("v1")).resolves.toBe(true);
+  expect(connection.runAsync).toHaveBeenCalledWith(
+    "UPDATE journey_active_review SET base_version_id = NULL WHERE base_version_id = ?", "v1",
+  );
+  expect(connection.execAsync).toHaveBeenLastCalledWith("COMMIT");
+});

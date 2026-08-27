@@ -26,6 +26,7 @@ export class InMemoryPayloadReviewHistoryRepository<Payload> implements ReviewHi
     if (!this.versions.has(id)) return false;
     this.versions.delete(id);
     for (const [key, value] of this.versions) if (value.parentVersionId === id) this.versions.set(key, { ...value, parentVersionId: null });
+    if (this.active?.sourceVersionId === id) this.active = { ...this.active, sourceVersionId: null };
     return true;
   }
   async clearAll() { this.active = null; this.versions.clear(); }

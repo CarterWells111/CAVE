@@ -57,6 +57,7 @@ export class InMemoryReviewHistoryRepository implements VersionedReviewHistoryRe
       next.set(versionId, version.parentVersionId === id ? { ...version, parentVersionId: null } : version);
     }
     this.versions = next;
+    if (this.active?.parentVersionId === id) this.active = { ...this.active, parentVersionId: null };
     return true;
   }
 

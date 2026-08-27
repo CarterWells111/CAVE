@@ -97,7 +97,12 @@ export function composeJourneyRuntime({
     await service.resetJourney();
   };
   const replaceActiveReview = async () => {
-    const active = await reviewHistory.loadActive();
+    const persistedActive = await reviewHistory.loadActive();
+    const legacyDraft = service.getSnapshot();
+    const active = persistedActive ?? (legacyDraft === null ? null : {
+      id: `active:${legacyDraft.id}`, rootId: legacyDraft.id, sourceVersionId: null,
+      title: "迁移的未完成回顾", updatedAt: legacyDraft.updatedAt, payload: legacyDraft,
+    });
     if (active !== null) {
       const id = `review:${active.payload.id}:incomplete`;
       if (await reviewHistory.loadDetail(id) === null) {

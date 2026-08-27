@@ -72,6 +72,7 @@ export class SqlReviewHistoryRepository<Payload> implements ReviewHistoryReposit
       const existing = await db.getFirstAsync<{ id: string }>("SELECT id FROM journey_review_versions WHERE id = ?", id);
       if (existing === null) { await db.execAsync("COMMIT"); return false; }
       await db.runAsync("UPDATE journey_review_versions SET parent_version_id = NULL WHERE parent_version_id = ?", id);
+      await db.runAsync("UPDATE journey_active_review SET base_version_id = NULL WHERE base_version_id = ?", id);
       await db.runAsync("DELETE FROM journey_review_versions WHERE id = ?", id);
       await db.execAsync("COMMIT");
       return true;

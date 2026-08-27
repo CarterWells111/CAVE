@@ -41,9 +41,16 @@ export default function ReviewDetailRoute() {
         await runtime.restart();
       }
       const now = new Date().toISOString();
-      await runtime.drafts.saveActive({ ...seed.payload, id: `${seed.payload.id}:branch:${Date.now()}`, createdAt: now, updatedAt: now });
-      await runtime.service.initialize();
-      router.replace("/journey/final-preparation");
+      const branch = { ...seed.payload, id: `${seed.payload.id}:branch:${Date.now()}`, createdAt: now, updatedAt: now };
+      await runtime.runAndRefresh(async () => {
+        await runtime.drafts.saveActive(branch);
+        await runtime.reviewHistory.saveActive({
+          id: `active:${branch.id}`, rootId: seed.rootId, sourceVersionId: seed.sourceVersionId,
+          title: `基于 ${seed.suggestedTitle} 的新版本`, updatedAt: now, payload: branch,
+        });
+        await runtime.service.initialize();
+      });
+      router.replace(`/journey/${branch.currentPage}`);
     }}
     onContinueAfterDelete={() => router.replace("/(tabs)/reviews")}
     onDelete={async (reviewId) => { await runtime.reviewHistory.deleteVersion(reviewId); }}
