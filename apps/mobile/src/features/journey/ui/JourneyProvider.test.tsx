@@ -1,7 +1,8 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react-native";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react-native";
+import { startTransition, Suspense, type ReactNode } from "react";
 import { Text } from "react-native";
 
-import type { JourneyDraft } from "../domain/types";
+import { createJourneyDraft, type JourneyDraft } from "../domain/types";
 import { JourneyProvider, useJourney } from "./JourneyProvider";
 
 function service() {
@@ -21,11 +22,31 @@ function Consumer() {
   return <Text>{snapshot === null ? "journey-ready" : snapshot.id}</Text>;
 }
 
+function draft(id: string) {
+  return createJourneyDraft({ id, now: "2026-08-27T08:00:00.000Z" });
+}
+
+function deferred<T>() {
+  let resolve!: (value: T | PromiseLike<T>) => void;
+  let reject!: (reason?: unknown) => void;
+  const promise = new Promise<T>((resolvePromise, rejectPromise) => {
+    resolve = resolvePromise;
+    reject = rejectPromise;
+  });
+  return { promise, reject, resolve };
+}
+
+function PendingRender({ promise }: { promise: Promise<void> }): ReactNode {
+  throw promise;
+}
+
 test("shows one loading state before initialization then exposes context", async () => {
   const app = service();
   render(<JourneyProvider service={app}><Consumer /></JourneyProvider>);
 
-  expect(screen.getByText("正在恢复本机旅程…")).toBeTruthy();
+  const loadingStatus = screen.getByRole("status");
+  expect(loadingStatus).toHaveTextContent("正在恢复本机旅程…");
+  expect(loadingStatus.props.accessibilityLiveRegion).toBe("polite");
   expect(await screen.findByText("journey-ready")).toBeTruthy();
 });
 
@@ -37,6 +58,38 @@ test("shows retry and reset actions instead of a blank screen after initializati
   expect(await screen.findByText("无法读取本机旅程")).toBeTruthy();
   fireEvent.press(screen.getByText("重试"));
   await waitFor(() => expect(app.initialize).toHaveBeenCalledTimes(2));
+  expect(await screen.findByText("journey-ready")).toBeTruthy();
+});
+
+test("shows a safe generic initialization error without exposing the rejected error", async () => {
+  const app = service();
+  app.initialize.mockRejectedValueOnce(new Error("private storage path /secret/journey.db"));
+  render(<JourneyProvider service={app}><Consumer /></JourneyProvider>);
+
+  expect(await screen.findByText("无法读取本机旅程")).toBeTruthy();
+  const errorStatus = screen.getByRole("status");
+  expect(errorStatus).toHaveTextContent("读取失败，请重试。");
+  expect(errorStatus.props.accessibilityLiveRegion).toBe("polite");
+  expect(screen.queryByText(/private storage path|secret|journey\.db/u)).toBeNull();
+});
+
+test("guards a pending retry against rapid duplicate presses", async () => {
+  const app = service();
+  const retry = deferred<"ready" | "recovery-required">();
+  app.initialize
+    .mockRejectedValueOnce(new Error("initial failure"))
+    .mockReturnValueOnce(retry.promise);
+  render(<JourneyProvider service={app}><Consumer /></JourneyProvider>);
+
+  fireEvent.press(await screen.findByRole("button", { name: "重试" }));
+  fireEvent.press(screen.getByRole("button", { name: "正在重试…" }));
+
+  expect(app.initialize).toHaveBeenCalledTimes(2);
+  expect(screen.getByRole("button", { name: "正在重试…" }).props.accessibilityState).toEqual(
+    expect.objectContaining({ busy: true, disabled: true })
+  );
+
+  await act(async () => { retry.resolve("ready"); });
   expect(await screen.findByText("journey-ready")).toBeTruthy();
 });
 
@@ -53,4 +106,155 @@ test("requires an explicit reset for an unsupported stored schema", async () => 
   await waitFor(() => expect(app.resetJourney).toHaveBeenCalledTimes(1));
   expect(app.initialize).toHaveBeenCalledTimes(2);
   expect(await screen.findByText("journey-ready")).toBeTruthy();
+});
+
+test("guards reset while pending and exposes a recoverable safe failure", async () => {
+  const app = service();
+  const reset = deferred<void>();
+  app.initialize.mockResolvedValueOnce("recovery-required");
+  app.resetJourney.mockReturnValueOnce(reset.promise);
+  render(<JourneyProvider service={app}><Consumer /></JourneyProvider>);
+
+  fireEvent.press(await screen.findByRole("button", { name: "重置本机旅程" }));
+  fireEvent.press(screen.getByRole("button", { name: "正在重置…" }));
+
+  expect(app.resetJourney).toHaveBeenCalledTimes(1);
+  expect(screen.getByRole("button", { name: "正在重置…" }).props.accessibilityState).toEqual(
+    expect.objectContaining({ busy: true, disabled: true })
+  );
+
+  await act(async () => { reset.reject(new Error("private reset failure")); });
+  expect(await screen.findByText("重置失败，请重试。")).toBeTruthy();
+  expect(screen.queryByText("private reset failure")).toBeNull();
+  expect(screen.getByRole("button", { name: "重置本机旅程" }).props.accessibilityState?.disabled).not.toBe(true);
+});
+
+test("ignores an old service recovery result after a newer service becomes ready", async () => {
+  const appA = service();
+  const appB = service();
+  const initializeA = deferred<"ready" | "recovery-required">();
+  const initializeB = deferred<"ready" | "recovery-required">();
+  appA.getSnapshot.mockReturnValue(draft("service-a"));
+  appB.getSnapshot.mockReturnValue(draft("service-b"));
+  appA.initialize.mockReturnValue(initializeA.promise);
+  appB.initialize.mockReturnValue(initializeB.promise);
+
+  const view = render(<JourneyProvider service={appA}><Consumer /></JourneyProvider>);
+  view.rerender(<JourneyProvider service={appB}><Consumer /></JourneyProvider>);
+
+  await act(async () => { initializeB.resolve("ready"); });
+  expect(await screen.findByText("service-b")).toBeTruthy();
+
+  await act(async () => { initializeA.resolve("recovery-required"); });
+  expect(screen.getByText("service-b")).toBeTruthy();
+  expect(screen.queryByText("本机旅程需要恢复")).toBeNull();
+});
+
+test("ignores an old service rejection after a newer service becomes ready", async () => {
+  const appA = service();
+  const appB = service();
+  const initializeA = deferred<"ready" | "recovery-required">();
+  const initializeB = deferred<"ready" | "recovery-required">();
+  appA.getSnapshot.mockReturnValue(draft("service-a"));
+  appB.getSnapshot.mockReturnValue(draft("service-b"));
+  appA.initialize.mockReturnValue(initializeA.promise);
+  appB.initialize.mockReturnValue(initializeB.promise);
+
+  const view = render(<JourneyProvider service={appA}><Consumer /></JourneyProvider>);
+  view.rerender(<JourneyProvider service={appB}><Consumer /></JourneyProvider>);
+
+  await act(async () => { initializeB.resolve("ready"); });
+  expect(await screen.findByText("service-b")).toBeTruthy();
+
+  await act(async () => { initializeA.reject(new Error("stale private failure")); });
+  expect(screen.getByText("service-b")).toBeTruthy();
+  expect(screen.queryByText("无法读取本机旅程")).toBeNull();
+  expect(screen.queryByText("stale private failure")).toBeNull();
+});
+
+test("does not settle initialization state after unmount", async () => {
+  const consoleError = jest.spyOn(console, "error").mockImplementation(() => undefined);
+  try {
+    const resolvingApp = service();
+    const resolvingInitialize = deferred<"ready" | "recovery-required">();
+    resolvingApp.initialize.mockReturnValue(resolvingInitialize.promise);
+    const resolvingView = render(
+      <JourneyProvider service={resolvingApp}><Consumer /></JourneyProvider>
+    );
+    resolvingView.unmount();
+
+    await act(async () => { resolvingInitialize.resolve("ready"); });
+    expect(resolvingApp.getSnapshot).not.toHaveBeenCalled();
+
+    const rejectingApp = service();
+    const rejectingInitialize = deferred<"ready" | "recovery-required">();
+    rejectingApp.initialize.mockReturnValue(rejectingInitialize.promise);
+    const rejectingView = render(
+      <JourneyProvider service={rejectingApp}><Consumer /></JourneyProvider>
+    );
+    rejectingView.unmount();
+
+    await act(async () => { rejectingInitialize.reject(new Error("private unmounted failure")); });
+    expect(consoleError).not.toHaveBeenCalled();
+  } finally {
+    consoleError.mockRestore();
+  }
+});
+
+test("does not resume an old reset after the service changes", async () => {
+  const appA = service();
+  const appB = service();
+  const resetA = deferred<void>();
+  const initializeB = deferred<"ready" | "recovery-required">();
+  appA.getSnapshot.mockReturnValue(draft("service-a"));
+  appB.getSnapshot.mockReturnValue(draft("service-b"));
+  appA.initialize.mockResolvedValueOnce("recovery-required");
+  appA.resetJourney.mockReturnValueOnce(resetA.promise);
+  appB.initialize.mockReturnValueOnce(initializeB.promise);
+
+  const view = render(<JourneyProvider service={appA}><Consumer /></JourneyProvider>);
+  fireEvent.press(await screen.findByRole("button", { name: "重置本机旅程" }));
+  view.rerender(<JourneyProvider service={appB}><Consumer /></JourneyProvider>);
+
+  await act(async () => { initializeB.resolve("ready"); });
+  expect(await screen.findByText("service-b")).toBeTruthy();
+
+  await act(async () => { resetA.resolve(); });
+  expect(appA.initialize).toHaveBeenCalledTimes(1);
+  expect(screen.getByText("service-b")).toBeTruthy();
+});
+
+test("keeps the committed service current when a concurrent service render suspends", async () => {
+  const appA = service();
+  const appB = service();
+  const initializeA = deferred<"ready" | "recovery-required">();
+  const blockedRender = deferred<void>();
+  appA.getSnapshot.mockReturnValue(draft("service-a"));
+  appA.initialize.mockReturnValue(initializeA.promise);
+
+  const view = render(
+    <Suspense fallback={<Text>transition-fallback</Text>}>
+      <JourneyProvider service={appA}><Consumer /></JourneyProvider>
+    </Suspense>
+  );
+
+  await act(async () => {
+    startTransition(() => {
+      view.rerender(
+        <Suspense fallback={<Text>transition-fallback</Text>}>
+          <JourneyProvider service={appB}><Consumer /></JourneyProvider>
+          <PendingRender promise={blockedRender.promise} />
+        </Suspense>
+      );
+    });
+  });
+
+  expect(screen.getByText("正在恢复本机旅程…")).toBeTruthy();
+  expect(appB.initialize).not.toHaveBeenCalled();
+
+  await act(async () => { initializeA.resolve("ready"); });
+  expect(await screen.findByText("service-a")).toBeTruthy();
+  expect(screen.queryByText("transition-fallback")).toBeNull();
+
+  view.unmount();
 });

@@ -4,16 +4,20 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useLayoutEffect,
   useMemo,
+  useRef,
   useState
 } from "react";
-import { Pressable, Text, View } from "react-native";
+import { Text, View } from "react-native";
 
 import type {
   JourneyApplicationService,
   JourneyRecoveryState
 } from "../application/journey-application-service";
 import type { JourneyDraft } from "../domain/types";
+import { JourneyAction } from "./components/JourneyAction";
+import { JourneyStatusBanner } from "./components/JourneyStatusBanner";
 
 type InitializableJourneyService = JourneyApplicationService & {
   initialize(): Promise<JourneyRecoveryState>;
@@ -33,31 +37,88 @@ export function JourneyProvider({
 }: PropsWithChildren<{ service: InitializableJourneyService }>) {
   const [state, setState] = useState<"loading" | "ready" | "error" | "recovery-required">("loading");
   const [snapshot, setSnapshot] = useState<JourneyDraft | null>(null);
+  const mountedRef = useRef(false);
+  const currentServiceRef = useRef(service);
+  const requestGenerationRef = useRef(0);
 
-  const refresh = useCallback(() => setSnapshot(service.getSnapshot()), [service]);
-  const initialize = useCallback(async () => {
-    setState("loading");
+  useLayoutEffect(() => {
+    if (currentServiceRef.current === service) return;
+    currentServiceRef.current = service;
+    requestGenerationRef.current += 1;
+  }, [service]);
+
+  const isCurrentRequest = useCallback((
+    requestService: InitializableJourneyService,
+    requestGeneration: number
+  ) => (
+    mountedRef.current
+    && currentServiceRef.current === requestService
+    && requestGenerationRef.current === requestGeneration
+  ), []);
+
+  const refresh = useCallback(() => {
+    if (!mountedRef.current || currentServiceRef.current !== service) return;
+    setSnapshot(service.getSnapshot());
+  }, [service]);
+
+  const initialize = useCallback(async (showLoading = true) => {
+    const requestService = service;
+    const requestGeneration = requestGenerationRef.current + 1;
+    requestGenerationRef.current = requestGeneration;
+
+    if (showLoading && isCurrentRequest(requestService, requestGeneration)) {
+      setState("loading");
+    }
     try {
-      const recovery = await service.initialize();
-      refresh();
+      const recovery = await requestService.initialize();
+      if (!isCurrentRequest(requestService, requestGeneration)) return;
+      const nextSnapshot = requestService.getSnapshot();
+      if (!isCurrentRequest(requestService, requestGeneration)) return;
+      setSnapshot(nextSnapshot);
       setState(recovery === "ready" ? "ready" : "recovery-required");
     } catch {
-      setState("error");
+      if (isCurrentRequest(requestService, requestGeneration)) setState("error");
     }
-  }, [refresh, service]);
+  }, [isCurrentRequest, service]);
 
-  useEffect(() => { void initialize(); }, [initialize]);
+  const reset = useCallback(async () => {
+    const requestService = service;
+    const requestGeneration = requestGenerationRef.current + 1;
+    requestGenerationRef.current = requestGeneration;
+
+    await requestService.resetJourney();
+    if (!isCurrentRequest(requestService, requestGeneration)) return;
+    await initialize(false);
+  }, [initialize, isCurrentRequest, service]);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      requestGenerationRef.current += 1;
+    };
+  }, []);
+
+  useEffect(() => {
+    void initialize();
+  }, [initialize]);
 
   const context = useMemo(() => ({ service, snapshot, refresh }), [refresh, service, snapshot]);
 
-  if (state === "loading") return <Text>正在恢复本机旅程…</Text>;
+  if (state === "loading") {
+    return <JourneyStatusBanner message="正在恢复本机旅程…" role="status" />;
+  }
   if (state === "error") {
     return (
       <View>
         <Text>无法读取本机旅程</Text>
-        <Pressable accessibilityRole="button" onPress={() => { void initialize(); }}>
-          <Text>重试</Text>
-        </Pressable>
+        <JourneyStatusBanner message="读取失败，请重试。" role="status" tone="error" />
+        <JourneyAction
+          errorMessage="重试失败，请重试。"
+          label="重试"
+          loadingLabel="正在重试…"
+          onAction={() => initialize(false)}
+        />
       </View>
     );
   }
@@ -65,11 +126,12 @@ export function JourneyProvider({
     return (
       <View>
         <Text>本机旅程需要恢复</Text>
-        <Pressable accessibilityRole="button" onPress={() => {
-          void service.resetJourney().then(initialize);
-        }}>
-          <Text>重置本机旅程</Text>
-        </Pressable>
+        <JourneyAction
+          errorMessage="重置失败，请重试。"
+          label="重置本机旅程"
+          loadingLabel="正在重置…"
+          onAction={reset}
+        />
       </View>
     );
   }
