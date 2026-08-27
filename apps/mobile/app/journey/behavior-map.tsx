@@ -18,6 +18,9 @@ export default function BehaviorMapRoute() {
           onSetAttitude={(behaviorId, attitude) => runAndRefresh(
             () => controller.setBehaviorAttitude(behaviorId, attitude)
           )}
+          onSetSensitiveContentConsent={(consented) => runAndRefresh(
+            () => controller.setExplicitContentConsent(consented)
+          )}
         />
       )}
     </JourneyRouteScreen>

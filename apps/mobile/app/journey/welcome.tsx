@@ -26,6 +26,10 @@ export default function WelcomeRoute() {
     <JourneyRouteScreen pageId="welcome">
       {({ controller, runAndRefresh, snapshot }) => (
         <WelcomePage
+          onAddressPreferenceChange={(preference) => runAndRefresh(async () => {
+            await runtime.service.confirmAdult();
+            await controller.setAddressPreference(preference);
+          })}
           onAdult={() => runAndRefresh(() => controller.enterWelcome({ adult: true, prefaceRead: true }))
             .then(() => router.replace("/journey/overnight"))}
           onUnderage={() => controller.enterWelcome({ adult: false, prefaceRead: false })

@@ -25,12 +25,19 @@ export default function ReflectionRoute() {
           }}
           onEditBehaviorAttitude={() => goTo("behavior-map")}
           onComplete={(input) => runAndRefresh(() => controller.saveReflection({
+            comfortClarity: input.comfortClarity,
             comfortNeedIds: input.comfortNeedIds,
+            comfortNote: input.comfortNote,
+            expressionDifficulty: input.expressionDifficulty,
             expressionSupportNeeded: input.expressionDifficulty === null
               ? null
               : input.expressionDifficulty === "needs-phrase",
+            ...(input.journalPromptId ? { journalPromptId: input.journalPromptId } : {}),
             journalSaveChoice: input.journalSaveChoice,
+            journalText: input.journalText,
             motivationIds: input.motivationIds,
+            pressureWithoutDisappointment: input.pressureWithoutDisappointment,
+            refusalSafety: input.refusalSafety,
           }))
             .then(() => goTo("preset-practice"))}
         />

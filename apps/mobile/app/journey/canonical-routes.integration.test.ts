@@ -24,6 +24,8 @@ test.each([
 test("welcome completes the internal preface before persisted navigation", () => {
   const source = route("welcome");
   expect(source).toContain("prefaceRead: true");
+  expect(source).toContain("onAddressPreferenceChange");
+  expect(source).toContain("controller.setAddressPreference(preference)");
   expect(source).not.toContain("onOpenPreface");
   expect(source).toContain('router.replace("/journey/overnight")');
 });
@@ -45,11 +47,16 @@ test("pages two through five hydrate canonical state and persist before navigati
   const behavior = route("behavior-map");
   expect(behavior).toContain("<BehaviorMapPage");
   expect(behavior).toContain('type: "add-custom-behavior"');
+  expect(behavior).toContain("onSetSensitiveContentConsent");
+  expect(behavior).toContain("controller.setExplicitContentConsent(consented)");
   expect(behavior).toContain('goTo("reflection")');
 
   const reflection = route("reflection");
   expect(reflection).toContain("initialValue={{");
   expect(reflection).toContain("behaviorAnswers=");
+  expect(reflection).toContain("pressureWithoutDisappointment: input.pressureWithoutDisappointment");
+  expect(reflection).toContain("journalPromptId: input.journalPromptId");
+  expect(reflection).toContain("journalText: input.journalText");
   expect(reflection).toMatch(/saveReflection\([\s\S]*goTo\("preset-practice"\)/u);
 });
 
@@ -57,7 +64,8 @@ test("practice and final routes use real local adapters and never claim image ex
   const practice = route("preset-practice");
   expect(practice).toContain("catalog={catalog.practice}");
   expect(practice).toContain("ExpoClipboard.setStringAsync");
-  expect(practice).toContain('type: "set-practice"');
+  expect(practice).toContain("controller.completePractice({");
+  expect(practice).not.toContain('type: "set-practice"');
   expect(practice).toContain('goTo("final-preparation")');
 
   const final = route("final-preparation");
@@ -65,4 +73,7 @@ test("practice and final routes use real local adapters and never claim image ex
   expect(final).toContain('type: "set-communication-card-visibility"');
   expect(final).toContain('Promise.reject(new Error("image-export-unavailable"))');
   expect(final).toContain('result.status === "error"');
+  expect(final).toContain("onSaveDraft={() => controller.saveCommunicationCard()}");
+  expect(final).toContain("onUpdatePreparation={(itemId, status) => runAndRefresh(");
+  expect(final).toContain("controller.updateChecklist(itemId, status)");
 });
