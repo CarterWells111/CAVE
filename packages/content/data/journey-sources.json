@@ -1,4 +1,145 @@
 [
-  { "id": "draft-source-consent", "title": "Consent education source placeholder", "url": "https://example.invalid/draft-consent", "reviewStatus": "draft" },
-  { "id": "draft-source-sexual-health", "title": "Sexual health source placeholder", "url": "https://example.invalid/draft-sexual-health", "reviewStatus": "draft" }
+  {
+    "id": "SRC-001",
+    "sourceType": "EDU",
+    "title": "Comprehensive sexuality education",
+    "organization": "World Health Organization",
+    "url": "https://www.who.int/news-room/questions-and-answers/item/comprehensive-sexuality-education",
+    "appliesTo": "准确、适龄的性教育；身体认识、同意与身体自主权",
+    "publicationOrReviewDate": "2023-05-18",
+    "accessedAt": "2026-08-27",
+    "verificationStatus": "source_verified"
+  },
+  {
+    "id": "SRC-002",
+    "sourceType": "EDU",
+    "title": "International technical guidance on sexuality education: an evidence-informed approach",
+    "organization": "UNESCO, UNAIDS, UNFPA, UNICEF, UN Women, WHO",
+    "url": "https://cdn.who.int/media/docs/default-source/reproductive-health/sexual-health/international-technical-guidance-on-sexuality-education.pdf",
+    "appliesTo": "15—18+ 岁同意、隐私、身体完整性与表达技能",
+    "publicationOrReviewDate": "2018",
+    "accessedAt": "2026-08-27",
+    "verificationStatus": "source_verified"
+  },
+  {
+    "id": "SRC-003",
+    "sourceType": "EDU",
+    "title": "Consent 101: Respect, Boundaries, & Building Trust",
+    "organization": "RAINN",
+    "url": "https://rainn.org/share-the-facts/consent-101-respect-boundaries-and-building-trust/",
+    "appliesTo": "每种行为独立确认；同意持续且可撤回；身体反应不等于同意",
+    "publicationOrReviewDate": "2026-05-31 更新",
+    "accessedAt": "2026-08-27",
+    "verificationStatus": "source_verified"
+  },
+  {
+    "id": "SRC-004",
+    "sourceType": "MED",
+    "title": "Vulvovaginal Health",
+    "organization": "American College of Obstetricians and Gynecologists",
+    "url": "https://www.acog.org/womens-health/faqs/vulvovaginal-health",
+    "appliesTo": "外阴、阴道、阴蒂、阴唇、尿道口等解剖名称及位置；阴唇长度、左右不对称与外阴颜色的常见个体差异；出现持续不适或新变化时的求医提示",
+    "publicationOrReviewDate": "页面未列明",
+    "accessedAt": "2026-08-27",
+    "verificationStatus": "source_verified"
+  },
+  {
+    "id": "SRC-005",
+    "sourceType": "MED",
+    "title": "Your Sexual Health",
+    "organization": "American College of Obstetricians and Gynecologists",
+    "url": "https://www.acog.org/womens-health/faqs/your-sexual-health",
+    "appliesTo": "心理兴奋与身体兴奋可能不同步；非插入性活动选项",
+    "publicationOrReviewDate": "页面未列明",
+    "accessedAt": "2026-08-27",
+    "verificationStatus": "source_verified"
+  },
+  {
+    "id": "SRC-006",
+    "sourceType": "MED",
+    "title": "When Sex Is Painful",
+    "organization": "American College of Obstetricians and Gynecologists",
+    "url": "https://www.acog.org/womens-health/faqs/when-sex-is-painful",
+    "appliesTo": "频繁或严重性活动疼痛的求医提示",
+    "publicationOrReviewDate": "2026-05 复核",
+    "accessedAt": "2026-08-27",
+    "verificationStatus": "source_verified"
+  },
+  {
+    "id": "SRC-007",
+    "sourceType": "MED",
+    "title": "Condoms",
+    "organization": "World Health Organization",
+    "url": "https://www.who.int/news-room/fact-sheets/detail/condoms",
+    "appliesTo": "正确且持续使用安全套与大多数性传播感染、HIV 及非意愿妊娠的风险降低",
+    "publicationOrReviewDate": "2025-02-14",
+    "accessedAt": "2026-08-27",
+    "verificationStatus": "source_verified"
+  },
+  {
+    "id": "SRC-008",
+    "sourceType": "MED",
+    "title": "Sexually transmitted infections (STIs)",
+    "organization": "World Health Organization",
+    "url": "https://www.who.int/news-room/fact-sheets/detail/sexually-transmitted-infections-%28stis%29",
+    "appliesTo": "性传播感染的预防；安全套的保护作用与局限；HPV 和乙肝疫苗",
+    "publicationOrReviewDate": "2025-09-10",
+    "accessedAt": "2026-08-27",
+    "verificationStatus": "source_verified"
+  },
+  {
+    "id": "SRC-009",
+    "sourceType": "MED",
+    "title": "Birth Control",
+    "organization": "American College of Obstetricians and Gynecologists",
+    "url": "https://www.acog.org/womens-health/faqs/birth-control",
+    "appliesTo": "避孕与性传播感染预防的区分；安全套与口交膜等屏障方法",
+    "publicationOrReviewDate": "页面未列明",
+    "accessedAt": "2026-08-27",
+    "verificationStatus": "source_verified"
+  },
+  {
+    "id": "SRC-010",
+    "sourceType": "SAFE",
+    "title": "常用紧急救助及公益服务号码说明",
+    "organization": "北京市通信管理局",
+    "url": "https://bjca.miit.gov.cn/zwgk/tzgg/art/2022/art_8d4eb93ee3424f30826c97ee400e8937.html",
+    "appliesTo": "中国大陆 110 公安报警、120 医疗急救及 12348 法律咨询号码用途",
+    "publicationOrReviewDate": "2022-08-29",
+    "accessedAt": "2026-08-27",
+    "verificationStatus": "source_verified"
+  },
+  {
+    "id": "SRC-011",
+    "sourceType": "SAFE",
+    "title": "12338 妇联维权服务中心地图上线",
+    "organization": "全国妇联女性之声 / 北京妇女网转载",
+    "url": "https://study.bjwomen.gov.cn/thought/politics/2025/05/30/16190.shtml",
+    "appliesTo": "中国大陆所在地 12338 妇女维权热线及线下服务中心入口",
+    "publicationOrReviewDate": "2025-05-30",
+    "accessedAt": "2026-08-27",
+    "verificationStatus": "source_verified"
+  },
+  {
+    "id": "SRC-012",
+    "sourceType": "SAFE",
+    "title": "权益科工作职能",
+    "organization": "深圳市盐田区妇女联合会",
+    "url": "https://www.yantian.gov.cn/ytfl/gkmlpt/content/12/12597/post_12597195.html",
+    "appliesTo": "12338 提供妇女咨询、调解与维权公益服务；证明地方服务内容与时间存在差异",
+    "publicationOrReviewDate": "2026-01-12",
+    "accessedAt": "2026-08-27",
+    "verificationStatus": "source_verified"
+  },
+  {
+    "id": "SRC-013",
+    "sourceType": "MED",
+    "title": "小阴唇肥大是什么原因",
+    "organization": "中国医药信息查询平台；主讲专家来自北京大学第一医院妇产科",
+    "url": "https://m.dayi.org.cn/qa/42340.html",
+    "appliesTo": "先天差异及长期摩擦可能与小阴唇一侧增生、左右不对称有关；作为 SRC-004 的中国大陆辅助来源",
+    "publicationOrReviewDate": "2026-03-07",
+    "accessedAt": "2026-08-27",
+    "verificationStatus": "source_verified"
+  }
 ]

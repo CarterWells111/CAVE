@@ -1,17 +1,36 @@
 {
-  "version": "draft-v1",
+  "version": "seven-screen-v1",
   "scripted": true,
   "phrases": [
-    { "id": "draft-phrase-slow-down", "intent": "slow-down", "order": 1, "text": "我们可以慢一点吗？", "reviewStatus": "draft" },
-    { "id": "draft-phrase-adjust-touch", "intent": "adjust-touch", "order": 2, "text": "我想换一种触碰方式。", "reviewStatus": "draft" },
-    { "id": "draft-phrase-pause-and-decide", "intent": "pause-and-decide", "order": 3, "text": "我想先停一下，再决定。", "reviewStatus": "draft" },
-    { "id": "draft-phrase-stop-current", "intent": "stop-current-action", "order": 4, "text": "我想停下现在这件事。", "reviewStatus": "draft" },
-    { "id": "draft-phrase-another-closeness", "intent": "choose-another-closeness", "order": 5, "text": "我们换一种亲近方式吧。", "reviewStatus": "draft" },
-    { "id": "draft-phrase-pause-to-feel", "intent": "pause-to-feel", "order": 6, "text": "给我一点时间感受一下。", "reviewStatus": "draft" }
+    { "id": "draft-phrase-slow-down", "page": 6, "contentType": "EDU", "sourceIds": ["SRC-002", "SRC-003"], "intent": "slow-down", "order": 1, "text": "我感觉现在推进得有点快，我有些不安心。我们可以慢慢来吗？", "reviewStatus": "expert_review_pending" },
+    { "id": "draft-phrase-adjust-touch", "page": 6, "contentType": "EDU", "sourceIds": ["SRC-002", "SRC-003"], "intent": "adjust-touch", "order": 2, "text": "我感觉这样有点太快了，我们可以慢一点、温和一点吗？", "reviewStatus": "expert_review_pending" },
+    { "id": "draft-phrase-pause-and-decide", "page": 6, "contentType": "EDU", "sourceIds": ["SRC-002", "SRC-003"], "intent": "pause-and-decide", "order": 3, "text": "我现在感觉有些不对，可以先休息一下，过一会儿再决定要不要继续吗？", "reviewStatus": "expert_review_pending" },
+    { "id": "draft-phrase-stop-current", "page": 6, "contentType": "EDU", "sourceIds": ["SRC-002", "SRC-003"], "intent": "stop-current-action", "order": 4, "text": "我感觉不太舒服，我们这次就到这里。", "reviewStatus": "expert_review_pending" },
+    { "id": "draft-phrase-another-closeness", "page": 6, "contentType": "EDU", "sourceIds": ["SRC-002", "SRC-003"], "intent": "choose-another-closeness", "order": 5, "text": "我们可以换一种方式吗？我现在更想要……", "reviewStatus": "expert_review_pending" },
+    { "id": "draft-phrase-pause-to-feel", "page": 6, "contentType": "EDU", "sourceIds": ["SRC-002", "SRC-003"], "intent": "pause-to-feel", "order": 6, "text": "我还不知道接下来想怎样。可以先停下来，让我仔细感受一下吗？", "reviewStatus": "expert_review_pending" }
   ],
   "responses": [
-    { "id": "draft-response-supportive", "branch": "supportive", "text": "好，我们按妳舒服的节奏来。", "scripted": true, "safeTerminal": false, "reviewStatus": "draft" },
-    { "id": "draft-response-disappointed", "branch": "disappointed-follow-up", "text": "草稿：练习再次清楚表达边界。", "scripted": true, "safeTerminal": false, "reviewStatus": "draft" },
-    { "id": "draft-response-ignores-pause", "branch": "ignores-pause", "text": "结束练习；优先离开并寻求可信支持。", "scripted": true, "safeTerminal": true, "reviewStatus": "draft" }
+    { "id": "draft-response-supportive", "page": 6, "contentType": "EDU", "sourceIds": ["SRC-003"], "branch": "supportive", "text": "好，我们先停。你不需要现在决定下一步。", "scripted": true, "safeTerminal": false, "reviewStatus": "expert_review_pending" },
+    { "id": "draft-response-disappointed", "page": 6, "contentType": "EDU", "sourceIds": ["SRC-002", "SRC-003"], "branch": "disappointed-follow-up", "text": "可是我们刚刚不是还好好的吗？", "scripted": true, "safeTerminal": false, "reviewStatus": "expert_review_pending" },
+    { "id": "draft-response-ignores-pause", "page": 6, "contentType": "REVIEW", "sourceIds": ["SRC-003", "SRC-010", "SRC-011", "SRC-012"], "branch": "ignores-pause", "text": "这不是因为你没有说清楚。优先选择对自己安全、可行的行动，不需要继续解释或说服对方。", "scripted": true, "safeTerminal": true, "reviewStatus": "expert_review_pending" }
+  ],
+  "partnerResponses": [
+    { "id": "partner-response-slow-down", "page": 6, "contentType": "EDU", "sourceIds": ["SRC-003"], "intent": "slow-down", "order": 1, "text": "好，我们慢一点。你想继续的时候再告诉我。", "reviewStatus": "expert_review_pending" },
+    { "id": "partner-response-adjust-touch", "page": 6, "contentType": "EDU", "sourceIds": ["SRC-003"], "intent": "adjust-touch", "order": 2, "text": "好，我会慢下来、轻一点。你可以随时再告诉我感受。", "reviewStatus": "expert_review_pending" },
+    { "id": "partner-response-pause-and-decide", "page": 6, "contentType": "EDU", "sourceIds": ["SRC-003"], "intent": "pause-and-decide", "order": 3, "text": "好，我们先停。你不需要现在决定下一步。", "reviewStatus": "expert_review_pending" },
+    { "id": "partner-response-stop-current", "page": 6, "contentType": "EDU", "sourceIds": ["SRC-003"], "intent": "stop-current-action", "order": 4, "text": "好，我们这次就到这里。", "reviewStatus": "expert_review_pending" },
+    { "id": "partner-response-another-closeness", "page": 6, "contentType": "EDU", "sourceIds": ["SRC-003"], "intent": "choose-another-closeness", "order": 5, "text": "好，我们可以换一种方式。不想现在决定也没关系。", "reviewStatus": "expert_review_pending" },
+    { "id": "partner-response-pause-to-feel", "page": 6, "contentType": "EDU", "sourceIds": ["SRC-003"], "intent": "pause-to-feel", "order": 6, "text": "好，我们先停。等你听清自己的感觉再说。", "reviewStatus": "expert_review_pending" }
+  ],
+  "safetyBranches": [
+    { "id": "safety-branch-disappointed-but-stops", "page": 6, "contentType": "EDU", "sourceIds": ["SRC-002", "SRC-003"], "branch": "disappointed-but-stops", "order": 1, "partnerText": "可是我们刚刚不是还好好的吗？", "userTexts": ["刚才愿意，不代表我现在也愿意。我想先停下来。", "我知道你可能失望，但我现在不想继续。", "我现在不想解释，请先给我一点空间。"], "guidance": "对方可以有自己的情绪，但你不需要通过继续亲密接触来安慰对方。", "safeTerminal": false, "reviewStatus": "expert_review_pending" },
+    { "id": "safety-branch-continues-pressure", "page": 6, "contentType": "REVIEW", "sourceIds": ["SRC-003", "SRC-010", "SRC-011", "SRC-012"], "branch": "continues-pressure", "order": 2, "partnerText": "再试一下就好了。你是不是不喜欢我了？", "userTexts": ["我已经说了要停。请不要继续。"], "guidance": "你不需要继续解释或说服对方。如果对方继续施压，可以结束这次互动，优先照顾自己的安全。", "safeTerminal": false, "reviewStatus": "expert_review_pending" },
+    { "id": "safety-branch-ignores-or-blocks-exit", "page": 6, "contentType": "REVIEW", "sourceIds": ["SRC-003", "SRC-010", "SRC-011", "SRC-012"], "branch": "ignores-or-blocks-exit", "order": 3, "partnerText": "对方仍在说服、继续触碰或阻止离开。", "userTexts": [], "guidance": "立即结束普通语言练习；如果可以，前往更安全或有其他人在的地方，并联系一位可信任的人。", "safeTerminal": true, "reviewStatus": "expert_review_pending" }
+  ],
+  "supportResources": [
+    { "id": "support-cn-110", "page": 6, "contentType": "REVIEW", "sourceIds": ["SRC-010"], "order": 1, "number": "110", "label": "公安报警求助", "usage": "如果遇到人身安全威胁，或需要公安机关报警求助，可以拨打 110。", "region": "CN", "autoDial": false, "reviewStatus": "expert_review_pending" },
+    { "id": "support-cn-120", "page": 6, "contentType": "REVIEW", "sourceIds": ["SRC-010"], "order": 2, "number": "120", "label": "紧急医疗救援", "usage": "如果需要紧急医疗救援，可以拨打 120。", "region": "CN", "autoDial": false, "reviewStatus": "expert_review_pending" },
+    { "id": "support-cn-12338", "page": 6, "contentType": "REVIEW", "sourceIds": ["SRC-011", "SRC-012"], "order": 3, "number": "12338", "label": "妇女维权服务热线", "usage": "如果需要妇女权益咨询、投诉或相关服务转介，可以拨打所在地的 12338；服务内容与接听时间可能因地区不同。", "region": "CN", "autoDial": false, "reviewStatus": "expert_review_pending" },
+    { "id": "support-cn-12348", "page": 6, "contentType": "REVIEW", "sourceIds": ["SRC-010"], "order": 4, "number": "12348", "label": "公共法律咨询", "usage": "如果需要公共法律咨询或法律援助指引，可以拨打 12348；该服务不能替代 110 或 120。", "region": "CN", "autoDial": false, "reviewStatus": "expert_review_pending" }
   ]
 }
