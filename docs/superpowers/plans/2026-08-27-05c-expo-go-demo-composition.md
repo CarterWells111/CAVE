@@ -8,7 +8,7 @@
 
 **Tech Stack:** Expo SDK 54、Expo Router 6、React Native 0.81、TypeScript strict、Jest、React Native Testing Library、`expo-constants`、`expo-sqlite`、`expo-secure-store`、`expo-clipboard`、`expo-file-system`。
 
-**当前状态（2026-08-27）：** Gate 05C local `pass`；native device evidence `external_pending`；PR/CI 待回填。Expo Go `storeClient` 选择不落盘的 `memory-only` runtime，Development/Preview 只装配 SQLCipher + SecureStore 且失败不降级，provider/guard/resume/back/reset、Page 1—8 生产 route 与恢复表单已接线，根入口显式跳转“进入八屏演示”。
+**当前状态（2026-08-27）：** Gate 05C local `pass`；PR #7 已创建且 CI `pass`；native device evidence `external_pending`。Expo Go `storeClient` 选择不落盘的 `memory-only` runtime，Development/Preview 只装配 SQLCipher + SecureStore 且失败不降级，provider/guard/resume/back/reset、Page 1—8 生产 route 与恢复表单已接线，根入口显式跳转“进入八屏演示”。
 
 **勾选规则：** 下方 `[x]` 只表示当前 source tree 可直接观察的测试/实现/依赖或入口；RED/GREEN 命令、完整回归、提交、CI 与 PR 在获得 fresh evidence 前保持 `[ ]`。
 
@@ -266,8 +266,8 @@
   ```
 
 - [x] **Step 4: 更新 Plan 05、05C 与 master roadmap**：记录 local Gate、commit、CI/PR URL；Apple/签名/SQLCipher 真机 `external_pending`，Plan 04 Golden evaluator `blocked`，内容 `content_review_paused/draft`。
-- [ ] **Step 5: 提交 `docs: record Expo Go journey composition evidence`。**
-- [ ] **Step 6: push 并创建 PR**
+- [x] **Step 5: 提交 `docs: record Expo Go journey composition evidence`。**
+- [x] **Step 6: push 并创建 PR**
 
   ```powershell
   git push -u origin codex/plan-05c-expo-go-demo
@@ -302,8 +302,8 @@ Native evidence: Apple membership/signing, Development/Preview installation, rea
 Final local Gate: PASS — mobile typecheck/lint exit 0；workspace 65 files / 399 tests（mobile 38 suites / 172 tests）；content 3 files / 19 tests；draft validation 1 course / 1 lesson / 3 scenarios；safety 4 files / 53 tests；Expo Doctor 18/18；diff check exit 0
 Production content: expected exit 1 with exactly 23 DRAFT_CONTENT entries and no other category；content_review_paused/draft；reviewedAt unchanged
 Boundary scans: production journey no no-op callback、GatewayClient、ModelProvider、fetch、AsyncStorage、unencrypted mode、useSQLCipher false；Expo Go in-memory repository has no SQLite/SecureStore import
-Implementation commits: `725dcb9`, `b852f42`, `1a8600b`, `d88d927`, `3336a5d`, `50ec3f0`, `ac289a0`, `421e60a`, `39663cc`
-CI/PR: PENDING push 后回填
+Implementation/docs commits: `725dcb9`, `b852f42`, `1a8600b`, `d88d927`, `3336a5d`, `50ec3f0`, `ac289a0`, `421e60a`, `39663cc`, `a09bd4b`
+CI/PR: PR #7 `https://github.com/CarterWells111/CAVE/pull/7` open；CI pass `https://github.com/CarterWells111/CAVE/actions/runs/33073504107`；未合并 main
 ```
 
 ## 计划自检

@@ -74,10 +74,10 @@ Plan 03 与 Plan 04 可在 Plan 02 完成后并行。八页 MVP 不消费 Plan 0
 | 02 | `2026-08-26-02-contracts-content-domain.md` | Engineer + Content | 3-4h | Gate 01A pass | `complete` | Package shells、内容草稿 | v1 contracts、内容校验、状态机 | Gate 02A `pass`；Gate 02B `pass` | `9d48b68`, `73d28d2`, `a51a8a1`, `05ce733`, `ca6586b`, `cc1495e`, `32123c5`, `a1c03e8`, `abb0fd4` |
 | 03 | `2026-08-26-03-ai-gateway-prompt-spec.md` | Engineer | 4-5h | 02 complete | `complete` | v1 contracts、scenario fixtures | routes、providers、prompts | local provider/route/prompt/evidence suites `pass`；live API credential not required for P0 | `3e83282`, `fbbb749`, `fe2c024`, `4c96f5d`, `aed8270` |
 | 04 | `2026-08-26-04-security-privacy-code-hardening.md` | Engineer + Content | 4h | 02 complete | `blocked` | v1 safety/storage shapes | encrypted repo、安全策略、CI security | local storage/guard/log/bundle checks `pass`；Golden evaluator integration `blocked`；native checks `external_pending` | `dc90739`, `6f642c9`, `3c875c1`, `dbc085e`, `371c905` |
-| 05 | `2026-08-26-05-mobile-mvp-integration.md` | Engineer | 6-7h | 02 complete；04 local storage pass | `in_progress` | 八页设计、安全存储、local content | 八页本地端到端闭环 | local Gate pass；native device `external_pending`；PR/CI 待回填 | `43afb05`…`d8fd1be`；05C `725dcb9`…`39663cc` |
+| 05 | `2026-08-26-05-mobile-mvp-integration.md` | Engineer | 6-7h | 02 complete；04 local storage pass | `in_progress` | 八页设计、安全存储、local content | 八页本地端到端闭环 | local Gate + CI pass；PR #7 open；native device `external_pending` | `43afb05`…`d8fd1be`；05C `725dcb9`…`a09bd4b` |
 | 05A | `2026-08-27-05a-eight-page-mvp-framework.md` | Engineer | 2.5-3h | 02 complete；04 local storage pass | `complete` | storage/content 基线 | routes、draft、repository、同步框架 | route/provider guard/resume/back 与 combined local Gate pass | `43afb05`, `37581ca`, `62de80f`, `54e2be7`, `995400a`, `3b5750c`, `d76f7a8`, `0d86225`, `b852f42`, `50ec3f0` |
 | 05B | `2026-08-27-05b-eight-page-mvp-functions.md` | Engineer + Content | 3.5-4h | 05A core interfaces | `complete` | 冻结接口、local catalogs | 八页基础功能、预设练习、卡片 | production routes、真实 Page 1—8/offline/back-edit-recompute 与 combined local Gate pass | `12a83be`…`d8fd1be`；`3336a5d`, `50ec3f0`, `39663cc` |
-| 05C | `2026-08-27-05c-expo-go-demo-composition.md` | Engineer | 3-5h | 05A/05B local core；PR #6 merged | `in_progress` | 已提交 domain/repository/controller/pages | Expo Go memory demo、native secure composition、production routes | local Gate pass；workspace 65/399、mobile 38/172、Doctor 18/18；native device `external_pending`；PR/CI 待回填 | `725dcb9`…`39663cc` |
+| 05C | `2026-08-27-05c-expo-go-demo-composition.md` | Engineer | 3-5h | 05A/05B local core；PR #6 merged | `in_progress` | 已提交 domain/repository/controller/pages | Expo Go memory demo、native secure composition、production routes | local Gate + CI pass；PR #7 open；workspace 65/399、mobile 38/172、Doctor 18/18；native device `external_pending` | `725dcb9`…`a09bd4b` |
 | 06 | `2026-08-26-06-product-completion-ux.md` | Both | 5h | Gate 05B pass | `not_started` | 可运行八页闭环、最终内容 | 完整 UI、医学图示、可访问性、披露 | state/accessibility matrix | 执行后填写 |
 | 07 | `2026-08-26-07-quality-performance-demo-hardening.md` | Both | 3-4h | 06、Gate 01B、Plan 04 final Gate complete | `not_started` | feature-frozen build | RC、三轮彩排 | test/rehearsal matrix | 执行后填写 |
 | 08 | `2026-08-26-08-release-demo-submissions.md` | Both | 3h | 07 complete | `not_started` | verified RC | build、gateway、四层降级、双提交 | URLs、manifest、checklists | 执行后填写 |
@@ -214,7 +214,7 @@ Plan 01 先创建基础 scripts；Plan 02 与 Plan 04 补齐内容和安全 scri
 - 内容边界：23 条 journey fixtures 保持 `content_review_paused/draft`，不修改 `reviewedAt`，production validation 继续真实非零。
 - 验收：Page 1→8、underage、resume/guard/back-edit-recompute、reset、clipboard failure 与 offline tests；typecheck、lint、mobile/content draft/safety、Expo Doctor、diff check；Apple/签名/SQLCipher 真机保持 `external_pending`。
 - 分支策略：从已合并 PR #6 的 `origin/main@faffd0544b89a5562d16e1f9dac3ef02595c1c37` 在独立 `codex/plan-05c-expo-go-demo` worktree 执行；不 force push、不部署、不合并 main。
-- 本地 Gate：Expo Go `memory-only`、Development/Preview SQLCipher + SecureStore 不降级、provider/route/hydration/clipboard 接线与根页“进入八屏演示”通过；workspace 65 files / 399 tests，mobile 38 suites / 172 tests，Expo Doctor 18/18。23 条 fixture 继续 `content_review_paused/draft`；Apple/签名/真机 SQLCipher `external_pending`；PR/CI 待回填。
+- 本地 Gate：Expo Go `memory-only`、Development/Preview SQLCipher + SecureStore 不降级、provider/route/hydration/clipboard 接线与根页“进入八屏演示”通过；workspace 65 files / 399 tests，mobile 38 suites / 172 tests，Expo Doctor 18/18。PR #7 已创建且 CI pass。23 条 fixture 继续 `content_review_paused/draft`；Apple/签名/真机 SQLCipher `external_pending`。
 
 ### CR-2026-08-27：发布前产品标识迁移
 
@@ -388,8 +388,8 @@ Plan 04 boundary: Golden evaluator remains blocked and still blocks Plan 07/rele
 External pending: Apple membership/signing, Development/Preview build and install, real-iPhone SQLCipher/no-key and cold-start delete-all evidence
 Fresh local Gate: PASS — workspace 65 files / 399 tests；mobile 38 suites / 172 tests；content 3/19；safety 4/53；draft validation pass；Expo Doctor 18/18；boundary scans and diff check pass
 Production content: content_review_paused/draft；expected production validation exit 1 with exactly 23 DRAFT_CONTENT；reviewedAt unchanged
-Implementation commits: `725dcb9`, `b852f42`, `1a8600b`, `d88d927`, `3336a5d`, `50ec3f0`, `ac289a0`, `421e60a`, `39663cc`
-Commit / CI / PR: docs commit and PR/CI URL pending push
+Implementation/docs commits: `725dcb9`, `b852f42`, `1a8600b`, `d88d927`, `3336a5d`, `50ec3f0`, `ac289a0`, `421e60a`, `39663cc`, `a09bd4b`
+Commit / CI / PR: PR #7 `https://github.com/CarterWells111/CAVE/pull/7` open；CI pass `https://github.com/CarterWells111/CAVE/actions/runs/33073504107`；main 未合并
 Next plan unlocked: Plan 06 may start when content work resumes；Plan 07 remains locked by Plan 04 Golden evaluator and native/external evidence
 ```
 

@@ -135,7 +135,7 @@ No PR created; Expo SDK 54 remains the active technical baseline
 
 ```text
 Branch: codex/plan-05c-expo-go-demo
-Status: local_pass — native device evidence external_pending；PR/CI URL pending push
+Status: local_pass — PR #7 open and CI pass；native device evidence external_pending
 Expo Go: storeClient selects a process-lifetime in-memory draft/card runtime and visibly labels temporary data; it does not claim SQLCipher persistence
 Development/Preview: native-secure composition uses SQLCipher + SecureStore and Expo clipboard; initialization failures remain visible and do not fall back to memory
 Production wiring: one JourneyRuntimeProvider mounts the journey layout; Page 1—8 routes consume runtime snapshot/controller/actions; guard/resume/back/reset and recovered form values are wired
@@ -144,7 +144,7 @@ Content: content_review_paused/draft; 23 journey fixtures remain draft and revie
 Plan 04: Golden evaluator remains blocked, does not enter the eight-page runtime, and does not block the Expo Go demo; it still blocks Plan 07/release
 External pending: Apple membership/signing, Development/Preview build/install, real-iPhone SQLCipher/no-key and cold-start delete-all
 Final fresh Gate: PASS — workspace 65 files / 399 tests；mobile 38 suites / 172 tests；typecheck/lint/content draft/safety/diff exit 0；Expo Doctor 18/18；production validation expected exit 1 with exactly 23 DRAFT_CONTENT
-Implementation commits: `725dcb9`, `b852f42`, `1a8600b`, `d88d927`, `3336a5d`, `50ec3f0`, `ac289a0`, `421e60a`, `39663cc`
-CI / PR: PENDING push 后回填
+Implementation/docs commits: `725dcb9`, `b852f42`, `1a8600b`, `d88d927`, `3336a5d`, `50ec3f0`, `ac289a0`, `421e60a`, `39663cc`, `a09bd4b`
+CI / PR: PR #7 `https://github.com/CarterWells111/CAVE/pull/7` open；CI pass `https://github.com/CarterWells111/CAVE/actions/runs/33073504107`；main 未合并
 Plan 06: unlocked but not started；content_review_paused/draft remains；Plan 07 remains locked by Plan 04/native/external prerequisites
 ```
