@@ -78,8 +78,8 @@ test("the production routes complete Page 1 through 8 offline with real snapshot
     view.unmount();
 
     view = await openRoute(<BehaviorAttitudesRoute />, journeyRuntime);
-    fireEvent.press(screen.getAllByText("不确定")[0]!);
-    fireEvent.press(screen.getAllByText("不确定")[1]!);
+    fireEvent.press(screen.getByLabelText("亲吻：不确定"));
+    fireEvent.press(screen.getByLabelText("插入式性行为：不确定"));
     fireEvent.press(screen.getByText("继续"));
     await waitFor(() => expect(journeyRuntime.service.getSnapshot()?.currentPage).toBe("reflection"));
     view.unmount();

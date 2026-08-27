@@ -34,6 +34,25 @@ test("all eight production routes consume runtime state without no-op callbacks"
   }
 });
 
+test("production route actions return asynchronous work to Promise-aware UI controls", () => {
+  const canonicalSources = readdirSync(routeDirectory)
+    .filter((name) => name.endsWith(".tsx"))
+    .filter((name) => !["_layout.tsx", "preface.tsx", "underage-exit.tsx"].includes(name))
+    .map(routeSource)
+    .join("\n");
+  const routeScreen = readFileSync(resolve(__dirname, "JourneyRouteScreen.tsx"), "utf8");
+
+  expect(`${canonicalSources}\n${routeScreen}`).not.toMatch(
+    /\bvoid\s+(?:runAndRefresh|goTo|controller\.[A-Za-z]+|runtime\.restart)\s*\(/u
+  );
+  expect(`${canonicalSources}\n${routeScreen}`).not.toMatch(
+    /=>\s*\{\s*(?:runAndRefresh|goTo|controller\.[A-Za-z]+|runtime\.restart)\s*\(/u
+  );
+  expect(canonicalSources).not.toMatch(/<Pressable\b/u);
+  expect(routeSource("body-knowledge.tsx")).not.toContain("JourneyContinueButton");
+  expect(routeSource("behavior-attitudes.tsx")).not.toContain("JourneyContinueButton");
+});
+
 test("production routes do not ship the reduced-scope hard-coded journey outputs", () => {
   const sources = readdirSync(routeDirectory)
     .filter((name) => name.endsWith(".tsx"))

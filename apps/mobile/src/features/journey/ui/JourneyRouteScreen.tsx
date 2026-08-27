@@ -1,6 +1,5 @@
 import { useEffect, useMemo, type ReactNode } from "react";
 import { useRouter } from "expo-router";
-import { Pressable, Text } from "react-native";
 
 import { JourneyRouteCoordinator } from "../application/journey-route-coordinator";
 import type { JourneyDraft, JourneyPageId } from "../domain/types";
@@ -41,7 +40,7 @@ export function JourneyRouteScreen({
   const goTo = (page: JourneyPageId) => runAndRefresh(() => coordinator.goTo(page));
   const onBack = pageId === "welcome"
     ? undefined
-    : () => { void runAndRefresh(() => coordinator.backFrom(pageId)); };
+    : () => runAndRefresh(() => coordinator.backFrom(pageId));
 
   return (
     <JourneyScreenShell pageId={pageId} {...(onBack === undefined ? {} : { onBack })}>
@@ -52,13 +51,5 @@ export function JourneyRouteScreen({
         runAndRefresh
       })}
     </JourneyScreenShell>
-  );
-}
-
-export function JourneyContinueButton({ onPress }: { onPress(): void }) {
-  return (
-    <Pressable accessibilityRole="button" onPress={onPress}>
-      <Text>继续</Text>
-    </Pressable>
   );
 }
