@@ -27,13 +27,14 @@ test("journey routes stay thin and contain no storage, network, model or SQL imp
   expect(sources).not.toMatch(new RegExp(forbidden.join("|"), "u"));
 });
 
-test("the completed journey runtime is reachable from an explicit demo entry", () => {
+test("the root entry routes first-run and completed users from persisted shell state", () => {
   const indexSource = readFileSync(
     resolve(__dirname, "../../../../app/index.tsx"),
     "utf8"
   );
 
-  expect(indexSource).toContain('router.push("/journey/welcome")');
+  expect(indexSource).toContain("shellState.load()");
+  expect(indexSource).toContain("resolveShellLaunchPath");
   expect(indexSource).not.toContain("<HealthScreen");
   expect(indexSource).not.toContain("<Redirect");
 });

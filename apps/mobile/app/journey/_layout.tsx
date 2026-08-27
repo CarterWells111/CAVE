@@ -1,12 +1,13 @@
 import { Stack } from "expo-router";
+import { View } from "react-native";
 
-import { createExpoJourneyRuntime } from "../../src/features/journey/runtime/default-journey-runtime";
-import { JourneyRuntimeProvider } from "../../src/features/journey/runtime/JourneyRuntimeProvider";
+import { JourneyLongTermNav } from "../../src/features/shell/ui/JourneyLongTermNav";
 
 export default function JourneyLayout() {
   return (
-    <JourneyRuntimeProvider createRuntime={createExpoJourneyRuntime}>
+    <View style={{ flex: 1 }}>
       <Stack screenOptions={{ headerShown: false }} />
-    </JourneyRuntimeProvider>
+      <JourneyLongTermNav />
+    </View>
   );
 }
