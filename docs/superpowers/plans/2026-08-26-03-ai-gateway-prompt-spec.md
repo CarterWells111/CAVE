@@ -158,7 +158,7 @@ interface ModelProvider {
 
 ## 2026-08-27 执行结果
 
-- 状态：`complete`（本地 P0）；Plan 05 仍因 Plan 04 `blocked` 而未解锁。
+- 状态：`complete`（本地 P0）；八页 Plan 05A/05B 不消费本计划运行时接口，可依据总路线图的本地解锁条件继续。
 - Commit：`3e83282`、`fbbb749`、`fe2c024`、`4c96f5d`、`aed8270`；依赖 commit `248b87d`。
 - 已实现：validated mock/live env、`/health`、`/v1/meta`、turn/debrief routes、deterministic MockProvider、native-fetch OpenAI-compatible provider、版本化 prompts、state-machine 最终裁决、evidence verification、一次 repair、prompt injection/timeout/retry/body-bound tests。
 - 联合验证：gateway strict typecheck/lint 通过；16 files / 160 tests；Wrangler dry-run 688.11 KiB / gzip 113.54 KiB；无真实模型 API 时 MockProvider 与 mocked fetch 完成 P0。

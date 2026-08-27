@@ -6,7 +6,7 @@
 
 **架构（Architecture）：** 根 workspace 管理一个 Expo Router App、一个 Cloudflare Worker 与四个共享 Package。原生配置通过 Expo CNG 固化，EAS 负责 iOS 签名和内部发布。
 
-**技术栈（Tech Stack）：** Git、Node 22、pnpm 10、TypeScript、Expo SDK 57、Expo Router、EAS CLI、Cloudflare Workers、Wrangler、Vitest、GitHub Actions。
+**技术栈（Tech Stack）：** Git、Node 22、pnpm 10、TypeScript、Expo SDK 54、Expo Router、EAS CLI、Cloudflare Workers、Wrangler、Vitest、GitHub Actions。
 
 ---
 
@@ -56,7 +56,7 @@ packages/{contracts,content,scenario-engine,test-fixtures}/package.json
 
 **文件：** `apps/mobile/**`。
 
-- [ ] 运行 `pnpm dlx create-expo-app@latest apps/mobile --template default@sdk-57`。
+- [ ] 运行 `pnpm dlx create-expo-app@latest apps/mobile --template default@sdk-54`。
 - [ ] 将 Package 名改为 `@cave/mobile`，删除模板演示路由和无用资源。
 - [ ] 创建 `app.config.ts`：`owner: carter_wells`、`slug: cave`、`scheme: cave`、`version: 0.1.0`、iOS Bundle ID `com.neijie.cave`、开启 typed routes；不得配置 `android.package`。
 - [ ] App 名称按环境固定映射：production 为 `内界 CAVE`、development 为 `内界 CAVE Dev`、preview 为 `内界 CAVE Preview`。
@@ -114,7 +114,7 @@ packages/{contracts,content,scenario-engine,test-fixtures}/package.json
 
 ## 故障、回滚与降级
 
-- Expo SDK 57 依赖冲突：运行 `npx expo install --fix`，不得随意固定无关版本。
+- Expo SDK 54 依赖冲突：以 SDK 54 为修复基线运行 `npx expo install --fix`，不得随意固定无关版本。
 - iOS 签名失败：在本计划内解决 Team/device/provisioning；Android 不得替代此门槛。
 - Worker tooling 失败：保留 Wrangler local 下的 `/health`；不得开始模型集成。
 - 本计划后新增原生依赖：更新 runtime version，并重新生成 Development Build。

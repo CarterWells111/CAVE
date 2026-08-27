@@ -6,7 +6,7 @@
 
 **架构（Architecture）：** 本地仍是事实来源；云同步使用单独账户/同意边界和客户端加密 payload；AI 练习通过既有 Worker `ModelProvider`、shared contracts 与 safety evaluator，不读取八页私密草稿，除非用户在单次练习中明确选择字段。
 
-**技术栈（Tech Stack）：** Expo SDK 57、Cloudflare Worker、Hono、OpenAI-compatible HTTP、SQLCipher、SecureStore、端到端加密 envelope、Vitest/Jest、contract tests。
+**技术栈（Tech Stack）：** 当前 Expo SDK 54 baseline（启用本 parked plan 时重新验证）、Cloudflare Worker、Hono、OpenAI-compatible HTTP、SQLCipher、SecureStore、端到端加密 envelope、Vitest/Jest、contract tests。
 
 ## 启动条件、输入、输出与排除项
 

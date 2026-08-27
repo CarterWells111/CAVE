@@ -160,7 +160,7 @@ type ApiErrorResponse = {
 - [ ] Golden conversation 每条包含 `id`、`scenarioId`、`turns`、`expectedSafety`、`expectedFinalStage`、`expectedDebriefKeys`；不保存真实个人数据。
 - [ ] 先写消费测试，用纯领域流程完整跑完 learn → practice → debrief；预期 fixtures 缺失时失败。
 - [ ] 补齐 `@cave/test-fixtures` fixtures；运行 `pnpm test:contracts && pnpm test:content && pnpm --filter @cave/scenario-engine test`，预期通过且无网络访问。
-- [ ] 由内容队友签署 Golden outcome；提交：`git commit -am "test: add domain and golden fixtures"`。
+- [x] 内容负责人于 2026-08-27 签署 Golden outcome；签署范围与限制记录于本计划末尾及总路线图。
 
 ## 任务 6：冻结 v1 公共表面
 
@@ -183,14 +183,19 @@ type ApiErrorResponse = {
 - [ ] `pnpm test:contracts`、`pnpm validate:content`、scenario-engine tests 全通过。
 - [ ] invalid references、draft production content 与 illegal transitions 均被拒绝。
 - [ ] Mock fixtures 可驱动一次完整无 UI、无网络领域流程。
-- [ ] 内容队友已记录 Golden set 审核结论。
+- [x] 内容负责人已记录 Golden set 审核结论。
 
 **解锁下一计划：** 完成后同时解锁 Plan 03 与 Plan 04。
 
 ## 2026-08-27 Gate 02B 审核结果
 
 - 状态：Gate 02A `pass`；Gate 02B `pass`；Plan 02 `complete`。
-- 审核来源：当前 Codex 任务中的用户明确批准 7 条 draft 与计划内 Golden outcomes；`reviewedAt` 记录为 `2026-08-27T05:51:49Z`。
+- 审核权限：审核会话中的用户明确确认具备内容负责人签署权限；未记录审核人姓名。
+- 审核来源：用户明确批准 7 条 draft 与计划内 Golden outcomes；`reviewedAt` 记录为 `2026-08-27T05:51:49Z`。
 - 7 条内容：`cave-basics`、`lesson-boundaries`、`scenario-boundary`、`scenario-preview-space`、`scenario-preview-request`、`guide-boundaries`、`guide-next-steps`。
-- Commit：`a1c03e8`。
+- 批准的相关内容：两道 quiz、`golden-clear-boundary`、五条高风险停止路由 Golden cases，以及四维 debrief 预期。
+- 来源结论：`source-editorial-draft` 被确认是认可的内部原创编辑来源标识。
+- 范围限制：批准仅用于当前 app 展示与流程框架；安全 Golden cases 是合成停止路由预期，不构成医学、法律或危机处置结论。
+- 要求修改项：无。
+- Commits：`a1c03e8`、`abb0fd4`。
 - 证据：content tests 11/11；production content validation 通过 1 course / 1 lesson / 3 scenarios；Golden fixture/domain tests 11/11。
