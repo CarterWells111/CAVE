@@ -4,11 +4,12 @@
   "private": true,
   "packageManager": "pnpm@10.34.5",
   "engines": {
-    "node": ">=22 <25"
+    "node": "^22.12.0 || >=24 <25"
   },
   "scripts": {
     "dev:mobile": "pnpm --filter @cave/mobile start",
     "dev:gateway": "pnpm --filter @cave/gateway dev",
+    "dev:web": "pnpm --filter @cave/web dev",
     "typecheck": "pnpm -r typecheck",
     "lint": "pnpm -r lint",
     "test": "pnpm -r test",
@@ -21,6 +22,7 @@
     "security:audit": "pnpm audit --prod",
     "security:scan-bundle": "node scripts/scan-bundle-secrets.mjs",
     "build:gateway": "pnpm --filter @cave/gateway build",
+    "build:web": "pnpm --filter @cave/web build",
     "verify:foundation": "pnpm typecheck && pnpm lint && pnpm test && pnpm build:gateway",
     "verify": "pnpm typecheck && pnpm lint && pnpm test && pnpm validate:content && pnpm build:gateway"
   },
