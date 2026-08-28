@@ -28,7 +28,7 @@ test("landing, adult declaration and preface precede Page 1 without login", () =
   const source = route("welcome");
   expect(source).toContain('onStart={() => router.push("/journey/adult-gate")}');
   const gate = route("adult-gate");
-  expect(gate).toContain("service.confirmAdult()");
+  expect(gate).toContain("adultDeclaration.confirmAdult()");
   expect(gate).toContain('router.replace("/journey/preface")');
   expect(gate).toContain('router.replace("/underage-exit")');
   const preface = route("preface");

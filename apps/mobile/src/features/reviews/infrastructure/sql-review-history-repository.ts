@@ -1,4 +1,16 @@
 import type { EncryptedDatabaseManager } from "../../../core/storage/database";
+import {
+  isJourneyDraftV1,
+  isJourneyDraftV2,
+  isJourneyDraftV3,
+  isRecord
+} from "../../journey/domain/journey-draft-schema";
+import {
+  migrateJourneyDraftV1ToV3,
+  migrateJourneyDraftV2ToV3
+} from "../../journey/domain/migrate-journey-draft";
+import type { JourneyDraft } from "../../journey/domain/types";
+import { JourneyStorageError } from "../../journey/infrastructure/journey-draft-repository";
 import type {
   ActiveReview,
   ReviewBranchSeed,
@@ -12,18 +24,57 @@ type ActiveRow = { root_id: string; base_version_id: string | null; payload: str
 type VersionRow = { id: string; root_id: string; parent_version_id: string | null; title: string; review_date: string; status: "completed" | "incomplete"; payload: string; source_revision: number; created_at: string };
 type MetadataRow = Omit<VersionRow, "payload" | "source_revision">;
 
-function parse<Payload>(value: string): Payload {
-  return JSON.parse(value) as Payload;
+export interface ReviewPayloadCodec<Payload> {
+  decode(value: unknown): Payload;
 }
 
+function parseJson(value: string): unknown {
+  try {
+    return JSON.parse(value) as unknown;
+  } catch {
+    throw new JourneyStorageError("malformed-payload");
+  }
+}
+
+export const journeyDraftReviewPayloadCodec: ReviewPayloadCodec<JourneyDraft> = {
+  decode(value) {
+    if (!isRecord(value) || !("schemaVersion" in value)) {
+      throw new JourneyStorageError("malformed-payload");
+    }
+    if (value.schemaVersion === 1) {
+      if (!isJourneyDraftV1(value)) throw new JourneyStorageError("malformed-payload");
+      return migrateJourneyDraftV1ToV3(value);
+    }
+    if (value.schemaVersion === 2) {
+      if (!isJourneyDraftV2(value)) throw new JourneyStorageError("malformed-payload");
+      return migrateJourneyDraftV2ToV3(value);
+    }
+    if (value.schemaVersion === 3) {
+      if (!isJourneyDraftV3(value)) throw new JourneyStorageError("malformed-payload");
+      return value;
+    }
+    if (typeof value.schemaVersion === "number") {
+      throw new JourneyStorageError("unsupported-schema");
+    }
+    throw new JourneyStorageError("malformed-payload");
+  }
+};
+
 export class SqlReviewHistoryRepository<Payload> implements ReviewHistoryRepository<Payload> {
-  constructor(private readonly database: EncryptedDatabaseManager) {}
+  constructor(
+    private readonly database: EncryptedDatabaseManager,
+    private readonly payloadCodec: ReviewPayloadCodec<Payload>
+  ) {}
+
+  private parsePayload(value: string): Payload {
+    return this.payloadCodec.decode(parseJson(value));
+  }
 
   async loadActive(): Promise<ActiveReview<Payload> | null> {
     const db = await this.database.initialize();
     const row = await db.getFirstAsync<ActiveRow>("SELECT root_id, base_version_id, payload, created_at, updated_at FROM journey_active_review WHERE singleton_id = 1");
     if (row === null) return null;
-    return { id: `active:${row.root_id}`, rootId: row.root_id, sourceVersionId: row.base_version_id, title: "本次回顾", updatedAt: row.updated_at, payload: parse(row.payload) };
+    return { id: `active:${row.root_id}`, rootId: row.root_id, sourceVersionId: row.base_version_id, title: "本次回顾", updatedAt: row.updated_at, payload: this.parsePayload(row.payload) };
   }
 
   async saveActive(review: ActiveReview<Payload>): Promise<void> {
@@ -71,7 +122,7 @@ export class SqlReviewHistoryRepository<Payload> implements ReviewHistoryReposit
   async loadDetail(id: string): Promise<ReviewVersionDetail<Payload> | null> {
     const db = await this.database.initialize();
     const row = await db.getFirstAsync<VersionRow>("SELECT id, root_id, parent_version_id, title, review_date, status, payload, source_revision, created_at FROM journey_review_versions WHERE id = ?", id);
-    return row === null ? null : { id: row.id, rootId: row.root_id, parentVersionId: row.parent_version_id, title: row.title, createdAt: row.created_at, status: row.status, payload: parse(row.payload) };
+    return row === null ? null : { id: row.id, rootId: row.root_id, parentVersionId: row.parent_version_id, title: row.title, createdAt: row.created_at, status: row.status, payload: this.parsePayload(row.payload) };
   }
 
   async loadBranchSeed(id: string): Promise<ReviewBranchSeed<Payload> | null> {

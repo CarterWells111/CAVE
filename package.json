@@ -13,7 +13,7 @@
     "typecheck": "pnpm -r typecheck",
     "lint": "pnpm -r lint",
     "test": "pnpm -r test",
-    "test:ci-config": "vitest run tests",
+    "test:ci-config": "vitest run --root tests",
     "test:contracts": "pnpm --filter @cave/contracts test",
     "test:content": "pnpm --filter @cave/content test",
     "test:safety": "pnpm --filter @cave/gateway test:safety",

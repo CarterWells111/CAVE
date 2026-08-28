@@ -1,4 +1,4 @@
-export const CURRENT_SCHEMA_VERSION = 6;
+export const CURRENT_SCHEMA_VERSION = 7;
 
 export const SCHEMA_V1 = `
 CREATE TABLE IF NOT EXISTS course_progress (
@@ -91,4 +91,13 @@ export const SCHEMA_V6 = `
 CREATE TABLE IF NOT EXISTS app_preferences (
   singleton_id INTEGER PRIMARY KEY NOT NULL CHECK (singleton_id = 1),
   theme_preference TEXT NOT NULL CHECK (theme_preference IN ('system', 'light', 'dark'))
+);`;
+
+export const SCHEMA_V7 = `
+CREATE TABLE IF NOT EXISTS journey_drafts_v3 (
+  id TEXT PRIMARY KEY NOT NULL,
+  schema_version INTEGER NOT NULL CHECK (schema_version = 3),
+  payload TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
 );`;

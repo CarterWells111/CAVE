@@ -11,11 +11,11 @@ test("exposes exactly the six current journey content page ids", () => {
   ]);
 });
 
-test("creates a private schema v2 draft with page-local and final-screen defaults", () => {
+test("creates a private schema v3 draft with page-local and final-screen defaults", () => {
   const draft = createJourneyDraft({ id: "journey-1", now: "2026-08-27T08:00:00.000Z" });
 
   expect(draft).toMatchObject({
-    schemaVersion: 2,
+    schemaVersion: 3,
     addressPreference: null,
     explicitContentConsent: null,
     overnight: { stage: "expectations", resumeStage: "expectations" },
@@ -43,7 +43,7 @@ test("creates a private schema v2 draft with page-local and final-screen default
     .toBe(true);
 });
 
-test("the private v2 draft rejects unfrozen values at compile time", () => {
+test("the private v3 draft rejects unfrozen values at compile time", () => {
   const valid = { ...createJourneyDraft({ id: "journey-1", now: "now" }), ageConfirmed: true };
   const invalidAge: JourneyDraft = {
     ...valid,
@@ -52,7 +52,7 @@ test("the private v2 draft rejects unfrozen values at compile time", () => {
   };
   const invalidVersion: JourneyDraft = {
     ...valid,
-    // @ts-expect-error only schema v2 is current
+    // @ts-expect-error only schema v3 is current
     schemaVersion: 1
   };
   const invalidSaveChoice: JourneyDraft = {

@@ -1,5 +1,14 @@
 import type { DatabaseSecretRepository } from "./key-store";
-import { CURRENT_SCHEMA_VERSION, SCHEMA_V1, SCHEMA_V2, SCHEMA_V3, SCHEMA_V4, SCHEMA_V5, SCHEMA_V6 } from "./migrations";
+import {
+  CURRENT_SCHEMA_VERSION,
+  SCHEMA_V1,
+  SCHEMA_V2,
+  SCHEMA_V3,
+  SCHEMA_V4,
+  SCHEMA_V5,
+  SCHEMA_V6,
+  SCHEMA_V7
+} from "./migrations";
 
 export interface DatabaseConnection {
   execAsync(sql: string): Promise<void>;
@@ -61,6 +70,7 @@ export function createEncryptedDatabaseManager({
   databaseName = "cave.db"
 }: Dependencies): EncryptedDatabaseManager {
   let connection: DatabaseConnection | null = null;
+  let initialization: Promise<DatabaseConnection> | null = null;
 
   async function clearMismatchedState(key: string | null) {
     await files.removeDatabaseFiles(databaseName);
@@ -99,6 +109,9 @@ export function createEncryptedDatabaseManager({
       if (currentVersion < 6) {
         await applyMigration(opened, SCHEMA_V6, 6);
       }
+      if (currentVersion < 7) {
+        await applyMigration(opened, SCHEMA_V7, 7);
+      }
       return opened;
     } catch (error) {
       await opened.closeAsync();
@@ -106,7 +119,7 @@ export function createEncryptedDatabaseManager({
     }
   }
 
-  async function initialize(): Promise<DatabaseConnection> {
+  async function initializeOnce(): Promise<DatabaseConnection> {
     if (connection !== null) return connection;
 
     const databaseExists = await files.databaseExists(databaseName);
@@ -127,6 +140,18 @@ export function createEncryptedDatabaseManager({
       connection = await openAndMigrate(replacementKey);
     }
     return connection;
+  }
+
+  function initialize(): Promise<DatabaseConnection> {
+    if (connection !== null) return Promise.resolve(connection);
+    if (initialization !== null) return initialization;
+
+    const attempt = initializeOnce();
+    initialization = attempt;
+    void attempt.finally(() => {
+      if (initialization === attempt) initialization = null;
+    }).catch(() => undefined);
+    return attempt;
   }
 
   return {

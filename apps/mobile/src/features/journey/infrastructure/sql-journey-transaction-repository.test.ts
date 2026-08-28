@@ -46,10 +46,19 @@ test("persists branch payload and exact lineage in one transaction", async () =>
     expect.stringContaining("journey_active_review"),
     "root-1", "version-1", JSON.stringify(draft), draft.updatedAt, draft.updatedAt,
   );
+  expect(connection.runAsync).toHaveBeenNthCalledWith(
+    1,
+    expect.stringContaining("journey_drafts_v3"),
+    draft.id,
+    3,
+    JSON.stringify(draft),
+    draft.createdAt,
+    draft.updatedAt,
+  );
   expect(connection.execAsync).toHaveBeenLastCalledWith("COMMIT");
 });
 
-test.each([1, 2, 3, 4, 5])("rolls back active replacement and branch creation when statement %s fails", async (failRun) => {
+test.each([1, 2, 3, 4, 5, 6])("rolls back active replacement and branch creation when statement %s fails", async (failRun) => {
   const { connection, repository } = harness(failRun);
   await expect(repository.branch({
     archivedActive: {
@@ -65,7 +74,7 @@ test.each([1, 2, 3, 4, 5])("rolls back active replacement and branch creation wh
   expect(connection.execAsync).toHaveBeenLastCalledWith("ROLLBACK");
 });
 
-test.each([1, 2, 3, 4, 5, 6])("rolls back completion when statement %s fails", async (failRun) => {
+test.each([1, 2, 3, 4, 5, 6, 7])("rolls back completion when statement %s fails", async (failRun) => {
   const { connection, repository } = harness(failRun);
   await expect(repository.complete({
     draft,
@@ -85,6 +94,8 @@ test("commits card version marker and active cleanup as one completion", async (
     version: { id: "review:branch-1:completed", rootId: "root-1", parentVersionId: "version-1", title: "回顾", createdAt: draft.updatedAt, status: "completed", payload: draft },
     shell: { initialJourneyId: draft.id, initialJourneyCompletedAt: draft.updatedAt },
   });
-  expect(connection.runAsync).toHaveBeenCalledTimes(6);
+  expect(connection.runAsync).toHaveBeenCalledTimes(7);
+  expect(connection.runAsync).toHaveBeenCalledWith("DELETE FROM journey_drafts_v3");
+  expect(connection.runAsync).toHaveBeenCalledWith("DELETE FROM journey_drafts_v2");
   expect(connection.execAsync).toHaveBeenLastCalledWith("COMMIT");
 });

@@ -13,7 +13,7 @@ type ActionResult = void | Promise<void>;
 
 export type WelcomePageProps = {
   onStart: () => ActionResult;
-  onOpenSettings: () => ActionResult;
+  onOpenSettings?: (() => ActionResult) | undefined;
   resumeAvailable: boolean;
   onResume?: () => ActionResult;
   reducedMotion?: boolean;
@@ -35,7 +35,9 @@ export function WelcomePage({
     <View style={styles.page} testID="welcome-landing">
       <EchoBackground reducedMotion={reducedMotion} />
       <View style={styles.headerActions}>
-        <IconTextAction icon="settings-outline" label="设置" onPress={() => { void onOpenSettings(); }} />
+        {onOpenSettings ? (
+          <IconTextAction icon="settings-outline" label="设置" onPress={() => { void onOpenSettings(); }} />
+        ) : null}
         <IconTextAction icon="help-circle-outline" label="帮助" onPress={() => setHelpOpen(true)} />
       </View>
       <View style={styles.brand}>

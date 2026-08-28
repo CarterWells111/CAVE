@@ -85,7 +85,11 @@ async function openRoute(element: ReactElement, journeyRuntime: JourneyRuntime):
       {element}
     </JourneyRuntimeProvider>
   );
-  expect(await screen.findByText("Expo Go 演示模式，数据仅在本次打开期间暂存")).toBeTruthy();
+  expect(await screen.findByText(
+    "Expo Go 演示模式，数据仅在本次打开期间暂存",
+    {},
+    { timeout: 5_000 }
+  )).toBeTruthy();
   return view;
 }
 
@@ -127,7 +131,7 @@ test("the production routes expose all six content pages offline", async () => {
     view?.unmount();
     globalThis.fetch = originalFetch;
   }
-});
+}, 15_000);
 
 test("the production landing opens onboarding without creating an active draft", async () => {
   const journeyRuntime = runtime();

@@ -78,7 +78,7 @@ export type ChecklistItem = {
 
 export type JourneyDraft = {
   id: string;
-  schemaVersion: 2;
+  schemaVersion: 3;
   currentPage: JourneyPageId;
   ageConfirmed: boolean;
   addressPreference: AddressPreference;
@@ -152,7 +152,7 @@ export type SavedCommunicationCardMetadata = {
 export function createJourneyDraft({ id, now }: { id: string; now: string }): JourneyDraft {
   return {
     id,
-    schemaVersion: 2,
+    schemaVersion: 3,
     currentPage: "body-knowledge",
     ageConfirmed: false,
     addressPreference: null,

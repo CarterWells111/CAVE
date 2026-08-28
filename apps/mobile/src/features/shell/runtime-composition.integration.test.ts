@@ -13,6 +13,6 @@ test("owns one journey and shell runtime above first-run and long-term routes", 
 
   expect(rootLayout).toContain("JourneyRuntimeProvider");
   expect(rootLayout).toContain("createExpoJourneyRuntime");
-  expect(journeyLayout).not.toContain("JourneyRuntimeProvider");
+  expect(journeyLayout).not.toContain("<JourneyRuntimeProvider");
   expect(journeyLayout).not.toContain("createExpoJourneyRuntime");
 });

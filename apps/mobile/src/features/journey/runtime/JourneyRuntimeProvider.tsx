@@ -9,6 +9,8 @@ import {
   useState
 } from "react";
 import { Text, View } from "react-native";
+
+import { InMemoryAppearancePreferencesRepository } from "../../../core/design/appearance-preferences";
 import { ThemeProvider } from "../../../core/design/theme-provider";
 
 import { JourneyProvider, useJourney } from "../ui/JourneyProvider";
@@ -31,29 +33,48 @@ export type JourneyRuntimeContextValue = {
   branchFromReview: JourneyRuntime["branchFromReview"];
 };
 
+export type AdultDeclarationContextValue = {
+  status: "public" | "authorized";
+  confirmAdult(): Promise<void>;
+};
+
 type JourneyRuntimeProviderProps = PropsWithChildren<{
   createRuntime(): Promise<JourneyRuntime>;
 }>;
 
 type RuntimeState =
   | { status: "loading" }
-  | { status: "ready"; runtime: JourneyRuntime }
+  | { status: "public"; runtime: JourneyRuntime }
+  | { status: "authorized"; runtime: JourneyRuntime }
   | { status: "error"; code: "journey-runtime-creation-failed" };
 
 const JourneyRuntimeContext = createContext<JourneyRuntimeContextValue | null>(null);
+const AdultDeclarationContext = createContext<AdultDeclarationContextValue | null>(null);
+const publicAppearancePreferences = new InMemoryAppearancePreferencesRepository();
 
 function RuntimeContextProvider({
   children,
-  runtime
-}: PropsWithChildren<{ runtime: JourneyRuntime }>) {
+  runtime,
+  refreshAuthorization
+}: PropsWithChildren<{
+  runtime: JourneyRuntime;
+  refreshAuthorization(): Promise<void>;
+}>) {
   const { runAndRefresh, snapshot } = useJourney();
   const restart = useCallback(
-    () => runAndRefresh(() => runtime.service.resetJourney()),
-    [runAndRefresh, runtime]
+    () => runAndRefresh(async () => {
+      await runtime.service.resetJourney();
+      await runtime.adultDeclaration.deleteAdultDeclaration();
+      await refreshAuthorization();
+    }),
+    [refreshAuthorization, runAndRefresh, runtime]
   );
   const deleteAllData = useCallback(
-    () => runAndRefresh(() => runtime.deleteAllData()),
-    [runAndRefresh, runtime]
+    () => runAndRefresh(async () => {
+      await runtime.deleteAllData();
+      await refreshAuthorization();
+    }),
+    [refreshAuthorization, runAndRefresh, runtime]
   );
   const replaceActiveReview = useCallback(
     () => runAndRefresh(() => runtime.replaceActiveReview()),
@@ -92,16 +113,22 @@ export function JourneyRuntimeProvider({
   const [state, setState] = useState<RuntimeState>({ status: "loading" });
   const createRuntimeRef = useRef(createRuntime);
   const runtimePromiseRef = useRef<Promise<JourneyRuntime> | null>(null);
+  const adultConfirmationRef = useRef<Promise<void> | null>(null);
+
+  const setAuthorizationFromMarker = useCallback(async (runtime: JourneyRuntime) => {
+    const declared = await runtime.adultDeclaration.hasAdultDeclaration();
+    setState({ status: declared ? "authorized" : "public", runtime });
+  }, []);
 
   useEffect(() => {
     runtimePromiseRef.current ??= Promise.resolve().then(createRuntimeRef.current);
     const runtimePromise = runtimePromiseRef.current;
     let active = true;
 
-    void runtimePromise.then(
-      (runtime) => {
-        if (active) setState({ status: "ready", runtime });
-      },
+    void runtimePromise.then(async (runtime) => {
+      const declared = await runtime.adultDeclaration.hasAdultDeclaration();
+      if (active) setState({ status: declared ? "authorized" : "public", runtime });
+    }).catch(
       () => {
         if (active) setState({ status: "error", code: "journey-runtime-creation-failed" });
       }
@@ -109,6 +136,33 @@ export function JourneyRuntimeProvider({
 
     return () => { active = false; };
   }, []);
+
+  const confirmAdult = useCallback(() => {
+    if (state.status !== "public" && state.status !== "authorized") {
+      return Promise.reject(new Error("journey-runtime-not-ready"));
+    }
+    if (
+      state.status === "authorized"
+      && state.runtime.service.getSnapshot()?.ageConfirmed === true
+    ) return Promise.resolve();
+    if (adultConfirmationRef.current !== null) return adultConfirmationRef.current;
+
+    const runtime = state.runtime;
+    const confirmation = (async () => {
+      if (state.status === "public") {
+        const recoveryState = await runtime.service.initialize();
+        if (recoveryState !== "ready") throw new Error("journey-recovery-required");
+      }
+      await runtime.service.confirmAdult();
+      await runtime.adultDeclaration.recordAdultDeclaration();
+      if (state.status === "public") setState({ status: "authorized", runtime });
+    })();
+    adultConfirmationRef.current = confirmation;
+    void confirmation.finally(() => {
+      if (adultConfirmationRef.current === confirmation) adultConfirmationRef.current = null;
+    }).catch(() => undefined);
+    return confirmation;
+  }, [state]);
 
   if (state.status === "loading") {
     return <Text accessibilityLiveRegion="polite">正在启动旅程运行时…</Text>;
@@ -122,15 +176,44 @@ export function JourneyRuntimeProvider({
     );
   }
 
+  const adultDeclaration = { status: state.status, confirmAdult } satisfies AdultDeclarationContextValue;
+  if (state.status === "public") {
+    return (
+      <ThemeProvider repository={publicAppearancePreferences}>
+        <AdultDeclarationContext.Provider value={adultDeclaration}>
+          {state.runtime.mode === "expo-go-demo"
+            ? <Text>Expo Go 演示模式，数据仅在本次打开期间暂存</Text>
+            : null}
+          {children}
+        </AdultDeclarationContext.Provider>
+      </ThemeProvider>
+    );
+  }
+
   return (
     <ThemeProvider repository={state.runtime.appearancePreferences}>
-      <JourneyProvider service={state.runtime.service}>
-        <RuntimeContextProvider runtime={state.runtime}>
-          {children}
-        </RuntimeContextProvider>
-      </JourneyProvider>
+      <AdultDeclarationContext.Provider value={adultDeclaration}>
+        <JourneyProvider service={state.runtime.service}>
+          <RuntimeContextProvider
+            refreshAuthorization={() => setAuthorizationFromMarker(state.runtime)}
+            runtime={state.runtime}
+          >
+            {children}
+          </RuntimeContextProvider>
+        </JourneyProvider>
+      </AdultDeclarationContext.Provider>
     </ThemeProvider>
   );
+}
+
+export function useAdultDeclaration() {
+  const context = useContext(AdultDeclarationContext);
+  if (context === null) throw new Error("JourneyRuntimeProvider is required");
+  return context;
+}
+
+export function useOptionalJourneyRuntime() {
+  return useContext(JourneyRuntimeContext);
 }
 
 export function useJourneyRuntime() {
