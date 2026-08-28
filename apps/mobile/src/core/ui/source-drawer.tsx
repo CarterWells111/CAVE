@@ -1,3 +1,4 @@
+import type { RefObject } from "react";
 import { Text, View } from "react-native";
 
 import { useTheme } from "../design/theme-provider";
@@ -14,6 +15,7 @@ export type SourceDrawerProps = {
   actionLabel?: string;
   onInitialFocus?: () => void;
   onRestoreFocus?: () => void;
+  returnFocusRef?: RefObject<View | null> | undefined;
   reducedMotion?: boolean | undefined;
 };
 
@@ -27,6 +29,7 @@ export function SourceDrawer({
   actionLabel = "在浏览器中打开",
   onInitialFocus,
   onRestoreFocus,
+  returnFocusRef,
   reducedMotion,
 }: SourceDrawerProps) {
   const theme = useTheme();
@@ -34,6 +37,7 @@ export function SourceDrawer({
     <BottomSheet
       {...(onInitialFocus ? { onInitialFocus } : {})}
       {...(onRestoreFocus ? { onRestoreFocus } : {})}
+      {...(returnFocusRef ? { returnFocusRef } : {})}
       {...(reducedMotion === undefined ? {} : { reducedMotion })}
       onClose={onClose}
       title={title}

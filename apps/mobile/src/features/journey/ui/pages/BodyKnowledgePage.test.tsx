@@ -81,6 +81,7 @@ test("waits for persisted consent before showing optional explicit anatomy conte
   expect(screen.getByLabelText(/阴阜、大阴唇、阴蒂、小阴唇、尿道口、阴道口、肛门/u)).toHaveProp(
     "resizeMode", "contain",
   );
+  expect(screen.getByLabelText(/阴阜、大阴唇/u)).toHaveProp("accessibilityRole", "image");
   expect(screen.getByText("医学图审核稿")).toBeTruthy();
   expect(screen.getByText(/就诊前可以询问是否能安排女性医生/u)).toBeTruthy();
 });
@@ -138,6 +139,7 @@ test("offers labelled button-only zoom with bounded state and reset", async () =
     "accessibilityValue", expect.objectContaining({ text: "125%" }),
   );
   expect(screen.getByText("当前缩放：125%")).toHaveProp("accessibilityLiveRegion", "polite");
+  expect(screen.getByTestId("body-diagram-viewport")).toHaveProp("zoomScale", 1.25);
   expect(screen.getByRole("button", { name: "缩小身体图" })).toHaveProp(
     "accessibilityState", expect.objectContaining({ disabled: false }),
   );
@@ -166,6 +168,9 @@ test("keeps the 100–200% anatomy image in a pannable viewport and retries imag
   expect(viewport).toHaveProp("maximumZoomScale", 2);
   expect(viewport).toHaveProp("minimumZoomScale", 1);
   expect(viewport).toHaveProp("pinchGestureEnabled", true);
+  expect(viewport).toHaveProp("horizontal", true);
+  expect(viewport).toHaveProp("zoomScale", 1);
+  expect(image.props.style).not.toEqual(expect.arrayContaining([expect.objectContaining({ transform: expect.anything() })]));
 
   fireEvent(image, "error");
   expect(await screen.findByRole("alert")).toHaveTextContent("身体图加载失败，请重试。");

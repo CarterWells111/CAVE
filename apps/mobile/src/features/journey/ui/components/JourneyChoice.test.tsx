@@ -118,7 +118,23 @@ test("gives the custom-label adapter a non-color focus indicator", () => {
   });
 });
 
-test("keeps the core chip's non-color pressed treatment and no journey-local visual tokens", () => {
+test("removes the custom adapter's pressed scale when iOS reduced motion is active", () => {
+  render(
+    <JourneyChoice
+      accessibilityLabel="亲吻：期待"
+      label="期待"
+      mode="single"
+      onSelect={jest.fn()}
+      selected={false}
+      testID="static-choice"
+    />,
+  );
+
+  const style = StyleSheet.flatten(screen.getByTestId("static-choice").props.style);
+  expect(style.transform).toBeUndefined();
+});
+
+test("keeps the core chip static by default and uses no journey-local visual tokens", () => {
   render(
     <JourneyChoice label="选项" onSelect={jest.fn()} selected={false} />
   );
@@ -128,7 +144,7 @@ test("keeps the core chip's non-color pressed treatment and no journey-local vis
 
   fireEvent(choice, "responderGrant", { nativeEvent: {}, persist: jest.fn() });
 
-  expect(choice.props.style.opacity).not.toBe(defaultOpacity);
+  expect(choice.props.style.opacity).toBe(defaultOpacity);
   expect(source).not.toContain('from "./JourneyAction"');
   expect(source).not.toContain("journey-ui-tokens");
 });

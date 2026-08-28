@@ -18,7 +18,7 @@ test("uses a fail-safe static default, follows the iOS preference, and cleans up
   }) as never);
 
   const view = render(<MotionPreferencesProvider><Consumer /></MotionPreferencesProvider>);
-  expect(screen.getByText("full")).toBeTruthy();
+  expect(screen.getByText("reduced")).toBeTruthy();
 
   await act(async () => undefined);
   expect(screen.getByText("reduced")).toBeTruthy();
@@ -30,11 +30,11 @@ test("uses a fail-safe static default, follows the iOS preference, and cleans up
   expect(remove).toHaveBeenCalledTimes(1);
 });
 
-test("falls back to full motion when the platform preference cannot be read", async () => {
+test("fails safe to reduced motion when the platform preference cannot be read", async () => {
   jest.spyOn(AccessibilityInfo, "isReduceMotionEnabled").mockRejectedValue(new Error("unavailable"));
   jest.spyOn(AccessibilityInfo, "addEventListener").mockReturnValue({ remove: jest.fn() } as never);
 
   render(<MotionPreferencesProvider><Consumer /></MotionPreferencesProvider>);
   await act(async () => undefined);
-  expect(screen.getByText("full")).toBeTruthy();
+  expect(screen.getByText("reduced")).toBeTruthy();
 });

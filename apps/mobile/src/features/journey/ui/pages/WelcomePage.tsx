@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Text, View } from "react-native";
 
 import { useTheme } from "../../../../core/design/theme-provider";
@@ -29,6 +29,7 @@ export function WelcomePage({
   const theme = useTheme();
   const styles = createStyles(theme);
   const [helpOpen, setHelpOpen] = useState(false);
+  const helpReturnFocusRef = useRef<View>(null);
   const primaryAction = resumeAvailable && onResume ? onResume : onStart;
 
   return (
@@ -38,7 +39,7 @@ export function WelcomePage({
         {onOpenSettings ? (
           <IconTextAction icon="settings-outline" label="设置" onPress={() => { void onOpenSettings(); }} />
         ) : null}
-        <IconTextAction icon="help-circle-outline" label="帮助" onPress={() => setHelpOpen(true)} />
+        <IconTextAction ref={helpReturnFocusRef} icon="help-circle-outline" label="帮助" onPress={() => setHelpOpen(true)} />
       </View>
       <View style={styles.brand}>
         <Text style={styles.eyebrow}>Consent · Awareness · Voice · Exploration</Text>
@@ -60,6 +61,7 @@ export function WelcomePage({
       <BottomSheet
         onClose={() => setHelpOpen(false)}
         reducedMotion={reducedMotion}
+        returnFocusRef={helpReturnFocusRef}
         title="关于内界 CAVE"
         visible={helpOpen}
       >

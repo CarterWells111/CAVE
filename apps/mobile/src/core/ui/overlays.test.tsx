@@ -1,5 +1,5 @@
 import { fireEvent, render, screen } from "@testing-library/react-native";
-import { AccessibilityInfo, Text } from "react-native";
+import { AccessibilityInfo, Text, type View } from "react-native";
 
 import { BottomSheet } from "./bottom-sheet";
 import { SourceDrawer } from "./source-drawer";
@@ -37,6 +37,35 @@ test("BottomSheet moves initial accessibility focus to close and supports access
   expect(focus).toHaveBeenCalledWith(42);
   fireEvent(screen.getByTestId("bottom-sheet-panel"), "accessibilityEscape");
   expect(onClose).toHaveBeenCalledTimes(1);
+});
+
+test("BottomSheet restores focus through the returnFocusRef contract while retaining callbacks", () => {
+  const focus = jest.spyOn(AccessibilityInfo, "setAccessibilityFocus").mockImplementation(jest.fn());
+  const onRestoreFocus = jest.fn();
+  const returnFocusRef = { current: {} } as React.RefObject<View | null>;
+  const { rerender } = render(
+    <BottomSheet
+      onClose={jest.fn()}
+      onRestoreFocus={onRestoreFocus}
+      resolveFocusHandle={(() => 77) as never}
+      returnFocusRef={returnFocusRef}
+      title="来源"
+      visible
+    />,
+  );
+
+  rerender(
+    <BottomSheet
+      onClose={jest.fn()}
+      onRestoreFocus={onRestoreFocus}
+      resolveFocusHandle={(() => 77) as never}
+      returnFocusRef={returnFocusRef}
+      title="来源"
+      visible={false}
+    />,
+  );
+  expect(focus).toHaveBeenCalledWith(77);
+  expect(onRestoreFocus).toHaveBeenCalledTimes(1);
 });
 
 test("BottomSheet uses bottom safe-area insets and disables motion when requested", () => {

@@ -7,7 +7,8 @@ export type EchoBackgroundProps = { reducedMotion?: boolean | undefined; testID?
 
 export function EchoBackground({ reducedMotion, testID }: EchoBackgroundProps) {
   const theme = useTheme();
-  const shouldReduceMotion = reducedMotion ?? useReducedMotion();
+  const systemReducedMotion = useReducedMotion();
+  const shouldReduceMotion = reducedMotion ?? systemReducedMotion;
   return (
     <View
       accessible={false}

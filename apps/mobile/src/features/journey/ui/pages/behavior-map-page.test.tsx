@@ -225,8 +225,18 @@ test("adds a trimmed custom behavior as a normal editable card", async () => {
 
 test("uses the flip animation unless reduced motion is requested", async () => {
   const timing = jest.spyOn(Animated, "timing");
-  render(<BehaviorMapPage onComplete={jest.fn()} onSetAttitude={jest.fn()} />);
+  render(<BehaviorMapPage onComplete={jest.fn()} onSetAttitude={jest.fn()} reducedMotion={false} />);
   await openCard("behavior-card-front-behavior-hug", "behavior-card-back-behavior-hug");
   expect(timing).toHaveBeenCalled();
+  timing.mockRestore();
+});
+
+test("switches behavior card content directly without rotateY or timing calls in reduced-motion mode", async () => {
+  const timing = jest.spyOn(Animated, "timing");
+  render(<BehaviorMapPage onComplete={jest.fn()} onSetAttitude={jest.fn()} reducedMotion />);
+  await openCard("behavior-card-front-behavior-hug", "behavior-card-back-behavior-hug");
+
+  expect(timing).not.toHaveBeenCalled();
+  expect(StyleSheet.flatten(screen.getByTestId("behavior-card-fullscreen").props.style).transform).toBeUndefined();
   timing.mockRestore();
 });

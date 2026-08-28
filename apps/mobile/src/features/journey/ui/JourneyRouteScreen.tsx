@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useRouter } from "expo-router";
-import { Alert, Text } from "react-native";
+import { Alert, Text, type View } from "react-native";
 
 import { useTheme } from "../../../core/design/theme-provider";
 import { BottomSheet } from "../../../core/ui/bottom-sheet";
@@ -31,6 +31,7 @@ export function JourneyRouteScreen({
   const router = useRouter();
   const runtime = useJourneyRuntime();
   const [optionsOpen, setOptionsOpen] = useState(false);
+  const optionsReturnFocusRef = useRef<View>(null);
   const [restartFailed, setRestartFailed] = useState(false);
   const navigationActiveRef = useRef(true);
   const navigationGenerationRef = useRef(0);
@@ -113,6 +114,7 @@ export function JourneyRouteScreen({
         immersiveContent={immersiveContent}
         pageId={pageId}
         onExit={() => setOptionsOpen(true)}
+        exitRef={optionsReturnFocusRef}
         {...(onBack === undefined ? {} : { onBack })}
       >
         {children({
@@ -124,6 +126,7 @@ export function JourneyRouteScreen({
       </JourneyScreenShell>
       <BottomSheet
         onClose={() => setOptionsOpen(false)}
+        returnFocusRef={optionsReturnFocusRef}
         title="旅程选项"
         visible={optionsOpen}
       >

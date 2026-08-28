@@ -293,6 +293,27 @@ test("announces a reduced-motion flip and keeps the immersive card control touch
   announce.mockRestore();
 });
 
+test("switches reflection card content directly without rotateY or timing calls in reduced-motion mode", async () => {
+  const timing = jest.spyOn(Animated, "timing");
+  renderPage();
+  await openCard("我能表达变化吗", "expression");
+
+  expect(timing).not.toHaveBeenCalled();
+  expect(StyleSheet.flatten(screen.getByTestId("reflection-card-fullscreen").props.style).transform).toBeUndefined();
+  timing.mockRestore();
+});
+
+test("returns VoiceOver focus to the originating reflection card", async () => {
+  const focus = jest.spyOn(AccessibilityInfo, "setAccessibilityFocus").mockImplementation(jest.fn());
+  renderPage({ resolveFocusHandle: () => 42 });
+  await openCard("我能表达变化吗", "expression");
+
+  fireEvent.press(screen.getByRole("button", { name: "暂不记录，返回所有卡牌" }));
+  await waitFor(() => expect(screen.getByTestId("reflection-card-grid")).toBeTruthy());
+  await waitFor(() => expect(focus).toHaveBeenLastCalledWith(42));
+  focus.mockRestore();
+});
+
 test("uses two rotateY stages in each direction when motion is enabled", async () => {
   const timing = jest.spyOn(Animated, "timing");
   renderPage({ reducedMotion: false });

@@ -1,9 +1,19 @@
 import { readFileSync } from "node:fs";
 
 import { describe, expect, it } from "vitest";
+import { parse } from "yaml";
 
 import packageJson from "../package.json";
 import mobilePackageJson from "../apps/mobile/package.json";
+
+function expectAuditedAllowBuilds(workspace: string) {
+  const parsed = parse(workspace) as { allowBuilds?: unknown };
+  expect(parsed.allowBuilds).toEqual({
+    esbuild: true,
+    "unrs-resolver": true,
+    workerd: true,
+  });
+}
 
 describe("repository security configuration", () => {
   it("defines the fixed security scripts", () => {
@@ -47,9 +57,16 @@ describe("repository security configuration", () => {
       "utf8"
     );
 
-    expect(workspace).toContain("allowBuilds:");
-    expect(workspace).toMatch(/allowBuilds:\s*\r?\n\s+esbuild: true\s*\r?\n\s+unrs-resolver: true\s*\r?\n\s+workerd: true/u);
-    expect(workspace).not.toMatch(/allowBuilds:[\s\S]*(?:\*|all|true\s*#\s*all)/iu);
+    expectAuditedAllowBuilds(workspace);
+  });
+
+  it("rejects a fourth postinstall allowlist entry", () => {
+    const workspace = readFileSync(
+      new URL("../pnpm-workspace.yaml", import.meta.url),
+      "utf8"
+    );
+    const withExtraEntry = workspace.replace("  workerd: true", "  workerd: true\n  unexpected-package: true");
+    expect(() => expectAuditedAllowBuilds(withExtraEntry)).toThrow();
   });
 
   it("runs JavaScript and TypeScript CodeQL analysis", () => {

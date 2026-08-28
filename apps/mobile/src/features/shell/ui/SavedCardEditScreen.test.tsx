@@ -3,6 +3,7 @@ import type { ComponentProps } from "react";
 import { StyleSheet, Text } from "react-native";
 
 import { darkTheme } from "../../../core/design/theme";
+import { BottomSheet } from "../../../core/ui/bottom-sheet";
 import { COMMUNICATION_SECTION_IDS } from "../../journey/domain/types";
 import { SavedCardEditScreen } from "./SavedCardEditScreen";
 
@@ -63,14 +64,14 @@ test("edits dirty sections incrementally without promoting private content and r
   renderScreen({ onSave });
 
   const privateCard = within(screen.getByTestId("communication-draft-card-communication-possible-closeness"));
-  fireEvent.press(privateCard.getByRole("button", { name: "编辑" }));
+  fireEvent.press(privateCard.getByRole("button", { name: "编辑：可能愿意的靠近" }));
   fireEvent.changeText(screen.getByLabelText("草稿内容：可能愿意的靠近"), "  请先问我。  ");
   fireEvent.press(screen.getByRole("button", { name: "保存编辑" }));
   await waitFor(() => expect(screen.getAllByRole("button", { name: "编辑" })
     .every((button) => button.props.accessibilityState.disabled === false)).toBe(true));
 
   const deletedCard = within(screen.getByTestId("communication-draft-card-communication-decide-in-moment"));
-  fireEvent.press(deletedCard.getByRole("button", { name: "恢复到草稿" }));
+  fireEvent.press(deletedCard.getByRole("button", { name: "恢复到草稿：希望当下再决定" }));
   fireEvent.press(screen.getByRole("button", { name: "保存更改" }));
 
   expect(await screen.findByText("更改已保存。")).toBeTruthy();
@@ -102,13 +103,13 @@ test("lets a legacy blank deleted section be rewritten before safe restoration",
   });
 
   expect(screen.getByText(/旧记录未保存此段内容/u)).toBeTruthy();
-  expect(screen.getByRole("button", { name: "恢复到草稿" }).props.accessibilityState.disabled).toBe(true);
-  fireEvent.press(screen.getByRole("button", { name: "编辑" }));
+  expect(screen.getByRole("button", { name: "恢复到草稿：让我更安心的方式" }).props.accessibilityState.disabled).toBe(true);
+  fireEvent.press(screen.getByRole("button", { name: "编辑：让我更安心的方式" }));
   fireEvent.changeText(screen.getByLabelText("草稿内容：让我更安心的方式"), "重新写下的内容");
   fireEvent.press(screen.getByRole("button", { name: "保存编辑" }));
   await waitFor(() => expect(screen.getAllByRole("button", { name: "编辑" })
     .every((button) => button.props.accessibilityState.disabled === false)).toBe(true));
-  fireEvent.press(screen.getByRole("button", { name: "恢复到草稿" }));
+  fireEvent.press(screen.getByRole("button", { name: "恢复到草稿：让我更安心的方式" }));
   fireEvent.press(screen.getByRole("button", { name: "保存更改" }));
 
   expect(await screen.findByText("更改已保存。")).toBeTruthy();
@@ -126,7 +127,7 @@ test("keeps local dirty updates after a safe save error and retries", async () =
   renderScreen({ onSave });
 
   const card = within(screen.getByTestId("communication-draft-card-communication-mutual-boundaries"));
-  fireEvent.press(card.getByRole("button", { name: "编辑" }));
+  fireEvent.press(card.getByRole("button", { name: "编辑：共同边界" }));
   fireEvent.changeText(screen.getByLabelText("草稿内容：共同边界"), "请保留我的新边界。");
   fireEvent.press(screen.getByRole("button", { name: "保存编辑" }));
   await waitFor(() => expect(screen.getAllByRole("button", { name: "编辑" })
@@ -143,6 +144,20 @@ test("keeps local dirty updates after a safe save error and retries", async () =
     text: "请保留我的新边界。",
     visibility: "pending",
   }]);
+});
+
+test("names every draft action with its section title and wires the editor trigger for return focus", () => {
+  renderScreen();
+  const expectedActions = [
+    "编辑：对这次相处的期待",
+    "从草稿中删除：对这次相处的期待",
+    "编辑：希望当下再决定",
+    "恢复到草稿：希望当下再决定",
+  ];
+  for (const label of expectedActions) expect(screen.getByRole("button", { name: label })).toBeTruthy();
+
+  fireEvent.press(screen.getByRole("button", { name: "编辑：对这次相处的期待" }));
+  expect(screen.UNSAFE_getByType(BottomSheet).props.returnFocusRef).toBeTruthy();
 });
 
 test("keeps keyboard-safe scrolling, theme background, Dynamic Type and 44 point controls", () => {

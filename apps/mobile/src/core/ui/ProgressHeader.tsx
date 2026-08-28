@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { forwardRef, useEffect, useState, type RefObject } from "react";
 import { AccessibilityInfo, Pressable, Text, View } from "react-native";
 
 import { useTheme } from "../design/theme-provider";
@@ -14,6 +14,7 @@ type ProgressHeaderProps = {
   backBusy?: boolean;
   backDisabled?: boolean;
   testID?: string;
+  exitRef?: RefObject<View | null> | undefined;
 };
 
 type HeaderActionProps = {
@@ -23,12 +24,13 @@ type HeaderActionProps = {
   disabled?: boolean;
 };
 
-function HeaderAction({ label, onPress, busy = false, disabled = false }: HeaderActionProps) {
+const HeaderAction = forwardRef<View, HeaderActionProps>(function HeaderAction({ label, onPress, busy = false, disabled = false }, ref) {
   const theme = useTheme();
   const [focused, setFocused] = useState(false);
   const unavailable = busy || disabled;
   return (
     <Pressable
+      ref={ref}
       accessibilityLabel={label}
       accessibilityRole="button"
       accessibilityState={{ busy, disabled: unavailable }}
@@ -62,7 +64,7 @@ function HeaderAction({ label, onPress, busy = false, disabled = false }: Header
       {disabled && !busy ? <Text style={{ ...theme.typography.numericLabel, color: theme.color.disabledText }}>不可用</Text> : null}
     </Pressable>
   );
-}
+});
 
 export function ProgressHeader({
   currentPage,
@@ -75,6 +77,7 @@ export function ProgressHeader({
   backBusy = false,
   backDisabled = false,
   testID,
+  exitRef,
 }: ProgressHeaderProps) {
   const theme = useTheme();
   const validTotal = Number.isInteger(totalPages) && totalPages > 0;
@@ -98,7 +101,7 @@ export function ProgressHeader({
   );
   const trailing = (
     <View style={{ alignItems: "flex-end", flex: 1 }} testID="progress-trailing-slot">
-      {onExit ? <HeaderAction label={exitLabel} onPress={onExit} /> : null}
+      {onExit ? <HeaderAction ref={exitRef} label={exitLabel} onPress={onExit} /> : null}
     </View>
   );
   const progress = showProgress ? (

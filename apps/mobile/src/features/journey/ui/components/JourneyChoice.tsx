@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Pressable, Text, View } from "react-native";
 
 import { useTheme } from "../../../../core/design/theme-provider";
+import { useReducedMotion } from "../../../../core/design/motion-preferences";
 import { ChoiceChip } from "../../../../core/ui/ChoiceChip";
 import type { JourneyAction as JourneyActionCallback } from "../journey-ui-contracts";
 import { JourneyStatusBanner } from "./JourneyStatusBanner";
@@ -28,6 +29,7 @@ export function JourneyChoice({
   testID
 }: JourneyChoiceProps) {
   const theme = useTheme();
+  const reducedMotion = useReducedMotion();
   const inFlightRef = useRef(false);
   const mountedRef = useRef(true);
   const [status, setStatus] = useState<"idle" | "loading" | "error">("idle");
@@ -109,7 +111,7 @@ export function JourneyChoice({
             outlineColor: theme.color.focus,
             outlineOffset: theme.space.xs,
             outlineWidth: focused ? theme.border.focusWidth : 0,
-            transform: [{ scale: pressed ? 0.98 : 1 }]
+            ...(reducedMotion ? {} : { transform: [{ scale: pressed ? 0.98 : 1 }] })
           })}
           testID={testID}
         >

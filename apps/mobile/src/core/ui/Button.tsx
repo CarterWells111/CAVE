@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { forwardRef, useState } from "react";
 import type { AccessibilityRole, AccessibilityState } from "react-native";
-import { Pressable, Text } from "react-native";
+import { Pressable, Text, type View } from "react-native";
 
 import { useTheme } from "../design/theme-provider";
 import { useReducedMotion } from "../design/motion-preferences";
@@ -17,7 +17,7 @@ type ButtonProps = {
   testID?: string | undefined;
 };
 
-export function Button({
+export const Button = forwardRef<View, ButtonProps>(function Button({
   label,
   onPress,
   accessibilityLabel,
@@ -27,7 +27,7 @@ export function Button({
   selected,
   state,
   testID
-}: ButtonProps) {
+}: ButtonProps, ref) {
   const theme = useTheme();
   const reducedMotion = useReducedMotion();
   const [focused, setFocused] = useState(false);
@@ -47,6 +47,7 @@ export function Button({
 
   return (
     <Pressable
+      ref={ref}
       accessibilityLabel={accessibilityLabel ?? label}
       accessibilityRole={role}
       accessibilityState={accessibilityState}
@@ -126,4 +127,4 @@ export function Button({
       ) : null}
     </Pressable>
   );
-}
+});

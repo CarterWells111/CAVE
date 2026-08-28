@@ -1,6 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
-import { type ComponentProps, useState } from "react";
-import { Pressable, Text } from "react-native";
+import { type ComponentProps, forwardRef, useState } from "react";
+import { Pressable, Text, type View } from "react-native";
 
 import { useTheme } from "../design/theme-provider";
 
@@ -13,20 +13,21 @@ export type IconTextActionProps = {
   testID?: string;
 };
 
-export function IconTextAction({
+export const IconTextAction = forwardRef<View, IconTextActionProps>(function IconTextAction({
   disabled = false,
   icon,
   label,
   loading = false,
   onPress,
   testID,
-}: IconTextActionProps) {
+}: IconTextActionProps, ref) {
   const theme = useTheme();
   const [focused, setFocused] = useState(false);
   const unavailable = disabled || loading;
 
   return (
     <Pressable
+      ref={ref}
       accessibilityLabel={label}
       accessibilityRole="button"
       accessibilityState={{ busy: loading, disabled: unavailable }}
@@ -58,4 +59,4 @@ export function IconTextAction({
       </Text>
     </Pressable>
   );
-}
+});

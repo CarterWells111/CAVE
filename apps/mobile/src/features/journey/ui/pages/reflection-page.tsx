@@ -56,6 +56,7 @@ export type ReflectionPageProps = {
   onUsePracticePhrase?(phrase: string): ReturnType<JourneyActionCallback>;
   onComplete(value: ReflectionValue): ReturnType<JourneyActionCallback>;
   reducedMotion?: boolean;
+  resolveFocusHandle?: typeof findNodeHandle;
   showLocalJournalSaveNotice?: boolean;
   storageMode?: "device" | "session-only";
 };
@@ -212,16 +213,27 @@ export function ReflectionPage({
   onUsePracticePhrase,
   onComplete,
   reducedMotion,
+  resolveFocusHandle = findNodeHandle,
   showLocalJournalSaveNotice = true,
   storageMode = "device",
 }: ReflectionPageProps) {
   const theme = useTheme();
-  const shouldReduceMotion = reducedMotion ?? useReducedMotion();
+  const systemReducedMotion = useReducedMotion();
+  const shouldReduceMotion = reducedMotion ?? systemReducedMotion;
   const styles = createStyles(theme);
   const { height } = useWindowDimensions();
   const flipRotation = useRef(new Animated.Value(0)).current;
   const mountedRef = useRef(true);
   const questionRef = useRef<Text>(null);
+  const triggerRefs = useRef<Record<ReflectionCardId, View | null>>({
+    comfort: null,
+    expression: null,
+    journal: null,
+    motivation: null,
+    safety: null,
+  });
+  const journalStorageReturnFocusRef = useRef<View>(null);
+  const clearReturnFocusRef = useRef<View>(null);
   const [savedValue, setSavedValue] = useState(() => createValue(initialValue));
   const [draftValue, setDraftValue] = useState(() => createValue(initialValue));
   const [activeCardId, setActiveCardId] = useState<ReflectionCardId | null>(null);
@@ -248,12 +260,24 @@ export function ReflectionPage({
   });
 
   const focusQuestion = () => {
-    const node = findNodeHandle(questionRef.current);
+    const node = resolveFocusHandle(questionRef.current);
     if (node !== null) AccessibilityInfo.setAccessibilityFocus(node);
   };
 
   const openCard = async (cardId: ReflectionCardId) => {
     if (animating || activeCardId !== null) return;
+    if (shouldReduceMotion) {
+      setActiveCardId(cardId);
+      setDraftValue(cloneValue(savedValue));
+      setCardFace("back");
+      setHideFutureJournalNotice(false);
+      onCardVisibilityChange?.(true);
+      const title = cards.find(({ id }) => id === cardId)?.title ?? "反思卡";
+      AccessibilityInfo.announceForAccessibility(`${title}，已展开`);
+      await frame();
+      if (mountedRef.current) focusQuestion();
+      return;
+    }
     setAnimating(true);
     setActiveCardId(cardId);
     setDraftValue(cloneValue(savedValue));
@@ -263,13 +287,13 @@ export function ReflectionPage({
     flipRotation.setValue(0);
     await frame();
     if (!mountedRef.current) return;
-    if (!shouldReduceMotion) await animateTo(90);
+    await animateTo(90);
     if (!mountedRef.current) return;
     setCardFace("back");
-    flipRotation.setValue(shouldReduceMotion ? 0 : -90);
+    flipRotation.setValue(-90);
     await frame();
     if (!mountedRef.current) return;
-    if (!shouldReduceMotion) await animateTo(0);
+    await animateTo(0);
     if (!mountedRef.current) return;
     setAnimating(false);
     const title = cards.find(({ id }) => id === cardId)?.title ?? "反思卡";
@@ -279,19 +303,35 @@ export function ReflectionPage({
 
   const returnToGallery = async () => {
     if (animating) return;
+    if (shouldReduceMotion) {
+      const title = cards.find(({ id }) => id === activeCardId)?.title;
+      const trigger = activeCardId === null ? null : triggerRefs.current[activeCardId];
+      setCardFace("front");
+      setActiveCardId(null);
+      onCardVisibilityChange?.(false);
+      await frame();
+      const triggerNode = resolveFocusHandle(trigger ?? null);
+      if (triggerNode !== null) AccessibilityInfo.setAccessibilityFocus(triggerNode);
+      if (title) AccessibilityInfo.announceForAccessibility(`${title}，已返回所有卡牌`);
+      return;
+    }
     setAnimating(true);
-    if (!shouldReduceMotion) await animateTo(90);
+    const trigger = activeCardId === null ? null : triggerRefs.current[activeCardId];
+    await animateTo(90);
     if (!mountedRef.current) return;
     setCardFace("front");
-    flipRotation.setValue(shouldReduceMotion ? 0 : -90);
+    flipRotation.setValue(-90);
     await frame();
     if (!mountedRef.current) return;
-    if (!shouldReduceMotion) await animateTo(0);
+    await animateTo(0);
     if (!mountedRef.current) return;
     const title = cards.find(({ id }) => id === activeCardId)?.title;
     setActiveCardId(null);
     setAnimating(false);
     onCardVisibilityChange?.(false);
+    await frame();
+    const triggerNode = resolveFocusHandle(trigger ?? null);
+    if (triggerNode !== null) AccessibilityInfo.setAccessibilityFocus(triggerNode);
     if (title) AccessibilityInfo.announceForAccessibility(`${title}，已返回所有卡牌`);
   };
 
@@ -397,7 +437,7 @@ export function ReflectionPage({
     return (
       <Animated.View
         accessibilityState={{ busy: animating }}
-        style={[styles.fullPage, { minHeight: Math.max(520, height - 180), transform: [{ perspective: 1000 }, { rotateY: rotation }] }]}
+        style={[styles.fullPage, { minHeight: Math.max(520, height - 180) }, shouldReduceMotion ? undefined : { transform: [{ perspective: 1000 }, { rotateY: rotation }] }]}
         testID="reflection-card-fullscreen"
       >
         {cardFace === "front" ? (
@@ -599,13 +639,14 @@ export function ReflectionPage({
               label={activeCardId === "journal" ? "保存这句话并返回" : "保存这张卡并返回"}
               loadingLabel="正在保存…"
               onAction={activeCardId === "journal" ? startJournalSave : saveActiveCard}
+              ref={activeCardId === "journal" ? journalStorageReturnFocusRef : undefined}
             />
             <TextAction disabled={animating} label="暂不记录，返回所有卡牌" onPress={() => { void returnToGallery(); }} />
-            {activeHasSavedContent ? <TextAction disabled={animating} label="清除此卡的记录" onPress={() => setClearConfirmationOpen(true)} /> : null}
+            {activeHasSavedContent ? <TextAction ref={clearReturnFocusRef} disabled={animating} label="清除此卡的记录" onPress={() => setClearConfirmationOpen(true)} /> : null}
           </View>
         )}
 
-        <BottomSheet onClose={() => setJournalStorageOpen(false)} title="记录会保存在哪里？" visible={storageMode === "device" && journalStorageOpen}>
+        <BottomSheet onClose={() => setJournalStorageOpen(false)} returnFocusRef={journalStorageReturnFocusRef} title="记录会保存在哪里？" visible={storageMode === "device" && journalStorageOpen}>
           <SupportingCopy>记录不会上传到云端。更换设备、删除 App 或清除数据后，可能无法找回。</SupportingCopy>
           <SupportingCopy>如果其他人能够打开你的设备和 CAVE，也可能看到这些记录。</SupportingCopy>
           <JourneyChoice
@@ -619,7 +660,7 @@ export function ReflectionPage({
           <TextAction label="返回修改" onPress={() => setJournalStorageOpen(false)} />
         </BottomSheet>
 
-        <BottomSheet onClose={() => setClearConfirmationOpen(false)} title="清除此卡的记录？" visible={clearConfirmationOpen}>
+        <BottomSheet onClose={() => setClearConfirmationOpen(false)} returnFocusRef={clearReturnFocusRef} title="清除此卡的记录？" visible={clearConfirmationOpen}>
           <SupportingCopy>这会清空这张卡已经保存的答案，但不会撤销之前获得的参与记录。</SupportingCopy>
           <JourneyAction errorMessage="清除失败，请重试。" label="确认清除此卡的记录" loadingLabel="正在清除…" onAction={clearActiveCard} />
           <TextAction label="保留这张卡" onPress={() => setClearConfirmationOpen(false)} />
@@ -687,6 +728,7 @@ export function ReflectionPage({
               accessibilityState={{ selected: recorded }}
               key={card.id}
               onPress={() => { void openCard(card.id); }}
+              ref={(node) => { triggerRefs.current[card.id] = node; }}
               style={({ pressed }) => [styles.frontCard, card.id === "journal" ? styles.fullWidthCard : null, pressed ? styles.frontCardPressed : null]}
               testID={`reflection-card-front-${card.id}`}
             >

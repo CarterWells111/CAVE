@@ -116,7 +116,7 @@ test("opens the consent source from the persistent footer link", () => {
   expect(onSourceAction).toHaveBeenCalledWith(source);
 });
 
-test("does not advance a stage after a failed atomic snapshot write and permits retry", async () => {
+test("blocks other stage changes and resumes the requested expansion after its exact snapshot retry succeeds", async () => {
   const onProgress = jest.fn()
     .mockRejectedValueOnce(new Error("storage unavailable"))
     .mockResolvedValueOnce(undefined);
@@ -126,8 +126,14 @@ test("does not advance a stage after a failed atomic snapshot write and permits 
   await waitFor(() => expect(screen.getByText("暂时无法保存，请重试。")).toBeTruthy());
   expect(screen.getByText("教育原则")).toBeTruthy();
   expect(screen.queryAllByRole("checkbox")).toHaveLength(0);
+  expect(screen.getByRole("button", { name: "你有一点在意的是……，点击展开" })).toHaveProp(
+    "accessibilityState", expect.objectContaining({ disabled: true }),
+  );
+  expect(screen.getByRole("button", { name: "带着这些感受继续" })).toHaveProp(
+    "accessibilityState", expect.objectContaining({ disabled: true }),
+  );
 
-  fireEvent.press(screen.getByRole("button", { name: "你有一点期待的是……，点击展开" }));
+  fireEvent.press(screen.getByRole("button", { name: "重试保存当前选择" }));
   expect(await screen.findByRole("checkbox", { name: "有更多时间待在一起" })).toBeTruthy();
   expect(screen.queryByText("教育原则")).toBeNull();
   expect(onProgress).toHaveBeenNthCalledWith(1, {
@@ -138,6 +144,42 @@ test("does not advance a stage after a failed atomic snapshot write and permits 
     stage: "expectations",
   });
   expect(onProgress).toHaveBeenCalledTimes(2);
+});
+
+test("keeps a failed local selection visible but locks navigation until the same snapshot saves", async () => {
+  const onProgress = jest.fn()
+    .mockResolvedValueOnce(undefined)
+    .mockRejectedValueOnce(new Error("storage unavailable"))
+    .mockResolvedValueOnce(undefined);
+  const onContinue = jest.fn();
+  render(<OvernightPage onContinue={onContinue} onProgress={onProgress} options={options} />);
+
+  fireEvent.press(screen.getByRole("button", { name: "你有一点期待的是……，点击展开" }));
+  await screen.findByRole("checkbox", { name: "有更多时间待在一起" });
+  fireEvent.press(screen.getByRole("checkbox", { name: "有更多时间待在一起" }));
+
+  await waitFor(() => expect(screen.getByText("暂时无法保存，请重试。")).toBeTruthy());
+  expect(screen.getByRole("checkbox", { name: "有更多时间待在一起" })).toHaveProp(
+    "accessibilityState", expect.objectContaining({ checked: true, disabled: true }),
+  );
+  expect(screen.getByRole("button", { name: "你有一点在意的是……，点击展开" })).toHaveProp(
+    "accessibilityState", expect.objectContaining({ disabled: true }),
+  );
+  fireEvent.press(screen.getByRole("button", { name: "带着这些感受继续" }));
+  expect(onContinue).not.toHaveBeenCalled();
+
+  fireEvent.press(screen.getByRole("button", { name: "重试保存当前选择" }));
+  await waitFor(() => expect(onProgress).toHaveBeenCalledTimes(3));
+  expect(onProgress).toHaveBeenLastCalledWith({
+    completed: false,
+    concernIds: [],
+    customNote: "",
+    expectationIds: ["expect-time"],
+    stage: "expectations",
+  });
+  expect(screen.getByRole("button", { name: "带着这些感受继续" })).toHaveProp(
+    "accessibilityState", expect.objectContaining({ disabled: false }),
+  );
 });
 
 test("persists each selection snapshot before navigation", async () => {

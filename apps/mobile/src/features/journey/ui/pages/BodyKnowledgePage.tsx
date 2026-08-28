@@ -3,7 +3,7 @@ import type {
   JourneyKnowledgeCard,
   JourneySource,
 } from "@cave/content";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { Image, type ImageSourcePropType, ScrollView, Text, View } from "react-native";
 
 import { useTheme } from "../../../../core/design/theme-provider";
@@ -55,12 +55,15 @@ export function BodyKnowledgePage({
     return sources.filter((source) => ids.has(source.id));
   }, [definition.sourceIds, sortedCards, sources]);
   const [consentOpen, setConsentOpen] = useState(false);
+  const diagramTriggerRef = useRef<View>(null);
   const [diagramOpen, setDiagramOpen] = useState(false);
   const [diagramZoom, setDiagramZoom] = useState(1);
   const [imageAttempt, setImageAttempt] = useState(0);
   const [imageError, setImageError] = useState(false);
   const [imageStatus, setImageStatus] = useState("");
   const [source, setSource] = useState<JourneySource | null>(null);
+  const sourceReturnFocusRef = useRef<View>(null);
+  const sourceTriggerRefs = useRef(new Map<string, View | null>());
 
   const complete = async () => {
     for (const card of sortedCards) await onRead?.(card.id);
@@ -74,6 +77,10 @@ export function BodyKnowledgePage({
     setImageStatus("");
     setConsentOpen(false);
     setDiagramOpen(true);
+  };
+  const openSource = (item: JourneySource) => {
+    sourceReturnFocusRef.current = sourceTriggerRefs.current.get(item.id) ?? null;
+    setSource(item);
   };
 
   const zoomPercent = Math.round(diagramZoom * 100);
@@ -90,7 +97,7 @@ export function BodyKnowledgePage({
       </InfoCard>
 
       <Card accessible={false} testID="body-diagram-card" variant="muted">
-        <SecondaryButton label="查看外阴结构图" onPress={() => setConsentOpen(true)} />
+        <SecondaryButton ref={diagramTriggerRef} label="查看外阴结构图" onPress={() => setConsentOpen(true)} />
         <Text style={styles.secondary}>可选，不查看也可以继续</Text>
         {diagramOpen ? (
           <View style={styles.diagram}>
@@ -108,21 +115,25 @@ export function BodyKnowledgePage({
                 ) : (
                   <ScrollView
                     contentContainerStyle={styles.imageZoomContent}
+                    horizontal
                     maximumZoomScale={2}
                     minimumZoomScale={1}
+                    onScroll={(event) => setDiagramZoom(event.nativeEvent.zoomScale)}
                     pinchGestureEnabled
                     style={styles.imageViewport}
                     testID="body-diagram-viewport"
+                    zoomScale={diagramZoom}
                   >
                     <Image
                       accessibilityLabel="医学图审核稿：阴阜、大阴唇、阴蒂、小阴唇、尿道口、阴道口、肛门"
+                      accessibilityRole="image"
                       accessibilityValue={{ max: 200, min: 100, now: zoomPercent, text: `${zoomPercent}%` }}
                       key={imageAttempt}
                       onError={() => setImageError(true)}
                       onLoad={() => setImageStatus("身体图已加载")}
                       resizeMode="contain"
                       source={diagramSource}
-                      style={[styles.image, { transform: [{ scale: diagramZoom }] }]}
+                      style={styles.image}
                     />
                   </ScrollView>
                 )}
@@ -186,15 +197,17 @@ export function BodyKnowledgePage({
       {relevantSources.length > 0 ? (
         <View style={styles.sources}>
           <TextAction
+            ref={(node) => { sourceTriggerRefs.current.set(relevantSources[0]!.id, node); }}
             label={`来源与医学说明 · ${relevantSources.length}`}
-            onPress={() => setSource(relevantSources[0]!)}
+            onPress={() => openSource(relevantSources[0]!)}
             underlined
           />
           {relevantSources.map((item) => (
             <TextAction
               key={item.id}
+              ref={(node) => { sourceTriggerRefs.current.set(item.id, node); }}
               label={`查看来源：${item.organization}｜${item.title}`}
-              onPress={() => setSource(item)}
+              onPress={() => openSource(item)}
             />
           ))}
         </View>
@@ -209,6 +222,7 @@ export function BodyKnowledgePage({
       <BottomSheet
         onClose={() => setConsentOpen(false)}
         reducedMotion={reducedMotion}
+        returnFocusRef={diagramTriggerRef}
         title="查看外阴结构图前"
         visible={consentOpen}
       >
@@ -228,6 +242,7 @@ export function BodyKnowledgePage({
           onAction={() => { void onSourceAction?.(source); }}
           onClose={() => setSource(null)}
           reducedMotion={reducedMotion}
+          returnFocusRef={sourceReturnFocusRef}
           title={source.title}
           updatedAt={`${source.publicationOrReviewDate} · 访问于 ${source.accessedAt}`}
           visible

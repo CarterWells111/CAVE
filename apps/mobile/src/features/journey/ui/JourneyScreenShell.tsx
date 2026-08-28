@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type PropsWithChildren } from "react";
+import { useEffect, useRef, useState, type PropsWithChildren, type RefObject } from "react";
 import { KeyboardAvoidingView, Text, View } from "react-native";
 
 import { useTheme } from "../../../core/design/theme-provider";
@@ -26,6 +26,7 @@ type Props = PropsWithChildren<{
   onBack?: JourneyActionCallback | undefined;
   onExit: JourneyActionCallback;
   runtimeNotice?: JourneyRuntimeNotice;
+  exitRef?: RefObject<View | null> | undefined;
 }>;
 
 type BackState = "idle" | "loading" | "error";
@@ -36,6 +37,7 @@ export function JourneyScreenShell({
   onBack,
   onExit,
   runtimeNotice,
+  exitRef,
   children
 }: Props) {
   const theme = useTheme();
@@ -118,6 +120,7 @@ export function JourneyScreenShell({
               totalPages={6}
               onExit={onExit}
               exitLabel="旅程选项"
+              exitRef={exitRef}
               testID="journey-progress-header"
               {...(pageNumber > 1 && onBack ? { onBack: handleBack } : {})}
             />

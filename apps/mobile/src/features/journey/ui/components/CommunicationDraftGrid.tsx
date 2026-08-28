@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Text, TextInput, View } from "react-native";
 
 import { useTheme } from "../../../../core/design/theme-provider";
@@ -35,10 +35,13 @@ export function CommunicationDraftGrid({ disabled = false, onEdit, onSetDeleted,
   const [editingText, setEditingText] = useState("");
   const [editingError, setEditingError] = useState<string>();
   const [saving, setSaving] = useState(false);
+  const editorReturnFocusRef = useRef<View>(null);
+  const editorTriggerRefs = useRef(new Map<CommunicationSectionId, View | null>());
   const editingSection = sections.find(({ id }) => id === editingId);
 
   const openEditor = (section: CommunicationDraftGridSection) => {
     if (disabled) return;
+    editorReturnFocusRef.current = editorTriggerRefs.current.get(section.id) ?? null;
     setEditingId(section.id);
     setEditingText(section.text);
     setEditingError(undefined);
@@ -112,16 +115,24 @@ export function CommunicationDraftGrid({ disabled = false, onEdit, onSetDeleted,
                     <Text selectable style={{ ...theme.typography.body, color: textColor, flexShrink: 1 }}>
                       {body}
                     </Text>
-                    <SecondaryButton disabled={disabled || saving} label="编辑" onPress={() => openEditor(section)} />
+                    <SecondaryButton
+                      accessibilityLabel={`编辑：${section.title}`}
+                      disabled={disabled || saving}
+                      label="编辑"
+                      onPress={() => openEditor(section)}
+                      ref={(node) => { editorTriggerRefs.current.set(section.id, node); }}
+                    />
                     {section.deleted ? (
                       <Button
                         disabled={disabled || saving || missingText}
+                        accessibilityLabel={`恢复到草稿：${section.title}`}
                         label="恢复到草稿"
                         onPress={() => { void onSetDeleted(section.id, false); }}
                       />
                     ) : (
                       <SecondaryButton
                         disabled={disabled || saving}
+                        accessibilityLabel={`从草稿中删除：${section.title}`}
                         label="从草稿中删除"
                         onPress={() => { void onSetDeleted(section.id, true); }}
                       />
@@ -138,6 +149,7 @@ export function CommunicationDraftGrid({ disabled = false, onEdit, onSetDeleted,
       <BottomSheet
         closeLabel="取消编辑"
         onClose={closeEditor}
+        returnFocusRef={editorReturnFocusRef}
         title={editingSection ? `编辑：${editingSection.title}` : "编辑沟通草稿"}
         visible={editingSection !== undefined}
       >

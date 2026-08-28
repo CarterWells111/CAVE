@@ -1,4 +1,4 @@
-import { useEffect, useRef, type PropsWithChildren } from "react";
+import { useEffect, useRef, type PropsWithChildren, type RefObject } from "react";
 import {
   AccessibilityInfo,
   findNodeHandle,
@@ -20,6 +20,7 @@ export type BottomSheetProps = PropsWithChildren<{
   onClose: () => void;
   onInitialFocus?: () => void;
   onRestoreFocus?: () => void;
+  returnFocusRef?: RefObject<View | null> | undefined;
   closeLabel?: string;
   reducedMotion?: boolean | undefined;
   resolveFocusHandle?: typeof findNodeHandle;
@@ -32,6 +33,7 @@ export function BottomSheet({
   onClose,
   onInitialFocus,
   onRestoreFocus,
+  returnFocusRef,
   closeLabel = `关闭${title}`,
   reducedMotion,
   resolveFocusHandle = findNodeHandle,
@@ -43,9 +45,13 @@ export function BottomSheet({
   const closeRef = useRef<View>(null);
 
   useEffect(() => {
-    if (wasVisible.current && !visible) onRestoreFocus?.();
+    if (wasVisible.current && !visible) {
+      const returnNode = resolveFocusHandle(returnFocusRef?.current ?? null);
+      if (returnNode !== null) AccessibilityInfo.setAccessibilityFocus(returnNode);
+      onRestoreFocus?.();
+    }
     wasVisible.current = visible;
-  }, [onRestoreFocus, visible]);
+  }, [onRestoreFocus, resolveFocusHandle, returnFocusRef, visible]);
 
   const handleShow = () => {
     const closeNode = resolveFocusHandle(closeRef.current);

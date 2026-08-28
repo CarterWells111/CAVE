@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { forwardRef, useEffect, useRef, useState } from "react";
 import type { AccessibilityRole, AccessibilityState } from "react-native";
 import { Text, View } from "react-native";
 
@@ -26,7 +26,7 @@ export type JourneyActionProps = {
 
 const GENERIC_ACTION_ERROR = "操作失败，请重试。";
 
-export function JourneyAction({
+export const JourneyAction = forwardRef<View, JourneyActionProps>(function JourneyAction({
   label,
   loadingLabel,
   onAction,
@@ -38,7 +38,7 @@ export function JourneyAction({
   errorMessage,
   accessibilityLabel,
   testID
-}: JourneyActionProps) {
+}: JourneyActionProps, ref) {
   const theme = useTheme();
   const inFlightRef = useRef(false);
   const mountedRef = useRef(true);
@@ -105,6 +105,7 @@ export function JourneyAction({
   return (
     <View style={{ gap: theme.space.sm }}>
       <Button
+        ref={ref}
         accessibilityLabel={accessibilityLabel}
         disabled={disabled || !onAction}
         label={visibleLabel}
@@ -132,4 +133,4 @@ export function JourneyAction({
       ) : null}
     </View>
   );
-}
+});

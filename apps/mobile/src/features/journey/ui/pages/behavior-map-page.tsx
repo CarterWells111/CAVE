@@ -88,7 +88,8 @@ export function BehaviorMapPage({
   resolveFocusHandle = findNodeHandle,
 }: BehaviorMapPageProps) {
   const theme = useTheme();
-  const shouldReduceMotion = reducedMotion ?? useReducedMotion();
+  const systemReducedMotion = useReducedMotion();
+  const shouldReduceMotion = reducedMotion ?? systemReducedMotion;
   const styles = createStyles(theme);
   const { height } = useWindowDimensions();
   const flipRotation = useRef(new Animated.Value(0)).current;
@@ -155,6 +156,19 @@ export function BehaviorMapPage({
 
   const openCard = async (card: DeckCard) => {
     if (animating || activeCard) return;
+    if (shouldReduceMotion) {
+      setActiveCard(card);
+      setCardFace("back");
+      setDraftAttitude(card.kind === "behavior" ? attitudes[card.id] : undefined);
+      setCustomLabel("");
+      setSensitiveConfirmationChecked(false);
+      if (card.kind === "more") setSensitiveStage(sensitiveConsent === true ? "confirmed" : "intro");
+      onCardVisibilityChange?.(true);
+      AccessibilityInfo.announceForAccessibility(`${card.frontLabel}，已展开`);
+      await frame();
+      if (mountedRef.current) focusQuestion();
+      return;
+    }
     setAnimating(true);
     setActiveCard(card);
     setCardFace("front");
@@ -166,13 +180,13 @@ export function BehaviorMapPage({
     flipRotation.setValue(0);
     await frame();
     if (!mountedRef.current) return;
-    if (!shouldReduceMotion) await animateTo(90);
+    await animateTo(90);
     if (!mountedRef.current) return;
     setCardFace("back");
-    flipRotation.setValue(shouldReduceMotion ? 0 : -90);
+    flipRotation.setValue(-90);
     await frame();
     if (!mountedRef.current) return;
-    if (!shouldReduceMotion) await animateTo(0);
+    await animateTo(0);
     if (!mountedRef.current) return;
     setAnimating(false);
     AccessibilityInfo.announceForAccessibility(`${card.frontLabel}，已展开`);
@@ -181,14 +195,26 @@ export function BehaviorMapPage({
 
   const returnToGallery = async () => {
     if (animating) return;
+    if (shouldReduceMotion) {
+      const label = activeCard?.frontLabel;
+      const trigger = activeCard ? triggerRefs.current[activeCard.id] : null;
+      setCardFace("front");
+      setActiveCard(null);
+      onCardVisibilityChange?.(false);
+      await frame();
+      const triggerNode = resolveFocusHandle(trigger ?? null);
+      if (triggerNode !== null) AccessibilityInfo.setAccessibilityFocus(triggerNode);
+      if (label) AccessibilityInfo.announceForAccessibility(`${label}，已返回所有卡牌`);
+      return;
+    }
     setAnimating(true);
-    if (!shouldReduceMotion) await animateTo(90);
+    await animateTo(90);
     if (!mountedRef.current) return;
     setCardFace("front");
-    flipRotation.setValue(shouldReduceMotion ? 0 : -90);
+    flipRotation.setValue(-90);
     await frame();
     if (!mountedRef.current) return;
-    if (!shouldReduceMotion) await animateTo(0);
+    await animateTo(0);
     if (!mountedRef.current) return;
     const label = activeCard?.frontLabel;
     const trigger = activeCard ? triggerRefs.current[activeCard.id] : null;
@@ -251,7 +277,8 @@ export function BehaviorMapPage({
       <Animated.View
         style={[
           styles.fullPage,
-          { minHeight: Math.max(520, height - 180), transform: [{ perspective: 1000 }, { rotateY: rotation }] },
+          { minHeight: Math.max(520, height - 180) },
+          shouldReduceMotion ? undefined : { transform: [{ perspective: 1000 }, { rotateY: rotation }] },
         ]}
         testID="behavior-card-fullscreen"
       >

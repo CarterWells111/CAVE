@@ -47,6 +47,7 @@ function selectionSummary(count: number): string {
 
 function AccordionPanel({
   busy,
+  disabled,
   expanded,
   ids,
   onOptionPress,
@@ -55,6 +56,7 @@ function AccordionPanel({
   title,
 }: {
   busy: boolean;
+  disabled: boolean;
   expanded: boolean;
   ids: string[];
   onOptionPress: (option: JourneyOption) => void;
@@ -71,8 +73,8 @@ function AccordionPanel({
       <Pressable
         accessibilityLabel={`${title}，${summary}`}
         accessibilityRole="button"
-        accessibilityState={{ busy, disabled: busy, expanded }}
-        disabled={busy}
+        accessibilityState={{ busy, disabled, expanded }}
+        disabled={disabled}
         onPress={onToggle}
         style={({ pressed }) => ({
           borderRadius: theme.radius.control,
@@ -86,7 +88,7 @@ function AccordionPanel({
             {expanded ? "−" : "+"}
           </Text>
         </View>
-        <Text style={styles.secondary}>{busy ? "正在展开…" : summary}</Text>
+          <Text style={styles.secondary}>{busy ? "正在展开…" : disabled ? "保存失败，请重试" : summary}</Text>
       </Pressable>
 
       {expanded ? (
@@ -95,6 +97,7 @@ function AccordionPanel({
             <ChoiceChip
               key={option.id}
               label={option.label}
+              disabled={disabled}
               onPress={() => onOptionPress(option)}
               selected={ids.includes(option.id)}
               semantics="checkbox"
@@ -131,16 +134,21 @@ export function OvernightPage({
   const [stagePending, setStagePending] = useState(false);
   const [stageError, setStageError] = useState(false);
   const [failedProgress, setFailedProgress] = useState<{
-    stage: Stage;
-    expectationIds: string[];
-    concernIds: string[];
-    customNote: string;
-    completed: false;
+    input: {
+      stage: Stage;
+      expectationIds: string[];
+      concernIds: string[];
+      customNote: string;
+      completed: false;
+    };
+    resumeOpening: Panel | null;
   } | null>(null);
   const [sourceOpen, setSourceOpen] = useState(false);
+  const sourceReturnFocusRef = useRef<View>(null);
   const stageChangeInFlightRef = useRef(false);
   const persistedStageRef = useRef<Stage>(initialStage);
   const bothCollapsed = !expanded.expectations && !expanded.concerns;
+  const interactionsLocked = stagePending || failedProgress !== null;
 
   const finishOpening = (panel: Panel) => {
     persistedStageRef.current = panel;
@@ -149,17 +157,21 @@ export function OvernightPage({
     stageChangeInFlightRef.current = false;
   };
 
-  const saveProgress = async (input: NonNullable<OvernightPageProps["onProgress"]> extends (value: infer Input) => ActionResult ? Input : never) => {
+  const saveProgress = async (
+    input: NonNullable<OvernightPageProps["onProgress"]> extends (value: infer Input) => ActionResult ? Input : never,
+    resumeOpening: Panel | null = null,
+  ) => {
     setStageError(false);
     setStagePending(true);
     try {
       await onProgress?.(input);
       persistedStageRef.current = input.stage;
       setFailedProgress(null);
+      return true;
     } catch {
       setStageError(true);
-      setFailedProgress(input);
-      throw new Error("overnight-progress-save-failed");
+      setFailedProgress({ input, resumeOpening });
+      return false;
     } finally {
       setStagePending(false);
     }
@@ -174,6 +186,7 @@ export function OvernightPage({
   });
 
   const togglePanel = (panel: Panel) => {
+    if (interactionsLocked) return;
     if (expanded[panel]) {
       setExpanded((current) => ({ ...current, [panel]: false }));
       return;
@@ -185,14 +198,13 @@ export function OvernightPage({
     if (stageChangeInFlightRef.current) return;
 
     stageChangeInFlightRef.current = true;
-    void saveProgress(progressInput(panel)).then(
-      () => finishOpening(panel),
-      () => undefined,
-    ).finally(() => { stageChangeInFlightRef.current = false; });
+    void saveProgress(progressInput(panel), panel).then((saved) => {
+      if (saved) finishOpening(panel);
+    }).finally(() => { stageChangeInFlightRef.current = false; });
   };
 
   const saveSelection = (panel: Panel, option: JourneyOption) => {
-    if (stagePending) return;
+    if (interactionsLocked) return;
     const nextExpectationIds = panel === "expectations"
       ? updateSelection(expectationIds, option, expectations)
       : expectationIds;
@@ -204,12 +216,15 @@ export function OvernightPage({
     if (onProgress === undefined) {
       return;
     }
-    void saveProgress(progressInput(panel, nextExpectationIds, nextConcernIds)).catch(() => undefined);
+    void saveProgress(progressInput(panel, nextExpectationIds, nextConcernIds));
   };
 
   const retryProgress = () => {
     if (failedProgress === null || stagePending) return;
-    void saveProgress(failedProgress).catch(() => undefined);
+    const failed = failedProgress;
+    void saveProgress(failed.input, failed.resumeOpening).then((saved) => {
+      if (saved && failed.resumeOpening !== null) finishOpening(failed.resumeOpening);
+    });
   };
 
   return (
@@ -225,6 +240,7 @@ export function OvernightPage({
       <View style={styles.accordions}>
         <AccordionPanel
           busy={stagePending}
+          disabled={interactionsLocked}
           expanded={expanded.expectations}
           ids={expectationIds}
           onOptionPress={(option) => saveSelection("expectations", option)}
@@ -234,6 +250,7 @@ export function OvernightPage({
         />
         <AccordionPanel
           busy={stagePending}
+          disabled={interactionsLocked}
           expanded={expanded.concerns}
           ids={concernIds}
           onOptionPress={(option) => saveSelection("concerns", option)}
@@ -249,7 +266,7 @@ export function OvernightPage({
             暂时无法保存，请重试。
           </Text>
           <JourneyAction
-            disabled={stagePending}
+          disabled={stagePending}
             errorMessage="暂时无法保存，请重试。"
             label="重试保存当前选择"
             loadingLabel="正在重试保存…"
@@ -264,6 +281,7 @@ export function OvernightPage({
             accessibilityLabel="同意原则与来源"
             accessibilityRole="link"
             onPress={() => setSourceOpen(true)}
+            ref={sourceReturnFocusRef}
             style={({ pressed }) => ({
               justifyContent: "center",
               minHeight: theme.size.minimumTouchTarget,
@@ -284,6 +302,7 @@ export function OvernightPage({
           errorMessage="保存失败，请重试。"
           label="带着这些感受继续"
           loadingLabel="正在继续…"
+          disabled={interactionsLocked}
           onAction={() => onContinue({ expectationIds, concernIds, customNote: initialCustomNote })}
         />
       </View>
@@ -294,6 +313,7 @@ export function OvernightPage({
           onAction={() => { void onSourceAction?.(consentSource); }}
           onClose={() => setSourceOpen(false)}
           reducedMotion={reducedMotion}
+          returnFocusRef={sourceReturnFocusRef}
           title={consentSource.title}
           updatedAt={`${consentSource.publicationOrReviewDate} · 访问于 ${consentSource.accessedAt}`}
           visible={sourceOpen}
