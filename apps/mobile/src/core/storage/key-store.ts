@@ -2,8 +2,13 @@ import type { SecretRepository } from "./types";
 
 export const SECRET_NAMES = {
   databaseKey: "db.key.v1",
-  installationToken: "installation.token.v1"
+  installationToken: "installation.token.v1",
+  adultDeclaration: "adult.declaration.v1",
+  deletionPending: "local-data.deletion-pending.v1"
 } as const;
+
+const ADULT_DECLARATION_VALUE = "confirmed";
+const DELETION_PENDING_VALUE = "pending";
 
 const DEVICE_ONLY_OPTIONS = {
   keychainAccessible: "AFTER_FIRST_UNLOCK_THIS_DEVICE_ONLY"
@@ -22,6 +27,13 @@ export interface SecureStoreAdapter {
 export interface DatabaseSecretRepository extends SecretRepository {
   getDatabaseKey(): Promise<string | null>;
   deleteDatabaseKey(): Promise<void>;
+  hasAdultDeclaration(): Promise<boolean>;
+  recordAdultDeclaration(): Promise<void>;
+  deleteAdultDeclaration(): Promise<void>;
+  hasPendingLocalDataDeletion(): Promise<boolean>;
+  recordPendingLocalDataDeletion(): Promise<void>;
+  clearPendingLocalDataDeletion(): Promise<void>;
+  deleteInstallationToken(): Promise<void>;
 }
 
 type SecretRepositoryDependencies = {
@@ -93,7 +105,33 @@ export function createSecretRepository({
     getOrCreateDatabaseKey: () => getOrCreate(SECRET_NAMES.databaseKey),
     getOrCreateInstallationToken: () => getOrCreate(SECRET_NAMES.installationToken),
     deleteDatabaseKey: () => secureStore.deleteItemAsync(SECRET_NAMES.databaseKey),
+    async hasAdultDeclaration() {
+      return await secureStore.getItemAsync(SECRET_NAMES.adultDeclaration)
+        === ADULT_DECLARATION_VALUE;
+    },
+    recordAdultDeclaration: () => secureStore.setItemAsync(
+      SECRET_NAMES.adultDeclaration,
+      ADULT_DECLARATION_VALUE,
+      DEVICE_ONLY_OPTIONS
+    ),
+    deleteAdultDeclaration: () => secureStore.deleteItemAsync(SECRET_NAMES.adultDeclaration),
+    async hasPendingLocalDataDeletion() {
+      return await secureStore.getItemAsync(SECRET_NAMES.deletionPending)
+        === DELETION_PENDING_VALUE;
+    },
+    recordPendingLocalDataDeletion: () => secureStore.setItemAsync(
+      SECRET_NAMES.deletionPending,
+      DELETION_PENDING_VALUE,
+      DEVICE_ONLY_OPTIONS
+    ),
+    clearPendingLocalDataDeletion: () => secureStore.deleteItemAsync(
+      SECRET_NAMES.deletionPending
+    ),
+    deleteInstallationToken: () => secureStore.deleteItemAsync(
+      SECRET_NAMES.installationToken
+    ),
     async deleteAllSecrets() {
+      await secureStore.deleteItemAsync(SECRET_NAMES.adultDeclaration);
       await secureStore.deleteItemAsync(SECRET_NAMES.databaseKey);
       await secureStore.deleteItemAsync(SECRET_NAMES.installationToken);
     }

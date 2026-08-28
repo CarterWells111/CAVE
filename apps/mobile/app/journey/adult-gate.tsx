@@ -2,14 +2,19 @@ import { useRouter } from "expo-router";
 import { useCallback, useEffect, useRef } from "react";
 
 import { Screen } from "../../src/core/ui/Screen";
-import { useJourneyRuntime } from "../../src/features/journey/runtime/JourneyRuntimeProvider";
+import {
+  useAdultDeclaration,
+  useOptionalJourneyRuntime
+} from "../../src/features/journey/runtime/JourneyRuntimeProvider";
 import { AdultGatePage } from "../../src/features/journey/ui/pages/adult-gate-page";
 
 export default function AdultGateRoute() {
   const router = useRouter();
-  const runtime = useJourneyRuntime();
-  const alreadyConfirmed = runtime.snapshot?.ageConfirmed === true;
+  const adultDeclaration = useAdultDeclaration();
+  const runtime = useOptionalJourneyRuntime();
+  const alreadyConfirmed = runtime?.snapshot?.ageConfirmed === true;
   const activeRef = useRef(false);
+  const confirmationStartedRef = useRef(false);
   const decisionRef = useRef<object | null>(null);
   const navigatedRef = useRef(false);
 
@@ -29,14 +34,18 @@ export default function AdultGateRoute() {
   }, [router]);
 
   useEffect(() => {
-    if (alreadyConfirmed) openPreface();
+    if (alreadyConfirmed && !confirmationStartedRef.current) openPreface();
   }, [alreadyConfirmed, openPreface]);
 
   const confirmAdult = () => {
     if (!activeRef.current || decisionRef.current !== null || navigatedRef.current) return;
     const decision = {};
+    confirmationStartedRef.current = true;
     decisionRef.current = decision;
-    return runtime.runAndRefresh(() => runtime.service.confirmAdult())
+    const confirmation = runtime === null
+      ? adultDeclaration.confirmAdult()
+      : runtime.runAndRefresh(() => adultDeclaration.confirmAdult());
+    return confirmation
       .then(() => {
         if (activeRef.current && decisionRef.current === decision) openPreface();
       })
@@ -53,7 +62,7 @@ export default function AdultGateRoute() {
     router.replace("/underage-exit");
   };
 
-  if (alreadyConfirmed) return null;
+  if (alreadyConfirmed && !confirmationStartedRef.current) return null;
   return (
     <Screen>
       <AdultGatePage

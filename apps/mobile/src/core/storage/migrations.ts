@@ -1,4 +1,4 @@
-export const CURRENT_SCHEMA_VERSION = 6;
+export const CURRENT_SCHEMA_VERSION = 7;
 
 export const SCHEMA_V1 = `
 CREATE TABLE IF NOT EXISTS course_progress (
@@ -92,3 +92,22 @@ CREATE TABLE IF NOT EXISTS app_preferences (
   singleton_id INTEGER PRIMARY KEY NOT NULL CHECK (singleton_id = 1),
   theme_preference TEXT NOT NULL CHECK (theme_preference IN ('system', 'light', 'dark'))
 );`;
+
+export const SCHEMA_V7 = `
+CREATE TABLE IF NOT EXISTS journey_drafts_v3 (
+  id TEXT PRIMARY KEY NOT NULL,
+  schema_version INTEGER NOT NULL CHECK (schema_version = 3),
+  payload TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);`;
+
+export const DATABASE_MIGRATIONS = [
+  { version: 1, schema: SCHEMA_V1 },
+  { version: 2, schema: SCHEMA_V2 },
+  { version: 3, schema: SCHEMA_V3 },
+  { version: 4, schema: SCHEMA_V4 },
+  { version: 5, schema: SCHEMA_V5 },
+  { version: 6, schema: SCHEMA_V6 },
+  { version: 7, schema: SCHEMA_V7 }
+] as const;

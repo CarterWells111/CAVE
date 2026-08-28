@@ -7,7 +7,7 @@
     "title": "身体反应不等于同意",
     "body": "湿润、兴奋或高潮可能是身体的自主反应，不能替你回答“我愿不愿意”。",
     "sourceIds": ["SRC-003", "SRC-005"],
-    "reviewStatus": "expert_review_pending"
+    "reviewStatus": "internal_test_approved", "reviewer": "annie", "reviewerRole": "内部测试审核人", "reviewedAt": "2026-08-28T09:56:30Z", "reviewedVersion": "2026-08-28-review-1", "reviewConclusion": "仅内测通过；发布前仍需合格专家完成医疗、安全或性教育审核"
   },
   {
     "id": "draft-knowledge-consent",
@@ -17,7 +17,7 @@
     "title": "身体与心里的节奏可能不同",
     "body": "你可能心里期待，身体却还没有准备好；也可能身体有所反应，心里仍然犹豫。两种情况都不要求你继续。",
     "sourceIds": ["SRC-003", "SRC-005"],
-    "reviewStatus": "expert_review_pending"
+    "reviewStatus": "internal_test_approved", "reviewer": "annie", "reviewerRole": "内部测试审核人", "reviewedAt": "2026-08-28T09:56:30Z", "reviewedVersion": "2026-08-28-review-1", "reviewConclusion": "仅内测通过；发布前仍需合格专家完成医疗、安全或性教育审核"
   },
   {
     "id": "draft-knowledge-health",
@@ -27,6 +27,6 @@
     "title": "疼痛不需要成为“第一次”的证明",
     "body": "感到疼痛或明显不适时，可以停下或改变方式。如果疼痛频繁出现或程度较重，应该咨询妇产科或其他医疗专业人员。",
     "sourceIds": ["SRC-006"],
-    "reviewStatus": "expert_review_pending"
+    "reviewStatus": "internal_test_approved", "reviewer": "annie", "reviewerRole": "内部测试审核人", "reviewedAt": "2026-08-28T09:56:30Z", "reviewedVersion": "2026-08-28-review-1", "reviewConclusion": "仅内测通过；发布前仍需合格专家完成医疗、安全或性教育审核"
   }
 ]

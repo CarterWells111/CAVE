@@ -71,11 +71,11 @@ export const JOURNEY_SOURCE_REGISTRY: readonly JourneySource[] = [
     publicationOrReviewDate: "2022-08-29", accessedAt: "2026-08-27", verificationStatus: "source_verified"
   },
   {
-    id: "SRC-011", sourceType: "SAFE", title: "12338 妇联维权服务中心地图上线",
-    organization: "全国妇联女性之声 / 北京妇女网转载",
-    url: "https://study.bjwomen.gov.cn/thought/politics/2025/05/30/16190.shtml",
+    id: "SRC-011", sourceType: "SAFE", title: "天地图助力12338妇联维权服务中心地图上线",
+    organization: "国家基础地理信息中心",
+    url: "https://www.ngcc.cn/xwzx/ywcg/202506/t20250617_2538.html",
     appliesTo: "中国大陆所在地 12338 妇女维权热线及线下服务中心入口",
-    publicationOrReviewDate: "2025-05-30", accessedAt: "2026-08-27", verificationStatus: "source_verified"
+    publicationOrReviewDate: "2025-06-17", accessedAt: "2026-08-28", verificationStatus: "source_verified"
   },
   {
     id: "SRC-012", sourceType: "SAFE", title: "权益科工作职能", organization: "深圳市盐田区妇女联合会",

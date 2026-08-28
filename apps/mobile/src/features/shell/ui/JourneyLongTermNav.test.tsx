@@ -6,10 +6,14 @@ const mockReplace = jest.fn();
 const mockLoad = jest.fn();
 const mockRouter = { replace: mockReplace };
 const mockShellState = { load: mockLoad };
+let mockRuntime: {
+  shellState: typeof mockShellState;
+  snapshot: { ageConfirmed: boolean } | null;
+} | null = { shellState: mockShellState, snapshot: null };
 
 jest.mock("expo-router", () => ({ useRouter: () => mockRouter }));
 jest.mock("../../journey/runtime/JourneyRuntimeProvider", () => ({
-  useJourneyRuntime: () => ({ shellState: mockShellState })
+  useOptionalJourneyRuntime: () => mockRuntime
 }));
 
 function deferred<T>() {
@@ -22,7 +26,19 @@ function deferred<T>() {
   return { promise, reject, resolve };
 }
 
-beforeEach(() => jest.clearAllMocks());
+beforeEach(() => {
+  jest.clearAllMocks();
+  mockRuntime = { shellState: mockShellState, snapshot: null };
+});
+
+test("renders nothing and never reads private shell state before authorization", () => {
+  mockRuntime = null;
+
+  render(<JourneyLongTermNav activeTab="home" />);
+
+  expect(mockLoad).not.toHaveBeenCalled();
+  expect(screen.queryAllByRole("tab")).toHaveLength(0);
+});
 
 test("renders no long-term navigation while completion is loading or absent", async () => {
   const pending = deferred<null>();
@@ -33,6 +49,20 @@ test("renders no long-term navigation while completion is loading or absent", as
   await act(async () => pending.resolve(null));
   expect(screen.queryAllByRole("tab")).toHaveLength(0);
   expect(mockReplace).not.toHaveBeenCalled();
+});
+
+test("reveals the four tabs as soon as the first journey has an adult-confirmed draft", async () => {
+  const pending = deferred<null>();
+  mockRuntime = { shellState: mockShellState, snapshot: { ageConfirmed: true } };
+  mockLoad.mockReturnValueOnce(pending.promise);
+  render(<JourneyLongTermNav activeTab="home" />);
+
+  expect(screen.getAllByRole("tab")).toHaveLength(4);
+  fireEvent.press(screen.getByRole("tab", { name: "首页" }));
+  expect(mockReplace).toHaveBeenCalledWith("/(tabs)");
+
+  await act(async () => pending.resolve(null));
+  expect(screen.getAllByRole("tab")).toHaveLength(4);
 });
 
 test("reveals the four tabs only after a completion marker and routes each destination", async () => {

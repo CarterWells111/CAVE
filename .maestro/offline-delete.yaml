@@ -1,0 +1,25 @@
+appId: com.neijie.cave
+# Static 07A local-state spec. Offline transport/device setup belongs to external 07B evidence.
+name: Local delete-all clears release state
+tags:
+  - release-static-spec
+---
+- runFlow: back-edit.yaml
+- tapOn: "首页"
+- tapOn: "打开设置"
+- assertVisible: "设置"
+- assertVisible: "旅程、练习和沟通卡保存在本机.*"
+- scrollUntilVisible:
+    element:
+      text: "删除全部本机数据"
+    direction: DOWN
+- tapOn: "删除全部本机数据"
+- assertVisible: "请再次确认：全部本机数据会被删除，并且无法恢复。"
+- tapOn: "确认删除全部本机数据"
+- extendedWaitUntil:
+    visible: "本机数据已删除。"
+    timeout: 20000
+- tapOn: "返回欢迎页"
+- assertVisible: "欢迎来到内界 CAVE"
+- assertNotVisible: "继续本机旅程"
+- assertNotVisible: "1 / 7"

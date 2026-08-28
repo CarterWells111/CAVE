@@ -1,0 +1,45 @@
+---
+import ContentCard from "../components/ContentCard.astro";
+import PageHero from "../components/PageHero.astro";
+import { privacyPoints, site } from "../content/site";
+import BaseLayout from "../layouts/BaseLayout.astro";
+---
+
+<BaseLayout
+  title="隐私说明｜CAVE 内界"
+  description="了解 CAVE 首版如何在本机保留与删除数据，以及系统相册、剪贴板和设备备份的边界。"
+  path="/privacy/"
+>
+  <section class="section page-section" aria-labelledby="privacy-title">
+    <PageHero
+      eyebrow="Privacy"
+      title="隐私说明"
+      description="你的私密探索默认留在自己的设备上，也应当由你决定何时保留、删除或导出。"
+      headingId="privacy-title"
+    />
+
+    <section class="prose-block" aria-labelledby="privacy-method-title">
+      <h2 id="privacy-method-title">首版的数据处理方式</h2>
+      <ul class="privacy-list" role="list">
+        {privacyPoints.map((point) => <li data-privacy-point>{point}</li>)}
+      </ul>
+    </section>
+
+    <div class="card-grid card-grid--two">
+      <ContentCard title="保留与删除" eyebrow="你的选择">
+        <p>本机数据会保留到你在 App 内选择删除，或由操作系统移除 App 数据为止。</p>
+        <p>要主动删除，请在“设置”中选择“删除全部本机数据”，并在二次确认后完成清除。</p>
+      </ContentCard>
+      <ContentCard title="系统服务边界" eyebrow="设备与 Apple">
+        <p>系统相册、系统剪贴板、设备备份与相册同步由 Apple 和你的设备设置控制，不属于 CAVE 自有服务器。</p>
+        <p>导出后，请按自己的设备与账号安全需要管理这些副本。</p>
+      </ContentCard>
+    </div>
+
+    <aside class="callout" aria-labelledby="operator-title">
+      <h2 id="operator-title">运营与联系</h2>
+      <p>CAVE 由 ZHIQI LIANG（以内界 CAVE 名义运营）。</p>
+      <p>隐私问题请发送邮件至 <a href={`mailto:${site.supportEmail}`}>{site.supportEmail}</a>。</p>
+    </aside>
+  </section>
+</BaseLayout>

@@ -47,6 +47,7 @@ describe("parseGatewayEnv", () => {
 
   it.each([
     ["MODEL_BASE_URL", "ftp://models.example.test/v1"],
+    ["MODEL_BASE_URL", "http://models.example.test/v1"],
     ["MODEL_API_KEY", "   "],
     ["MODEL_NAME", "   "]
   ])("rejects unsafe or blank live %s", (field, invalidValue) => {

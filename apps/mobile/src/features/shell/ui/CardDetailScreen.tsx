@@ -76,6 +76,7 @@ export function CardDetailScreen({
       }}
       contentInsetAdjustmentBehavior="automatic"
       keyboardShouldPersistTaps="handled"
+      style={{ backgroundColor: theme.color.background }}
       testID="card-detail-scroll"
     >
       <View

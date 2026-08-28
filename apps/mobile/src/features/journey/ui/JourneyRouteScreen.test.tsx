@@ -105,7 +105,7 @@ test("renders active snapshot state and persists back navigation before replacin
   expect(mockRuntime.runAndRefresh).toHaveBeenCalledTimes(1);
 });
 
-test("opens journey options and exits to root without deleting the active draft", async () => {
+test("opens journey options and exits to the four-tab home without deleting the active draft", async () => {
   mockRuntime.snapshot = createUnlockedDraft("reflection");
 
   render(
@@ -118,7 +118,7 @@ test("opens journey options and exits to root without deleting the active draft"
   expect(screen.getByRole("header", { name: "旅程选项" })).toBeTruthy();
   fireEvent.press(screen.getByRole("button", { name: "退出旅程" }));
 
-  await waitFor(() => expect(mockReplace).toHaveBeenCalledWith("/"));
+  await waitFor(() => expect(mockReplace).toHaveBeenCalledWith("/(tabs)"));
   expect(mockRuntime.service.resetJourney).not.toHaveBeenCalled();
   expect(mockRuntime.service.navigateTo).not.toHaveBeenCalled();
   expect(mockRuntime.runAndRefresh).not.toHaveBeenCalled();
@@ -185,7 +185,7 @@ test("does not replace the root with a late forward navigation after exit", asyn
   fireEvent.press(screen.getByRole("button", { name: "退出旅程" }));
   await act(async () => pendingForward.resolve());
 
-  expect(mockReplace).toHaveBeenCalledWith("/");
+  expect(mockReplace).toHaveBeenCalledWith("/(tabs)");
   expect(mockReplace).not.toHaveBeenCalledWith("/journey/behavior-map");
   expect(mockRuntime.service.resetJourney).not.toHaveBeenCalled();
 });

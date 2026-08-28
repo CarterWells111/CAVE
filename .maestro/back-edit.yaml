@@ -1,0 +1,74 @@
+appId: com.neijie.cave
+name: Back edit, branch history, and delete one review
+tags:
+  - release-static-spec
+---
+- runFlow: core-flow.yaml
+- tapOn: "回顾"
+- assertVisible: "首页"
+- assertVisible: "回顾"
+- assertVisible: "练习"
+- assertVisible: "我的"
+- tapOn:
+    text: "打开回顾：.*"
+    index: 0
+- assertVisible: "从这条回顾开始新分支"
+- tapOn: "从这条回顾开始新分支"
+
+- assertVisible: "7 / 7"
+- tapOn: "返回上一页"
+- assertVisible: "6 / 7"
+- tapOn: "返回上一页"
+- assertVisible: "5 / 7"
+- scrollUntilVisible:
+    element:
+      text: "给此刻留一句话"
+    direction: DOWN
+- tapOn: "给此刻留一句话"
+- inputText: "用于发布前回退编辑验证"
+- tapOn: "保存这次记录"
+- tapOn: "确认只保存在这台设备"
+- scrollUntilVisible:
+    element:
+      text: "带着这些发现去练习"
+    direction: DOWN
+- tapOn: "带着这些发现去练习"
+- assertVisible: "6 / 7"
+- tapOn: "返回上一页"
+- assertVisible: "用于发布前回退编辑验证"
+- scrollUntilVisible:
+    element:
+      text: "带着这些发现去练习"
+    direction: DOWN
+- tapOn: "带着这些发现去练习"
+
+- tapOn: "开始情境练习"
+- tapOn: "不说具体行为"
+- tapOn: "想先暂停，再感受一下"
+- tapOn: "就用这句话"
+- tapOn: "安静待一会儿"
+- tapOn: "跳过不太理想的回应"
+- scrollUntilVisible:
+    element:
+      text: "继续整理我的准备"
+    direction: DOWN
+- tapOn: "继续整理我的准备"
+- scrollUntilVisible:
+    element:
+      text: "完成首次记录"
+    direction: DOWN
+- tapOn: "完成首次记录"
+
+- extendedWaitUntil:
+    visible: "首页"
+    timeout: 20000
+- tapOn: "回顾"
+- tapOn:
+    text: "打开.*"
+    index: 0
+- tapOn: "删除这条回顾"
+- assertVisible: "请再次确认：这条回顾会从本机删除，并且无法恢复。"
+- tapOn: "确认删除这条回顾"
+- assertVisible: "这条回顾已删除。"
+- tapOn: "返回回顾历史"
+- assertVisible: "历史回顾"

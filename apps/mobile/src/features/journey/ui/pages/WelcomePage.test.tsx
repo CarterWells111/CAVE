@@ -4,23 +4,26 @@ import { WelcomePage } from "./WelcomePage";
 
 test("shows one journey action and a top-right help action without age or login prompts", () => {
   const onStart = jest.fn();
-  const onOpenSettings = jest.fn();
-  render(<WelcomePage onOpenSettings={onOpenSettings} onStart={onStart} resumeAvailable={false} />);
+  render(<WelcomePage onStart={onStart} resumeAvailable={false} />);
 
   expect(screen.getByRole("button", { name: "开启旅程" })).toBeTruthy();
   expect(screen.getByRole("button", { name: "帮助" })).toBeTruthy();
-  expect(screen.getByRole("button", { name: "设置" })).toBeTruthy();
-  expect(screen.getAllByRole("button").slice(0, 2).map((button) => button.props.accessibilityLabel))
-    .toEqual(["设置", "帮助"]);
+  expect(screen.queryByRole("button", { name: "设置" })).toBeNull();
   expect(screen.queryByText(/18|成年|登录|邮箱|验证码/u)).toBeNull();
   fireEvent.press(screen.getByRole("button", { name: "开启旅程" }));
   expect(onStart).toHaveBeenCalledTimes(1);
+});
+
+test("shows settings only when an authorized route supplies the action", () => {
+  const onOpenSettings = jest.fn();
+  render(<WelcomePage onOpenSettings={onOpenSettings} onStart={jest.fn()} resumeAvailable />);
+
   fireEvent.press(screen.getByRole("button", { name: "设置" }));
   expect(onOpenSettings).toHaveBeenCalledTimes(1);
 });
 
 test("help explains product scope, 18+ gate, non-diagnosis and local-first privacy", () => {
-  render(<WelcomePage onOpenSettings={jest.fn()} onStart={jest.fn()} resumeAvailable={false} />);
+  render(<WelcomePage onStart={jest.fn()} resumeAvailable={false} />);
   fireEvent.press(screen.getByRole("button", { name: "帮助" }));
 
   expect(screen.getByRole("header", { name: "关于内界 CAVE" })).toBeTruthy();
@@ -33,6 +36,17 @@ test("help explains product scope, 18+ gate, non-diagnosis and local-first priva
   expect(screen.getByText(/旅程记录以本机保存为先/u)).toBeTruthy();
   expect(screen.queryByText(/身体与安全知识可以先阅读/u)).toBeNull();
   expect(screen.queryByText(/验证码|登录|账号|多设备/u)).toBeNull();
+});
+
+test("shows the AI assistance disclosure only inside help", () => {
+  render(<WelcomePage onStart={jest.fn()} resumeAvailable={false} />);
+
+  expect(screen.queryByText(/部分页面内容由 AI 辅助生成/u)).toBeNull();
+
+  fireEvent.press(screen.getByRole("button", { name: "帮助" }));
+
+  expect(screen.getByText(/部分页面内容由 AI 辅助生成，并经团队编辑审核/u)).toBeTruthy();
+  expect(screen.getByText(/AI 辅助、团队编辑审核和免责声明都不能代替医疗、安全及紧急支持内容所需的专业审核/u)).toBeTruthy();
 });
 
 test("uses a continue label when an unfinished local journey exists", () => {

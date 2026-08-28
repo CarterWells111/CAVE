@@ -1,7 +1,10 @@
 import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 
-import { useJourneyRuntime } from "../../journey/runtime/JourneyRuntimeProvider";
+import {
+  type JourneyRuntimeContextValue,
+  useOptionalJourneyRuntime
+} from "../../journey/runtime/JourneyRuntimeProvider";
 import { LongTermBottomNav, type LongTermTab } from "./LongTermBottomNav";
 import { getLongTermDestination } from "./long-term-navigation";
 
@@ -10,8 +13,24 @@ export type JourneyLongTermNavProps = Readonly<{
 }>;
 
 export function JourneyLongTermNav({ activeTab }: JourneyLongTermNavProps) {
+  const runtime = useOptionalJourneyRuntime();
+  if (runtime === null) return null;
+
+  return (
+    <AuthorizedJourneyLongTermNav
+      activeTab={activeTab}
+      shellState={runtime.shellState}
+      snapshot={runtime.snapshot}
+    />
+  );
+}
+
+function AuthorizedJourneyLongTermNav({
+  activeTab,
+  shellState,
+  snapshot,
+}: JourneyLongTermNavProps & Pick<JourneyRuntimeContextValue, "shellState" | "snapshot">) {
   const router = useRouter();
-  const { shellState } = useJourneyRuntime();
   const [completionConfirmed, setCompletionConfirmed] = useState(false);
 
   useEffect(() => {
@@ -30,7 +49,7 @@ export function JourneyLongTermNav({ activeTab }: JourneyLongTermNavProps) {
     };
   }, [shellState]);
 
-  if (!completionConfirmed) return null;
+  if (snapshot?.ageConfirmed !== true && !completionConfirmed) return null;
 
   return (
     <LongTermBottomNav

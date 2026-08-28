@@ -15,6 +15,10 @@ export type ShellMetadataItem = Readonly<{
   statusLabel: string;
 }>;
 
+export type ActiveJourneyMetadataItem = ShellMetadataItem & Readonly<{
+  kind: "initial" | "review";
+}>;
+
 export function ShellFrame({ children, title }: { children: ReactNode; title: string }) {
   const theme = useTheme();
   return (

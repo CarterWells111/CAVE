@@ -1,4 +1,7 @@
-import type { DatabaseConnection, EncryptedDatabaseManager } from "../../../core/storage/database";
+import type {
+  DatabaseConnection,
+  TransactionalEncryptedDatabaseManager
+} from "../../../core/storage/database";
 import { createJourneyDraft } from "../domain/types";
 import { SqlJourneyTransactionRepository } from "./sql-journey-transaction-repository";
 
@@ -15,15 +18,39 @@ function harness(failRun?: number) {
     getFirstAsync: jest.fn(async () => null),
     closeAsync: jest.fn(async () => undefined),
   };
-  const database: EncryptedDatabaseManager = {
+  const database: TransactionalEncryptedDatabaseManager = {
     initialize: jest.fn(async () => connection),
+    withTransaction: jest.fn(async (operation) => {
+      await connection.execAsync("BEGIN IMMEDIATE");
+      try {
+        const result = await operation(connection);
+        await connection.execAsync("COMMIT");
+        return result;
+      } catch (error) {
+        await connection.execAsync("ROLLBACK");
+        throw error;
+      }
+    }),
     close: jest.fn(async () => undefined),
     removeDatabaseFiles: jest.fn(async () => undefined),
+    withExclusiveMaintenance: jest.fn()
   };
-  return { connection, repository: new SqlJourneyTransactionRepository(database) };
+  return { connection, database, repository: new SqlJourneyTransactionRepository(database) };
 }
 
 const draft = { ...createJourneyDraft({ id: "branch-1", now: "2026-08-27T12:00:00.000Z" }), ageConfirmed: true };
+
+test("delegates transaction ownership to the database manager", async () => {
+  const { database, repository } = harness();
+
+  await repository.saveActive(draft, {
+    id: "active:branch-1", rootId: "root-1", sourceVersionId: "version-1",
+    title: "分支", updatedAt: draft.updatedAt, payload: draft,
+  });
+
+  expect(database.withTransaction).toHaveBeenCalledTimes(1);
+  expect(database.initialize).not.toHaveBeenCalled();
+});
 
 test.each([1, 2])("rolls back branch activation when statement %s fails", async (failRun) => {
   const { connection, repository } = harness(failRun);
@@ -46,10 +73,19 @@ test("persists branch payload and exact lineage in one transaction", async () =>
     expect.stringContaining("journey_active_review"),
     "root-1", "version-1", JSON.stringify(draft), draft.updatedAt, draft.updatedAt,
   );
+  expect(connection.runAsync).toHaveBeenNthCalledWith(
+    1,
+    expect.stringContaining("journey_drafts_v3"),
+    draft.id,
+    3,
+    JSON.stringify(draft),
+    draft.createdAt,
+    draft.updatedAt,
+  );
   expect(connection.execAsync).toHaveBeenLastCalledWith("COMMIT");
 });
 
-test.each([1, 2, 3, 4, 5])("rolls back active replacement and branch creation when statement %s fails", async (failRun) => {
+test.each([1, 2, 3, 4, 5, 6])("rolls back active replacement and branch creation when statement %s fails", async (failRun) => {
   const { connection, repository } = harness(failRun);
   await expect(repository.branch({
     archivedActive: {
@@ -65,7 +101,7 @@ test.each([1, 2, 3, 4, 5])("rolls back active replacement and branch creation wh
   expect(connection.execAsync).toHaveBeenLastCalledWith("ROLLBACK");
 });
 
-test.each([1, 2, 3, 4, 5, 6])("rolls back completion when statement %s fails", async (failRun) => {
+test.each([1, 2, 3, 4, 5, 6, 7])("rolls back completion when statement %s fails", async (failRun) => {
   const { connection, repository } = harness(failRun);
   await expect(repository.complete({
     draft,
@@ -85,6 +121,8 @@ test("commits card version marker and active cleanup as one completion", async (
     version: { id: "review:branch-1:completed", rootId: "root-1", parentVersionId: "version-1", title: "回顾", createdAt: draft.updatedAt, status: "completed", payload: draft },
     shell: { initialJourneyId: draft.id, initialJourneyCompletedAt: draft.updatedAt },
   });
-  expect(connection.runAsync).toHaveBeenCalledTimes(6);
+  expect(connection.runAsync).toHaveBeenCalledTimes(7);
+  expect(connection.runAsync).toHaveBeenCalledWith("DELETE FROM journey_drafts_v3");
+  expect(connection.runAsync).toHaveBeenCalledWith("DELETE FROM journey_drafts_v2");
   expect(connection.execAsync).toHaveBeenLastCalledWith("COMMIT");
 });

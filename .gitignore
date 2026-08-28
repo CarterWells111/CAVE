@@ -20,6 +20,7 @@ apps/mobile/android/
 .dev.vars
 
 # Builds, tests, and logs
+.astro/
 coverage/
 dist/
 build/

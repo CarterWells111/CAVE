@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react-native";
+import { fireEvent, render, screen } from "@testing-library/react-native";
 import { Text } from "react-native";
 
 import { ShellRouteGate } from "./ShellRouteGate";
@@ -7,21 +7,42 @@ const mockReplace = jest.fn();
 const mockLoad = jest.fn();
 const mockRouter = { replace: mockReplace };
 const mockShellState = { load: mockLoad };
+const mockRedirect = jest.fn();
+let mockRuntime: { shellState: typeof mockShellState } | null = { shellState: mockShellState };
 
-jest.mock("expo-router", () => ({ useRouter: () => mockRouter }));
+jest.mock("expo-router", () => ({
+  Redirect: (props: { href: string }) => {
+    mockRedirect(props);
+    return null;
+  },
+  useRouter: () => mockRouter
+}));
 jest.mock("../../journey/runtime/JourneyRuntimeProvider", () => ({
-  useJourneyRuntime: () => ({ shellState: mockShellState })
+  useJourneyRuntime: () => mockRuntime,
+  useOptionalJourneyRuntime: () => mockRuntime
 }));
 
-beforeEach(() => jest.clearAllMocks());
+beforeEach(() => {
+  jest.clearAllMocks();
+  mockRuntime = { shellState: mockShellState };
+});
 
-test("never reveals long-term navigation before a completion marker exists", async () => {
+test("redirects public tab deep links without reading private shell state", () => {
+  mockRuntime = null;
+
+  render(<ShellRouteGate><Text>four-tabs</Text></ShellRouteGate>);
+
+  expect(mockRedirect).toHaveBeenCalledWith({ href: "/journey/welcome" });
+  expect(mockLoad).not.toHaveBeenCalled();
+  expect(screen.queryByText("four-tabs")).toBeNull();
+});
+
+test("allows long-term routes before a completion marker exists", async () => {
   mockLoad.mockResolvedValueOnce(null);
   render(<ShellRouteGate><Text>four-tabs</Text></ShellRouteGate>);
 
-  expect(screen.queryByText("four-tabs")).toBeNull();
-  await waitFor(() => expect(mockReplace).toHaveBeenCalledWith("/journey/welcome"));
-  expect(screen.queryByText("four-tabs")).toBeNull();
+  expect(await screen.findByText("four-tabs")).toBeTruthy();
+  expect(mockReplace).not.toHaveBeenCalled();
 });
 
 test("renders long-term routes when the completion marker exists", async () => {

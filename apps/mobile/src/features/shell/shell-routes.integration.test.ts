@@ -7,7 +7,7 @@ function source(path: string) {
   return readFileSync(resolve(__dirname, "../../../app", path), "utf8");
 }
 
-test("ships exactly the four approved long-term tabs behind the completion guard", () => {
+test("ships exactly the four approved long-term tabs with a storage-readiness guard", () => {
   const layout = source("(tabs)/_layout.tsx");
   expect(layout.match(/<Tabs\.Screen/gu)).toHaveLength(4);
   for (const label of ["首页", "回顾", "练习", "我的"]) expect(layout).toContain(`title: "${label}"`);
@@ -44,6 +44,13 @@ test("keeps the long-term navigation available during later full reviews", () =>
   expect(nav).toContain('accessibilityRole="tab"');
 });
 
+test("classifies and resumes the unfinished initial journey without replacing it", () => {
+  for (const route of ["(tabs)/index.tsx", "(tabs)/reviews.tsx"]) {
+    expect(source(route)).toContain("classifyActiveJourney");
+    expect(source(route)).toContain("getResumePath");
+  }
+});
+
 test("opens standalone practice and saved-card details without journey prerequisites", () => {
   expect(source("(tabs)/practice.tsx")).toContain('pathname: "/practice/session"');
   expect(source("(tabs)/practice.tsx")).toContain("params: { scenario: id }");
@@ -59,4 +66,12 @@ test("opens standalone practice and saved-card details without journey prerequis
   expect(source("reviews/[id].tsx")).toContain('router.replace("/(tabs)/profile")');
   expect(existsSync(resolve(__dirname, "../../../app/(tabs)/cards.tsx"))).toBe(false);
   expect(existsSync(resolve(__dirname, "ui/CardsHubScreen.tsx"))).toBe(false);
+});
+
+test("edits every saved-card section and applies only explicit updates", () => {
+  const route = source("cards/[id].tsx");
+  expect(route).toContain("buildEditableSavedCardSections(record)");
+  expect(route).toContain("applySavedCardSectionUpdates(record, updates)");
+  expect(route).toContain("sections={editableSections}");
+  expect(route).toContain("setRecord(updatedRecord)");
 });

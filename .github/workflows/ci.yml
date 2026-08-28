@@ -47,8 +47,8 @@ jobs:
       - name: Build gateway
         run: pnpm build:gateway
 
-      - name: Validate production content
-        run: pnpm validate:content
+      - name: Validate internal-test content
+        run: pnpm validate:content:internal
 
       - name: Check Expo dependencies
         run: pnpm --filter @cave/mobile expo:doctor

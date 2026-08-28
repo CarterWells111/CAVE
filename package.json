@@ -4,23 +4,27 @@
   "private": true,
   "packageManager": "pnpm@10.34.5",
   "engines": {
-    "node": ">=22 <25"
+    "node": "^22.12.0 || >=24 <25"
   },
   "scripts": {
     "dev:mobile": "pnpm --filter @cave/mobile start",
     "dev:gateway": "pnpm --filter @cave/gateway dev",
+    "dev:web": "pnpm --filter @cave/web dev",
     "typecheck": "pnpm -r typecheck",
     "lint": "pnpm -r lint",
     "test": "pnpm -r test",
-    "test:ci-config": "vitest run tests",
+    "test:ci-config": "vitest run --root tests",
     "test:contracts": "pnpm --filter @cave/contracts test",
     "test:content": "pnpm --filter @cave/content test",
     "test:safety": "pnpm --filter @cave/gateway test:safety",
     "validate:content": "pnpm --filter @cave/content validate:content",
+    "validate:content:internal": "pnpm --filter @cave/content validate:content:internal",
     "validate:content:draft": "pnpm --filter @cave/content validate:content:draft",
     "security:audit": "pnpm audit --prod --audit-level high",
     "security:scan-bundle": "node scripts/scan-bundle-secrets.mjs",
+    "verify:mobile-policy": "node scripts/verify-mobile-source-policy.mjs",
     "build:gateway": "pnpm --filter @cave/gateway build",
+    "build:web": "pnpm --filter @cave/web build",
     "verify:foundation": "pnpm typecheck && pnpm lint && pnpm test && pnpm build:gateway",
     "verify": "pnpm typecheck && pnpm lint && pnpm test && pnpm validate:content && pnpm build:gateway",
     "verify:release": "pnpm verify && pnpm --filter @cave/mobile expo:doctor && pnpm --filter @cave/mobile export:ios && pnpm security:scan-bundle && pnpm security:audit"

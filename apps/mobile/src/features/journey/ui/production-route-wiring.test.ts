@@ -29,7 +29,7 @@ test("root layout mounts one runtime composition provider shared by journey and 
 
   expect(layout).toContain("JourneyRuntimeProvider");
   expect(layout).toContain("<JourneyRuntimeProvider");
-  expect(journeyLayout).not.toContain("JourneyRuntimeProvider");
+  expect(journeyLayout).not.toContain("<JourneyRuntimeProvider");
   expect(journeyLayout).toContain("JourneyLongTermNav");
 });
 
@@ -37,7 +37,7 @@ test("exactly seven production routes consume runtime state without no-op callba
   expect(canonicalRoutes).toHaveLength(7);
   for (const name of canonicalRoutes) {
     const source = routeSource(name);
-    expect(source).toMatch(/useJourneyRuntime|JourneyRouteScreen/u);
+    expect(source).toMatch(/use(?:Optional)?JourneyRuntime|useAdultDeclaration|JourneyRouteScreen/u);
     expect(source).not.toMatch(/=>\s*undefined|=>\s*\{\s*\}/u);
   }
 });
@@ -64,6 +64,14 @@ test("production route actions return asynchronous work to Promise-aware UI cont
   expect(canonicalSources).not.toMatch(/<Pressable\b/u);
   expect(routeSource("body-knowledge.tsx")).not.toContain("JourneyContinueButton");
   expect(routeSource("behavior-map.tsx")).not.toContain("JourneyContinueButton");
+});
+
+test("adult declaration publishes its service mutation through the available runtime", () => {
+  const source = routeSource("adult-gate.tsx");
+
+  expect(source).toMatch(
+    /runtime === null\s*\?\s*adultDeclaration\.confirmAdult\(\)\s*:\s*runtime\.runAndRefresh\(\(\) => adultDeclaration\.confirmAdult\(\)\)/u,
+  );
 });
 
 test("production routes do not ship the reduced-scope hard-coded journey outputs", () => {

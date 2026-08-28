@@ -5,6 +5,7 @@ import type {
   JourneyDraft
 } from "./types";
 import { createJourneyDraft, type CommunicationSectionId } from "./types";
+import { OVERNIGHT_COMPLETE_POINT_EVENT_KEY } from "../application/journey-progress-markers";
 
 type LegacyPageId =
   | "welcome"
@@ -15,6 +16,27 @@ type LegacyPageId =
   | "preset-practice"
   | "checklist"
   | "communication-card";
+
+type JourneyDraftV2PageId =
+  | "welcome"
+  | "overnight"
+  | "body-knowledge"
+  | "behavior-map"
+  | "reflection"
+  | "preset-practice"
+  | "final-preparation";
+
+type JourneyDraftV2Base = Omit<JourneyDraft, "schemaVersion" | "currentPage"> & {
+  schemaVersion: 2;
+};
+
+export type JourneyDraftV2 = JourneyDraftV2Base & ({
+  currentPage: JourneyDraftV2PageId;
+  cloudSaveAvailability: "coming-soon";
+} | {
+  currentPage: JourneyDraft["currentPage"];
+  cloudSaveAvailability?: never;
+});
 
 type LegacyEditableField = Omit<JourneyDraft["communicationCard"]["communication-not-this-time"], "visibility">;
 
@@ -64,6 +86,40 @@ const LEGACY_PAGE_MAP: Record<LegacyPageId, JourneyDraft["currentPage"]> = {
   "communication-card": "final-preparation"
 };
 
+const V2_PAGE_MAP: Record<JourneyDraftV2PageId, JourneyDraft["currentPage"]> = {
+  welcome: "body-knowledge",
+  overnight: "overnight",
+  "body-knowledge": "body-knowledge",
+  "behavior-map": "behavior-map",
+  reflection: "reflection",
+  "preset-practice": "preset-practice",
+  "final-preparation": "final-preparation"
+};
+
+const V1_PAGES_AFTER_OVERNIGHT = new Set<LegacyPageId>([
+  "body-knowledge",
+  "behavior-attitudes",
+  "reflection",
+  "preset-practice",
+  "checklist",
+  "communication-card"
+]);
+
+const ORIGIN_MAIN_V2_PAGES_AFTER_OVERNIGHT = new Set<JourneyDraftV2PageId>([
+  "body-knowledge",
+  "behavior-map",
+  "reflection",
+  "preset-practice",
+  "final-preparation"
+]);
+
+const INTERIM_V2_PAGES_AFTER_OVERNIGHT = new Set<JourneyDraft["currentPage"]>([
+  "behavior-map",
+  "reflection",
+  "preset-practice",
+  "final-preparation"
+]);
+
 const LEGACY_SECTION_MAP: Record<string, CommunicationSectionId> = {
   intentions: "communication-night-expectations",
   pace: "communication-possible-closeness",
@@ -99,7 +155,15 @@ function cloneChecklist(items: ChecklistItem[]): ChecklistItem[] {
   }));
 }
 
-export function migrateJourneyDraftV1ToV2(input: JourneyDraftV1): JourneyDraft {
+function derivePointEventKeys(pointEventKeys: string[], overnightCompleted: boolean): string[] {
+  const migrated = [...pointEventKeys];
+  if (overnightCompleted && !migrated.includes(OVERNIGHT_COMPLETE_POINT_EVENT_KEY)) {
+    migrated.push(OVERNIGHT_COMPLETE_POINT_EVENT_KEY);
+  }
+  return migrated;
+}
+
+export function migrateJourneyDraftV1ToV3(input: JourneyDraftV1): JourneyDraft {
   const base = createJourneyDraft({ id: input.id, now: input.createdAt });
   const communicationCard = migrateLegacyCommunicationCard(input.communicationCard);
   const checklistItems = cloneChecklist(input.checklistItems);
@@ -144,9 +208,30 @@ export function migrateJourneyDraftV1ToV2(input: JourneyDraftV1): JourneyDraft {
       items: cloneChecklist(checklistItems)
     },
     communicationCard,
-    pointEventKeys: [...input.pointEventKeys],
+    pointEventKeys: derivePointEventKeys(
+      input.pointEventKeys,
+      V1_PAGES_AFTER_OVERNIGHT.has(input.currentPage)
+    ),
     sourceRevision: input.sourceRevision,
     createdAt: input.createdAt,
     updatedAt: input.updatedAt
+  };
+}
+
+export function migrateJourneyDraftV2ToV3(input: JourneyDraftV2): JourneyDraft {
+  const overnightCompleted = input.cloudSaveAvailability === "coming-soon"
+    ? ORIGIN_MAIN_V2_PAGES_AFTER_OVERNIGHT.has(input.currentPage)
+    : INTERIM_V2_PAGES_AFTER_OVERNIGHT.has(input.currentPage);
+  const { cloudSaveAvailability: legacyCloudSaveAvailability, ...currentPayload } = input;
+  void legacyCloudSaveAvailability;
+
+  return {
+    ...currentPayload,
+    schemaVersion: 3,
+    currentPage: V2_PAGE_MAP[input.currentPage],
+    pointEventKeys: derivePointEventKeys(
+      input.pointEventKeys,
+      overnightCompleted
+    )
   };
 }

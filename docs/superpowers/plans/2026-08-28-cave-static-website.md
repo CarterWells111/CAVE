@@ -22,7 +22,7 @@
 - `apps/web/src/components/*.astro`: focused presentational units.
 - `apps/web/src/styles/global.css`: tokens, layout, responsive rules, focus, reduced motion.
 - `apps/web/src/pages/*.astro`: the five routes.
-- `apps/web/public/*`: Cloudflare headers/redirects, robots, sitemap, favicon.
+- `apps/web/public/*`: Cloudflare headers, robots, sitemap, favicon.
 - `apps/web/tests/*.test.ts`: content and production-output contracts.
 - `package.json`: root convenience scripts only.
 
@@ -201,7 +201,7 @@ git commit -m "build(web): scaffold static Astro site"
 ```ts
 import { describe, expect, it } from "vitest";
 
-import { experienceSteps, navItems, principles, site } from "../src/content/site";
+import { experienceSteps, navItems, principles, privacyPoints, site } from "../src/content/site";
 
 describe("official site content", () => {
   it("uses the approved identity and five routes", () => {
@@ -210,9 +210,15 @@ describe("official site content", () => {
   });
 
   it("keeps the consent principles and seven-step scope", () => {
-    expect(principles).toContain("身体反应不等于同意。");
+    expect(principles).toEqual([
+      "身体反应不等于同意。",
+      "同意针对具体行为，并且持续、可以撤回。",
+      "犹豫与期待可以同时存在。",
+      "私密探索默认留在用户自己的设备上。"
+    ]);
     expect(experienceSteps).toHaveLength(7);
     expect(JSON.stringify({ experienceSteps, principles })).not.toMatch(/AI|登录|云同步|准备度分数/u);
+    expect(privacyPoints.join("\n")).not.toContain("本机加密数据库");
   });
 });
 ```
@@ -250,7 +256,7 @@ export const navItems = Object.freeze([
 export const principles = Object.freeze([
   "身体反应不等于同意。",
   "同意针对具体行为，并且持续、可以撤回。",
-  "期待、紧张和犹豫可以同时存在。",
+  "犹豫与期待可以同时存在。",
   "私密探索默认留在用户自己的设备上。"
 ]);
 
@@ -266,10 +272,11 @@ export const experienceSteps = Object.freeze([
 
 export const privacyPoints = Object.freeze([
   "首版无需账号或登录，也不会在 App 中收集邮箱地址。",
-  "旅程选择、反思记录、练习结果、沟通卡和界面偏好保存在本机加密数据库中。",
-  "CAVE 不把这些内容上传到自有服务器，也不用于广告、画像或行为分析。",
+  "旅程选择、反思记录、练习结果、沟通卡和界面偏好只保存在当前设备，不会发送到 CAVE 自有服务器；开发预览环境可能使用临时内存存储。",
+  "CAVE 不把这些内容用于广告、画像或行为分析。",
   "只有在你主动操作时，沟通卡图片才会进入系统相册，文字才会进入系统剪贴板。",
-  "设备备份、相册同步和剪贴板由 Apple 与你的设备设置控制。"
+  "设备备份、相册同步和剪贴板由 Apple 与你的设备设置控制。",
+  "设备被解锁或你导出内容后，他人可能通过系统功能看到相关内容；CAVE 不承诺绝对私密。"
 ]);
 
 export const supportFaq = Object.freeze([
@@ -424,7 +431,7 @@ Use `BaseLayout`, `PageHero`, `ContentCard`, `EchoBackdrop`, `principles`, and `
 
 `safety.astro` renders the four consent principles and: `CAVE 是成年人身体认知与同意教育工具，不是医疗器械，不提供诊断或治疗，也不会判断你是否“准备好”。紧急情况下，请联系你所在地的紧急服务。`
 
-`sources.astro` imports `JOURNEY_SOURCE_REGISTRY` from `@cave/content`, groups entries by `sourceType`, renders organization/title/date/access date/applicability/direct link, and shows: `来源已核验不代表中文改写已经通过专家复核。`
+`sources.astro` imports `JOURNEY_SOURCE_REGISTRY` from `@cave/content`, groups all 13 entries by `sourceType` (`EDU` 3, `MED` 7, `SAFE` 3), and renders ID, organization, title, publication/review date as its original string, access date, applicability, `source_verified` as `来源链接已核验`, and the direct URL. Label the SAFE group `中国大陆安全与支持资源`; do not generalize its phone numbers globally. Show: `来源已核验不代表中文改写已经通过专家复核。`
 
 - [ ] **Step 5: Build and run all web tests**
 
@@ -443,24 +450,23 @@ git commit -m "feat(web): add official content and policy pages"
 
 **Files:**
 - Create: `apps/web/public/_headers`
-- Create: `apps/web/public/_redirects`
 - Create: `apps/web/public/robots.txt`
 - Create: `apps/web/public/sitemap.xml`
 - Create: `apps/web/public/favicon.svg`
-- Modify: `apps/web/tests/dist.test.ts`
+- Modify: `apps/web/tests/static-controls.test.ts`
 
 - [ ] **Step 1: Add failing static-control assertions**
 
 ```ts
-it("ships Cloudflare security, redirect, and crawl controls", async () => {
-  const [headers, redirects, robots, sitemap] = await Promise.all(
-    ["_headers", "_redirects", "robots.txt", "sitemap.xml"].map((name) =>
+it("ships Cloudflare security and crawl controls without a domain redirect file", async () => {
+  const [headers, robots, sitemap] = await Promise.all(
+    ["_headers", "robots.txt", "sitemap.xml"].map((name) =>
       readFile(new URL(`../dist/${name}`, import.meta.url), "utf8")
     )
   );
   expect(headers).toContain("Content-Security-Policy: default-src 'self'");
   expect(headers).toContain("X-Content-Type-Options: nosniff");
-  expect(redirects).toContain("https://www.neijiecave.com/* https://neijiecave.com/:splat 301");
+  await expect(readFile(new URL("../dist/_redirects", import.meta.url), "utf8")).rejects.toMatchObject({ code: "ENOENT" });
   expect(robots).toContain("Sitemap: https://neijiecave.com/sitemap.xml");
   for (const path of ["/", "/privacy", "/support", "/safety", "/sources"]) expect(sitemap).toContain(`<loc>https://neijiecave.com${path}</loc>`);
 });
@@ -485,13 +491,9 @@ Expected: FAIL reading `dist/_headers`.
   Permissions-Policy: camera=(), geolocation=(), microphone=(), payment=(), usb=()
 ```
 
-`public/_redirects`:
-
-```text
-https://www.neijiecave.com/* https://neijiecave.com/:splat 301
-```
-
 `robots.txt` allows all crawlers and points to the production sitemap. `sitemap.xml` lists exactly the five canonical URLs with `lastmod` `2026-08-28`. `favicon.svg` is a minimal accessible brand mark using the approved warm-charcoal background and the letters `CAVE`; it contains no scripts, external references, people, anatomy, or imagery.
+
+Do not create `public/_redirects`: Cloudflare Pages `_redirects` does not support domain-level redirects. Configure `www.neijiecave.com` to apex only during publishing with the account-level Bulk Redirects workflow in the Cloudflare publishing plan.
 
 - [ ] **Step 4: Run build and tests**
 
@@ -502,7 +504,7 @@ Expected: PASS.
 - [ ] **Step 5: Commit production controls**
 
 ```bash
-git add apps/web/public apps/web/tests/dist.test.ts
+git add apps/web/public/_headers apps/web/public/robots.txt apps/web/public/sitemap.xml apps/web/public/favicon.svg apps/web/tests/static-controls.test.ts
 git commit -m "feat(web): add static security and crawl controls"
 ```
 

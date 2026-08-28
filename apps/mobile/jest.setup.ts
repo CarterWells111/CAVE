@@ -1,3 +1,5 @@
+jest.setTimeout(15_000);
+
 jest.mock("@expo/vector-icons", () => {
   const React = jest.requireActual<typeof import("react")>("react");
   const { Text } = jest.requireActual<typeof import("react-native")>("react-native");

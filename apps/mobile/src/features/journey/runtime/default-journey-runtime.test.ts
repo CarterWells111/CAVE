@@ -7,7 +7,8 @@ import {
 
 const clipboard = { setStringAsync: jest.fn(async () => undefined) };
 
-function nativeAdapters(): ExpoJourneyAdapters {
+function nativeAdapters({ deletionPending = false } = {}): ExpoJourneyAdapters {
+  let pending = deletionPending;
   const database = {
     execAsync: jest.fn(async () => undefined),
     runAsync: jest.fn(async () => ({ changes: 0 })),
@@ -28,6 +29,13 @@ function nativeAdapters(): ExpoJourneyAdapters {
       getOrCreateDatabaseKey: jest.fn(async () => "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="),
       getOrCreateInstallationToken: jest.fn(async () => "token"),
       deleteDatabaseKey: jest.fn(async () => undefined),
+      hasAdultDeclaration: jest.fn(async () => true),
+      recordAdultDeclaration: jest.fn(async () => undefined),
+      deleteAdultDeclaration: jest.fn(async () => undefined),
+      hasPendingLocalDataDeletion: jest.fn(async () => pending),
+      recordPendingLocalDataDeletion: jest.fn(async () => { pending = true; }),
+      clearPendingLocalDataDeletion: jest.fn(async () => { pending = false; }),
+      deleteInstallationToken: jest.fn(async () => undefined),
       deleteAllSecrets: jest.fn(async () => undefined)
     },
     clipboard
@@ -73,4 +81,24 @@ test("Development and Preview compose SQLCipher repositories and propagate adapt
     now: () => "2026-08-27T12:00:00.000Z",
     loadNativeAdapters: jest.fn(async () => { throw failure; })
   })).rejects.toBe(failure);
+});
+
+test("resumes a pending local-data deletion before exposing the native runtime", async () => {
+  const adapters = nativeAdapters({ deletionPending: true });
+
+  const runtime = await createComposedJourneyRuntime({
+    executionEnvironment: "standalone",
+    clipboard,
+    createId: () => "native-after-cleanup",
+    now: () => "2026-08-28T12:00:00.000Z",
+    loadNativeAdapters: async () => adapters
+  });
+
+  expect(runtime.persistence).toBe("sqlcipher-secure-store");
+  expect(adapters.secrets.deleteAdultDeclaration).toHaveBeenCalledTimes(1);
+  expect(adapters.secrets.deleteDatabaseKey).toHaveBeenCalledTimes(1);
+  expect(adapters.files.removeDatabaseFiles).toHaveBeenCalledTimes(1);
+  expect(adapters.secrets.deleteInstallationToken).toHaveBeenCalledTimes(1);
+  expect(adapters.secrets.clearPendingLocalDataDeletion).toHaveBeenCalledTimes(1);
+  expect(adapters.native.openDatabaseAsync).not.toHaveBeenCalled();
 });

@@ -1,18 +1,29 @@
-import { useRouter } from "expo-router";
+import { Redirect } from "expo-router";
 import { type PropsWithChildren, useCallback, useEffect, useRef, useState } from "react";
 import { Text } from "react-native";
 
 import { useTheme } from "../../../core/design/theme-provider";
 import { ErrorState } from "../../../core/ui/ErrorState";
 import { Screen } from "../../../core/ui/Screen";
-import { useJourneyRuntime } from "../../journey/runtime/JourneyRuntimeProvider";
+import {
+  type JourneyRuntimeContextValue,
+  useOptionalJourneyRuntime
+} from "../../journey/runtime/JourneyRuntimeProvider";
 
-type GateState = "loading" | "allowed" | "redirecting" | "error";
+type GateState = "loading" | "allowed" | "error";
 
 export function ShellRouteGate({ children }: PropsWithChildren) {
+  const runtime = useOptionalJourneyRuntime();
+  if (runtime === null) return <Redirect href="/journey/welcome" />;
+
+  return <AuthorizedShellRouteGate shellState={runtime.shellState}>{children}</AuthorizedShellRouteGate>;
+}
+
+function AuthorizedShellRouteGate({
+  children,
+  shellState
+}: PropsWithChildren<Pick<JourneyRuntimeContextValue, "shellState">>) {
   const theme = useTheme();
-  const router = useRouter();
-  const { shellState } = useJourneyRuntime();
   const mountedRef = useRef(true);
   const requestRef = useRef(0);
   const [state, setState] = useState<GateState>("loading");
@@ -24,16 +35,12 @@ export function ShellRouteGate({ children }: PropsWithChildren) {
     try {
       const completion = await shellState.load();
       if (!mountedRef.current || requestRef.current !== request) return;
-      if (completion === null) {
-        setState("redirecting");
-        router.replace("/journey/welcome");
-        return;
-      }
+      void completion;
       setState("allowed");
     } catch {
       if (mountedRef.current && requestRef.current === request) setState("error");
     }
-  }, [router, shellState]);
+  }, [shellState]);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -60,7 +67,7 @@ export function ShellRouteGate({ children }: PropsWithChildren) {
   return (
     <Screen contentContainerStyle={{ justifyContent: "center" }}>
       <Text accessibilityLiveRegion="polite" style={{ ...theme.typography.body, color: theme.color.text }}>
-        {state === "redirecting" ? "正在返回首次旅程…" : "正在读取本机状态…"}
+        正在读取本机状态…
       </Text>
     </Screen>
   );

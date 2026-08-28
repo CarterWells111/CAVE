@@ -1,0 +1,89 @@
+---
+import { JOURNEY_SOURCE_REGISTRY } from "@cave/content";
+
+import PageHero from "../components/PageHero.astro";
+import BaseLayout from "../layouts/BaseLayout.astro";
+
+const sourceGroups = [
+  { type: "EDU", title: "EDU · 同意与教育基础" },
+  { type: "MED", title: "MED · 身体与健康信息" },
+  { type: "SAFE", title: "SAFE · 中国大陆安全与支持资源" }
+] as const;
+
+for (const source of JOURNEY_SOURCE_REGISTRY) {
+  const sourceUrl = new URL(source.url);
+  if (sourceUrl.protocol !== "https:") {
+    throw new Error(`Source ${source.id} must use HTTPS.`);
+  }
+}
+---
+
+<BaseLayout
+  title="内容来源与核验状态｜CAVE 内界"
+  description="查阅 CAVE 使用的 13 条教育、医疗及中国大陆安全与支持来源，以及链接核验和专家复核边界。"
+  path="/sources/"
+>
+  <section class="section page-section">
+    <PageHero
+      eyebrow="Sources"
+      title="内容来源与核验状态"
+      description="这里公开列出当前旅程所依据的原始来源、适用范围、日期与链接核验状态。"
+    />
+
+    <aside class="callout" aria-labelledby="source-boundary-title">
+      <h2 id="source-boundary-title">如何理解“已核验”</h2>
+      <p>来源链接已核验，表示记录的原始页面在核验时可访问并与标注主题相符。来源已核验不代表中文改写已经通过专家复核。</p>
+    </aside>
+
+    {sourceGroups.map((group) => (
+      <section
+        class="source-group"
+        aria-labelledby={`source-group-${group.type}`}
+        data-source-group={group.type}
+      >
+        <div class="section-heading">
+          <h2 id={`source-group-${group.type}`}>{group.title}</h2>
+        </div>
+        <div class="source-grid">
+          {JOURNEY_SOURCE_REGISTRY.filter(({ sourceType }) => sourceType === group.type).map((source) => (
+            <article
+              class="content-card source-card"
+              data-source-id={source.id}
+              data-source-type={source.sourceType}
+            >
+              <p class="content-card__eyebrow">{source.id} · {source.sourceType}</p>
+              <h3>{source.title}</h3>
+              <dl>
+                <div>
+                  <dt>机构</dt>
+                  <dd>{source.organization}</dd>
+                </div>
+                <div>
+                  <dt>发布或复核日期</dt>
+                  <dd>{source.publicationOrReviewDate}</dd>
+                </div>
+                <div>
+                  <dt>访问日期</dt>
+                  <dd>{source.accessedAt}</dd>
+                </div>
+                <div>
+                  <dt>适用于</dt>
+                  <dd>{source.appliesTo}</dd>
+                </div>
+                <div>
+                  <dt>状态</dt>
+                  <dd>来源链接已核验</dd>
+                </div>
+              </dl>
+              <a
+                class="text-link"
+                href={source.url}
+                aria-label={`打开 ${source.title}（${source.organization}）原始来源`}
+              >原始直链</a>
+            </article>
+          ))}
+        </div>
+      </section>
+    ))}
+  </section>
+</BaseLayout>

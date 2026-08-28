@@ -24,15 +24,27 @@ diff --git a/dist/types/utils.js b/dist/types/utils.js
 index a6cc07f..8cbf737 100644
 --- a/dist/types/utils.js
 +++ b/dist/types/utils.js
+@@ -52,6 +52,8 @@ function readBox(input, offset) {
+     if (input.length - offset < 4)
+         return;
+-    const boxSize = (0, exports.readUInt32BE)(input, offset);
++    let boxSize = (0, exports.readUInt32BE)(input, offset);
++    if (boxSize === 0)
++        boxSize = input.length - offset;
+     if (input.length - offset < boxSize)
+         return;
+     return {
 @@ -65,9 +65,9 @@ function findBox(input, boxName, offset) {
              break;
-         if (box.name === boxName)
-             return box;
+-        if (box.name === boxName)
+-            return box;
 -        // Fix the infinite loop by ensuring offset always increases
 -        // If box.size is 0, advance by at least 8 bytes (the size of the box header)
 -        offset += box.size > 0 ? box.size : 8;
 +        if (box.size <= 0)
 +            break;
++        if (box.name === boxName)
++            return box;
 +        offset += box.size;
      }
  }

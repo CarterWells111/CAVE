@@ -1,0 +1,41 @@
+---
+import ContentCard from "../components/ContentCard.astro";
+import PageHero from "../components/PageHero.astro";
+import { principles } from "../content/site";
+import BaseLayout from "../layouts/BaseLayout.astro";
+---
+
+<BaseLayout
+  title="安全与使用边界｜CAVE 内界"
+  description="了解 CAVE 面向成年人的四项安全原则、同意边界、健康信息范围与紧急情况提示。"
+  path="/safety/"
+>
+  <section class="section page-section">
+    <PageHero
+      eyebrow="Safety"
+      title="安全与使用边界"
+      description="CAVE 帮你整理感受、认识边界并练习表达，决定权始终属于你。"
+      notice="面向 18 岁及以上成年人"
+    />
+
+    <section aria-labelledby="safety-principles-title">
+      <div class="section-heading">
+        <h2 id="safety-principles-title">四项安全原则</h2>
+      </div>
+      <ul class="card-grid card-grid--two" data-safety-principles role="list">
+        {principles.map((principle, index) => (
+          <li data-principle>
+            <ContentCard title={`原则 ${index + 1}`}>
+              <p>{principle}</p>
+            </ContentCard>
+          </li>
+        ))}
+      </ul>
+    </section>
+
+    <aside class="callout callout--safety" aria-labelledby="boundary-title">
+      <h2 id="boundary-title">重要边界</h2>
+      <p>CAVE 是成年人身体认知与同意教育工具，不是医疗器械，不提供诊断或治疗，也不会判断你是否“准备好”。紧急情况下，请联系你所在地的紧急服务。</p>
+    </aside>
+  </section>
+</BaseLayout>

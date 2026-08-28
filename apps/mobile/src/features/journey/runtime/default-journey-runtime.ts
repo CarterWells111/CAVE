@@ -11,7 +11,10 @@ import {
   SqlJourneyDraftRepository
 } from "../infrastructure/sql-journey-draft-repository";
 import { SqlAppShellStateRepository } from "../../shell/infrastructure/sql-app-shell-state-repository";
-import { SqlReviewHistoryRepository } from "../../reviews/infrastructure/sql-review-history-repository";
+import {
+  journeyDraftReviewPayloadCodec,
+  SqlReviewHistoryRepository
+} from "../../reviews/infrastructure/sql-review-history-repository";
 import type { JourneyDraft } from "../domain/types";
 import { SqlJourneyTransactionRepository } from "../infrastructure/sql-journey-transaction-repository";
 import {
@@ -49,6 +52,9 @@ export function createComposedJourneyRuntime({
         files: adapters.files,
         secrets: adapters.secrets
       });
+      if (await adapters.secrets.hasPendingLocalDataDeletion()) {
+        await deleteAllLocalData({ database, secrets: adapters.secrets });
+      }
       const transactions = new SqlJourneyTransactionRepository(database);
       return composeJourneyRuntime({
         mode: "native-secure",
@@ -56,7 +62,11 @@ export function createComposedJourneyRuntime({
         drafts: new SqlJourneyDraftRepository(database),
         cards: new SqlCommunicationCardRepository(database),
         shellState: new SqlAppShellStateRepository(database),
-        reviewHistory: new SqlReviewHistoryRepository<JourneyDraft>(database),
+        reviewHistory: new SqlReviewHistoryRepository<JourneyDraft>(
+          database,
+          journeyDraftReviewPayloadCodec
+        ),
+        adultDeclaration: adapters.secrets,
         appearancePreferences: new SqlAppearancePreferencesRepository(database),
         saveVersionedDraft: (draft, active) => transactions.saveActive(draft, active),
         completeJourney: (transaction) => transactions.complete(transaction),
