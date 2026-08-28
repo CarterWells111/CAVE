@@ -134,6 +134,31 @@ test("adult declaration creates the local journey and opens the preface", async 
   view.unmount();
 });
 
+test("adult declaration publishes the confirmed snapshot before the preface renders", async () => {
+  const journeyRuntime = runtime();
+  const createRuntime = async () => journeyRuntime;
+  const view = render(
+    <JourneyRuntimeProvider createRuntime={createRuntime}>
+      <AdultGateRoute />
+    </JourneyRuntimeProvider>,
+  );
+  expect(await screen.findByText("Expo Go 演示模式，数据仅在本次打开期间暂存")).toBeTruthy();
+
+  fireEvent.press(screen.getByRole("button", { name: "我已年满 18 岁，继续" }));
+  await waitFor(() => expect(mockRouter.replace).toHaveBeenCalledWith("/journey/preface"));
+  mockRouter.replace.mockClear();
+
+  view.rerender(
+    <JourneyRuntimeProvider createRuntime={createRuntime}>
+      <PrefaceRoute />
+    </JourneyRuntimeProvider>,
+  );
+
+  expect(await screen.findByText("开始前，想告诉你")).toBeTruthy();
+  expect(mockRouter.replace).not.toHaveBeenCalledWith("/journey/welcome");
+  view.unmount();
+});
+
 test("adult confirmation blocks the underage decision and only opens the preface when persistence finishes", async () => {
   const journeyRuntime = runtime();
   const savingDeclaration = deferred<void>();

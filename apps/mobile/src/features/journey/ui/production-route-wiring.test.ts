@@ -66,6 +66,14 @@ test("production route actions return asynchronous work to Promise-aware UI cont
   expect(routeSource("behavior-map.tsx")).not.toContain("JourneyContinueButton");
 });
 
+test("adult declaration publishes its service mutation through the available runtime", () => {
+  const source = routeSource("adult-gate.tsx");
+
+  expect(source).toMatch(
+    /runtime === null\s*\?\s*adultDeclaration\.confirmAdult\(\)\s*:\s*runtime\.runAndRefresh\(\(\) => adultDeclaration\.confirmAdult\(\)\)/u,
+  );
+});
+
 test("production routes do not ship the reduced-scope hard-coded journey outputs", () => {
   const sources = canonicalRoutes.map(routeSource).join("\n");
 

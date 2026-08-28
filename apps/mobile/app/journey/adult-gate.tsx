@@ -40,7 +40,10 @@ export default function AdultGateRoute() {
     if (!activeRef.current || decisionRef.current !== null || navigatedRef.current) return;
     const decision = {};
     decisionRef.current = decision;
-    return adultDeclaration.confirmAdult()
+    const confirmation = runtime === null
+      ? adultDeclaration.confirmAdult()
+      : runtime.runAndRefresh(() => adultDeclaration.confirmAdult());
+    return confirmation
       .then(() => {
         if (activeRef.current && decisionRef.current === decision) openPreface();
       })
