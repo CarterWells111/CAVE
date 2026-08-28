@@ -46,3 +46,18 @@ jobs:
 
       - name: Build gateway
         run: pnpm build:gateway
+
+      - name: Validate production content
+        run: pnpm validate:content
+
+      - name: Check Expo dependencies
+        run: pnpm --filter @cave/mobile expo:doctor
+
+      - name: Export production iOS JavaScript
+        run: pnpm --filter @cave/mobile export:ios
+
+      - name: Scan exported mobile bundle
+        run: pnpm security:scan-bundle
+
+      - name: Audit production dependencies
+        run: pnpm security:audit

@@ -20,11 +20,22 @@ describe("foundation CI workflow", () => {
     expect(workflow).toContain("pnpm lint");
     expect(workflow).toContain("pnpm test");
     expect(workflow).toContain("pnpm build:gateway");
+    expect(workflow).toContain("pnpm validate:content");
+    expect(workflow).toContain("pnpm --filter @cave/mobile expo:doctor");
+    expect(workflow).toContain("pnpm --filter @cave/mobile export:ios");
+    expect(workflow).toContain("pnpm security:scan-bundle");
+    expect(workflow).toContain("pnpm security:audit");
   });
 
   it("defines the fixed root verification command", () => {
     expect(packageJson.scripts.verify).toBe(
       "pnpm typecheck && pnpm lint && pnpm test && pnpm validate:content && pnpm build:gateway"
+    );
+  });
+
+  it("defines one local release verification command matching CI gates", () => {
+    expect(packageJson.scripts["verify:release"]).toBe(
+      "pnpm verify && pnpm --filter @cave/mobile expo:doctor && pnpm --filter @cave/mobile export:ios && pnpm security:scan-bundle && pnpm security:audit"
     );
   });
 });

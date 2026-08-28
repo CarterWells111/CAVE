@@ -40,6 +40,7 @@ export type ReflectionPageProps = {
   onOpenJournal?(): ReturnType<JourneyActionCallback>;
   onUsePracticePhrase?(phrase: string): ReturnType<JourneyActionCallback>;
   onComplete(value: ReflectionValue): ReturnType<JourneyActionCallback>;
+  storageMode?: "device" | "session-only";
 };
 
 const content = loadJourneyContentCatalog();
@@ -120,6 +121,7 @@ export function ReflectionPage({
   onOpenJournal,
   onUsePracticePhrase,
   onComplete,
+  storageMode = "device",
 }: ReflectionPageProps) {
   const theme = useTheme();
   const [motivationIds, setMotivationIds] = useState(() => [...(initialValue.motivationIds ?? [])]);
@@ -135,9 +137,9 @@ export function ReflectionPage({
   const [comfortNote, setComfortNote] = useState(initialValue.comfortNote ?? "");
   const [journalPromptId, setJournalPromptId] = useState<string | undefined>(initialValue.journalPromptId);
   const [journalText, setJournalText] = useState(initialValue.journalText ?? "");
-  const [journalSaveChoice, setJournalSaveChoice] = useState<JournalSaveChoice>(
-    initialValue.journalSaveChoice ?? "not-saved",
-  );
+  const [journalSaveChoice, setJournalSaveChoice] = useState<JournalSaveChoice>(storageMode === "session-only"
+    ? "not-saved"
+    : initialValue.journalSaveChoice ?? "not-saved");
   const [journalDecisionMade, setJournalDecisionMade] = useState(
     initialValue.journalSaveChoice !== undefined,
   );
@@ -179,7 +181,8 @@ export function ReflectionPage({
     journalText,
     journalSaveChoice,
   };
-  const submissionValue: ReflectionValue = journalSaveChoice === "not-saved"
+  const effectiveSaveChoice: JournalSaveChoice = storageMode === "session-only" ? "not-saved" : journalSaveChoice;
+  const submissionValue: ReflectionValue = effectiveSaveChoice === "not-saved"
     ? {
         motivationIds,
         pressureWithoutDisappointment,
@@ -189,7 +192,7 @@ export function ReflectionPage({
         comfortNeedIds,
         comfortNote,
         journalText: "",
-        journalSaveChoice,
+        journalSaveChoice: effectiveSaveChoice,
       }
     : value;
   const showsRefusalSafety = refusalSafety === "fear-reaction" || refusalSafety === "cannot-refuse" || refusalSafety === "unsure";
@@ -464,13 +467,17 @@ export function ReflectionPage({
           }}
           value={journalText}
         />
-        <JourneyAction
-          label="保存这次记录"
-          loadingLabel="正在准备保存…"
-          onAction={() => {
-            setJournalStorageOpen(true);
-          }}
-        />
+        {storageMode === "session-only" ? (
+          <SupportingCopy>仅用于本次回顾，离开后内容会清除。</SupportingCopy>
+        ) : (
+          <JourneyAction
+            label="保存这次记录"
+            loadingLabel="正在准备保存…"
+            onAction={() => {
+              setJournalStorageOpen(true);
+            }}
+          />
+        )}
         <TextAction
           label="暂时不写"
           onPress={() => {
@@ -480,7 +487,7 @@ export function ReflectionPage({
         />
       </Card>
 
-      {journalDecisionMade ? <Card accessible={false}>
+      {storageMode === "device" && journalDecisionMade ? <Card accessible={false}>
         <SectionTitle>这条记录要放在哪里？</SectionTitle>
         {journalSaveChoice === "device" ? <SupportingCopy>只保存在这台设备</SupportingCopy> : null}
         <SupportingCopy>记录不会上传到云端。更换设备、删除 App 或清除数据后，可能无法找回。</SupportingCopy>
@@ -489,30 +496,32 @@ export function ReflectionPage({
       </Card> : null}
 
       <JourneyAction
-        accessibilityLabel="带着这些发现去练习"
-        errorMessage="保存反思失败，请重试。"
-        label="带着这些发现去练习"
-        loadingLabel="正在保存这些发现…"
+        accessibilityLabel={storageMode === "session-only" ? "完成本次回顾" : "带着这些发现去练习"}
+        errorMessage={storageMode === "session-only" ? "完成回顾失败，请重试。" : "保存反思失败，请重试。"}
+        label={storageMode === "session-only" ? "完成本次回顾" : "带着这些发现去练习"}
+        loadingLabel={storageMode === "session-only" ? "正在完成回顾…" : "正在保存这些发现…"}
         onAction={() => onComplete(submissionValue)}
       />
 
-      <BottomSheet
-        onClose={() => setJournalStorageOpen(false)}
-        title="记录会保存在哪里？"
-        visible={journalStorageOpen}
-      >
-        <SupportingCopy>记录不会上传到云端。更换设备、删除 App 或清除数据后，可能无法找回。</SupportingCopy>
-        <SupportingCopy>如果其他人能够打开你的设备和 CAVE，也可能看到这些记录。</SupportingCopy>
-        <SecondaryButton
-          label="确认只保存在这台设备"
-          onPress={() => {
-            setJournalSaveChoice("device");
-            setJournalDecisionMade(true);
-            setJournalStorageOpen(false);
-          }}
-        />
-        <TextAction label="返回修改" onPress={() => setJournalStorageOpen(false)} />
-      </BottomSheet>
+      {storageMode === "device" ? (
+        <BottomSheet
+          onClose={() => setJournalStorageOpen(false)}
+          title="记录会保存在哪里？"
+          visible={journalStorageOpen}
+        >
+          <SupportingCopy>记录不会上传到云端。更换设备、删除 App 或清除数据后，可能无法找回。</SupportingCopy>
+          <SupportingCopy>如果其他人能够打开你的设备和 CAVE，也可能看到这些记录。</SupportingCopy>
+          <SecondaryButton
+            label="确认只保存在这台设备"
+            onPress={() => {
+              setJournalSaveChoice("device");
+              setJournalDecisionMade(true);
+              setJournalStorageOpen(false);
+            }}
+          />
+          <TextAction label="返回修改" onPress={() => setJournalStorageOpen(false)} />
+        </BottomSheet>
+      ) : null}
     </View>
   );
 }
