@@ -24,20 +24,6 @@ const expectedSitemapLocations = [
   "https://neijiecave.com/sources/"
 ] as const;
 
-const approvedFaviconSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-labelledby="title description">
-  <title id="title">CAVE 内界</title>
-  <desc id="description">向内聚拢的抽象回响纹样</desc>
-  <rect width="64" height="64" rx="14" fill="#171217"/>
-  <path d="M49 14C40 7 24 7 15 17C6 27 8 44 20 52C29 58 42 56 50 48" fill="none" stroke="#6D345A" stroke-width="5" stroke-linecap="round"/>
-  <path d="M44 21C37 16 27 16 21 23C15 30 17 41 25 45C31 49 39 47 44 42" fill="none" stroke="#927AA0" stroke-width="4" stroke-linecap="round"/>
-  <path d="M39 28C35 25 30 25 27 29C24 33 26 38 30 40C34 42 38 39 40 36" fill="none" stroke="#D7A0B5" stroke-width="3" stroke-linecap="round"/>
-  <circle cx="33" cy="33" r="3" fill="#F2C7A5"/>
-</svg>
-`;
-
-const normalizeFaviconSvg = (source: string) =>
-  source.replace(/\r\n/gu, "\n").replace(/\n*$/u, "\n");
-
 const assertHeadersControls = (source: string) => {
   const normalized = source.replace(/\r\n?/gu, "\n");
   expect(normalized.endsWith("\n")).toBe(true);
@@ -89,25 +75,22 @@ const assertSitemapControls = (source: string) => {
   }
 };
 
-const assertFaviconControls = (source: string) => {
-  expect(normalizeFaviconSvg(source)).toBe(approvedFaviconSvg);
-  expect(source).not.toMatch(/<\s*\/?\s*script\b/iu);
-  expect(source).not.toMatch(/<!\s*(?:DOCTYPE|ENTITY)\b/iu);
-  expect(
-    source.replace(/\s+xmlns="http:\/\/www\.w3\.org\/2000\/svg"/u, "")
-  ).not.toMatch(/\b[a-z][a-z\d+.-]*:/iu);
+const assertFaviconControls = (source: Buffer) => {
+  expect([...source.subarray(0, 8)]).toEqual([137, 80, 78, 71, 13, 10, 26, 10]);
+  expect(source.readUInt32BE(16)).toBe(64);
+  expect(source.readUInt32BE(20)).toBe(64);
 };
 
 describe("static deployment controls", () => {
   it("ships the exact Cloudflare security and crawl controls", async () => {
-    const readDistFile = (name: string) =>
+    const readTextDistFile = (name: string) =>
       readFile(new URL(`../dist/${name}`, import.meta.url), "utf8");
     const [distEntries, headers, robots, sitemap, favicon] = await Promise.all([
       readdir(new URL("../dist/", import.meta.url)),
-      readDistFile("_headers"),
-      readDistFile("robots.txt"),
-      readDistFile("sitemap.xml"),
-      readDistFile("favicon.svg")
+      readTextDistFile("_headers"),
+      readTextDistFile("robots.txt"),
+      readTextDistFile("sitemap.xml"),
+      readFile(new URL("../dist/favicon.png", import.meta.url))
     ]);
 
     expect(distEntries).not.toContain("_redirects");
