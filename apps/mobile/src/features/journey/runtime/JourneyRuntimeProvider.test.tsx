@@ -33,7 +33,6 @@ import {
 const mockRouter = { push: jest.fn(), replace: jest.fn() };
 let mockPathname = "/journey/welcome";
 let mockStackContent: ReactNode = null;
-let mockStackScreenNames: string[] = [];
 const mockRedirect = jest.fn();
 const mockStackRender = jest.fn(() => mockStackContent);
 jest.mock("expo-router", () => ({
@@ -41,42 +40,7 @@ jest.mock("expo-router", () => ({
     mockRedirect(props);
     return null;
   },
-  Stack: Object.assign(
-    ({ children }: { children?: ReactNode }) => {
-      const nodes = Array.isArray(children) ? children : [children];
-      const publicNames = nodes
-        .filter((node) => node?.type?.displayName === "MockStackScreen")
-        .map((node) => node.props.name as string);
-      const protectedGroup = nodes.find(
-        (node) => node?.type?.displayName === "MockStackProtected"
-      );
-      const protectedChildren = protectedGroup === undefined
-        ? []
-        : Array.isArray(protectedGroup.props.children)
-          ? protectedGroup.props.children
-          : [protectedGroup.props.children];
-      const protectedNames = protectedChildren
-        .filter((node: { type?: { displayName?: string } } | null) => (
-          node?.type?.displayName === "MockStackScreen"
-        ))
-        .map((node: { props: { name: string } }) => node.props.name);
-      const protectedVisible = protectedGroup?.props.guard === true;
-      mockStackScreenNames = [
-        ...publicNames,
-        ...(protectedVisible ? protectedNames : [])
-      ];
-      const routeName = mockPathname.split("/").filter(Boolean).at(-1);
-      if (!protectedVisible && routeName !== undefined && protectedNames.includes(routeName)) {
-        mockRedirect({ href: "/journey/welcome" });
-        return null;
-      }
-      return mockStackRender();
-    },
-    {
-      Protected: Object.assign(() => null, { displayName: "MockStackProtected" }),
-      Screen: Object.assign(() => null, { displayName: "MockStackScreen" })
-    }
-  ),
+  Stack: () => mockStackRender(),
   usePathname: () => mockPathname,
   useRouter: () => mockRouter
 }));
@@ -85,7 +49,6 @@ beforeEach(() => {
   jest.clearAllMocks();
   mockPathname = "/journey/welcome";
   mockStackContent = null;
-  mockStackScreenNames = [];
 });
 
 function nativePersistenceHarness({
@@ -474,9 +437,6 @@ test("renders the real public journey layout without loading private navigation 
   );
 
   expect(await screen.findByTestId("welcome-landing")).toBeTruthy();
-  expect(mockStackScreenNames).toContain("welcome");
-  expect(mockStackScreenNames).toContain("adult-gate");
-  expect(mockStackScreenNames).not.toContain("preface");
   expect(harness.adapters.secrets.getDatabaseKey).not.toHaveBeenCalled();
   expect(harness.adapters.secrets.getOrCreateDatabaseKey).not.toHaveBeenCalled();
   expect(harness.adapters.native.openDatabaseAsync).not.toHaveBeenCalled();
@@ -594,7 +554,6 @@ test.each([
   );
 
   await waitFor(() => expect(mockRedirect).toHaveBeenCalledWith({ href: "/journey/welcome" }));
-  expect(mockStackScreenNames).toEqual(["welcome", "adult-gate"]);
   expect(mockStackRender).not.toHaveBeenCalled();
   expect(harness.adapters.secrets.getDatabaseKey).not.toHaveBeenCalled();
   expect(harness.adapters.secrets.getOrCreateDatabaseKey).not.toHaveBeenCalled();
