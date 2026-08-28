@@ -103,9 +103,14 @@ CREATE TABLE IF NOT EXISTS journey_drafts_v3 (
 );`;
 
 export const SCHEMA_V8 = `
-ALTER TABLE privacy_settings
-ADD COLUMN show_local_journal_save_notice INTEGER NOT NULL DEFAULT 1
-CHECK (show_local_journal_save_notice IN (0, 1));`;
+CREATE TABLE IF NOT EXISTS app_preferences (
+  singleton_id INTEGER PRIMARY KEY NOT NULL CHECK (singleton_id = 1),
+  theme_preference TEXT NOT NULL CHECK (theme_preference IN ('system', 'light', 'dark'))
+);
+CREATE TABLE IF NOT EXISTS local_journal_preferences (
+  singleton_id INTEGER PRIMARY KEY NOT NULL CHECK (singleton_id = 1),
+  show_save_notice INTEGER NOT NULL CHECK (show_save_notice IN (0, 1))
+);`;
 
 export const DATABASE_MIGRATIONS = [
   { version: 1, schema: SCHEMA_V1 },

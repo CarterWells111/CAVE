@@ -1,25 +1,40 @@
 import { SqlLocalDataRepository } from "./local-data-repository";
-import type { DatabaseConnection, EncryptedDatabaseManager } from "./database";
+import type {
+  DatabaseConnection,
+  TransactionalEncryptedDatabaseManager
+} from "./database";
 
 function connectionWithRows() {
   const calls: Array<{ sql: string; params: unknown[] }> = [];
-  const connection = {
+  const getAllAsync = jest.fn(async (...args: [string, ...unknown[]]): Promise<unknown[]> => {
+    const [sql] = args;
+    if (sql === "PRAGMA table_info(privacy_settings)") return [];
+    if (sql.includes("course_progress")) return [{ lesson_id: "lesson-1", completed_at: "now", quiz_correct: 2, quiz_total: 3 }];
+    return [{ id: "save-1", scenario_id: "scenario-1", created_at: "now", expression_card: '{"boundary":"停"}', transcript: null }];
+  });
+  const getFirstAsync = jest.fn(async (...args: [string, ...unknown[]]): Promise<unknown | null> => {
+    void args;
+    return null;
+  });
+  const connection: DatabaseConnection = {
     execAsync: jest.fn(async () => {}),
     runAsync: jest.fn(async (sql: string, ...params: unknown[]) => { calls.push({ sql, params }); return { changes: 1 }; }),
-    getAllAsync: jest.fn(async (sql: string) => {
-      if (sql.includes("course_progress")) return [{ lesson_id: "lesson-1", completed_at: "now", quiz_correct: 2, quiz_total: 3 }];
-      return [{ id: "save-1", scenario_id: "scenario-1", created_at: "now", expression_card: '{"boundary":"停"}', transcript: null }];
-    }),
-    getFirstAsync: jest.fn(async () => null),
+    getAllAsync: async <T,>(sql: string, ...params: unknown[]) => (
+      await getAllAsync(sql, ...params) as T[]
+    ),
+    getFirstAsync: async <T,>(sql: string, ...params: unknown[]) => (
+      await getFirstAsync(sql, ...params) as T | null
+    ),
     closeAsync: jest.fn(async () => {})
   };
-  const manager: EncryptedDatabaseManager = {
-    initialize: jest.fn(async () => connection as unknown as DatabaseConnection),
+  const manager: TransactionalEncryptedDatabaseManager = {
+    initialize: jest.fn(async () => connection),
     close: jest.fn(async () => undefined),
     removeDatabaseFiles: jest.fn(async () => undefined),
-    withExclusiveMaintenance: jest.fn()
+    withExclusiveMaintenance: jest.fn(),
+    withTransaction: jest.fn(async (operation) => operation(connection))
   };
-  return { calls, connection, manager };
+  return { calls, connection, getAllAsync, getFirstAsync, manager };
 }
 
 describe("SqlLocalDataRepository", () => {
@@ -55,7 +70,7 @@ describe("SqlLocalDataRepository", () => {
     await repository.deleteAll();
     await repository.deleteAll();
     expect(harness.calls.some(({ sql, params }) => sql === "DELETE FROM saved_records WHERE id = ?" && params[0] === "save-1")).toBe(true);
-    expect(harness.calls.filter(({ sql }) => sql.startsWith("DELETE FROM"))).toHaveLength(7);
+    expect(harness.calls.filter(({ sql }) => sql.startsWith("DELETE FROM"))).toHaveLength(9);
   });
 
   test("returns secure privacy defaults when no row exists", async () => {
@@ -79,8 +94,34 @@ describe("SqlLocalDataRepository", () => {
     });
     await repository.resetPrivacySettings();
 
-    expect(harness.calls[0]?.sql).toContain("show_local_journal_save_notice");
-    expect(harness.calls[0]?.params.at(-1)).toBe(0);
-    expect(harness.calls[1]).toEqual({ sql: "DELETE FROM privacy_settings", params: [] });
+    expect(harness.calls[0]?.sql).not.toContain("show_local_journal_save_notice");
+    expect(harness.calls[1]?.sql).toContain("local_journal_preferences");
+    expect(harness.calls[1]?.params.at(-1)).toBe(0);
+    expect(harness.calls[2]).toEqual({ sql: "DELETE FROM privacy_settings", params: [] });
+    expect(harness.calls[3]).toEqual({ sql: "DELETE FROM local_journal_preferences", params: [] });
+    expect(harness.manager.withTransaction).toHaveBeenCalledTimes(2);
+  });
+
+  test("reads the legacy local v6 journal preference without altering its published table", async () => {
+    const harness = connectionWithRows();
+    harness.getAllAsync.mockImplementation(async (sql: string) => (
+      sql === "PRAGMA table_info(privacy_settings)"
+        ? [{ name: "show_local_journal_save_notice" }]
+        : []
+    ));
+    harness.getFirstAsync.mockImplementation(async (sql: string) => {
+      if (sql.includes("show_local_journal_save_notice")) {
+        return { show_local_journal_save_notice: 0 };
+      }
+      return null;
+    });
+    const repository = new SqlLocalDataRepository(harness.manager);
+
+    await expect(repository.getPrivacySettings()).resolves.toEqual({
+      liveModelAcknowledged: false,
+      defaultSaveTranscript: false,
+      showLocalJournalSaveNotice: false,
+    });
+    expect(harness.calls).toHaveLength(0);
   });
 });

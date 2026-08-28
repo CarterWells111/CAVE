@@ -1,4 +1,7 @@
-import type { EncryptedDatabaseManager } from "./database";
+import type {
+  DatabaseTransactionConnection,
+  TransactionalEncryptedDatabaseManager
+} from "./database";
 import type {
   CourseProgressRecord,
   LocalDataRepository,
@@ -25,11 +28,22 @@ type SavedRow = {
 type PrivacyRow = {
   live_model_acknowledged: number;
   default_save_transcript: number;
+};
+
+type LocalJournalPreferenceRow = {
+  show_save_notice: number;
+};
+
+type LegacyJournalPreferenceRow = {
   show_local_journal_save_notice: number;
 };
 
+type TableInfoRow = {
+  name: string;
+};
+
 export class SqlLocalDataRepository implements LocalDataRepository {
-  constructor(private readonly database: EncryptedDatabaseManager) {}
+  constructor(private readonly database: TransactionalEncryptedDatabaseManager) {}
 
   async initialize() { await this.database.initialize(); }
 
@@ -96,37 +110,74 @@ export class SqlLocalDataRepository implements LocalDataRepository {
   async getPrivacySettings(): Promise<PrivacySettings> {
     const connection = await this.database.initialize();
     const row = await connection.getFirstAsync<PrivacyRow>(
-      "SELECT live_model_acknowledged, default_save_transcript, show_local_journal_save_notice FROM privacy_settings WHERE singleton_id = ?",
+      "SELECT live_model_acknowledged, default_save_transcript FROM privacy_settings WHERE singleton_id = ?",
       1
     );
-    if (row === null) return { ...DEFAULT_PRIVACY_SETTINGS };
+    const localJournalPreference = await connection.getFirstAsync<LocalJournalPreferenceRow>(
+      "SELECT show_save_notice FROM local_journal_preferences WHERE singleton_id = ?",
+      1
+    );
+    let showLocalJournalSaveNotice = localJournalPreference?.show_save_notice === 1;
+    if (localJournalPreference === null) {
+      const columns = await connection.getAllAsync<TableInfoRow>(
+        "PRAGMA table_info(privacy_settings)"
+      );
+      if (columns.some(({ name }) => name === "show_local_journal_save_notice")) {
+        const legacy = await connection.getFirstAsync<LegacyJournalPreferenceRow>(
+          "SELECT show_local_journal_save_notice FROM privacy_settings WHERE singleton_id = ?",
+          1
+        );
+        showLocalJournalSaveNotice = legacy?.show_local_journal_save_notice !== 0;
+      } else {
+        showLocalJournalSaveNotice = DEFAULT_PRIVACY_SETTINGS.showLocalJournalSaveNotice;
+      }
+    }
+    if (row === null) {
+      return { ...DEFAULT_PRIVACY_SETTINGS, showLocalJournalSaveNotice };
+    }
     return {
       liveModelAcknowledged: row.live_model_acknowledged === 1,
       defaultSaveTranscript: false,
-      showLocalJournalSaveNotice: row.show_local_journal_save_notice === 1,
+      showLocalJournalSaveNotice,
     };
   }
 
   async setPrivacySettings(settings: PrivacySettings): Promise<void> {
-    const connection = await this.database.initialize();
+    await this.database.withTransaction(async (connection) => {
+      await this.writePrivacySettings(connection, settings);
+    });
+  }
+
+  private async writePrivacySettings(
+    connection: DatabaseTransactionConnection,
+    settings: PrivacySettings
+  ): Promise<void> {
     await connection.runAsync(
-      "INSERT INTO privacy_settings (singleton_id, live_model_acknowledged, default_save_transcript, show_local_journal_save_notice) VALUES (?, ?, ?, ?) ON CONFLICT(singleton_id) DO UPDATE SET live_model_acknowledged = excluded.live_model_acknowledged, default_save_transcript = excluded.default_save_transcript, show_local_journal_save_notice = excluded.show_local_journal_save_notice",
+      "INSERT INTO privacy_settings (singleton_id, live_model_acknowledged, default_save_transcript) VALUES (?, ?, ?) ON CONFLICT(singleton_id) DO UPDATE SET live_model_acknowledged = excluded.live_model_acknowledged, default_save_transcript = excluded.default_save_transcript",
       1,
       settings.liveModelAcknowledged ? 1 : 0,
-      0,
+      0
+    );
+    await connection.runAsync(
+      "INSERT INTO local_journal_preferences (singleton_id, show_save_notice) VALUES (?, ?) ON CONFLICT(singleton_id) DO UPDATE SET show_save_notice = excluded.show_save_notice",
+      1,
       settings.showLocalJournalSaveNotice ? 1 : 0,
     );
   }
 
   async resetPrivacySettings(): Promise<void> {
-    const connection = await this.database.initialize();
-    await connection.runAsync("DELETE FROM privacy_settings");
+    await this.database.withTransaction(async (connection) => {
+      await connection.runAsync("DELETE FROM privacy_settings");
+      await connection.runAsync("DELETE FROM local_journal_preferences");
+    });
   }
 
   async deleteAll(): Promise<void> {
-    const connection = await this.database.initialize();
-    await connection.runAsync("DELETE FROM course_progress");
-    await connection.runAsync("DELETE FROM saved_records");
-    await connection.runAsync("DELETE FROM privacy_settings");
+    await this.database.withTransaction(async (connection) => {
+      await connection.runAsync("DELETE FROM course_progress");
+      await connection.runAsync("DELETE FROM saved_records");
+      await connection.runAsync("DELETE FROM privacy_settings");
+      await connection.runAsync("DELETE FROM local_journal_preferences");
+    });
   }
 }
