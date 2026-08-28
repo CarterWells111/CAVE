@@ -14,9 +14,10 @@ import {
 import type { AppTheme } from "../../../../core/design/theme";
 import { useTheme } from "../../../../core/design/theme-provider";
 import { BottomSheet } from "../../../../core/ui/bottom-sheet";
+import { Card } from "../../../../core/ui/Card";
 import { InfoCard } from "../../../../core/ui/info-card";
 import { TextAction } from "../../../../core/ui/text-action";
-import type { JournalSaveChoice } from "../../domain/types";
+import type { BehaviorAttitude, JournalSaveChoice } from "../../domain/types";
 import { loadJourneyContentCatalog } from "../../infrastructure/journey-content-catalog";
 import { JourneyAction } from "../components/JourneyAction";
 import { JourneyChoice } from "../components/JourneyChoice";
@@ -44,12 +45,18 @@ export type ReflectionValue = {
 
 export type ReflectionPageProps = {
   initialValue?: Partial<ReflectionValue>;
+  behaviorAnswers?: Array<{ behaviorId: string; behaviorLabel: string; attitude: BehaviorAttitude }>;
   onCardVisibilityChange?(visible: boolean): void;
+  onEditBehaviorAttitude?(behaviorId: string, attitude: BehaviorAttitude): ReturnType<JourneyActionCallback>;
+  onOpenComfort?(): ReturnType<JourneyActionCallback>;
+  onOpenJournal?(): ReturnType<JourneyActionCallback>;
   onSetJournalSaveNotice?(enabled: boolean): ReturnType<JourneyActionCallback>;
-  onSave(value: ReflectionValue): ReturnType<JourneyActionCallback>;
+  onSave?(value: ReflectionValue): ReturnType<JourneyActionCallback>;
+  onUsePracticePhrase?(phrase: string): ReturnType<JourneyActionCallback>;
   onComplete(value: ReflectionValue): ReturnType<JourneyActionCallback>;
   reducedMotion?: boolean;
   showLocalJournalSaveNotice?: boolean;
+  storageMode?: "device" | "session-only";
 };
 
 const content = loadJourneyContentCatalog();
@@ -70,6 +77,15 @@ const cards: Array<{ id: ReflectionCardId; title: string }> = [
   { id: "expression", title: "我能表达变化吗" },
   { id: "comfort", title: "什么让我更安心" },
   { id: "journal", title: "给此刻留一句话" },
+];
+
+const reviewGroups: Array<{ attitude: BehaviorAttitude; label: string }> = [
+  { attitude: "looking-forward", label: "我有些期待" },
+  { attitude: "familiar-enjoyed", label: "我已经习惯 / 我享受这类亲密行为" },
+  { attitude: "decide-in-moment", label: "我想留到当时再感受" },
+  { attitude: "unsure", label: "我还没想清楚" },
+  { attitude: "not-this-time", label: "这次我不希望发生" },
+  { attitude: "skip", label: "我暂时留白了" },
 ];
 
 const pressureOptions: Array<{ value: PressureAnswer; label: string }> = [
@@ -134,7 +150,11 @@ function persistedValue(value: ReflectionValue): ReflectionValue {
   return { ...withoutPrompt, journalText: "", journalSaveChoice: "not-saved" };
 }
 
-function cardHasContent(cardId: ReflectionCardId, value: ReflectionValue): boolean {
+function cardHasContent(
+  cardId: ReflectionCardId,
+  value: ReflectionValue,
+  includeSessionJournal = false,
+): boolean {
   if (cardId === "motivation") {
     return value.motivationIds.length > 0 || value.pressureWithoutDisappointment !== null;
   }
@@ -143,7 +163,8 @@ function cardHasContent(cardId: ReflectionCardId, value: ReflectionValue): boole
   if (cardId === "comfort") {
     return value.comfortClarity !== null || value.comfortNeedIds.length > 0 || value.comfortNote.trim().length > 0;
   }
-  return value.journalSaveChoice === "device" && value.journalText.trim().length > 0;
+  return value.journalText.trim().length > 0
+    && (value.journalSaveChoice === "device" || includeSessionJournal);
 }
 
 function clearCardValue(cardId: ReflectionCardId, value: ReflectionValue): ReflectionValue {
@@ -180,12 +201,18 @@ function SupportingCopy({ children }: { children: string }) {
 
 export function ReflectionPage({
   initialValue = {},
+  behaviorAnswers = [],
   onCardVisibilityChange,
+  onEditBehaviorAttitude,
+  onOpenComfort,
+  onOpenJournal,
   onSetJournalSaveNotice,
   onSave,
+  onUsePracticePhrase,
   onComplete,
   reducedMotion = false,
   showLocalJournalSaveNotice = true,
+  storageMode = "device",
 }: ReflectionPageProps) {
   const theme = useTheme();
   const styles = createStyles(theme);
@@ -201,6 +228,8 @@ export function ReflectionPage({
   const [journalStorageOpen, setJournalStorageOpen] = useState(false);
   const [hideFutureJournalNotice, setHideFutureJournalNotice] = useState(false);
   const [clearConfirmationOpen, setClearConfirmationOpen] = useState(false);
+  const [localBehaviorAnswers, setLocalBehaviorAnswers] = useState(() => [...behaviorAnswers]);
+  const [editingBehaviorId, setEditingBehaviorId] = useState<string | null>(null);
   const flipDuration = Math.round(theme.motion.duration.slow / 2);
 
   useEffect(() => () => {
@@ -265,8 +294,10 @@ export function ReflectionPage({
   };
 
   const saveValueAndReturn = async (nextValue: ReflectionValue) => {
-    const normalized = persistedValue(nextValue);
-    await onSave(normalized);
+    const normalized = storageMode === "session-only"
+      ? { ...cloneValue(nextValue), journalSaveChoice: "not-saved" as const }
+      : persistedValue(nextValue);
+    if (storageMode === "device") await onSave?.(normalized);
     setSavedValue(normalized);
     setDraftValue(cloneValue(normalized));
     await returnToGallery();
@@ -278,12 +309,17 @@ export function ReflectionPage({
   };
 
   const saveJournal = async () => {
+    if (storageMode === "session-only") {
+      await saveValueAndReturn({ ...draftValue, journalSaveChoice: "not-saved" });
+      return;
+    }
     if (hideFutureJournalNotice) await onSetJournalSaveNotice?.(false);
     await saveValueAndReturn({ ...draftValue, journalSaveChoice: "device" });
     setJournalStorageOpen(false);
   };
 
   const startJournalSave = () => {
+    if (storageMode === "session-only") return saveJournal();
     if (showLocalJournalSaveNotice) {
       setJournalStorageOpen(true);
       return;
@@ -294,7 +330,7 @@ export function ReflectionPage({
   const clearActiveCard = async () => {
     if (activeCardId === null) return;
     const cleared = clearCardValue(activeCardId, savedValue);
-    await onSave(persistedValue(cleared));
+    if (storageMode === "device") await onSave?.(persistedValue(cleared));
     setSavedValue(cleared);
     setDraftValue(cloneValue(cleared));
     setClearConfirmationOpen(false);
@@ -333,8 +369,17 @@ export function ReflectionPage({
     }));
   };
 
+  const saveBehaviorAttitude = async (behaviorId: string, attitude: BehaviorAttitude) => {
+    await onEditBehaviorAttitude?.(behaviorId, attitude);
+    setLocalBehaviorAnswers((current) => current.map((answer) => answer.behaviorId === behaviorId
+      ? { ...answer, attitude }
+      : answer));
+    setEditingBehaviorId(null);
+  };
+
   const activeCard = cards.find(({ id }) => id === activeCardId);
-  const activeHasSavedContent = activeCardId !== null && cardHasContent(activeCardId, savedValue);
+  const activeHasSavedContent = activeCardId !== null
+    && cardHasContent(activeCardId, savedValue, storageMode === "session-only");
   const activeDraftHasContent = activeCardId === "journal"
     ? draftValue.journalText.trim().length > 0
     : activeCardId !== null && cardHasContent(activeCardId, draftValue);
@@ -389,7 +434,16 @@ export function ReflectionPage({
                     </View>
                     <SupportingCopy>这道题不会覆盖你之前对任何行为留下的答案。</SupportingCopy>
                     {draftValue.pressureWithoutDisappointment === "still-want" || draftValue.pressureWithoutDisappointment === "slow-down" ? (
-                      <InfoCard variant="education"><SupportingCopy>{slowDownPhrase}</SupportingCopy></InfoCard>
+                      <InfoCard variant="education">
+                        <SupportingCopy>{slowDownPhrase}</SupportingCopy>
+                        {onUsePracticePhrase ? (
+                          <JourneyAction
+                            label="把这句慢下来带到练习里"
+                            loadingLabel="正在加入…"
+                            onAction={() => onUsePracticePhrase(slowDownPhrase)}
+                          />
+                        ) : null}
+                      </InfoCard>
                     ) : null}
                     {draftValue.pressureWithoutDisappointment === "less-want" ? (
                       <InfoCard variant="pause"><SupportingCopy>我知道你可能有所期待，但我现在不想尝试这件事。</SupportingCopy></InfoCard>
@@ -418,6 +472,12 @@ export function ReflectionPage({
                   <InfoCard variant="safety">
                     <SupportingCopy>如果说不、暂停或离开让你感到害怕，可以先把自己的安全和空间放在前面。你不需要马上作出关于亲密行为的决定。</SupportingCopy>
                     <SupportingCopy>这不代表系统已经判断现实中正在发生危险。</SupportingCopy>
+                    {onOpenComfort ? (
+                      <JourneyAction label="看看什么能让我更安心" loadingLabel="正在打开…" onAction={onOpenComfort} />
+                    ) : null}
+                    {onOpenJournal ? (
+                      <JourneyAction label="先回到我的记录里" loadingLabel="正在打开…" onAction={onOpenJournal} />
+                    ) : null}
                   </InfoCard>
                 ) : null}
               </>
@@ -442,7 +502,21 @@ export function ReflectionPage({
                   <InfoCard variant="education"><SupportingCopy>下一步会给你几句可以直接使用、也可以修改的表达。</SupportingCopy></InfoCard>
                 ) : null}
                 {draftValue.expressionDifficulty === "not-ready" ? (
-                  <InfoCard variant="pause"><SupportingCopy>{`说不出口，不代表你的暂停不重要。可以先从一句很短的话开始：${stopPhrase}`}</SupportingCopy></InfoCard>
+                  <InfoCard variant="pause">
+                    <SupportingCopy>{`说不出口，不代表你的暂停不重要。可以先从一句很短的话开始：${stopPhrase}`}</SupportingCopy>
+                    {onUsePracticePhrase ? (
+                      <JourneyAction
+                        label="把这句话带到练习里"
+                        loadingLabel="正在加入…"
+                        onAction={() => onUsePracticePhrase(stopPhrase)}
+                      />
+                    ) : null}
+                    <JourneyAction
+                      label="先不选择"
+                      loadingLabel="正在收起…"
+                      onAction={() => setDraftValue((current) => ({ ...current, expressionDifficulty: null }))}
+                    />
+                  </InfoCard>
                 ) : null}
               </>
             ) : null}
@@ -511,6 +585,9 @@ export function ReflectionPage({
                   style={styles.journalInput}
                   value={draftValue.journalText}
                 />
+                {storageMode === "session-only" ? (
+                  <SupportingCopy>仅用于本次回顾，离开后内容会清除。</SupportingCopy>
+                ) : null}
               </>
             ) : null}
 
@@ -526,7 +603,7 @@ export function ReflectionPage({
           </View>
         )}
 
-        <BottomSheet onClose={() => setJournalStorageOpen(false)} title="记录会保存在哪里？" visible={journalStorageOpen}>
+        <BottomSheet onClose={() => setJournalStorageOpen(false)} title="记录会保存在哪里？" visible={storageMode === "device" && journalStorageOpen}>
           <SupportingCopy>记录不会上传到云端。更换设备、删除 App 或清除数据后，可能无法找回。</SupportingCopy>
           <SupportingCopy>如果其他人能够打开你的设备和 CAVE，也可能看到这些记录。</SupportingCopy>
           <JourneyChoice
@@ -555,9 +632,51 @@ export function ReflectionPage({
         <Text accessibilityRole="header" selectable style={styles.introTitle}>你准备了多少，不代表你做得好不好。</Text>
         <SupportingCopy>答案可以随时改变；这里不会生成分数或准备度结论。</SupportingCopy>
       </View>
+      {localBehaviorAnswers.length > 0 ? (
+        <Card accessible={false}>
+          <SectionTitle>这是你刚才留下的答案</SectionTitle>
+          {reviewGroups.map((group) => {
+            const answers = localBehaviorAnswers.filter(({ attitude }) => attitude === group.attitude);
+            return answers.length > 0 ? (
+              <View key={group.attitude} style={styles.options}>
+                <Text selectable style={styles.frontTitle}>{group.label}</Text>
+                {answers.map((answer) => (
+                  <View key={answer.behaviorId} style={styles.options}>
+                    <JourneyAction
+                      accessibilityLabel={`修改${answer.behaviorLabel}的答案`}
+                      label={answer.behaviorLabel}
+                      loadingLabel="正在展开…"
+                      onAction={onEditBehaviorAttitude
+                        ? () => setEditingBehaviorId((current) => current === answer.behaviorId ? null : answer.behaviorId)
+                        : undefined}
+                    />
+                    {editingBehaviorId === answer.behaviorId ? (
+                      <View accessibilityRole="radiogroup" style={styles.options}>
+                        <SupportingCopy>{`正在修改：${answer.behaviorLabel}`}</SupportingCopy>
+                        {reviewGroups.map((option) => (
+                          <JourneyChoice
+                            accessibilityLabel={`修改${answer.behaviorLabel}：${option.label}`}
+                            key={option.attitude}
+                            label={option.label}
+                            mode="single"
+                            onSelect={() => saveBehaviorAttitude(answer.behaviorId, option.attitude)}
+                            selected={answer.attitude === option.attitude}
+                          />
+                        ))}
+                      </View>
+                    ) : null}
+                  </View>
+                ))}
+              </View>
+            ) : null;
+          })}
+          <SupportingCopy>这是你此刻的感受，不需要整齐，也可以随时改变。</SupportingCopy>
+          <SupportingCopy>此页的其他反思仍保留在当前页面。</SupportingCopy>
+        </Card>
+      ) : null}
       <View style={styles.grid} testID="reflection-card-grid">
         {cards.map((card) => {
-          const recorded = cardHasContent(card.id, savedValue);
+          const recorded = cardHasContent(card.id, savedValue, storageMode === "session-only");
           return (
             <Pressable
               accessibilityHint={recorded ? "点击修改已经留下的反思" : "点击翻到卡牌反面"}
@@ -576,10 +695,10 @@ export function ReflectionPage({
         })}
       </View>
       <JourneyAction
-        accessibilityLabel="带着这些发现去练习"
-        errorMessage="保存反思失败，请重试。"
-        label="带着这些发现去练习"
-        loadingLabel="正在保存这些发现…"
+        accessibilityLabel={storageMode === "session-only" ? "完成本次回顾" : "带着这些发现去练习"}
+        errorMessage={storageMode === "session-only" ? "完成回顾失败，请重试。" : "保存反思失败，请重试。"}
+        label={storageMode === "session-only" ? "完成本次回顾" : "带着这些发现去练习"}
+        loadingLabel={storageMode === "session-only" ? "正在完成回顾…" : "正在保存这些发现…"}
         onAction={() => onComplete(persistedValue(savedValue))}
       />
     </View>

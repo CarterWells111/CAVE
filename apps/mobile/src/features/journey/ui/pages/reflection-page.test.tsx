@@ -154,6 +154,115 @@ test("clears one saved card after explicit confirmation and persists the empty f
   await waitFor(() => expect(screen.getAllByText("尚未记录")).toHaveLength(5));
 });
 
+test("keeps standalone reflection session-only and never submits journal text", async () => {
+  const onComplete = jest.fn();
+  const onSave = jest.fn();
+  renderPage({ onComplete, onSave, storageMode: "session-only" });
+  await openCard("给此刻留一句话", "journal");
+
+  expect(screen.getByText("仅用于本次回顾，离开后内容会清除。")).toBeTruthy();
+  expect(screen.queryByText("确认只保存在这台设备")).toBeNull();
+  fireEvent.changeText(screen.getByLabelText("给此刻留一句话"), "不应传出当前页面");
+  fireEvent.press(screen.getByRole("button", { name: "保存这句话并返回" }));
+  await waitFor(() => expect(screen.getByTestId("reflection-card-grid")).toBeTruthy());
+  fireEvent.press(screen.getByRole("button", { name: "完成本次回顾" }));
+
+  expect(onSave).not.toHaveBeenCalled();
+  expect(onComplete).toHaveBeenCalledWith(expect.objectContaining({
+    journalSaveChoice: "not-saved",
+    journalText: "",
+  }));
+  expect(onComplete.mock.calls[0]?.[0]).not.toHaveProperty("journalPromptId");
+});
+
+test("restores an interrupted reflection and submits the complete local-only payload", () => {
+  const onComplete = jest.fn();
+  renderPage({
+    initialValue: {
+      motivationIds: ["motivation-avoid-disappointment"],
+      pressureWithoutDisappointment: "slow-down",
+      refusalSafety: "difficult-but-possible",
+      expressionDifficulty: "not-ready",
+      comfortClarity: "need-space",
+      comfortNeedIds: ["comfort-no-pressure-after-pause"],
+      comfortNote: "需要自己的空间",
+      journalPromptId: "journal-hesitation",
+      journalText: "我还想慢一点",
+      journalSaveChoice: "not-saved",
+    },
+    onComplete,
+  });
+
+  fireEvent.press(screen.getByRole("button", { name: "带着这些发现去练习" }));
+  expect(onComplete).toHaveBeenCalledWith({
+    motivationIds: ["motivation-avoid-disappointment"],
+    pressureWithoutDisappointment: "slow-down",
+    refusalSafety: "difficult-but-possible",
+    expressionDifficulty: "not-ready",
+    comfortClarity: "need-space",
+    comfortNeedIds: ["comfort-no-pressure-after-pause"],
+    comfortNote: "需要自己的空间",
+    journalText: "",
+    journalSaveChoice: "not-saved",
+  });
+});
+
+test("edits a prior behavior attitude without replacing the five reflection cards", async () => {
+  const onEditBehaviorAttitude = jest.fn();
+  renderPage({
+    behaviorAnswers: [
+      { attitude: "not-this-time", behaviorId: "direct", behaviorLabel: "直接触摸" },
+      { attitude: "looking-forward", behaviorId: "hug", behaviorLabel: "拥抱或依偎" },
+      { attitude: "unsure", behaviorId: "kiss", behaviorLabel: "接吻" },
+    ],
+    onEditBehaviorAttitude,
+  });
+
+  expect(screen.getByText("这是你刚才留下的答案")).toBeTruthy();
+  expect(screen.getAllByText("尚未记录")).toHaveLength(5);
+  fireEvent.press(screen.getByRole("button", { name: "修改拥抱或依偎的答案" }));
+  expect(screen.getAllByRole("radio", { name: /^修改拥抱或依偎：/u })).toHaveLength(6);
+  fireEvent.press(screen.getByRole("radio", { name: "修改拥抱或依偎：我还没想清楚" }));
+
+  await waitFor(() => expect(onEditBehaviorAttitude).toHaveBeenCalledWith("hug", "unsure"));
+  expect(screen.queryByText("正在修改：拥抱或依偎")).toBeNull();
+  expect(screen.getByText("此页的其他反思仍保留在当前页面。")).toBeTruthy();
+});
+
+test("offers safety, journal, and practice phrase callbacks inside flipped cards", async () => {
+  const onOpenComfort = jest.fn();
+  const onOpenJournal = jest.fn();
+  const onUsePracticePhrase = jest.fn();
+  renderPage({ onOpenComfort, onOpenJournal, onUsePracticePhrase });
+
+  await openCard("我能说不、暂停或离开吗", "safety");
+  fireEvent.press(screen.getByRole("radio", { name: "拒绝或离开：我担心对方会有不好的反应" }));
+  fireEvent.press(screen.getByRole("button", { name: "看看什么能让我更安心" }));
+  fireEvent.press(screen.getByRole("button", { name: "先回到我的记录里" }));
+  expect(onOpenComfort).toHaveBeenCalledTimes(1);
+  expect(onOpenJournal).toHaveBeenCalledTimes(1);
+  fireEvent.press(screen.getByText("暂不记录，返回所有卡牌"));
+  await waitFor(() => expect(screen.getByTestId("reflection-card-grid")).toBeTruthy());
+
+  await openCard("我能表达变化吗", "expression");
+  fireEvent.press(screen.getByRole("radio", { name: "表达变化：我现在还不太敢表达" }));
+  fireEvent.press(screen.getByRole("button", { name: "把这句话带到练习里" }));
+  expect(onUsePracticePhrase).toHaveBeenCalledWith("先停一下，我现在需要一点时间。");
+});
+
+test("offers the conditional slow-down phrase without overwriting prior answers", async () => {
+  const onUsePracticePhrase = jest.fn();
+  renderPage({ onUsePracticePhrase });
+  await openCard("靠近我的动力", "motivation");
+  fireEvent.press(screen.getByRole("checkbox", { name: "我不希望对方失望" }));
+  fireEvent.press(screen.getByRole("radio", { name: "如果不用担心失望：也许想，但希望慢一点" }));
+
+  fireEvent.press(screen.getByRole("button", { name: "把这句慢下来带到练习里" }));
+  expect(onUsePracticePhrase).toHaveBeenCalledWith(
+    "我愿意试试看，但想慢慢来。我说“慢一点”或“停下”时，请马上停下来。",
+  );
+});
+
 test("allows continuing with no completed cards and strips unconfirmed journal text", () => {
   const onComplete = jest.fn<Promise<void>, [unknown]>().mockResolvedValue(undefined);
   renderPage({

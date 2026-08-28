@@ -80,9 +80,12 @@ describe("official site routes", () => {
       expect(metaContent(html, "og:title")).toEqual([title]);
       expect(metaContent(html, "og:description")).toEqual([description]);
       expect(metaContent(html, "og:url")).toEqual([expectedCanonicals[index]]);
-      expect(tags(html, "link").filter((tag) => (
-        attribute(tag, "rel") === "icon" && attribute(tag, "href") === "/favicon.svg"
-      ))).toHaveLength(1);
+      const faviconTags = tags(html, "link").filter(
+        (tag) => attribute(tag, "rel") === "icon"
+      );
+      expect(faviconTags).toHaveLength(1);
+      expect(attribute(faviconTags[0] ?? "", "href")).toBe("/favicon.png");
+      expect(attribute(faviconTags[0] ?? "", "type")).toBe("image/png");
       expect(html).toMatch(/<html\b[^>]*\blang=["']zh-CN["']/u);
       expect(html).toMatch(/<a\b[^>]*\bclass=["'][^"']*skip-link[^"']*["'][^>]*\bhref=["']#main-content["']/u);
       expect(html).toMatch(/<footer\b/u);

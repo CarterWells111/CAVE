@@ -68,15 +68,19 @@ async function renderThemedScreen(theme: AppTheme) {
   await screen.findByRole("header", { name: "设置" });
 }
 
-test("shows only local privacy and local deletion destinations", () => {
+test("shows truthful account and local storage status without fake cloud actions", () => {
   renderScreen();
 
   expect(screen.getByRole("header", { name: "设置" })).toBeTruthy();
+  expect(screen.getByRole("header", { name: "账户与保存" })).toBeTruthy();
+  expect(screen.getByText("未登录")).toBeTruthy();
+  expect(screen.getByText("本机保存（当前）")).toBeTruthy();
+  expect(screen.getByText("登录与云端同步（尚未开放）")).toBeTruthy();
   expect(screen.getByText("隐私与本机数据")).toBeTruthy();
   expect(screen.getByText(/能解锁这台设备的人仍可能看到/u)).toBeTruthy();
   expect(screen.queryByRole("button", { name: "更改称呼" })).toBeNull();
   expect(screen.queryByText("界面称呼")).toBeNull();
-  expect(screen.queryByText(/账号|账户|云端|我的/u)).toBeNull();
+  expect(screen.queryByRole("button", { name: /登录|云端/u })).toBeNull();
 
   const scroll = screen.getByTestId("settings-scroll");
   expect(scroll.props.contentInsetAdjustmentBehavior).toBe("automatic");

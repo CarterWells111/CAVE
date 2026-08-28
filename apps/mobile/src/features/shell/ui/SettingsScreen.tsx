@@ -209,9 +209,37 @@ export function SettingsScreen({
           设置
         </Text>
         <Text selectable style={{ ...theme.typography.body, color: theme.color.textSecondary }}>
-          管理外观与保存在这台设备上的内容。
+          管理账户、保存方式、外观与这台设备上的内容。
         </Text>
       </View>
+
+      <Card accessible={false}>
+        <Text accessibilityRole="header" selectable style={{ ...theme.typography.heading, color: theme.color.text }}>
+          账户与保存
+        </Text>
+        <View style={{ gap: theme.space.compact }}>
+          <View style={{ gap: theme.space.xs }}>
+            <Text selectable style={{ ...theme.typography.cardTitle, color: theme.color.text }}>未登录</Text>
+            <Text selectable style={{ ...theme.typography.caption, color: theme.color.textSecondary }}>
+              当前不需要账户即可使用本机功能。
+            </Text>
+          </View>
+          <View style={{ gap: theme.space.xs }}>
+            <Text selectable style={{ ...theme.typography.cardTitle, color: theme.color.primary }}>本机保存（当前）</Text>
+            <Text selectable style={{ ...theme.typography.caption, color: theme.color.textSecondary }}>
+              卡片、回顾和设置只保存在这台设备上。
+            </Text>
+          </View>
+          <View style={{ gap: theme.space.xs }}>
+            <Text selectable style={{ ...theme.typography.cardTitle, color: theme.color.textSecondary }}>
+              登录与云端同步（尚未开放）
+            </Text>
+            <Text selectable style={{ ...theme.typography.caption, color: theme.color.textSecondary }}>
+              这里不会假装登录或上传任何内容。
+            </Text>
+          </View>
+        </View>
+      </Card>
 
       <Card accessible={false}>
         <Text accessibilityRole="header" selectable style={{ ...theme.typography.heading, color: theme.color.text }}>

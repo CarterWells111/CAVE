@@ -19,6 +19,32 @@ afterEach(() => {
 });
 
 describe("Expo app identity", () => {
+  test.each(["development", "preview", "production"])(
+    "uses the shared branded splash screen for the %s profile",
+    (profile) => {
+      expect(configFor(profile).plugins).toContainEqual([
+        "expo-splash-screen",
+        {
+          image: "./assets/splash-icon.png",
+          imageWidth: 200,
+          resizeMode: "contain",
+          backgroundColor: "#1B0D1F"
+        }
+      ]);
+    }
+  );
+
+  test.each(["development", "preview", "production"])(
+    "uses the shared iOS icon for the %s profile",
+    (profile) => {
+      const config = configFor(profile);
+
+      expect(config.icon).toBeUndefined();
+      expect(config.ios?.icon).toBe("./assets/app-icon.png");
+      expect(config.android).toBeUndefined();
+    }
+  );
+
   test.each([
     ["development", "内界 CAVE Dev"],
     ["preview", "内界 CAVE Preview"],

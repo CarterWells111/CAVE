@@ -86,7 +86,7 @@ export function JourneyRouteScreen({
   const exitJourney = () => {
     navigationActiveRef.current = false;
     navigationGenerationRef.current += 1;
-    router.replace("/");
+    router.replace("/(tabs)");
   };
   const restart = () => {
     setRestartFailed(false);

@@ -6,29 +6,30 @@ import {
   useOptionalJourneyRuntime
 } from "../../journey/runtime/JourneyRuntimeProvider";
 import { LongTermBottomNav, type LongTermTab } from "./LongTermBottomNav";
+import { getLongTermDestination } from "./long-term-navigation";
 
 export type JourneyLongTermNavProps = Readonly<{
   activeTab?: LongTermTab | undefined;
 }>;
 
-const paths = {
-  home: "/(tabs)",
-  reviews: "/(tabs)/reviews",
-  practice: "/(tabs)/practice",
-  cards: "/(tabs)/cards"
-} as const;
-
 export function JourneyLongTermNav({ activeTab }: JourneyLongTermNavProps) {
   const runtime = useOptionalJourneyRuntime();
   if (runtime === null) return null;
 
-  return <AuthorizedJourneyLongTermNav activeTab={activeTab} shellState={runtime.shellState} />;
+  return (
+    <AuthorizedJourneyLongTermNav
+      activeTab={activeTab}
+      shellState={runtime.shellState}
+      snapshot={runtime.snapshot}
+    />
+  );
 }
 
 function AuthorizedJourneyLongTermNav({
   activeTab,
-  shellState
-}: JourneyLongTermNavProps & Pick<JourneyRuntimeContextValue, "shellState">) {
+  shellState,
+  snapshot,
+}: JourneyLongTermNavProps & Pick<JourneyRuntimeContextValue, "shellState" | "snapshot">) {
   const router = useRouter();
   const [completionConfirmed, setCompletionConfirmed] = useState(false);
 
@@ -48,7 +49,12 @@ function AuthorizedJourneyLongTermNav({
     };
   }, [shellState]);
 
-  if (!completionConfirmed) return null;
+  if (snapshot?.ageConfirmed !== true && !completionConfirmed) return null;
 
-  return <LongTermBottomNav activeTab={activeTab} navigate={(tab) => router.replace(paths[tab])} />;
+  return (
+    <LongTermBottomNav
+      activeTab={activeTab}
+      navigate={(tab) => router.replace(getLongTermDestination(tab).path)}
+    />
+  );
 }

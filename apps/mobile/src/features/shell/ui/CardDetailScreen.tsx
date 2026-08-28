@@ -58,6 +58,7 @@ export function CardDetailScreen({ metadata, onBack, onEdit, sections }: CardDet
       }}
       contentInsetAdjustmentBehavior="automatic"
       keyboardShouldPersistTaps="handled"
+      style={{ backgroundColor: theme.color.background }}
       testID="card-detail-scroll"
     >
       <View style={{ gap: theme.space.xl, maxWidth: theme.size.readableContentMax, width: "100%" }} testID="card-detail-content">
@@ -116,7 +117,7 @@ export function CardDetailScreen({ metadata, onBack, onEdit, sections }: CardDet
             loading={actionState === "editing"}
             onPress={() => { void openEdit(); }}
           />
-          <SecondaryButton disabled={actionState === "editing"} label="返回草稿箱" onPress={onBack} />
+          <SecondaryButton disabled={actionState === "editing"} label="返回我的卡片" onPress={onBack} />
         </View>
       </View>
     </ScrollView>

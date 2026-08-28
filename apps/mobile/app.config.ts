@@ -31,6 +31,15 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     plugins: [
       "expo-router",
       "expo-system-ui",
+      [
+        "expo-splash-screen",
+        {
+          image: "./assets/splash-icon.png",
+          imageWidth: 200,
+          resizeMode: "contain",
+          backgroundColor: "#1B0D1F"
+        }
+      ],
       ["expo-sqlite", { useSQLCipher: true }],
       [
         "expo-secure-store",
@@ -44,6 +53,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       typedRoutes: true
     },
     ios: {
+      icon: "./assets/app-icon.png",
       bundleIdentifier: "com.neijie.cave",
       supportsTablet: false,
       config: {

@@ -1,10 +1,17 @@
 import { useEffect, useState } from "react";
 
+import { loadJourneyContentCatalog } from "../../src/features/journey/infrastructure/journey-content-catalog";
 import { useJourneyRuntime } from "../../src/features/journey/runtime/JourneyRuntimeProvider";
 import { JourneyRouteScreen } from "../../src/features/journey/ui/JourneyRouteScreen";
 import { ReflectionPage, type ReflectionValue } from "../../src/features/journey/ui/pages/reflection-page";
 
 export default function ReflectionRoute() {
+  const catalog = loadJourneyContentCatalog();
+  const behaviorLabels = new Map(
+    catalog.options
+      .filter(({ group }) => group === "behavior")
+      .map(({ id, label }) => [id, label]),
+  );
   const runtime = useJourneyRuntime();
   const [cardOpen, setCardOpen] = useState(false);
   const [showLocalJournalSaveNotice, setShowLocalJournalSaveNotice] = useState(true);
@@ -32,6 +39,13 @@ export default function ReflectionRoute() {
     <JourneyRouteScreen immersiveContent={cardOpen} pageId="reflection">
       {({ controller, goTo, runAndRefresh, snapshot }) => (
         <ReflectionPage
+          behaviorAnswers={Object.entries(snapshot?.behaviorAttitudes ?? {}).map(([behaviorId, attitude]) => ({
+            attitude,
+            behaviorId,
+            behaviorLabel: snapshot?.customBehaviors.find(({ id }) => id === behaviorId)?.label
+              ?? behaviorLabels.get(behaviorId)
+              ?? "已记录的行为",
+          }))}
           initialValue={{
             comfortClarity: (snapshot?.reflection.comfortClarity ?? null) as "mostly-clear" | "need-space" | null,
             comfortNeedIds: snapshot?.comfortNeedIds ?? [],
@@ -45,6 +59,9 @@ export default function ReflectionRoute() {
             refusalSafety: (snapshot?.reflection.refusalSafety ?? null) as "can" | "difficult-but-possible" | "fear-reaction" | "cannot-refuse" | "unsure" | null,
           }}
           onCardVisibilityChange={setCardOpen}
+          onEditBehaviorAttitude={(behaviorId, attitude) => runAndRefresh(
+            () => controller.setBehaviorAttitude(behaviorId, attitude),
+          )}
           onSetJournalSaveNotice={setJournalSaveNotice}
           onSave={(input) => runAndRefresh(() => saveReflection(controller, input))}
           onComplete={(input) => runAndRefresh(() => saveReflection(controller, input))

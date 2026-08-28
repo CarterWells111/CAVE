@@ -6,11 +6,13 @@ const mockReplace = jest.fn();
 const mockLoad = jest.fn();
 const mockRouter = { replace: mockReplace };
 const mockShellState = { load: mockLoad };
-let mockRuntime: { shellState: typeof mockShellState } | null = { shellState: mockShellState };
+let mockRuntime: {
+  shellState: typeof mockShellState;
+  snapshot: { ageConfirmed: boolean } | null;
+} | null = { shellState: mockShellState, snapshot: null };
 
 jest.mock("expo-router", () => ({ useRouter: () => mockRouter }));
 jest.mock("../../journey/runtime/JourneyRuntimeProvider", () => ({
-  useJourneyRuntime: () => mockRuntime,
   useOptionalJourneyRuntime: () => mockRuntime
 }));
 
@@ -26,7 +28,7 @@ function deferred<T>() {
 
 beforeEach(() => {
   jest.clearAllMocks();
-  mockRuntime = { shellState: mockShellState };
+  mockRuntime = { shellState: mockShellState, snapshot: null };
 });
 
 test("renders nothing and never reads private shell state before authorization", () => {
@@ -49,6 +51,20 @@ test("renders no long-term navigation while completion is loading or absent", as
   expect(mockReplace).not.toHaveBeenCalled();
 });
 
+test("reveals the four tabs as soon as the first journey has an adult-confirmed draft", async () => {
+  const pending = deferred<null>();
+  mockRuntime = { shellState: mockShellState, snapshot: { ageConfirmed: true } };
+  mockLoad.mockReturnValueOnce(pending.promise);
+  render(<JourneyLongTermNav activeTab="home" />);
+
+  expect(screen.getAllByRole("tab")).toHaveLength(4);
+  fireEvent.press(screen.getByRole("tab", { name: "首页" }));
+  expect(mockReplace).toHaveBeenCalledWith("/(tabs)");
+
+  await act(async () => pending.resolve(null));
+  expect(screen.getAllByRole("tab")).toHaveLength(4);
+});
+
 test("reveals the four tabs only after a completion marker and routes each destination", async () => {
   mockLoad.mockResolvedValueOnce({
     initialJourneyId: "journey-1",
@@ -60,19 +76,19 @@ test("reveals the four tabs only after a completion marker and routes each desti
   fireEvent.press(screen.getByRole("tab", { name: "首页" }));
   fireEvent.press(screen.getByRole("tab", { name: "回顾" }));
   fireEvent.press(screen.getByRole("tab", { name: "练习" }));
-  fireEvent.press(screen.getByRole("tab", { name: "草稿" }));
+  fireEvent.press(screen.getByRole("tab", { name: "我的" }));
 
   expect(mockReplace.mock.calls).toEqual([
     ["/(tabs)"],
     ["/(tabs)/reviews"],
     ["/(tabs)/practice"],
-    ["/(tabs)/cards"]
+    ["/(tabs)/profile"]
   ]);
 });
 
 test("fails closed when the completion marker cannot be read", async () => {
   mockLoad.mockRejectedValueOnce(new Error("private storage unavailable"));
-  render(<JourneyLongTermNav activeTab="cards" />);
+  render(<JourneyLongTermNav activeTab="profile" />);
 
   await waitFor(() => expect(mockLoad).toHaveBeenCalledTimes(1));
   await act(async () => undefined);

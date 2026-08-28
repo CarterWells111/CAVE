@@ -2,9 +2,11 @@ import { useRouter } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
 
 import { Screen } from "../../src/core/ui/Screen";
+import { getResumePath } from "../../src/features/journey/application/journey-navigation";
 import { useJourneyRuntime } from "../../src/features/journey/runtime/JourneyRuntimeProvider";
 import { HomeScreen } from "../../src/features/shell/ui/HomeScreen";
-import { isActiveLongTermReview } from "../../src/features/shell/application/app-shell-service";
+import { classifyActiveJourney } from "../../src/features/shell/application/app-shell-service";
+import type { AppShellState } from "../../src/features/shell/domain/app-shell-state";
 import type { ShellMetadataItem } from "../../src/features/shell/ui/shell-ui-components";
 
 export default function HomeRoute() {
@@ -12,7 +14,7 @@ export default function HomeRoute() {
   const runtime = useJourneyRuntime();
   const [loadState, setLoadState] = useState<"loading" | "ready" | "error">("loading");
   const [cards, setCards] = useState<ShellMetadataItem[]>([]);
-  const [initialJourneyId, setInitialJourneyId] = useState<string | null>(null);
+  const [completion, setCompletion] = useState<AppShellState | null>(null);
 
   const load = useCallback(async () => {
     setLoadState("loading");
@@ -27,7 +29,7 @@ export default function HomeRoute() {
         dateLabel: record.savedAt.slice(0, 10),
         statusLabel: "已保存到本机"
       })));
-      setInitialJourneyId(completion?.initialJourneyId ?? null);
+      setCompletion(completion);
       setLoadState("ready");
     } catch {
       setLoadState("error");
@@ -36,13 +38,12 @@ export default function HomeRoute() {
 
   useEffect(() => { void load(); }, [load]);
 
-  const completion = initialJourneyId === null
-    ? null
-    : { initialJourneyId, initialJourneyCompletedAt: "" };
-  const activeReview = isActiveLongTermReview(runtime.snapshot, completion) && runtime.snapshot
+  const activeKind = classifyActiveJourney(runtime.snapshot, completion);
+  const activeJourney = activeKind !== null && runtime.snapshot
     ? {
         id: runtime.snapshot.id,
-        title: "本次回顾",
+        kind: activeKind,
+        title: activeKind === "initial" ? "首次旅程" : "本次回顾",
         dateLabel: runtime.snapshot.updatedAt.slice(0, 10),
         statusLabel: "进行中"
       }
@@ -51,16 +52,20 @@ export default function HomeRoute() {
   return (
     <Screen>
       <HomeScreen
-        activeReview={activeReview}
+        activeJourney={activeJourney}
         currentCard={cards[0] ?? null}
         loadState={loadState}
-        onContinueReview={() => router.push(`/journey/${runtime.snapshot?.currentPage ?? "welcome"}`)}
+        onContinueJourney={() => router.push(getResumePath(runtime.snapshot))}
         onOpenCurrentCard={(id) => router.push(`/cards/${id}`)}
         onOpenRecord={(id) => router.push(`/cards/${id}`)}
         onOpenSettings={() => router.push("/settings")}
         onRetry={() => { void load(); }}
         onStartPractice={() => router.push("/practice/session")}
         onStartReview={() => {
+          if (activeKind === "initial") {
+            router.push(getResumePath(runtime.snapshot));
+            return;
+          }
           void runtime.replaceActiveReview().then(() => router.push("/journey/welcome"));
         }}
         recentRecords={cards}
