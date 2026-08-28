@@ -46,19 +46,19 @@ test("reveals the four tabs only after a completion marker and routes each desti
   fireEvent.press(screen.getByRole("tab", { name: "首页" }));
   fireEvent.press(screen.getByRole("tab", { name: "回顾" }));
   fireEvent.press(screen.getByRole("tab", { name: "练习" }));
-  fireEvent.press(screen.getByRole("tab", { name: "卡片" }));
+  fireEvent.press(screen.getByRole("tab", { name: "我的" }));
 
   expect(mockReplace.mock.calls).toEqual([
     ["/(tabs)"],
     ["/(tabs)/reviews"],
     ["/(tabs)/practice"],
-    ["/(tabs)/cards"]
+    ["/(tabs)/profile"]
   ]);
 });
 
 test("fails closed when the completion marker cannot be read", async () => {
   mockLoad.mockRejectedValueOnce(new Error("private storage unavailable"));
-  render(<JourneyLongTermNav activeTab="cards" />);
+  render(<JourneyLongTermNav activeTab="profile" />);
 
   await waitFor(() => expect(mockLoad).toHaveBeenCalledTimes(1));
   await act(async () => undefined);

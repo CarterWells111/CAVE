@@ -99,7 +99,7 @@ export default function SavedCardRoute() {
       confirmedSections={sections}
       metadata={metadata}
       mode={mode === "fullscreen" ? "fullscreen" : "normal"}
-      onBack={() => router.replace("/(tabs)/cards")}
+      onBack={() => router.replace("/(tabs)/profile")}
       onCopy={async () => {
         const result = await runtime.controller.copyConfirmedCommunicationCard(confirmed);
         if (result.status === "error") throw new Error(result.code);

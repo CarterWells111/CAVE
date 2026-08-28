@@ -17,16 +17,14 @@ export default function ReviewsRoute() {
   const runtime = useJourneyRuntime();
   const [initialJourneyId, setInitialJourneyId] = useState<string | null>(null);
   const [loadState, setLoadState] = useState<"loading" | "ready" | "error">("loading");
-  const [reviews, setReviews] = useState<Array<{ id: string; title: string; dateLabel: string; statusLabel: string }>>([]);
   const load = useCallback(async () => {
     setLoadState("loading");
     try {
-      const [state, metadata] = await Promise.all([runtime.shellState.load(), runtime.reviewHistory.listMetadata()]);
+      const state = await runtime.shellState.load();
       setInitialJourneyId(state?.initialJourneyId ?? null);
-      setReviews(metadata.map((item) => ({ id: item.id, title: item.title, dateLabel: item.createdAt.slice(0, 10), statusLabel: item.status === "completed" ? "已完成" : "未完成" })));
       setLoadState("ready");
     } catch { setLoadState("error"); }
-  }, [runtime.reviewHistory, runtime.shellState]);
+  }, [runtime.shellState]);
   useEffect(() => {
     void load();
   }, [load]);
@@ -46,9 +44,7 @@ export default function ReviewsRoute() {
         onContinueReview={() => router.push(`/journey/${runtime.snapshot?.currentPage ?? "welcome"}`)}
         onStartFullReview={startFullReview}
         onStartTopic={(id) => router.push(id === "practice" ? "/practice/session" : `/reviews/topic/${id}`)}
-        onOpenReview={(id) => router.push(`/reviews/${id}`)}
         onRetry={() => { void load(); }}
-        reviews={reviews}
         topics={topics}
       />
     </Screen>

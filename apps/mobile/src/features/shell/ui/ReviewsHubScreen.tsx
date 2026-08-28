@@ -4,7 +4,6 @@ import { View } from "react-native";
 import { useTheme } from "../../../core/design/theme-provider";
 import { Button } from "../../../core/ui/Button";
 import { Card } from "../../../core/ui/Card";
-import { EmptyState } from "../../../core/ui/EmptyState";
 import { ErrorState } from "../../../core/ui/ErrorState";
 import { SecondaryButton } from "../../../core/ui/secondary-button";
 import {
@@ -21,10 +20,8 @@ import { ReplaceReviewConfirmation } from "./ReplaceReviewConfirmation";
 type Props = {
   loadState?: ShellLoadState;
   activeReview?: ShellMetadataItem | null;
-  reviews: ShellMetadataItem[];
   topics: Array<{ id: string; label: string }>;
   onContinueReview?: (id: string) => void;
-  onOpenReview?: (id: string) => void;
   onRetry?: () => void;
   onStartFullReview: () => void;
   onStartTopic: (id: string) => void;
@@ -34,11 +31,9 @@ export function ReviewsHubScreen({
   activeReview,
   loadState = "ready",
   onContinueReview,
-  onOpenReview,
   onRetry,
   onStartFullReview,
   onStartTopic,
-  reviews,
   topics,
 }: Props) {
   const theme = useTheme();
@@ -53,7 +48,7 @@ export function ReviewsHubScreen({
       {loadState === "error" ? (
         <ErrorState
           actionLabel="重试"
-          message="暂时无法读取本机回顾列表。"
+          message="暂时无法读取本机回顾状态。"
           title="读取失败"
           {...(onRetry ? { onAction: onRetry } : {})}
         />
@@ -81,12 +76,6 @@ export function ReviewsHubScreen({
               <SecondaryButton key={topic.id} label={`按主题回顾：${topic.label}`} onPress={() => onStartTopic(topic.id)} />
             ))}
             {topics.length === 0 ? <SupportingText>当前没有可用主题，仍可启动完整回顾。</SupportingText> : null}
-          </View>
-          <View style={{ gap: theme.space.md }}>
-            <SectionHeading>历史回顾</SectionHeading>
-            {reviews.length > 0 ? reviews.map((review) => (
-              <MetadataCard actionLabel={`打开${review.title}`} item={review} key={review.id} onAction={onOpenReview} />
-            )) : <EmptyState message="历史列表只显示标题、日期和状态。" title="还没有历史回顾" />}
           </View>
         </>
       ) : null}

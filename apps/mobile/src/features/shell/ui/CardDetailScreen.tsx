@@ -156,7 +156,7 @@ export function CardDetailScreen({
             label={mode === "fullscreen" ? "退出全屏展示" : "全屏展示"}
             onPress={onFullscreen}
           />
-          <SecondaryButton disabled={busy} label="返回卡片列表" onPress={onBack} />
+          <SecondaryButton disabled={busy} label="返回我的卡片" onPress={onBack} />
         </View>
       </View>
     </ScrollView>
