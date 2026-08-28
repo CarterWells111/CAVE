@@ -7,15 +7,24 @@ function source(path: string) {
   return readFileSync(resolve(__dirname, "../../../app", path), "utf8");
 }
 
-test("ships exactly the four approved long-term tabs with a storage-readiness guard", () => {
+test("ships exactly the four approved public tabs without a private-storage gate", () => {
   const layout = source("(tabs)/_layout.tsx");
   expect(layout.match(/<Tabs\.Screen/gu)).toHaveLength(4);
   for (const label of ["首页", "回顾", "练习", "我的"]) expect(layout).toContain(`title: "${label}"`);
-  expect(layout).toContain("ShellRouteGate");
+  expect(layout).not.toContain("ShellRouteGate");
   expect(layout).toContain("LongTermTabBar");
   expect(layout).toContain('type: "tabPress"');
   expect(layout).toContain("canPreventDefault: true");
   expect(layout).not.toMatch(/name="cards"|课程|记录/u);
+});
+
+test("keeps session-only routes public and protects only private detail routes", () => {
+  expect(source("practice/_layout.tsx")).not.toContain("ShellRouteGate");
+  expect(source("reviews/_layout.tsx")).not.toContain("ShellRouteGate");
+  expect(source("cards/_layout.tsx")).toContain("ShellRouteGate");
+  expect(source("reviews/[id].tsx")).toContain("ShellRouteGate");
+  expect(source("practice/session.tsx")).toContain('context="standalone"');
+  expect(source("reviews/topic/[id].tsx")).toContain('storageMode="session-only"');
 });
 
 test("loads long-term lists through metadata-only repository projections", () => {
@@ -30,6 +39,8 @@ test("loads long-term lists through metadata-only repository projections", () =>
 test("keeps settings outside tabs and available before journey completion", () => {
   expect(source("(tabs)/index.tsx")).toContain('router.push("/settings")');
   expect(source("settings/_layout.tsx")).not.toContain("ShellRouteGate");
+  expect(source("settings/index.tsx")).toContain("useOptionalJourneyRuntime");
+  expect(source("settings/index.tsx")).not.toContain('<Redirect href="/journey/welcome"');
   expect(source("settings/index.tsx")).toContain("runtime.deleteAllData()");
   expect(source("journey/welcome.tsx")).toContain('router.push("/settings")');
   expect(source("../src/features/shell/ui/SettingsScreen.tsx")).toContain("登录与云端同步（尚未开放）");

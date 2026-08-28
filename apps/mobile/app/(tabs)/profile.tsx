@@ -2,14 +2,39 @@ import { useRouter } from "expo-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { Screen } from "../../src/core/ui/Screen";
-import { useJourneyRuntime } from "../../src/features/journey/runtime/JourneyRuntimeProvider";
+import {
+  type JourneyRuntimeContextValue,
+  useOptionalJourneyRuntime,
+} from "../../src/features/journey/runtime/JourneyRuntimeProvider";
 import { ProfileScreen } from "../../src/features/shell/ui/ProfileScreen";
 import { toCardArchiveItems, toReviewArchiveItems } from "../../src/features/shell/ui/profile-archive";
 import type { ShellLoadState, ShellMetadataItem } from "../../src/features/shell/ui/shell-ui-components";
 
 export default function ProfileRoute() {
+  const runtime = useOptionalJourneyRuntime();
+  return runtime === null
+    ? <PublicProfileRoute />
+    : <AuthorizedProfileRoute runtime={runtime} />;
+}
+
+function PublicProfileRoute() {
   const router = useRouter();
-  const { cards, reviewHistory } = useJourneyRuntime();
+  return (
+    <Screen>
+      <ProfileScreen
+        cards={[]}
+        cardsLoadState="ready"
+        onOpenSettings={() => router.push("/settings")}
+        reviews={[]}
+        reviewsLoadState="ready"
+      />
+    </Screen>
+  );
+}
+
+function AuthorizedProfileRoute({ runtime }: { runtime: JourneyRuntimeContextValue }) {
+  const router = useRouter();
+  const { cards, reviewHistory } = runtime;
   const [cardsLoadState, setCardsLoadState] = useState<ShellLoadState>("loading");
   const [cardItems, setCardItems] = useState<ShellMetadataItem[]>([]);
   const [reviewsLoadState, setReviewsLoadState] = useState<ShellLoadState>("loading");

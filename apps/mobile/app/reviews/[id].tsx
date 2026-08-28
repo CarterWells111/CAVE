@@ -6,9 +6,18 @@ import { Screen } from "../../src/core/ui/Screen";
 import { selectConfirmedCommunicationCard } from "../../src/features/journey/domain/derive-communication-card";
 import { useJourneyRuntime } from "../../src/features/journey/runtime/JourneyRuntimeProvider";
 import { ReviewDetailScreen, type ReviewDetailSection } from "../../src/features/reviews/ui/ReviewDetailScreen";
+import { ShellRouteGate } from "../../src/features/shell/ui/ShellRouteGate";
 import { ShellLoading } from "../../src/features/shell/ui/shell-ui-components";
 
 export default function ReviewDetailRoute() {
+  return (
+    <ShellRouteGate>
+      <AuthorizedReviewDetailRoute />
+    </ShellRouteGate>
+  );
+}
+
+function AuthorizedReviewDetailRoute() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const runtime = useJourneyRuntime();

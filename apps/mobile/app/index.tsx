@@ -10,7 +10,7 @@ export default function IndexRoute() {
   const router = useRouter();
 
   useEffect(() => {
-    router.replace("/journey/welcome");
+    router.replace("/(tabs)");
   }, [router]);
 
   return (

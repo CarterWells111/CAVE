@@ -19,9 +19,7 @@ describe("Screen", () => {
     );
 
     const root = screen.getByTestId("screen");
-    expect(screen.getByTestId("screen-safe-area")).toHaveProp("edges", {
-      bottom: "additive", left: "off", right: "off", top: "additive",
-    });
+    expect(screen.queryByTestId("screen-safe-area")).toBeNull();
     const rootStyle = StyleSheet.flatten(root.props.style);
     const contentStyle = StyleSheet.flatten(root.props.contentContainerStyle);
 

@@ -9,6 +9,10 @@ import BehaviorMapRoute from "../../../../app/journey/behavior-map";
 import PrefaceRoute from "../../../../app/journey/preface";
 import WelcomeRoute from "../../../../app/journey/welcome";
 import SettingsRoute from "../../../../app/settings";
+import HomeRoute from "../../../../app/(tabs)";
+import ReviewsRoute from "../../../../app/(tabs)/reviews";
+import PracticeRoute from "../../../../app/(tabs)/practice";
+import ProfileRoute from "../../../../app/(tabs)/profile";
 import {
   DatabaseRecoveryRequiredError,
   type DatabaseConnection
@@ -30,7 +34,7 @@ import {
   useOptionalJourneyRuntime
 } from "./JourneyRuntimeProvider";
 
-const mockRouter = { push: jest.fn(), replace: jest.fn() };
+const mockRouter = { back: jest.fn(), push: jest.fn(), replace: jest.fn() };
 let mockPathname = "/journey/welcome";
 let mockStackContent: ReactNode = null;
 const mockRedirect = jest.fn();
@@ -197,7 +201,7 @@ function SafeDeletionConsumer() {
   );
 }
 
-test("creates one runtime across rerenders and keeps the Expo Go notice visible", async () => {
+test("creates one runtime across rerenders without rendering a global Expo Go notice", async () => {
   const appRuntime = runtime();
   const createRuntime = jest.fn(async () => appRuntime);
   const replacementFactory = jest.fn(async () => runtime("native-secure"));
@@ -209,8 +213,8 @@ test("creates one runtime across rerenders and keeps the Expo Go notice visible"
 
   expect(screen.getByText("正在启动旅程运行时…")).toBeTruthy();
   expect(screen.getByText("正在启动旅程运行时…")).toHaveProp("accessibilityLiveRegion", "polite");
-  expect(await screen.findByText("Expo Go 演示模式，数据仅在本次打开期间暂存")).toBeTruthy();
-  expect(screen.getByText("controller-ready")).toBeTruthy();
+  expect(await screen.findByText("controller-ready")).toBeTruthy();
+  expect(screen.queryByText("Expo Go 演示模式，数据仅在本次打开期间暂存")).toBeNull();
   expect(screen.getByText("theme-light")).toBeTruthy();
   expect(screen.getByText("shell-state-ready")).toBeTruthy();
 
@@ -223,6 +227,20 @@ test("creates one runtime across rerenders and keeps the Expo Go notice visible"
   expect(screen.getByText("expo-go-demo")).toBeTruthy();
   expect(createRuntime).toHaveBeenCalledTimes(1);
   expect(replacementFactory).not.toHaveBeenCalled();
+});
+
+test("keeps the public Expo Go landing free of a global preview notice", async () => {
+  const appRuntime = runtime();
+  jest.spyOn(appRuntime.adultDeclaration, "hasAdultDeclaration").mockResolvedValue(false);
+
+  render(
+    <JourneyRuntimeProvider createRuntime={async () => appRuntime}>
+      <Text>public-landing-content</Text>
+    </JourneyRuntimeProvider>
+  );
+
+  expect(await screen.findByText("public-landing-content")).toBeTruthy();
+  expect(screen.queryByText("Expo Go 演示模式，数据仅在本次打开期间暂存")).toBeNull();
 });
 
 test("invokes the runtime factory once under React StrictMode", async () => {
@@ -351,7 +369,8 @@ test("maps encrypted database recovery to an explicit confirmed delete path", as
   fireEvent.press(screen.getByRole("button", { name: "确认删除全部本机数据" }));
 
   await waitFor(() => expect(deleteAllData).toHaveBeenCalledTimes(1));
-  await waitFor(() => expect(mockRedirect).toHaveBeenCalledWith({ href: "/journey/welcome" }));
+  expect(await screen.findByRole("header", { name: "设置" })).toBeTruthy();
+  expect(screen.queryByRole("button", { name: "删除全部本机数据" })).toBeNull();
 });
 
 test("revokes protected runtime access as soon as deletion starts and keeps failed deletion retryable", async () => {
@@ -380,7 +399,8 @@ test("revokes protected runtime access as soon as deletion starts and keeps fail
   fireEvent.press(screen.getByRole("button", { name: "重试删除" }));
 
   await waitFor(() => expect(deleteAllData).toHaveBeenCalledTimes(2));
-  await waitFor(() => expect(mockRedirect).toHaveBeenCalledWith({ href: "/journey/welcome" }));
+  expect(await screen.findByRole("header", { name: "设置" })).toBeTruthy();
+  expect(screen.queryByRole("button", { name: "删除全部本机数据" })).toBeNull();
 });
 
 test.each([
@@ -451,16 +471,32 @@ test("renders the real public journey layout without loading private navigation 
   expect(harness.sqlCalls).toEqual([]);
 });
 
-test("redirects public settings deep links without initializing private storage", async () => {
+test("keeps every public tab and settings usable without initializing private storage", async () => {
   const harness = nativePersistenceHarness();
 
   render(
     <JourneyRuntimeProvider createRuntime={harness.createRuntime}>
-      <SettingsRoute />
+      <View>
+        <HomeRoute />
+        <ReviewsRoute />
+        <PracticeRoute />
+        <ProfileRoute />
+        <SettingsRoute />
+      </View>
     </JourneyRuntimeProvider>
   );
 
-  await waitFor(() => expect(mockRedirect).toHaveBeenCalledWith({ href: "/journey/welcome" }));
+  expect(await screen.findByTestId("welcome-landing")).toBeTruthy();
+  expect(screen.getByRole("header", { name: "回顾" })).toBeTruthy();
+  expect(screen.getByRole("header", { name: "练习" })).toBeTruthy();
+  expect(screen.getByRole("header", { name: "我的" })).toBeTruthy();
+  expect(screen.getByRole("header", { name: "设置" })).toBeTruthy();
+  expect(screen.getByText("还没有沟通卡")).toBeTruthy();
+  expect(screen.getByText("还没有历史回顾")).toBeTruthy();
+  fireEvent.press(screen.getByRole("button", { name: "按主题回顾：身体感受" }));
+  expect(mockRouter.push).toHaveBeenCalledWith("/reviews/topic/body");
+  fireEvent.press(screen.getByRole("radio", { name: "亮色" }));
+  await act(async () => undefined);
   expect(harness.adapters.secrets.getDatabaseKey).not.toHaveBeenCalled();
   expect(harness.adapters.secrets.getOrCreateDatabaseKey).not.toHaveBeenCalled();
   expect(harness.adapters.native.openDatabaseAsync).not.toHaveBeenCalled();
@@ -491,7 +527,9 @@ test("does not recreate native storage while returning to the public theme after
 
   await waitFor(() => expect(harness.adapters.secrets.clearPendingLocalDataDeletion)
     .toHaveBeenCalledTimes(1));
-  await waitFor(() => expect(mockRedirect).toHaveBeenCalledWith({ href: "/journey/welcome" }));
+  await waitFor(() => expect(mockRouter.replace).toHaveBeenCalledWith("/(tabs)"));
+  expect(await screen.findByRole("header", { name: "设置" })).toBeTruthy();
+  expect(screen.queryByRole("button", { name: "删除全部本机数据" })).toBeNull();
   await act(async () => undefined);
   expect(harness.adapters.secrets.getOrCreateDatabaseKey).toHaveBeenCalledTimes(keyCallsBeforeDelete);
   expect(harness.adapters.native.openDatabaseAsync).toHaveBeenCalledTimes(openCallsBeforeDelete);
@@ -517,7 +555,8 @@ test("returns to the public gate when deletion partially fails after clearing ad
   expect(mockRedirect).not.toHaveBeenCalledWith({ href: "/journey/welcome" });
   expect(harness.adapters.secrets.clearPendingLocalDataDeletion).not.toHaveBeenCalled();
   fireEvent.press(screen.getByRole("button", { name: "重试删除" }));
-  await waitFor(() => expect(mockRedirect).toHaveBeenCalledWith({ href: "/journey/welcome" }));
+  expect(await screen.findByRole("header", { name: "设置" })).toBeTruthy();
+  expect(screen.queryByRole("button", { name: "删除全部本机数据" })).toBeNull();
 });
 
 test("returns to the public gate when deletion intent exists but clearing adulthood fails", async () => {
@@ -541,7 +580,8 @@ test("returns to the public gate when deletion intent exists but clearing adulth
   expect(harness.adapters.secrets.recordPendingLocalDataDeletion).toHaveBeenCalledTimes(1);
   expect(harness.adapters.files.removeDatabaseFiles).not.toHaveBeenCalled();
   fireEvent.press(screen.getByRole("button", { name: "重试删除" }));
-  await waitFor(() => expect(mockRedirect).toHaveBeenCalledWith({ href: "/journey/welcome" }));
+  expect(await screen.findByRole("header", { name: "设置" })).toBeTruthy();
+  expect(screen.queryByRole("button", { name: "删除全部本机数据" })).toBeNull();
 });
 
 test.each([

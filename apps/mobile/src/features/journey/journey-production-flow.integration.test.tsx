@@ -85,11 +85,8 @@ async function openRoute(element: ReactElement, journeyRuntime: JourneyRuntime):
       {element}
     </JourneyRuntimeProvider>
   );
-  expect(await screen.findByText(
-    "Expo Go 演示模式，数据仅在本次打开期间暂存",
-    {},
-    { timeout: 5_000 }
-  )).toBeTruthy();
+  await waitFor(() => expect(screen.queryByText("正在启动旅程运行时…")).toBeNull());
+  expect(screen.queryByText("Expo Go 演示模式，数据仅在本次打开期间暂存")).toBeNull();
   return view;
 }
 

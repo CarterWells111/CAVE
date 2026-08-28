@@ -1,5 +1,4 @@
 import { ScrollView, StyleSheet, type ScrollViewProps, useWindowDimensions } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
 
 import { useTheme } from "../design/theme-provider";
 import { space } from "../design/tokens";
@@ -24,12 +23,7 @@ export function Screen({ children, contentContainerStyle, style, ...props }: Scr
   }
 
   return (
-    <SafeAreaView
-      edges={["top", "bottom"]}
-      style={{ backgroundColor: theme.color.background, flex: 1 }}
-      testID="screen-safe-area"
-    >
-      <ScrollView
+    <ScrollView
       {...props}
       automaticallyAdjustKeyboardInsets
       horizontal={false}
@@ -52,7 +46,6 @@ export function Screen({ children, contentContainerStyle, style, ...props }: Scr
       ]}
     >
       {children}
-      </ScrollView>
-    </SafeAreaView>
+    </ScrollView>
   );
 }
