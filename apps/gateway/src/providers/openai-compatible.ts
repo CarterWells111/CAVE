@@ -63,17 +63,21 @@ async function cancelReader(
   }
 }
 
+async function cancelResponseBody(response: Response): Promise<void> {
+  try {
+    await response.body?.cancel();
+  } catch {
+    // Cancellation is best-effort; callers still receive the intended typed result.
+  }
+}
+
 async function readBoundedJson(response: Response): Promise<unknown> {
   const contentLength = Number(response.headers.get("Content-Length"));
   if (
     Number.isFinite(contentLength) &&
     contentLength > MAX_COMPLETION_BODY_BYTES
   ) {
-    try {
-      await response.body?.cancel();
-    } catch {
-      // Cancellation is best-effort.
-    }
+    await cancelResponseBody(response);
     throw new ProviderError("invalid_response", { status: response.status });
   }
 
@@ -286,6 +290,7 @@ export class OpenAICompatibleProvider implements ModelProvider, JsonRepairer {
 
         if (!response.ok) {
           const wait = retryAfterMilliseconds(response);
+          await cancelResponseBody(response);
           if (attempt === 0 && RETRYABLE_STATUS(response.status)) {
             if (wait > 0) await this.#interruptibleSleep(wait, controller.signal);
             continue;

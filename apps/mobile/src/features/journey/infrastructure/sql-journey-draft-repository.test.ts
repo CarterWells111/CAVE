@@ -1,4 +1,7 @@
-import type { DatabaseConnection, EncryptedDatabaseManager } from "../../../core/storage/database";
+import type {
+  DatabaseConnection,
+  TransactionalEncryptedDatabaseManager
+} from "../../../core/storage/database";
 import type { JourneyDraftV1, JourneyDraftV2 } from "../domain/migrate-journey-draft";
 import { createJourneyDraft, type SavedCommunicationCardRecord } from "../domain/types";
 import { JourneyStorageError } from "./journey-draft-repository";
@@ -84,10 +87,22 @@ function harness(options: { failLegacyDeleteOnce?: boolean; failCurrentInsertOnc
     }),
     closeAsync: jest.fn(async () => undefined)
   };
-  const manager: EncryptedDatabaseManager = {
+  const manager: TransactionalEncryptedDatabaseManager = {
     initialize: jest.fn(async () => connection),
+    withTransaction: jest.fn(async (operation) => {
+      await connection.execAsync("BEGIN IMMEDIATE");
+      try {
+        const result = await operation(connection);
+        await connection.execAsync("COMMIT");
+        return result;
+      } catch (error) {
+        await connection.execAsync("ROLLBACK");
+        throw error;
+      }
+    }),
     close: jest.fn(async () => undefined),
-    removeDatabaseFiles: jest.fn(async () => undefined)
+    removeDatabaseFiles: jest.fn(async () => undefined),
+    withExclusiveMaintenance: jest.fn()
   };
   return {
     connection,
@@ -165,6 +180,15 @@ function legacyDraft(): JourneyDraftV1 {
 }
 
 describe("SqlJourneyDraftRepository", () => {
+  test("delegates active-draft deletion transaction ownership to the manager", async () => {
+    const fake = harness();
+
+    await new SqlJourneyDraftRepository(fake.manager).deleteActive();
+
+    expect(fake.manager.withTransaction).toHaveBeenCalledTimes(1);
+    expect(fake.manager.initialize).not.toHaveBeenCalled();
+  });
+
   test("loads empty storage, then upserts and deletes an active v3 draft", async () => {
     const fake = harness();
     const repository = new SqlJourneyDraftRepository(fake.manager);

@@ -15,6 +15,7 @@ import { useTheme } from "../../../core/design/theme-provider";
 import { Button } from "../../../core/ui/Button";
 import { ErrorState } from "../../../core/ui/ErrorState";
 import { StatusBanner } from "../../../core/ui/StatusBanner";
+import { DatabaseRecoveryRequiredError } from "../../../core/storage/database";
 import type {
   JourneyApplicationService,
   JourneyRecoveryState
@@ -47,8 +48,12 @@ const JourneyContext = createContext<JourneyContextValue | null>(null);
 
 export function JourneyProvider({
   service,
-  children
-}: PropsWithChildren<{ service: InitializableJourneyService }>) {
+  children,
+  onStorageRecoveryRequired
+}: PropsWithChildren<{
+  service: InitializableJourneyService;
+  onStorageRecoveryRequired?(): void;
+}>) {
   const theme = useTheme();
   const [state, setState] = useState<JourneyProviderState>({ status: "loading" });
   const [snapshot, setSnapshot] = useState<JourneyDraft | null>(null);
@@ -123,12 +128,18 @@ export function JourneyProvider({
       if (!isCurrentRequest(requestService, requestGeneration)) return;
       setSnapshot(nextSnapshot);
       setState({ status: recovery === "ready" ? "ready" : "recovery-required" });
-    } catch {
+    } catch (error) {
+      if (error instanceof DatabaseRecoveryRequiredError && onStorageRecoveryRequired !== undefined) {
+        if (isCurrentRequest(requestService, requestGeneration)) {
+          onStorageRecoveryRequired();
+        }
+        return;
+      }
       if (isCurrentRequest(requestService, requestGeneration)) {
         setState({ status: "error", code: "journey-runtime-initialization-failed" });
       }
     }
-  }, [isCurrentRequest, service]);
+  }, [isCurrentRequest, onStorageRecoveryRequired, service]);
 
   const reset = useCallback(async () => {
     const requestService = service;

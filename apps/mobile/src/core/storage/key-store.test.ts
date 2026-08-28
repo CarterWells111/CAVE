@@ -110,6 +110,39 @@ describe("SecretRepository", () => {
     ]);
   });
 
+  test("persists and clears a durable local-data deletion intent", async () => {
+    const secureStore = makeSecureStore();
+    const repository = createSecretRepository({
+      secureStore,
+      randomBytes: (length) => new Uint8Array(length)
+    });
+
+    await expect(repository.hasPendingLocalDataDeletion()).resolves.toBe(false);
+    await repository.recordPendingLocalDataDeletion();
+    await expect(repository.hasPendingLocalDataDeletion()).resolves.toBe(true);
+    expect(secureStore.setItemAsync).toHaveBeenCalledWith(
+      SECRET_NAMES.deletionPending,
+      "pending",
+      expect.objectContaining({ keychainAccessible: "AFTER_FIRST_UNLOCK_THIS_DEVICE_ONLY" })
+    );
+
+    await repository.clearPendingLocalDataDeletion();
+    await expect(repository.hasPendingLocalDataDeletion()).resolves.toBe(false);
+  });
+
+  test("deletes the installation token independently for resumable cleanup", async () => {
+    const secureStore = makeSecureStore();
+    const repository = createSecretRepository({
+      secureStore,
+      randomBytes: (length) => new Uint8Array(length).fill(3)
+    });
+    await repository.getOrCreateInstallationToken();
+
+    await repository.deleteInstallationToken();
+
+    expect(secureStore.values.has(SECRET_NAMES.installationToken)).toBe(false);
+  });
+
   test("maps device-only accessibility to the native SecureStore constant", async () => {
     const module = {
       AFTER_FIRST_UNLOCK_THIS_DEVICE_ONLY: 123,

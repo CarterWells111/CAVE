@@ -128,6 +128,9 @@ export function createExpoJourneyAdapters(
       }
     },
     files: {
+      get coordinationKey() {
+        return databaseDirectoryUri();
+      },
       async databaseExists(name) {
         return databaseFile(name).exists;
       },

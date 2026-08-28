@@ -19,18 +19,18 @@ const VersionSchema = z
     "version must be a safe identifier"
   );
 const NonBlankSecretSchema = z.string().trim().min(1);
-const HttpBaseUrlSchema = z
+const HttpsBaseUrlSchema = z
   .string()
   .trim()
   .url()
   .refine((value) => {
     try {
       const protocol = new URL(value).protocol;
-      return protocol === "http:" || protocol === "https:";
+      return protocol === "https:";
     } catch {
       return false;
     }
-  }, "MODEL_BASE_URL must use http or https")
+  }, "MODEL_BASE_URL must use https")
   .transform((value) => value.replace(/\/+$/, ""));
 
 const MockGatewayEnvSchema = z.object({
@@ -43,7 +43,7 @@ const LiveGatewayEnvSchema = z.object({
   MODEL_MODE: z.literal("live"),
   PROMPT_VERSION: VersionSchema,
   POLICY_VERSION: VersionSchema,
-  MODEL_BASE_URL: HttpBaseUrlSchema,
+  MODEL_BASE_URL: HttpsBaseUrlSchema,
   MODEL_API_KEY: NonBlankSecretSchema,
   MODEL_NAME: z.string().trim().min(1)
 });

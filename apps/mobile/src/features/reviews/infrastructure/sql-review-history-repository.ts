@@ -1,4 +1,4 @@
-import type { EncryptedDatabaseManager } from "../../../core/storage/database";
+import type { TransactionalEncryptedDatabaseManager } from "../../../core/storage/database";
 import {
   isJourneyDraftV1,
   isJourneyDraftV2,
@@ -62,7 +62,7 @@ export const journeyDraftReviewPayloadCodec: ReviewPayloadCodec<JourneyDraft> = 
 
 export class SqlReviewHistoryRepository<Payload> implements ReviewHistoryRepository<Payload> {
   constructor(
-    private readonly database: EncryptedDatabaseManager,
+    private readonly database: TransactionalEncryptedDatabaseManager,
     private readonly payloadCodec: ReviewPayloadCodec<Payload>
   ) {}
 
@@ -100,17 +100,14 @@ export class SqlReviewHistoryRepository<Payload> implements ReviewHistoryReposit
   }
 
   async appendVersionAndClearActive(version: ReviewVersionInput<Payload>): Promise<void> {
-    const db = await this.database.initialize();
-    await db.execAsync("BEGIN IMMEDIATE");
-    try {
+    await this.database.withTransaction(async (db) => {
       await db.runAsync(
         "INSERT INTO journey_review_versions (id, root_id, parent_version_id, title, review_date, status, payload, source_revision, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
         version.id, version.rootId, version.parentVersionId, version.title, version.createdAt.slice(0, 10), version.status,
         JSON.stringify(version.payload), (version.payload as { sourceRevision?: number }).sourceRevision ?? 0, version.createdAt,
       );
       await db.runAsync("DELETE FROM journey_active_review WHERE singleton_id = 1");
-      await db.execAsync("COMMIT");
-    } catch (error) { await db.execAsync("ROLLBACK"); throw error; }
+    });
   }
 
   async listMetadata(): Promise<ReadonlyArray<ReviewVersionMetadata>> {
@@ -131,32 +128,20 @@ export class SqlReviewHistoryRepository<Payload> implements ReviewHistoryReposit
   }
 
   async deleteVersion(id: string): Promise<boolean> {
-    const db = await this.database.initialize();
-    await db.execAsync("BEGIN IMMEDIATE");
-    try {
+    return await this.database.withTransaction(async (db) => {
       const existing = await db.getFirstAsync<{ id: string }>("SELECT id FROM journey_review_versions WHERE id = ?", id);
-      if (existing === null) { await db.execAsync("COMMIT"); return false; }
+      if (existing === null) return false;
       await db.runAsync("UPDATE journey_review_versions SET parent_version_id = NULL WHERE parent_version_id = ?", id);
       await db.runAsync("UPDATE journey_active_review SET base_version_id = NULL WHERE base_version_id = ?", id);
       await db.runAsync("DELETE FROM journey_review_versions WHERE id = ?", id);
-      await db.execAsync("COMMIT");
       return true;
-    } catch (error) {
-      await db.execAsync("ROLLBACK");
-      throw error;
-    }
+    });
   }
 
   async clearAll(): Promise<void> {
-    const db = await this.database.initialize();
-    await db.execAsync("BEGIN IMMEDIATE");
-    try {
+    await this.database.withTransaction(async (db) => {
       await db.runAsync("DELETE FROM journey_active_review");
       await db.runAsync("DELETE FROM journey_review_versions");
-      await db.execAsync("COMMIT");
-    } catch (error) {
-      await db.execAsync("ROLLBACK");
-      throw error;
-    }
+    });
   }
 }

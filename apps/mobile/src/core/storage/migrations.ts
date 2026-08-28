@@ -101,3 +101,13 @@ CREATE TABLE IF NOT EXISTS journey_drafts_v3 (
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
 );`;
+
+export const DATABASE_MIGRATIONS = [
+  { version: 1, schema: SCHEMA_V1 },
+  { version: 2, schema: SCHEMA_V2 },
+  { version: 3, schema: SCHEMA_V3 },
+  { version: 4, schema: SCHEMA_V4 },
+  { version: 5, schema: SCHEMA_V5 },
+  { version: 6, schema: SCHEMA_V6 },
+  { version: 7, schema: SCHEMA_V7 }
+] as const;
