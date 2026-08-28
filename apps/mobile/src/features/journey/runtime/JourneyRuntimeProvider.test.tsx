@@ -586,6 +586,22 @@ test("does not confirm adulthood or write its marker when an existing draft need
   expect(mockRouter.replace).not.toHaveBeenCalledWith("/journey/preface");
 });
 
+test("a successful first native declaration remounts the authorized route and opens the preface", async () => {
+  const harness = nativePersistenceHarness();
+
+  render(
+    <JourneyRuntimeProvider createRuntime={harness.createRuntime}>
+      <AdultGateRoute />
+    </JourneyRuntimeProvider>
+  );
+
+  fireEvent.press(await screen.findByRole("button", { name: "我已年满 18 岁，继续" }));
+
+  await waitFor(() => expect(mockRouter.replace.mock.calls).toEqual([["/journey/preface"]]));
+  expect(harness.adapters.secrets.recordAdultDeclaration).toHaveBeenCalledTimes(1);
+  expect(harness.adapters.native.openDatabaseAsync).toHaveBeenCalledTimes(1);
+});
+
 test("first launch through the underage exit never creates a key, database, migration, draft, or declaration", async () => {
   const harness = nativePersistenceHarness();
 

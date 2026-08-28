@@ -203,6 +203,24 @@ test("adult confirmation can retry after persistence fails", async () => {
   view.unmount();
 });
 
+test("a failed adult declaration marker cannot navigate on the published service snapshot and can retry", async () => {
+  const journeyRuntime = runtime();
+  jest.spyOn(journeyRuntime.adultDeclaration, "recordAdultDeclaration")
+    .mockRejectedValueOnce(new Error("adult declaration marker failure"))
+    .mockResolvedValue(undefined);
+  const view = await openRoute(<AdultGateRoute />, journeyRuntime);
+
+  fireEvent.press(screen.getByRole("button", { name: "我已年满 18 岁，继续" }));
+
+  expect(await screen.findByText("确认暂时无法保存，请重试。")).toBeTruthy();
+  expect(journeyRuntime.service.getSnapshot()).toMatchObject({ ageConfirmed: true });
+  expect(mockRouter.replace).not.toHaveBeenCalledWith("/journey/preface");
+
+  fireEvent.press(screen.getByRole("button", { name: "我已年满 18 岁，继续" }));
+  await waitFor(() => expect(mockRouter.replace.mock.calls).toEqual([["/journey/preface"]]));
+  view.unmount();
+});
+
 test("a pending adult confirmation does not navigate after the route unmounts", async () => {
   const journeyRuntime = runtime();
   const savingDeclaration = deferred<void>();
