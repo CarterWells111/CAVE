@@ -1,0 +1,85 @@
+appId: com.neijie.cave
+name: Seven-screen core flow and four-tab shell
+tags:
+  - release-static-spec
+---
+- launchApp:
+    clearState: true
+- extendedWaitUntil:
+    visible: "欢迎来到内界 CAVE"
+    timeout: 20000
+- assertNotVisible: "1 / 7"
+- tapOn: "我已满 18 岁，开始探索"
+- tapOn: "你｜日常、自然，不限定性别。"
+- tapOn: "这样称呼我"
+- tapOn: "先跳过"
+
+- assertVisible: "2 / 7"
+- assertVisible: "过夜期待与在意"
+- tapOn: "继续看看我的在意"
+- scrollUntilVisible:
+    element:
+      text: "带着这些感受继续"
+    direction: DOWN
+- tapOn: "带着这些感受继续"
+
+- assertVisible: "3 / 7"
+- assertVisible: "身体与安全知识"
+- scrollUntilVisible:
+    element:
+      text: "看看我对不同靠近的感觉"
+    direction: DOWN
+- tapOn: "看看我对不同靠近的感觉"
+
+- assertVisible: "4 / 7"
+- assertVisible: "行为地图与边界"
+- repeat:
+    times: 7
+    commands:
+      - tapOn: "暂时不回答"
+      - tapOn: "记录这个感受，继续"
+- tapOn: "这次不查看"
+- tapOn: "这次没有"
+
+- assertVisible: "5 / 7"
+- assertVisible: "自我反思"
+- scrollUntilVisible:
+    element:
+      text: "暂时不写"
+    direction: DOWN
+- tapOn: "暂时不写"
+- scrollUntilVisible:
+    element:
+      text: "带着这些发现去练习"
+    direction: DOWN
+- tapOn: "带着这些发现去练习"
+
+- assertVisible: "6 / 7"
+- assertVisible: "预设沟通练习"
+- tapOn: "开始情境练习"
+- tapOn: "不说具体行为"
+- tapOn: "想先暂停，再感受一下"
+- tapOn: "就用这句话"
+- tapOn: "安静待一会儿"
+- tapOn: "跳过不太理想的回应"
+- scrollUntilVisible:
+    element:
+      text: "继续整理我的准备"
+    direction: DOWN
+- tapOn: "继续整理我的准备"
+
+- assertVisible: "7 / 7"
+- assertVisible: "私密准备与沟通草稿"
+- scrollUntilVisible:
+    element:
+      text: "完成首次记录"
+    direction: DOWN
+- tapOn: "完成首次记录"
+
+- extendedWaitUntil:
+    visible: "首页"
+    timeout: 20000
+- assertVisible: "回顾"
+- assertVisible: "练习"
+- assertVisible: "卡片"
+- assertNotVisible: "设置.*当前"
