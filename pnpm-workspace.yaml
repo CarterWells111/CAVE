@@ -3,6 +3,7 @@ packages:
   - "packages/*"
 
 overrides:
+  fastq: "1.20.1"
   postcss: "8.5.26"
 
 allowBuilds:
