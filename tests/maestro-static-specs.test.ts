@@ -49,7 +49,7 @@ describe("Maestro release selectors", () => {
     expect(flow).not.toContain('text: "打开回顾 .*"');
   });
 
-  it("locks the seven-screen completion flow to the current four-tab shell", () => {
+  it("locks the six-page completion flow to the current four-tab shell", () => {
     const flow = read(".maestro/core-flow.yaml");
     const nav = read("apps/mobile/src/features/shell/ui/LongTermBottomNav.tsx");
     const destinations = read("apps/mobile/src/features/shell/ui/long-term-navigation.ts");
@@ -66,7 +66,7 @@ describe("Maestro release selectors", () => {
       "行为地图与边界",
       "自我反思",
       "预设沟通练习",
-      "私密准备与沟通草稿"
+      "我的沟通草稿"
     ]) {
       expect(shell).toContain(`"${title}"`);
       expect(flow).toContain(`assertVisible: "${title}"`);

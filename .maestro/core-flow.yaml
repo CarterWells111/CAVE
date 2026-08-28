@@ -1,5 +1,5 @@
 appId: com.neijie.cave
-name: Seven-screen core flow and four-tab shell
+name: Six-page core flow and four-tab shell
 tags:
   - release-static-spec
 ---
@@ -8,13 +8,21 @@ tags:
 - extendedWaitUntil:
     visible: "欢迎来到内界 CAVE"
     timeout: 20000
-- assertNotVisible: "1 / 7"
+- assertNotVisible: "1 / 6"
 - tapOn: "我已满 18 岁，开始探索"
 - tapOn: "你｜日常、自然，不限定性别。"
 - tapOn: "这样称呼我"
 - tapOn: "先跳过"
 
-- assertVisible: "2 / 7"
+- assertVisible: "1 / 6"
+- assertVisible: "身体与安全知识"
+- scrollUntilVisible:
+    element:
+      text: "看看我对过夜的期待"
+    direction: DOWN
+- tapOn: "看看我对过夜的期待"
+
+- assertVisible: "2 / 6"
 - assertVisible: "过夜期待与在意"
 - tapOn: "继续看看我的在意"
 - scrollUntilVisible:
@@ -23,15 +31,7 @@ tags:
     direction: DOWN
 - tapOn: "带着这些感受继续"
 
-- assertVisible: "3 / 7"
-- assertVisible: "身体与安全知识"
-- scrollUntilVisible:
-    element:
-      text: "看看我对不同靠近的感觉"
-    direction: DOWN
-- tapOn: "看看我对不同靠近的感觉"
-
-- assertVisible: "4 / 7"
+- assertVisible: "3 / 6"
 - assertVisible: "行为地图与边界"
 - repeat:
     times: 7
@@ -41,7 +41,7 @@ tags:
 - tapOn: "这次不查看"
 - tapOn: "这次没有"
 
-- assertVisible: "5 / 7"
+- assertVisible: "4 / 6"
 - assertVisible: "自我反思"
 - scrollUntilVisible:
     element:
@@ -54,7 +54,7 @@ tags:
     direction: DOWN
 - tapOn: "带着这些发现去练习"
 
-- assertVisible: "6 / 7"
+- assertVisible: "5 / 6"
 - assertVisible: "预设沟通练习"
 - tapOn: "开始情境练习"
 - tapOn: "不说具体行为"
@@ -68,13 +68,13 @@ tags:
     direction: DOWN
 - tapOn: "继续整理我的准备"
 
-- assertVisible: "7 / 7"
-- assertVisible: "私密准备与沟通草稿"
+- assertVisible: "6 / 6"
+- assertVisible: "我的沟通草稿"
 - scrollUntilVisible:
     element:
-      text: "完成首次记录"
+      text: "保存沟通草稿"
     direction: DOWN
-- tapOn: "完成首次记录"
+- tapOn: "保存沟通草稿"
 
 - extendedWaitUntil:
     visible: "首页"
