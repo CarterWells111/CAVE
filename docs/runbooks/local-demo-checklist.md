@@ -4,11 +4,11 @@ Updated: 2026-08-28
 
 This checklist prepares a local walkthrough; it is not evidence of Expo Go observation, a signed build, real Maestro execution, or a formal rehearsal.
 
-Automated preparation status: `local_automated_pass` on release-code commit `301227e381a75b13bf16899fb955048341e7db0f`. The human walkthrough below remains pending.
+Automated preparation status: `local_automated_pass`. Release code under test is anchored at Task 2 commit `301227e381a75b13bf16899fb955048341e7db0f`; the checkout intentionally also contains later verification-evidence and policy-fix commits. The human walkthrough below remains pending.
 
 ## Before the walkthrough
 
-- [x] Confirm the checkout is `codex/plan-07a-local-hardening` at the recorded verified release-code commit.
+- [x] Confirm the checkout is `codex/plan-07a-local-hardening` and its history contains the recorded release-code commit followed by the evidence and policy-fix commits under verification.
 - [x] Confirm the verification matrix has fresh local exit codes and no unresolved product P0/P1.
 - [x] Confirm production content remains visibly draft/expert-pending and is not described as approved.
 - [x] Confirm offline/no-network behavior is represented only by deterministic local-source and runtime tests; do not claim a device observation.

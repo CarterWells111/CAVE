@@ -21,6 +21,6 @@ Updated: 2026-08-28
 
 ## Resolved release-tooling findings
 
-Independent review found no product P0/P1 defect. It did find P1 defects in the new release tooling: an over-broad permission exception, sensitive-log and computed-access scanner evasions, non-fail-closed targets, missing Expo Router coverage, a non-production stress harness, and a stale Maestro history selector. Each was reproduced by a failing test before being fixed in `301227e`; the final reviewer reported no Critical or Important findings.
+Independent review found no product P0/P1 defect. It did find P1 defects in the new release tooling: an over-broad permission exception, sensitive-log and computed-access scanner evasions, non-fail-closed targets, missing Expo Router coverage, a non-production stress harness, and a stale Maestro history selector. Those initial findings were reproduced by failing tests before being fixed in `301227e`. The remaining network, permission-alias, dynamic-log, bare-readiness, and YAML-parse evidence gaps were likewise reproduced and are resolved by the follow-up policy fix commit.
 
 No P0/P1 product fix commit was required. New product findings still require a deterministic reproduction and failing test before any fix.

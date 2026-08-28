@@ -19,14 +19,6 @@ const permissionMethods = new Set([
   "requestPermissionsAsync"
 ]);
 const logMethods = new Set(["debug", "error", "info", "log", "warn"]);
-const sensitiveLogNames = new Set([
-  "body",
-  "communicationCard",
-  "message",
-  "prompt",
-  "response",
-  "transcript"
-]);
 
 function normalizePath(path) {
   return path.split(sep).join("/");
@@ -107,13 +99,6 @@ function stringValue(node) {
   return ts.isStringLiteralLike(node) ? node.text : null;
 }
 
-function executableStringValue(node) {
-  const literal = stringValue(node);
-  if (literal !== null) return literal;
-  if (!ts.isTemplateExpression(node)) return null;
-  return [node.head.text, ...node.templateSpans.map(({ literal: span }) => span.text)].join("");
-}
-
 function moduleSpecifier(node) {
   if ((ts.isImportDeclaration(node) || ts.isExportDeclaration(node))
     && node.moduleSpecifier !== undefined) {
@@ -149,11 +134,12 @@ function isForbiddenIntegrationCall(call) {
     && /^(?:ai|model|gateway)(?:Client|Service|Api)?$/iu.test(receiver);
 }
 
-function isForbiddenFetch(call) {
-  if (!ts.isIdentifier(call.expression) || call.expression.text !== "fetch") return false;
-  const url = call.arguments.length > 0 ? executableStringValue(call.arguments[0]) : null;
-  return url !== null
-    && (/(?:openai|anthropic|gemini)/iu.test(url) || /(?:^|\/)gateway(?:\/|$)/iu.test(url));
+function isFetchReference(node) {
+  if (ts.isIdentifier(node) && node.text === "fetch") {
+    return !(ts.isPropertyAccessExpression(node.parent) && node.parent.name === node);
+  }
+  return (ts.isPropertyAccessExpression(node) || ts.isElementAccessExpression(node))
+    && accessedName(node) === "fetch";
 }
 
 function integrationFindings(sourceFile, file) {
@@ -167,7 +153,14 @@ function integrationFindings(sourceFile, file) {
         line: sourceFile.getLineAndCharacterOfPosition(node.getStart(sourceFile)).line + 1
       });
     }
-    if (ts.isCallExpression(node) && (isForbiddenIntegrationCall(node) || isForbiddenFetch(node))) {
+    if (ts.isCallExpression(node) && isForbiddenIntegrationCall(node)) {
+      findings.push({
+        file,
+        label: "AI/model/Gateway integration",
+        line: sourceFile.getLineAndCharacterOfPosition(node.getStart(sourceFile)).line + 1
+      });
+    }
+    if (isFetchReference(node)) {
       findings.push({
         file,
         label: "AI/model/Gateway integration",
@@ -191,26 +184,20 @@ function accessedName(expression) {
   return null;
 }
 
-function containsSensitiveLogReference(node) {
-  let found = false;
-  const visit = (candidate) => {
-    if (found) return;
-    if (ts.isIdentifier(candidate) && sensitiveLogNames.has(candidate.text)) {
-      found = true;
-      return;
-    }
-    const property = accessedName(candidate);
-    if (property !== null && sensitiveLogNames.has(property)) {
-      found = true;
-      return;
-    }
-    ts.forEachChild(candidate, visit);
-  };
-  visit(node);
-  return found;
+function isStaticLogArgument(node) {
+  return ts.isStringLiteralLike(node)
+    || ts.isNumericLiteral(node)
+    || ts.isBigIntLiteral(node)
+    || ts.isRegularExpressionLiteral(node)
+    || node.kind === ts.SyntaxKind.TrueKeyword
+    || node.kind === ts.SyntaxKind.FalseKeyword
+    || node.kind === ts.SyntaxKind.NullKeyword;
 }
 
 function isLoggerCall(call, sourceFile) {
+  if (ts.isIdentifier(call.expression)) {
+    return call.expression.text === "log" || /logger$/iu.test(call.expression.text);
+  }
   if (!ts.isPropertyAccessExpression(call.expression) && !ts.isElementAccessExpression(call.expression)) {
     return false;
   }
@@ -226,7 +213,7 @@ function sensitiveLogFindings(sourceFile, file) {
     if (
       ts.isCallExpression(node)
       && isLoggerCall(node, sourceFile)
-      && node.arguments.some(containsSensitiveLogReference)
+      && node.arguments.some((argument) => !isStaticLogArgument(argument))
     ) {
       findings.push({
         file,
@@ -268,7 +255,7 @@ function recordingFindings(sourceFile, file) {
 function readinessFindings(sourceFile, file) {
   const lines = new Set();
   const isReadinessName = (name) => name !== null
-    && /^(?:readiness(?:Index|Percent|Percentage|Rating|Score)|(?:calculate|compute|derive)Readiness)$/iu.test(name);
+    && /^(?:readiness|readiness(?:Index|Percent|Percentage|Rating|Score)|(?:calculate|compute|derive)Readiness)$/iu.test(name);
   const visit = (node) => {
     const contextualProperty = (ts.isPropertyAccessExpression(node) || ts.isElementAccessExpression(node))
       ? accessedName(node)
@@ -280,11 +267,6 @@ function readinessFindings(sourceFile, file) {
   };
   visit(sourceFile);
   return [...lines].map((line) => ({ file, label: "readiness-score implementation", line }));
-}
-
-function permissionMethod(call) {
-  if (ts.isIdentifier(call.expression)) return call.expression.text;
-  return accessedName(call.expression);
 }
 
 function isExplicitImageSavePhotoRequest(call, sourceFile) {
@@ -311,25 +293,33 @@ function isExplicitImageSavePhotoRequest(call, sourceFile) {
     && owner.modifiers?.some(({ kind }) => kind === ts.SyntaxKind.AsyncKeyword) === true;
 }
 
+function isPermissionReference(node) {
+  if (ts.isIdentifier(node) && permissionMethods.has(node.text)) {
+    return !(ts.isPropertyAccessExpression(node.parent) && node.parent.name === node);
+  }
+  return (ts.isPropertyAccessExpression(node) || ts.isElementAccessExpression(node))
+    && permissionMethods.has(accessedName(node));
+}
+
 function permissionFindings(sourceFile, file, isImageSaveAdapter) {
-  const calls = [];
+  const references = [];
   const visit = (node) => {
-    if (ts.isCallExpression(node) && permissionMethods.has(permissionMethod(node))) {
-      calls.push(node);
-    }
+    if (isPermissionReference(node)) references.push(node);
     ts.forEachChild(node, visit);
   };
   visit(sourceFile);
 
   const hasSoleExplicitImageSaveRequest = isImageSaveAdapter
-    && calls.length === 1
-    && isExplicitImageSavePhotoRequest(calls[0], sourceFile);
+    && references.length === 1
+    && ts.isCallExpression(references[0].parent)
+    && references[0].parent.expression === references[0]
+    && isExplicitImageSavePhotoRequest(references[0].parent, sourceFile);
   if (hasSoleExplicitImageSaveRequest) return [];
 
-  return calls.map((call) => ({
+  return references.map((reference) => ({
     file,
     label: "automatic permission request",
-    line: sourceFile.getLineAndCharacterOfPosition(call.getStart(sourceFile)).line + 1
+    line: sourceFile.getLineAndCharacterOfPosition(reference.getStart(sourceFile)).line + 1
   }));
 }
 
@@ -351,7 +341,7 @@ for (const target of targetResults) {
 const findings = [];
 
 for (const target of targetErrors) {
-  console.error(`mobile source policy target failed: ${target.error} ${targetLabel(target.path)}`);
+  process.stderr.write(`mobile source policy target failed: ${target.error} ${targetLabel(target.path)}\n`);
   process.exitCode = 1;
 }
 
@@ -379,9 +369,9 @@ if (findings.length > 0) {
       || left.line - right.line
       || left.label.localeCompare(right.label, "en"))
     .forEach((finding) => {
-      console.error(`mobile source policy finding: ${finding.label} in ${finding.file}:${finding.line}`);
+      process.stderr.write(`mobile source policy finding: ${finding.label} in ${finding.file}:${finding.line}\n`);
     });
   process.exitCode = 1;
 } else if (files.length > 0 && targetErrors.length === 0) {
-  console.log(`mobile source policy passed (${files.length} files)`);
+  process.stdout.write(`mobile source policy passed (${files.length} files)\n`);
 }

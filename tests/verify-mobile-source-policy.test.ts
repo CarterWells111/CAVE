@@ -173,6 +173,54 @@ describe("mobile Demo source policy", () => {
   });
 
   it.each([
+    [
+      "indirect local endpoint fetch",
+      "const endpoint = '/gateway/turn'; fetch(endpoint);",
+      "AI/model/Gateway integration"
+    ],
+    [
+      "aliased fetch reference",
+      "const send = fetch; send(endpoint);",
+      "AI/model/Gateway integration"
+    ],
+    [
+      "aliased permission request",
+      "const ask = MediaLibrary.requestPermissionsAsync; ask();",
+      "automatic permission request"
+    ],
+    [
+      "destructured permission request",
+      "const { requestPermissionsAsync: ask } = MediaLibrary; ask();",
+      "automatic permission request"
+    ],
+    [
+      "computed permission request alias",
+      'const ask = MediaLibrary["requestPermissionsAsync"]; ask();',
+      "automatic permission request"
+    ],
+    [
+      "aliased private message log",
+      "const privateMessage = message; console.log(privateMessage);",
+      "sensitive message/body logging"
+    ],
+    [
+      "direct log call with dynamic data",
+      "log(privateMessage);",
+      "sensitive message/body logging"
+    ],
+    [
+      "bare readiness implementation",
+      "const readiness = completed / total;",
+      "readiness-score implementation"
+    ]
+  ])("rejects fail-closed %s", (_name, source, label) => {
+    const result = scan({ "fail-closed-policy.ts": source });
+
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain(label);
+  });
+
+  it.each([
     ["template substitution", "console.log(`request: ${request.body}`);"],
     ["computed property", 'console.info(request["body"]);'],
     ["nested call", "console.warn(redact(request.body));"],
@@ -349,7 +397,8 @@ describe("mobile Demo source policy", () => {
         'const notice = "预设对话，不使用 AI";',
         "const zoomPercent = Math.round(zoom * 100);",
         "type Labels = Record<string, string>;",
-        'console.error("local image save failed");'
+        'console.error("local image save failed");',
+        "console.log(`static local status`);"
       ].join("\n")
     });
 

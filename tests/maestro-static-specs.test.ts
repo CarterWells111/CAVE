@@ -1,11 +1,45 @@
 import { readFileSync } from "node:fs";
+import { createRequire } from "node:module";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
+type ParsedYamlDocument = Readonly<{
+  errors: unknown[];
+  toJS(): unknown;
+}>;
+
+const rootRequire = createRequire(import.meta.url);
+const vitestRequire = createRequire(rootRequire.resolve("vitest"));
+const viteRequire = createRequire(vitestRequire.resolve("vite"));
+const { parseAllDocuments } = viteRequire("yaml") as Readonly<{
+  parseAllDocuments(source: string): ParsedYamlDocument[];
+}>;
+
 const root = resolve(import.meta.dirname, "..");
 const read = (path: string) => readFileSync(resolve(root, path), "utf8");
+const maestroFlows = [
+  ".maestro/core-flow.yaml",
+  ".maestro/back-edit.yaml",
+  ".maestro/offline-delete.yaml"
+];
+
+function parseMaestroDocuments(source: string) {
+  const documents = parseAllDocuments(source);
+  const errors = documents.flatMap((document) => document.errors);
+  if (errors.length > 0) throw errors[0];
+  return documents;
+}
 
 describe("Maestro release selectors", () => {
+  it("parses every static flow as two valid YAML documents", () => {
+    for (const path of maestroFlows) {
+      const documents = parseMaestroDocuments(read(path));
+      expect(documents).toHaveLength(2);
+      expect(documents[0]?.toJS()).toMatchObject({ appId: "com.neijie.cave" });
+      expect(Array.isArray(documents[1]?.toJS())).toBe(true);
+    }
+  });
+
   it("locks the history action to its current accessible label", () => {
     const flow = read(".maestro/back-edit.yaml");
     const screen = read("apps/mobile/src/features/reviews/ui/ReviewHistoryScreen.tsx");

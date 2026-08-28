@@ -2,7 +2,8 @@
 
 Updated: 2026-08-28
 
-Branch: `codex/plan-07a-local-hardening`  
+Branch: `codex/plan-07a-local-hardening`
+
 Base: `origin/main@9f244ce3d4b9eedec826a9bf918e81000b83fce4`
 
 ## Status contract
@@ -26,10 +27,10 @@ Base: `origin/main@9f244ce3d4b9eedec826a9bf918e81000b83fce4`
 | Gateway dry-run | `corepack pnpm build:gateway` | 0 | 7.08 s | Wrangler 4.126.0 dry-run; 726.90 KiB upload / 121.40 KiB gzip; no deployment. A prior sandbox-only attempt exited 1 because Wrangler could not write its host log or traverse the linked worktree; the identical host-permission retry passed. |
 | iOS export | `apps/mobile/node_modules/.bin/expo.CMD export --platform ios --output-dir dist --clear` from `apps/mobile` | 0 | 31.8 s | Hermes bundle: 1 bundle, 3.65 MB, 1,202 modules; 24 assets including the 309 kB medical illustration; 1 metadata file. The filter-form command first exited 1 because Windows did not resolve the Expo shim; the pinned workspace shim above passed. |
 | Bundle secret scan | `corepack pnpm security:scan-bundle` | 0 | 0.80 s | 26 exported files passed. |
-| Mobile source policy | `corepack pnpm verify:mobile-policy` | 0 | 0.96 s | 122 production files passed: 93 under `apps/mobile/src` and 29 Expo Router files under `apps/mobile/app`. The AST-based scan covers AI/model/Gateway consumption, recording APIs, permission requests, sensitive logs, and readiness-score implementation. |
-| Policy and Maestro specification tests | `node_modules/.bin/vitest.CMD run tests/verify-mobile-source-policy.test.ts tests/maestro-static-specs.test.ts` | 0 | 8.73 s | 2 files / 40 tests passed. Maestro YAML was parsed and selector-locked, not executed. |
+| Mobile source policy | `corepack pnpm verify:mobile-policy` | 0 | 0.96 s | 122 production files passed: 93 under `apps/mobile/src` and 29 Expo Router files under `apps/mobile/app`. The AST-based scan forbids mobile network access, recording APIs, permission-method references outside the exact image-save call, dynamic production logs, and readiness implementation. |
+| Policy and Maestro specification tests | `node_modules/.bin/vitest.CMD run tests/verify-mobile-source-policy.test.ts tests/maestro-static-specs.test.ts` | 0 | 10.49 s | 2 files / 49 tests passed. All three Maestro files were parsed as YAML and selector-locked, not executed. |
 | Critical-path/stress tests | `corepack pnpm --filter @cave/mobile test -- src/test/release-critical-stress.test.ts src/features/journey/journey-production-flow.integration.test.tsx src/features/journey/journey-production-navigation.integration.test.tsx src/features/shell/shell-routes.integration.test.ts src/features/reviews/review-history.integration.test.ts src/core/privacy/delete-all-data.test.ts` | 0 | 5.52 s | 6 suites / 21 tests passed: seven-screen first run, back/edit propagation, four-tab shell, production-composed reset/history/branch/delete/recovery stress, and delete-all. |
-| Diff check | `git diff --check` | 0 | <1 s | No whitespace errors. Generated `apps/mobile/dist` and Gateway `dist` outputs remain ignored. |
+| Branch-range diff check | `git diff --check origin/main...HEAD` | 0 | <1 s | No whitespace errors across the complete release branch. Generated `apps/mobile/dist` and Gateway `dist` outputs remain ignored. |
 
 ## Static Maestro specifications
 
@@ -44,7 +45,7 @@ The `.maestro` flows are reviewed for current seven-screen semantics only. They 
 - Ten reset/start cycles, ten version add/branch/delete cycles, 16,384-character payload preservation, payload-free history metadata, and failed-completion retry without duplicate history.
 - No mobile source integration with AI/model/Gateway, recording APIs, automatic permissions outside the explicit image-save operation, sensitive message/body logs, or readiness-score implementation.
 
-No product P0/P1 defect was reproduced. Independent review did reproduce and close release-tooling P1 gaps in the scanner, runtime stress harness, and Maestro selectors through additional RED/GREEN tests inside commit `301227e`.
+No product P0/P1 defect was reproduced. Independent review reproduced and closed the initial release-tooling P1 gaps in commit `301227e`; remaining fail-closed scanner aliases and YAML-evidence gaps are closed by the follow-up policy fix commit.
 
 ## Pending external and authorization gates
 
