@@ -21,10 +21,18 @@
 Replace the old action-major assertions in `tests/ci-workflow.test.ts` with:
 
 ```ts
-expect(workflow).toContain("actions/checkout@v7");
-expect(workflow).toContain("pnpm/action-setup@v6");
-expect(workflow).toContain("actions/setup-node@v7");
-expect(workflow).not.toMatch(/(?:actions\/checkout|actions\/setup-node|pnpm\/action-setup)@v4\b/u);
+expect(workflow).toMatch(
+  /^\s*(?:-\s+)?uses:\s+actions\/checkout@v7(?:\s+#.*)?$/mu
+);
+expect(workflow).toMatch(
+  /^\s*(?:-\s+)?uses:\s+pnpm\/action-setup@v6(?:\s+#.*)?$/mu
+);
+expect(workflow).toMatch(
+  /^\s*(?:-\s+)?uses:\s+actions\/setup-node@v7(?:\s+#.*)?$/mu
+);
+expect(workflow).not.toMatch(
+  /^\s*(?:-\s+)?uses:\s+(?:actions\/checkout|actions\/setup-node|pnpm\/action-setup)@v4(?:\.\d+)*(?:\s+#.*)?$/mu
+);
 ```
 
 - [ ] **Step 2: Add the CodeQL checkout assertion**
@@ -32,8 +40,12 @@ expect(workflow).not.toMatch(/(?:actions\/checkout|actions\/setup-node|pnpm\/act
 Inside `runs JavaScript and TypeScript CodeQL analysis` in `tests/security-config.test.ts`, add:
 
 ```ts
-expect(workflow).toContain("actions/checkout@v7");
-expect(workflow).not.toContain("actions/checkout@v4");
+expect(workflow).toMatch(
+  /^\s*(?:-\s+)?uses:\s+actions\/checkout@v7(?:\s+#.*)?$/mu
+);
+expect(workflow).not.toMatch(
+  /^\s*(?:-\s+)?uses:\s+actions\/checkout@v4(?:\.\d+)*(?:\s+#.*)?$/mu
+);
 ```
 
 - [ ] **Step 3: Run the focused tests and verify RED**
