@@ -1,5 +1,32 @@
 [
-  { "id": "draft-knowledge-body-signals", "order": 1, "title": "身体信号", "body": "草稿：留意放松、紧张和想暂停的感觉。", "sourceIds": ["draft-source-consent"], "reviewStatus": "draft" },
-  { "id": "draft-knowledge-consent", "order": 2, "title": "同意可以改变", "body": "草稿：任何时刻都可以慢下来、改变或停止。", "sourceIds": ["draft-source-consent"], "reviewStatus": "draft" },
-  { "id": "draft-knowledge-health", "order": 3, "title": "基础健康准备", "body": "草稿：按相关行为查看可靠的健康资料。", "sourceIds": ["draft-source-sexual-health"], "reviewStatus": "draft" }
+  {
+    "id": "draft-knowledge-body-signals",
+    "page": 3,
+    "contentType": "MED",
+    "order": 1,
+    "title": "身体反应不等于同意",
+    "body": "湿润、兴奋或高潮可能是身体的自主反应，不能替你回答“我愿不愿意”。",
+    "sourceIds": ["SRC-003", "SRC-005"],
+    "reviewStatus": "expert_review_pending"
+  },
+  {
+    "id": "draft-knowledge-consent",
+    "page": 3,
+    "contentType": "MED",
+    "order": 2,
+    "title": "身体与心里的节奏可能不同",
+    "body": "你可能心里期待，身体却还没有准备好；也可能身体有所反应，心里仍然犹豫。两种情况都不要求你继续。",
+    "sourceIds": ["SRC-003", "SRC-005"],
+    "reviewStatus": "expert_review_pending"
+  },
+  {
+    "id": "draft-knowledge-health",
+    "page": 3,
+    "contentType": "MED",
+    "order": 3,
+    "title": "疼痛不需要成为“第一次”的证明",
+    "body": "感到疼痛或明显不适时，可以停下或改变方式。如果疼痛频繁出现或程度较重，应该咨询妇产科或其他医疗专业人员。",
+    "sourceIds": ["SRC-006"],
+    "reviewStatus": "expert_review_pending"
+  }
 ]

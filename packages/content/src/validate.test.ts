@@ -31,7 +31,7 @@ describe("versioned content validation", () => {
     expect(() => validateCatalog(loadCatalog(), { mode: "draft" })).not.toThrow();
   });
 
-  it("keeps seven reviewed entries while rejecting journey drafts in production", () => {
+  it("keeps seven legacy reviewed entries while rejecting seven-screen pending copy in production", () => {
     const catalog = loadCatalog();
     const reviewableEntries = [
       ...catalog.courses,
@@ -52,13 +52,14 @@ describe("versioned content validation", () => {
       validateCatalog(catalog, { mode: "production" })
     );
 
-    expect(productionIssues).toHaveLength(23);
-    expect(productionIssues.every(({ code }) => code === "DRAFT_CONTENT")).toBe(
-      true
+    expect(productionIssues.length).toBeGreaterThan(0);
+    expect(new Set(productionIssues.map(({ code }) => code))).toEqual(
+      new Set(["DRAFT_CONTENT", "EXPERT_REVIEW_PENDING"])
     );
     expect(productionIssues.every(({ path }) => path.startsWith("journey."))).toBe(
       true
     );
+    expect(productionIssues.some(({ path }) => path.startsWith("journey.sources"))).toBe(false);
   });
 
   it("rejects draft content in production", () => {
@@ -140,6 +141,75 @@ describe("versioned content validation", () => {
 
     expect(issueCodes(() => validateCatalog(catalog, { mode: "draft" }))).toContain(
       "MISSING_SOURCE"
+    );
+  });
+
+  it.each([
+    ["practice copy assigned to the wrong page", (catalog: ReturnType<typeof loadCatalog>) => {
+      catalog.journey.practice.phrases[0]!.page = 5;
+    }, "INVALID_PAGE_OWNERSHIP"],
+    ["duplicate attitude values", (catalog: ReturnType<typeof loadCatalog>) => {
+      catalog.journey.uiCopy.attitudes[1]!.value = "expecting";
+    }, "INCOMPLETE_SEVEN_SCREEN_CATALOG"],
+    ["duplicate support numbers", (catalog: ReturnType<typeof loadCatalog>) => {
+      catalog.journey.practice.supportResources[1]!.number = "110";
+    }, "INCOMPLETE_SEVEN_SCREEN_CATALOG"]
+  ] as const)("rejects %s", (_label, mutate, expectedCode) => {
+    const catalog = loadCatalog();
+    mutate(catalog);
+
+    expect(issueCodes(() => validateCatalog(catalog, { mode: "draft" }))).toContain(
+      expectedCode
+    );
+  });
+
+  it("rejects review evidence on copy that is not reviewed", () => {
+    const catalog = loadCatalog();
+    catalog.journey.knowledge[0]!.reviewer = "Unapproved reviewer";
+
+    expect(issueCodes(() => validateCatalog(catalog, { mode: "draft" }))).toContain(
+      "UNEXPECTED_REVIEW_EVIDENCE"
+    );
+  });
+
+  it("keeps source verification independent from copy approval", () => {
+    const catalog = loadCatalog();
+    catalog.journey.sources[0]!.verificationStatus = "revision_required";
+
+    const draftCodes = issueCodes(() => validateCatalog(catalog, { mode: "draft" }));
+    const productionCodes = issueCodes(() => validateCatalog(catalog, { mode: "production" }));
+    expect(draftCodes).not.toContain("SOURCE_REVISION_REQUIRED");
+    expect(productionCodes).toContain("SOURCE_REVISION_REQUIRED");
+  });
+
+  it.each([
+    ["id", "SRC-099"],
+    ["sourceType", "SAFE"],
+    ["title", "Changed title"],
+    ["organization", "Changed organization"],
+    ["url", "https://www.who.int/changed"],
+    ["appliesTo", "Changed applicability"],
+    ["publicationOrReviewDate", "Changed date"],
+    ["accessedAt", "2026-08-26"],
+    ["verificationStatus", "revision_required"]
+  ] as const)("rejects source-registry drift in %s", (field, value) => {
+    const catalog = loadCatalog();
+    Object.assign(catalog.journey.sources[0]!, { [field]: value });
+
+    expect(issueCodes(() => validateCatalog(catalog, { mode: "draft" }))).toContain(
+      "INVALID_SOURCE_REGISTRY"
+    );
+  });
+
+  it("requires all three approved disappointed-response options in order", () => {
+    const catalog = loadCatalog();
+    const branch = catalog.journey.practice.safetyBranches.find(
+      ({ branch }) => branch === "disappointed-but-stops"
+    )!;
+    branch.userTexts = branch.userTexts.slice(0, 2);
+
+    expect(issueCodes(() => validateCatalog(catalog, { mode: "draft" }))).toContain(
+      "INVALID_PRACTICE_CATALOG"
     );
   });
 

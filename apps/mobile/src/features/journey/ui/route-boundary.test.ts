@@ -33,25 +33,63 @@ test("the completed journey runtime is reachable from an explicit demo entry", (
     "utf8"
   );
 
-  expect(indexSource).toContain("进入八屏演示");
   expect(indexSource).toContain('router.push("/journey/welcome")');
   expect(indexSource).not.toContain("<HealthScreen");
   expect(indexSource).not.toContain("<Redirect");
 });
 
-test("each canonical route composes its matching basic page component", () => {
+test("exactly seven canonical routes compose their matching page components", () => {
   const routeDirectory = resolve(__dirname, "../../../../app/journey");
   const expected = {
     welcome: "WelcomePage",
     overnight: "OvernightPage",
     "body-knowledge": "BodyKnowledgePage",
-    "behavior-attitudes": "BehaviorAttitudesPage",
+    "behavior-map": "BehaviorMapPage",
     reflection: "ReflectionPage",
     "preset-practice": "PresetPracticePage",
-    checklist: "ChecklistPage",
-    "communication-card": "CommunicationCardPage"
+    "final-preparation": "FinalPreparationPage"
   };
+  expect(Object.keys(expected)).toHaveLength(7);
   for (const [route, component] of Object.entries(expected)) {
     expect(readFileSync(resolve(routeDirectory, `${route}.tsx`), "utf8")).toContain(`<${component}`);
   }
+});
+
+test("exactly three legacy aliases redirect to canonical routes", () => {
+  const routeDirectory = resolve(__dirname, "../../../../app/journey");
+  const aliases = {
+    "behavior-attitudes": "/journey/behavior-map",
+    checklist: "/journey/final-preparation",
+    "communication-card": "/journey/final-preparation"
+  };
+
+  expect(Object.keys(aliases)).toHaveLength(3);
+  for (const [route, destination] of Object.entries(aliases)) {
+    const source = readFileSync(resolve(routeDirectory, `${route}.tsx`), "utf8");
+    expect(source).toContain("<Redirect");
+    expect(source).toContain(`href="${destination}"`);
+    expect(source).not.toContain("<JourneyRouteScreen");
+  }
+});
+
+test("the production route inventory contains only seven canonical routes and three legacy aliases", () => {
+  const routeDirectory = resolve(__dirname, "../../../../app/journey");
+  const auxiliaryModules = ["_layout.tsx", "preface.tsx", "underage-exit.tsx"];
+  const productionRoutes = readdirSync(routeDirectory)
+    .filter((name) => name.endsWith(".tsx"))
+    .filter((name) => !auxiliaryModules.includes(name))
+    .sort();
+
+  expect(productionRoutes).toEqual([
+    "behavior-attitudes.tsx",
+    "behavior-map.tsx",
+    "body-knowledge.tsx",
+    "checklist.tsx",
+    "communication-card.tsx",
+    "final-preparation.tsx",
+    "overnight.tsx",
+    "preset-practice.tsx",
+    "reflection.tsx",
+    "welcome.tsx"
+  ]);
 });

@@ -112,6 +112,7 @@ test("updates page 6 practice through one page-owned command", () => {
       intent: "slow-down",
       selectedPhraseId: "draft-phrase-slow-down",
       partnerResponseBranch: "supportive",
+      mirrorRehearsed: false,
       completed: true
     }
   });
@@ -123,17 +124,22 @@ test("updates page 6 practice through one page-owned command", () => {
 test("edits checklist/card overrides and records points without changing source revision", () => {
   const base = {
     ...adultDraft(),
-    checklistItems: [{
-      id: "checklist:expression",
-      category: "expression" as const,
-      sourceIds: [],
-      status: "prepare-more" as const
-    }],
+    privatePreparation: {
+      ...adultDraft().privatePreparation,
+      items: [{
+        id: "checklist:expression",
+        category: "expression" as const,
+        sourceIds: [],
+        status: "prepare-more" as const
+      }]
+    },
     communicationCard: {
-      boundaries: {
+      ...adultDraft().communicationCard,
+      "communication-not-this-time": {
         generatedText: "draft-card.boundaries",
         sourceRevision: 0,
-        needsReview: true
+        needsReview: true,
+        visibility: "pending" as const
       }
     }
   };
@@ -145,19 +151,150 @@ test("edits checklist/card overrides and records points without changing source 
   });
   result = reduceJourneyDraft(result, {
     type: "edit-communication-card-field",
-    sectionId: "boundaries",
+    sectionId: "communication-not-this-time",
     userText: "Please ask before continuing."
   });
-  result = reduceJourneyDraft(result, { type: "confirm-communication-card-field-review", sectionId: "boundaries" });
+  result = reduceJourneyDraft(result, { type: "confirm-communication-card-field-review", sectionId: "communication-not-this-time" });
   result = reduceJourneyDraft(result, { type: "record-point-event", key: "review:checklist:v1" });
   result = reduceJourneyDraft(result, { type: "record-point-event", key: "review:checklist:v1" });
 
-  expect(result.checklistItems[0]).toMatchObject({ status: "considered", userNote: "Use my pause phrase" });
-  expect(result.communicationCard.boundaries).toMatchObject({
+  expect(result.privatePreparation.items[0]).toMatchObject({ status: "considered", userNote: "Use my pause phrase" });
+  expect(result.communicationCard["communication-not-this-time"]).toMatchObject({
     generatedText: "draft-card.boundaries",
     userText: "Please ask before continuing.",
     needsReview: false
   });
   expect(result.pointEventKeys).toEqual(["review:checklist:v1"]);
   expect(result.sourceRevision).toBe(0);
+});
+
+test("stores and resumes the overnight screen's two-stage local progress", () => {
+  const concerns = reduceJourneyDraft(adultDraft(), {
+    type: "set-overnight-stage",
+    stage: "concerns"
+  });
+
+  expect(concerns.overnight).toEqual({ stage: "concerns", resumeStage: "concerns" });
+  expect(concerns.sourceRevision).toBe(0);
+});
+
+test("saves all overnight answers and the resume stage in one domain transition", () => {
+  const result = reduceJourneyDraft(adultDraft(), {
+    type: "save-overnight",
+    expectationIds: ["expect-rest", "expect-rest"],
+    concernIds: ["concern-space"],
+    customNote: "想保留一点独处时间",
+  });
+
+  expect(result).toMatchObject({
+    expectationIds: ["expect-rest"],
+    concernIds: ["concern-space"],
+    overnightCustomNote: "想保留一点独处时间",
+    overnight: { stage: "concerns", resumeStage: "concerns" },
+  });
+});
+
+test("changes communication visibility only through the four explicit privacy states", () => {
+  const base = adultDraft();
+  const included = reduceJourneyDraft(base, {
+    type: "set-communication-card-visibility",
+    sectionId: "communication-not-this-time",
+    visibility: "included"
+  });
+  const privateAgain = reduceJourneyDraft(included, {
+    type: "set-communication-card-visibility",
+    sectionId: "communication-not-this-time",
+    visibility: "private"
+  });
+
+  expect(included.communicationCard["communication-not-this-time"].visibility).toBe("included");
+  expect(privateAgain.communicationCard["communication-not-this-time"].visibility).toBe("private");
+  expect(privateAgain.sourceRevision).toBe(0);
+});
+
+test("persists address preference and explicit-content consent as adult-owned state", () => {
+  const addressed = reduceJourneyDraft(adultDraft(), {
+    type: "set-address-preference",
+    preference: "妳",
+  });
+  const consented = reduceJourneyDraft(addressed, {
+    type: "set-explicit-content-consent",
+    consented: false,
+  });
+
+  expect(consented.addressPreference).toBe("妳");
+  expect(consented.explicitContentConsent).toBe(false);
+  expect(consented.sourceRevision).toBe(2);
+});
+
+test("atomically saves all reflection fields and clears journal content when it is not saved", () => {
+  const saved = reduceJourneyDraft(adultDraft(), {
+    type: "save-reflection",
+    motivationIds: ["draft-curious", "draft-curious"],
+    comfortNeedIds: ["draft-privacy"],
+    expressionSupportNeeded: true,
+    reflection: {
+      pressureWithoutDisappointment: "slow-down",
+      refusalSafety: "difficult-but-possible",
+      expressionDifficulty: "needs-phrase",
+      comfortClarity: "need-space",
+      comfortNote: "先给我一点空间",
+    },
+    journal: {
+      promptId: "journal-hesitation",
+      text: "只留在本机",
+      saveChoice: "device",
+      savedAt: NOW,
+    },
+  });
+
+  expect(saved).toMatchObject({
+    motivationIds: ["draft-curious"],
+    comfortNeedIds: ["draft-privacy"],
+    expressionSupportNeeded: true,
+    journalSaveChoice: "device",
+    reflection: { comfortNote: "先给我一点空间", expressionDifficulty: "needs-phrase" },
+    journal: { promptId: "journal-hesitation", text: "只留在本机", saveChoice: "device", savedAt: NOW },
+    sourceRevision: 1,
+  });
+
+  const notSaved = reduceJourneyDraft(saved, {
+    type: "save-reflection",
+    motivationIds: [],
+    comfortNeedIds: [],
+    expressionSupportNeeded: null,
+    reflection: saved.reflection,
+    journal: { promptId: "journal-hesitation", text: "不得保留", saveChoice: "not-saved" },
+  });
+  expect(notSaved.journal).toEqual({ text: "", saveChoice: "not-saved" });
+  expect(notSaved.journalSaveChoice).toBe("not-saved");
+});
+
+test("stores the canonical Page 6 submission without erasing legacy-compatible practice state", () => {
+  const base = {
+    ...adultDraft(),
+    practice: { ...adultDraft().practice, selectedPhraseId: "legacy-phrase" },
+  };
+  const result = reduceJourneyDraft(base, {
+    type: "save-practice-submission",
+    submission: {
+      behaviorId: null,
+      intent: "pause-to-feel",
+      phrase: "先停一下。",
+      aftercareId: "space",
+      optionalBranch: "ignores-or-blocks-exit",
+      safetyTerminal: true,
+      completed: true,
+    },
+  });
+
+  expect(result.practice).toMatchObject({
+    selectedPhraseId: "legacy-phrase",
+    intent: "pause-to-feel",
+    phrase: "先停一下。",
+    aftercareId: "space",
+    optionalBranch: "ignores-or-blocks-exit",
+    safetyTerminal: true,
+    completed: true,
+  });
 });

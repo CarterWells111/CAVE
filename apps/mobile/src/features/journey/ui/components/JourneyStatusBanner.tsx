@@ -1,7 +1,7 @@
 import type { Role } from "react-native";
-import { StyleSheet, Text, View } from "react-native";
+import { View } from "react-native";
 
-import { journeyColors, journeyRadii, journeySpacing } from "../journey-ui-tokens";
+import { StatusBanner } from "../../../../core/ui/StatusBanner";
 
 export type JourneyStatusBannerProps = {
   message: string;
@@ -18,32 +18,33 @@ export function JourneyStatusBanner({
   role,
   testID
 }: JourneyStatusBannerProps) {
+  const needsAccessibilityAdapter = accessibilityLabel !== undefined || role !== undefined;
+  const effectiveRole = role ?? (tone === "error" ? "alert" : "status");
+  const liveRegion = effectiveRole === "alert" ? "assertive" : "polite";
+  const banner = (
+    <StatusBanner
+      message={message}
+      variant={tone}
+      {...(!needsAccessibilityAdapter && testID !== undefined ? { testID } : {})}
+    />
+  );
+
+  if (!needsAccessibilityAdapter) return banner;
+
   return (
     <View
       accessibilityLabel={accessibilityLabel ?? message}
-      accessibilityLiveRegion="polite"
-      accessibilityRole={role ? undefined : tone === "error" ? "alert" : "text"}
+      accessibilityLiveRegion={liveRegion}
       accessible
-      role={role}
-      style={[styles.banner, styles[`${tone}Banner`]]}
+      role={effectiveRole}
       testID={testID}
     >
-      <Text style={[styles.message, styles[`${tone}Text`]]}>{message}</Text>
+      <View
+        accessibilityElementsHidden
+        importantForAccessibility="no-hide-descendants"
+      >
+        {banner}
+      </View>
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  banner: {
-    borderRadius: journeyRadii.sm,
-    paddingHorizontal: journeySpacing.md,
-    paddingVertical: journeySpacing.sm
-  },
-  infoBanner: { backgroundColor: journeyColors.noticeBackground },
-  successBanner: { backgroundColor: journeyColors.successBackground },
-  errorBanner: { backgroundColor: journeyColors.errorBackground },
-  message: { fontSize: 15, lineHeight: 22 },
-  infoText: { color: journeyColors.noticeText },
-  successText: { color: journeyColors.successText },
-  errorText: { color: journeyColors.errorText }
-});

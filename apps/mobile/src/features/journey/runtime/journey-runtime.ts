@@ -13,6 +13,8 @@ import {
   InMemoryCommunicationCardRepository,
   InMemoryJourneyDraftRepository
 } from "../infrastructure/in-memory-journey-repositories";
+import type { AppShellStateRepository } from "../../shell/infrastructure/app-shell-state-repository";
+import { InMemoryAppShellStateRepository } from "../../shell/infrastructure/in-memory-app-shell-state-repository";
 
 export type JourneyRuntimeMode = "expo-go-demo" | "native-secure";
 export type JourneyRuntimePersistence = "memory-only" | "sqlcipher-secure-store";
@@ -24,6 +26,7 @@ export type JourneyRuntime = {
   controller: JourneyPageController;
   drafts: JourneyDraftRepository;
   cards: CommunicationCardRepository;
+  shellState: AppShellStateRepository;
 };
 
 type RuntimeDependencies = {
@@ -37,6 +40,7 @@ type ComposeDependencies = RuntimeDependencies & {
   persistence: JourneyRuntimePersistence;
   drafts: JourneyDraftRepository;
   cards: CommunicationCardRepository;
+  shellState?: AppShellStateRepository;
 };
 
 type CreateDependencies = RuntimeDependencies & {
@@ -53,6 +57,7 @@ export function composeJourneyRuntime({
   persistence,
   drafts,
   cards,
+  shellState = new InMemoryAppShellStateRepository(),
   clipboard,
   createId,
   now
@@ -61,11 +66,12 @@ export function composeJourneyRuntime({
   const controller = new JourneyPageController({
     service,
     cards,
+    shellState,
     clipboard,
     practice: new LocalPresetPracticeEngine(loadJourneyContentCatalog().practice),
     now
   });
-  return { mode, persistence, service, controller, drafts, cards };
+  return { mode, persistence, service, controller, drafts, cards, shellState };
 }
 
 export async function createJourneyRuntime({

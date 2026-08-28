@@ -1,4 +1,4 @@
-import { useEffect, useMemo, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, type ReactNode } from "react";
 import { useRouter } from "expo-router";
 
 import { JourneyRouteCoordinator } from "../application/journey-route-coordinator";
@@ -22,13 +22,23 @@ export function JourneyRouteScreen({
 }) {
   const router = useRouter();
   const runtime = useJourneyRuntime();
-  const coordinator = useMemo(
-    () => new JourneyRouteCoordinator(runtime.service, {
-      replace: (path) => router.replace(path)
-    }),
-    [router, runtime.service]
+  const navigationActiveRef = useRef(true);
+  const navigationGenerationRef = useRef(0);
+  const guardCoordinator = useMemo(
+    () => new JourneyRouteCoordinator(runtime.service, { replace: () => undefined }),
+    [runtime.service]
   );
-  const allowed = coordinator.guard(pageId);
+  const allowed = guardCoordinator.guard(pageId);
+
+  useEffect(() => {
+    navigationActiveRef.current = true;
+    navigationGenerationRef.current += 1;
+
+    return () => {
+      navigationActiveRef.current = false;
+      navigationGenerationRef.current += 1;
+    };
+  }, [pageId, runtime.service]);
 
   useEffect(() => {
     if (!allowed) router.replace("/journey/welcome");
@@ -37,13 +47,41 @@ export function JourneyRouteScreen({
   if (!allowed) return null;
 
   const runAndRefresh = runtime.runAndRefresh;
-  const goTo = (page: JourneyPageId) => runAndRefresh(() => coordinator.goTo(page));
+  const createActiveCoordinator = () => {
+    const generation = navigationGenerationRef.current;
+    return new JourneyRouteCoordinator(runtime.service, {
+      replace: (path) => {
+        if (
+          navigationActiveRef.current &&
+          navigationGenerationRef.current === generation
+        ) {
+          router.replace(path);
+        }
+      }
+    });
+  };
+  const goTo = (page: JourneyPageId) => {
+    const activeCoordinator = createActiveCoordinator();
+    return runAndRefresh(() => activeCoordinator.goTo(page));
+  };
   const onBack = pageId === "welcome"
     ? undefined
-    : () => runAndRefresh(() => coordinator.backFrom(pageId));
+    : () => {
+      const activeCoordinator = createActiveCoordinator();
+      return runAndRefresh(() => activeCoordinator.backFrom(pageId));
+    };
+  const onExit = () => {
+    navigationActiveRef.current = false;
+    navigationGenerationRef.current += 1;
+    router.replace("/");
+  };
 
   return (
-    <JourneyScreenShell pageId={pageId} {...(onBack === undefined ? {} : { onBack })}>
+    <JourneyScreenShell
+      pageId={pageId}
+      onExit={onExit}
+      {...(onBack === undefined ? {} : { onBack })}
+    >
       {children({
         snapshot: runtime.snapshot,
         controller: runtime.controller,

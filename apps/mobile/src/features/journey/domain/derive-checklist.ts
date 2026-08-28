@@ -2,7 +2,8 @@ import type { ChecklistItem, JourneyDraft } from "./types";
 
 const HEALTH_RELATED_BEHAVIOR_IDS = new Set([
   "draft-penetrative-sex",
-  "draft-oral-sex"
+  "draft-oral-sex",
+  "behavior-oral-genital-contact"
 ]);
 
 type ChecklistSeed = Pick<ChecklistItem, "id" | "category" | "sourceIds">;
@@ -36,11 +37,20 @@ function seedItems(draft: JourneyDraft): ChecklistSeed[] {
 }
 
 export function buildChecklist(draft: JourneyDraft): ChecklistItem[] {
-  const existing = new Map(draft.checklistItems.map((item) => [item.id, item]));
+  const existing = new Map(draft.privatePreparation.items.map((item) => [item.id, item]));
   return seedItems(draft).map((seed) => {
     const previous = existing.get(seed.id);
     return previous === undefined
       ? { ...seed, status: "prepare-more" }
       : { ...seed, status: previous.status, ...(previous.userNote === undefined ? {} : { userNote: previous.userNote }) };
   });
+}
+
+export function buildPrivatePreparation(draft: JourneyDraft): JourneyDraft["privatePreparation"] {
+  return {
+    ...draft.privatePreparation,
+    items: buildChecklist(draft),
+    excludedGroupIds: [...draft.privatePreparation.excludedGroupIds],
+    aftercareIds: [...draft.privatePreparation.aftercareIds]
+  };
 }

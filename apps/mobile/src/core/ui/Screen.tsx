@@ -1,0 +1,56 @@
+import { ScrollView, StyleSheet, type ScrollViewProps, useWindowDimensions } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+
+import { theme } from "../design/theme";
+
+type LockedScrollProp = "horizontal" | "contentInsetAdjustmentBehavior" | "keyboardShouldPersistTaps";
+
+export type ScreenProps = Omit<ScrollViewProps, LockedScrollProp>;
+
+export function contentHorizontalPadding(width: number): number {
+  return width < 375 ? theme.space.md : theme.space.card;
+}
+
+export function Screen({ children, contentContainerStyle, style, ...props }: ScreenProps) {
+  const { width } = useWindowDimensions();
+  const horizontalPadding = contentHorizontalPadding(width);
+  const callerPresentation = { ...(StyleSheet.flatten(contentContainerStyle) ?? {}) };
+  for (const lockedKey of [
+    "maxWidth", "minWidth", "width", "paddingHorizontal", "paddingLeft", "paddingRight", "paddingStart", "paddingEnd",
+  ] as const) {
+    delete callerPresentation[lockedKey];
+  }
+
+  return (
+    <SafeAreaView
+      edges={["top", "bottom"]}
+      style={{ backgroundColor: theme.color.background, flex: 1 }}
+      testID="screen-safe-area"
+    >
+      <ScrollView
+      {...props}
+      automaticallyAdjustKeyboardInsets
+      horizontal={false}
+      contentInsetAdjustmentBehavior="automatic"
+      keyboardShouldPersistTaps="handled"
+      style={[{ flex: 1, backgroundColor: theme.color.background }, style]}
+      contentContainerStyle={[
+        {
+          alignSelf: "center",
+          flexGrow: 1,
+          gap: theme.space.lg,
+          paddingVertical: theme.space.xl,
+        },
+        callerPresentation,
+        {
+          maxWidth: theme.size.readableContentMax,
+          paddingHorizontal: horizontalPadding,
+          width: "100%",
+        },
+      ]}
+    >
+      {children}
+      </ScrollView>
+    </SafeAreaView>
+  );
+}

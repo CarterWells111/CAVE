@@ -1,5 +1,5 @@
 import type { DatabaseSecretRepository } from "./key-store";
-import { CURRENT_SCHEMA_VERSION, SCHEMA_V1, SCHEMA_V2 } from "./migrations";
+import { CURRENT_SCHEMA_VERSION, SCHEMA_V1, SCHEMA_V2, SCHEMA_V3, SCHEMA_V4 } from "./migrations";
 
 export interface DatabaseConnection {
   execAsync(sql: string): Promise<void>;
@@ -84,8 +84,14 @@ export function createEncryptedDatabaseManager({
       if (currentVersion < 1) {
         await applyMigration(opened, SCHEMA_V1, 1);
       }
-      if (currentVersion < CURRENT_SCHEMA_VERSION) {
+      if (currentVersion < 2) {
         await applyMigration(opened, SCHEMA_V2, 2);
+      }
+      if (currentVersion < 3) {
+        await applyMigration(opened, SCHEMA_V3, 3);
+      }
+      if (currentVersion < 4) {
+        await applyMigration(opened, SCHEMA_V4, 4);
       }
       return opened;
     } catch (error) {

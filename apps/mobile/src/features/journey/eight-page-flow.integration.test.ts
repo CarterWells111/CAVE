@@ -2,12 +2,14 @@ import { getPointSummary } from "./application/points-ledger";
 import { DefaultJourneyApplicationService } from "./application/journey-application-service";
 import { JourneyPageController } from "./application/page-controllers";
 import { LocalPresetPracticeEngine } from "./domain/preset-practice-engine";
+import { COMMUNICATION_CARD_CONSENT_FOOTER } from "./domain/derive-communication-card";
 import type { JourneyDraft, SavedCommunicationCardRecord } from "./domain/types";
 import type {
   CommunicationCardRepository,
   JourneyDraftRepository
 } from "./infrastructure/journey-draft-repository";
 import { loadJourneyContentCatalog } from "./infrastructure/journey-content-catalog";
+import { InMemoryAppShellStateRepository } from "../shell/infrastructure/in-memory-app-shell-state-repository";
 
 function localStorageHarness() {
   let active: JourneyDraft | null = null;
@@ -39,6 +41,7 @@ async function completeLocalFlow() {
   const controller = new JourneyPageController({
     service: app,
     cards: storage.cards,
+    shellState: new InMemoryAppShellStateRepository(),
     clipboard,
     practice: new LocalPresetPracticeEngine(loadJourneyContentCatalog().practice),
     now: () => "2026-08-27T11:00:00.000Z"
@@ -52,7 +55,7 @@ async function completeLocalFlow() {
   });
   await app.navigateTo("body-knowledge");
   await controller.readKnowledge("draft-knowledge-consent");
-  await app.navigateTo("behavior-attitudes");
+  await app.navigateTo("behavior-map");
   await controller.setBehaviorAttitude("draft-kissing", "unsure");
   await app.navigateTo("reflection");
   await controller.saveReflection({
@@ -69,16 +72,18 @@ async function completeLocalFlow() {
     editedPhrase: "Please slow down.",
     branch: "supportive"
   });
-  await app.navigateTo("checklist");
+  await app.navigateTo("final-preparation");
   await controller.updateChecklist("checklist:expression", "considered", "Use my pause phrase");
   await controller.finishChecklistReview();
-  await app.navigateTo("communication-card");
-  await controller.editCommunicationCard("boundaries", "Please ask before continuing.");
+  await controller.editCommunicationCard(
+    "communication-night-expectations",
+    "Please ask before continuing."
+  );
 
   return { app, clipboard, controller, storage };
 }
 
-test("completes Pages 1-8 offline, explicitly saves/copies, and resumes after restart", async () => {
+test("completes the seven-screen journey offline, explicitly saves/copies, and resumes after restart", async () => {
   const originalFetch = globalThis.fetch;
   const offline = jest.fn(async () => { throw new Error("offline"); });
   globalThis.fetch = offline as typeof fetch;
@@ -89,14 +94,14 @@ test("completes Pages 1-8 offline, explicitly saves/copies, and resumes after re
     await controller.copyCommunicationCard();
 
     expect(await storage.cards.list()).toHaveLength(1);
-    expect(clipboard.setStringAsync).toHaveBeenCalledWith(expect.stringContaining("Please ask before continuing."));
+    expect(clipboard.setStringAsync).toHaveBeenCalledWith(COMMUNICATION_CARD_CONSENT_FOOTER);
     expect(getPointSummary(app.getSnapshot()!.pointEventKeys)).toMatchObject({ total: 60 });
     expect(offline).not.toHaveBeenCalled();
 
     const restarted = application(storage.drafts);
     await expect(restarted.initialize()).resolves.toBe("ready");
     expect(restarted.getSnapshot()).toMatchObject({
-      currentPage: "communication-card",
+      currentPage: "final-preparation",
       practice: { completed: true }
     });
   } finally {
@@ -113,11 +118,11 @@ test("back-edit recomputes generated fields while preserving user text for revie
     customNote: ""
   });
 
-  expect(app.getSnapshot()?.communicationCard.boundaries).toMatchObject({
+  expect(app.getSnapshot()?.communicationCard["communication-night-expectations"]).toMatchObject({
     userText: "Please ask before continuing.",
     needsReview: true
   });
-  expect(app.getSnapshot()?.checklistItems).toContainEqual(expect.objectContaining({
+  expect(app.getSnapshot()?.privatePreparation.items).toContainEqual(expect.objectContaining({
     id: "checklist:expression",
     status: "considered",
     userNote: "Use my pause phrase"

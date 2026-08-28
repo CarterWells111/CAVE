@@ -1,14 +1,14 @@
-import { fireEvent, render, screen, waitFor, type RenderAPI } from "@testing-library/react-native";
+import { fireEvent, render, screen, waitFor, within, type RenderAPI } from "@testing-library/react-native";
 import type { ReactElement } from "react";
 
-import BehaviorAttitudesRoute from "../../../app/journey/behavior-attitudes";
+import BehaviorMapRoute from "../../../app/journey/behavior-map";
 import BodyKnowledgeRoute from "../../../app/journey/body-knowledge";
-import ChecklistRoute from "../../../app/journey/checklist";
-import CommunicationCardRoute from "../../../app/journey/communication-card";
+import FinalPreparationRoute from "../../../app/journey/final-preparation";
 import OvernightRoute from "../../../app/journey/overnight";
 import PresetPracticeRoute from "../../../app/journey/preset-practice";
 import ReflectionRoute from "../../../app/journey/reflection";
 import WelcomeRoute from "../../../app/journey/welcome";
+import type { JourneyPageId } from "./domain/types";
 import { InMemoryCommunicationCardRepository, InMemoryJourneyDraftRepository } from "./infrastructure/in-memory-journey-repositories";
 import { composeJourneyRuntime, type JourneyRuntime } from "./runtime/journey-runtime";
 import { JourneyRuntimeProvider } from "./runtime/JourneyRuntimeProvider";
@@ -36,6 +36,49 @@ function runtime(clipboard = { setStringAsync: jest.fn(async () => undefined) })
   });
 }
 
+async function unlockAllSevenScreens(journeyRuntime: JourneyRuntime) {
+  await journeyRuntime.service.confirmAdult();
+  await journeyRuntime.controller.setAddressPreference("你");
+  await journeyRuntime.service.dispatch({ type: "set-preface-read", read: true });
+  await journeyRuntime.controller.saveOvernight({
+    expectationIds: [],
+    concernIds: [],
+    customNote: ""
+  });
+  for (const cardId of [
+    "draft-knowledge-body-signals",
+    "draft-knowledge-consent",
+    "draft-knowledge-health"
+  ]) {
+    await journeyRuntime.controller.readKnowledge(cardId);
+  }
+  for (const behaviorId of [
+    "behavior-hug",
+    "draft-kissing",
+    "behavior-same-bed",
+    "behavior-my-nudity",
+    "behavior-partner-nudity",
+    "behavior-over-clothes-touch",
+    "behavior-direct-touch"
+  ]) {
+    await journeyRuntime.controller.setBehaviorAttitude(behaviorId, "skip");
+  }
+  await journeyRuntime.controller.setExplicitContentConsent(false);
+  await journeyRuntime.controller.saveReflection({
+    motivationIds: [],
+    comfortNeedIds: [],
+    journalSaveChoice: "not-saved",
+    journalText: ""
+  });
+  await journeyRuntime.controller.completePractice({
+    behaviorId: null,
+    intent: "pause-to-feel",
+    phrase: "先停一下，我需要一点时间。",
+    aftercareId: "quiet",
+    completed: true
+  });
+}
+
 async function openRoute(element: ReactElement, journeyRuntime: JourneyRuntime): Promise<RenderAPI> {
   const view = render(
     <JourneyRuntimeProvider createRuntime={async () => journeyRuntime}>
@@ -46,90 +89,38 @@ async function openRoute(element: ReactElement, journeyRuntime: JourneyRuntime):
   return view;
 }
 
-test("the production routes complete Page 1 through 8 offline with real snapshots and actions", async () => {
+test("the production routes expose all seven screens offline without an eighth route", async () => {
   const originalFetch = globalThis.fetch;
   const offlineFetch = jest.fn(async () => { throw new Error("offline"); });
   globalThis.fetch = offlineFetch as typeof fetch;
-  const clipboard = { setStringAsync: jest.fn(async () => undefined) };
-  const journeyRuntime = runtime(clipboard);
+  const journeyRuntime = runtime();
   let view: RenderAPI | undefined;
 
   try {
     view = await openRoute(<WelcomeRoute />, journeyRuntime);
-    fireEvent.press(screen.getByText("阅读能力与局限短笺"));
-    fireEvent.press(screen.getByText("我已满18岁"));
-    await waitFor(() => expect(mockRouter.replace).toHaveBeenCalledWith("/journey/overnight"));
-    expect(journeyRuntime.service.getSnapshot()).toMatchObject({ ageConfirmed: true, prefaceRead: true });
+    expect(screen.queryByTestId("progress-center")).toBeNull();
     view.unmount();
 
-    view = await openRoute(<OvernightRoute />, journeyRuntime);
-    fireEvent.press(screen.getByText("好好休息"));
-    fireEvent.press(screen.getByText("担心被催促"));
-    fireEvent.changeText(screen.getByPlaceholderText("可选补充"), "需要安静离开的空间");
-    fireEvent.press(screen.getByText("继续"));
-    await waitFor(() => expect(journeyRuntime.service.getSnapshot()?.currentPage).toBe("body-knowledge"));
-    view.unmount();
+    await unlockAllSevenScreens(journeyRuntime);
+    const screens: Array<[JourneyPageId, number, ReactElement]> = [
+      ["overnight", 2, <OvernightRoute />],
+      ["body-knowledge", 3, <BodyKnowledgeRoute />],
+      ["behavior-map", 4, <BehaviorMapRoute />],
+      ["reflection", 5, <ReflectionRoute />],
+      ["preset-practice", 6, <PresetPracticeRoute />],
+      ["final-preparation", 7, <FinalPreparationRoute />]
+    ];
 
-    view = await openRoute(<BodyKnowledgeRoute />, journeyRuntime);
-    fireEvent.press(screen.getByText("主动展开医学图示"));
-    fireEvent.press(screen.getByText("标记已读：同意可以改变"));
-    fireEvent.press(screen.getByText("继续"));
-    await waitFor(() => expect(journeyRuntime.service.getSnapshot()?.currentPage).toBe("behavior-attitudes"));
-    view.unmount();
-
-    view = await openRoute(<BehaviorAttitudesRoute />, journeyRuntime);
-    fireEvent.press(screen.getByLabelText("亲吻：不确定"));
-    fireEvent.press(screen.getByLabelText("插入式性行为：不确定"));
-    fireEvent.press(screen.getByText("继续"));
-    await waitFor(() => expect(journeyRuntime.service.getSnapshot()?.currentPage).toBe("reflection"));
-    view.unmount();
-
-    view = await openRoute(<ReflectionRoute />, journeyRuntime);
-    fireEvent.press(screen.getByText("想了解自己的感受"));
-    fireEvent.press(screen.getByText("保有隐私"));
-    fireEvent.press(screen.getByText("需要表达支持"));
-    fireEvent.press(screen.getByText("完成反思"));
-    await waitFor(() => expect(journeyRuntime.service.getSnapshot()?.currentPage).toBe("preset-practice"));
-    view.unmount();
-
-    view = await openRoute(<PresetPracticeRoute />, journeyRuntime);
-    fireEvent.press(screen.getByText("插入式性行为"));
-    fireEvent.press(screen.getByText("我想停下现在这件事。"));
-    fireEvent.press(screen.getByText("草稿：练习再次清楚表达边界。"));
-    fireEvent.changeText(screen.getByDisplayValue("我想停下现在这件事。"), "请先停下来。");
-    fireEvent.press(screen.getByText("采用这句话"));
-    await waitFor(() => expect(journeyRuntime.service.getSnapshot()?.currentPage).toBe("checklist"));
-    expect(journeyRuntime.service.getSnapshot()?.practice).toMatchObject({
-      behaviorId: "draft-penetrative-sex",
-      intent: "stop-current-action",
-      selectedPhraseId: "draft-phrase-stop-current",
-      editedPhrase: "请先停下来。",
-      partnerResponseBranch: "disappointed-follow-up"
-    });
-    view.unmount();
-
-    view = await openRoute(<ChecklistRoute />, journeyRuntime);
-    expect(screen.getByText("关于「插入式性行为」的态度")).toBeTruthy();
-    expect(screen.getByText("健康准备：插入式性行为")).toBeTruthy();
-    expect(screen.queryByText(/checklist:/u)).toBeNull();
-    fireEvent.changeText(screen.getAllByPlaceholderText("补充说明（可选）")[0]!, "先说出暂停句");
-    fireEvent.press(screen.getAllByText("已考虑")[0]!);
-    fireEvent.press(screen.getByText("完成回顾"));
-    await waitFor(() => expect(journeyRuntime.service.getSnapshot()?.currentPage).toBe("communication-card"));
-    view.unmount();
-
-    view = await openRoute(<CommunicationCardRoute />, journeyRuntime);
-    const firstField = screen.getAllByDisplayValue(/draft-card/u)[0]!;
-    fireEvent.changeText(firstField, "请继续前先问我。");
-    await waitFor(() => expect(journeyRuntime.service.getSnapshot()?.communicationCard.intentions?.userText)
-      .toBe("请继续前先问我。"));
-    fireEvent.press(screen.getByText("本机保存"));
-    await waitFor(async () => expect(await journeyRuntime.cards.list()).toHaveLength(1));
-    fireEvent.press(screen.getByText("复制当前卡片"));
-    await waitFor(() => expect(screen.getByText("已复制")).toBeTruthy());
-    expect(clipboard.setStringAsync).toHaveBeenCalledWith(expect.stringContaining("请继续前先问我。"));
-    fireEvent.press(screen.getByText("现场展示"));
-    expect(screen.getByText("暂停与确认表达保持可见")).toBeTruthy();
+    for (const [pageId, pageNumber, route] of screens) {
+      await journeyRuntime.service.navigateTo(pageId);
+      view = await openRoute(route, journeyRuntime);
+      expect(screen.getByTestId(`journey-page-${pageId}`)).toBeTruthy();
+      expect(within(screen.getByTestId("progress-center")).getByText(`${pageNumber} / 7`)).toBeTruthy();
+      expect(screen.queryByText(/8\s*\/\s*8|共\s*8\s*页/u)).toBeNull();
+      expect(screen.getByRole("button", { name: "退出旅程" })).toBeTruthy();
+      view.unmount();
+      view = undefined;
+    }
 
     expect(offlineFetch).not.toHaveBeenCalled();
   } finally {
@@ -142,22 +133,26 @@ test("the production underage route exits without creating an active draft", asy
   const journeyRuntime = runtime();
   const view = await openRoute(<WelcomeRoute />, journeyRuntime);
 
-  fireEvent.press(screen.getByText("我未满18岁"));
+  fireEvent.press(screen.getByText("我未满 18 岁"));
+  fireEvent.press(screen.getByText("退出体验"));
 
   await waitFor(() => expect(mockRouter.replace).toHaveBeenCalledWith("/journey/underage-exit"));
   expect(await journeyRuntime.drafts.loadActive()).toBeNull();
   view.unmount();
 });
 
-test("clipboard failure is structured and visible on the production Page 8 route", async () => {
+test("clipboard failure is structured and visible on the production final screen", async () => {
   const clipboard = { setStringAsync: jest.fn(async () => { throw new Error("denied"); }) };
   const journeyRuntime = runtime(clipboard);
-  await journeyRuntime.service.confirmAdult();
-  await journeyRuntime.service.navigateTo("communication-card");
-  const view = await openRoute(<CommunicationCardRoute />, journeyRuntime);
+  await unlockAllSevenScreens(journeyRuntime);
+  await journeyRuntime.service.navigateTo("final-preparation");
+  const view = await openRoute(<FinalPreparationRoute />, journeyRuntime);
 
-  fireEvent.press(screen.getByText("复制当前卡片"));
+  fireEvent.press(screen.getByText("复制已确认内容"));
+  expect(screen.getByText("请先查看最终预览，再次确认后复制。")).toBeTruthy();
+  expect(clipboard.setStringAsync).not.toHaveBeenCalled();
+  fireEvent.press(screen.getByText("复制已确认内容"));
 
-  expect(await screen.findByText("复制失败，请重试")).toBeTruthy();
+  expect(await screen.findByText("复制失败，请重试或手写记录。")).toBeTruthy();
   view.unmount();
 });

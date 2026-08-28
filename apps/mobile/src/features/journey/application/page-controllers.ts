@@ -1,10 +1,20 @@
-import type { BehaviorAttitude, ChecklistItemStatus, JournalSaveChoice, JourneyDraft } from "../domain/types";
+import type {
+  AddressPreference,
+  BehaviorAttitude,
+  ChecklistItemStatus,
+  JournalSaveChoice,
+  JourneyDraft,
+  JourneyPracticeSubmission,
+} from "../domain/types";
+import { selectConfirmedCommunicationCard } from "../domain/derive-communication-card";
+import type { ConfirmedCommunicationCard } from "../domain/derive-communication-card";
 import type {
   PartnerResponseBranch,
   PracticeIntent,
   PresetPracticeEngine
 } from "../domain/practice-types";
 import type { CommunicationCardRepository } from "../infrastructure/journey-draft-repository";
+import type { AppShellStateRepository } from "../../shell/infrastructure/app-shell-state-repository";
 import type { JourneyApplicationService } from "./journey-application-service";
 
 export interface ClipboardAdapter {
@@ -18,9 +28,43 @@ export type ClipboardCopyResult =
 type Dependencies = {
   service: JourneyApplicationService;
   cards: CommunicationCardRepository;
+  shellState: AppShellStateRepository;
   clipboard: ClipboardAdapter;
   practice: PresetPracticeEngine;
   now(): string;
+};
+
+type ReflectionInput = {
+  motivationIds: string[];
+  comfortNeedIds: string[];
+  expressionSupportNeeded?: boolean | null;
+  pressureWithoutDisappointment?: string | null;
+  refusalSafety?: string | null;
+  expressionDifficulty?: string | null;
+  comfortClarity?: string | null;
+  comfortNote?: string;
+  journalPromptId?: string;
+  journalText?: string;
+  journalSaveChoice: JournalSaveChoice;
+};
+
+type LegacyPracticeInput = {
+  behaviorId: string;
+  intent: PracticeIntent;
+  phraseId: string;
+  editedPhrase?: string;
+  branch: PartnerResponseBranch;
+};
+
+type CanonicalPracticeInput = {
+  behaviorId: string | null;
+  intent: PracticeIntent;
+  phrase: string;
+  aftercareId: string;
+  completed: true;
+  pointEventKey?: string;
+  optionalBranch?: string;
+  optionalResponse?: string;
 };
 
 export class JourneyPageController {
@@ -34,10 +78,21 @@ export class JourneyPageController {
     return "overnight" as const;
   }
 
+  setAddressPreference(preference: Exclude<AddressPreference, null>) {
+    return this.dependencies.service.dispatch({ type: "set-address-preference", preference });
+  }
+
+  setExplicitContentConsent(consented: boolean) {
+    return this.dependencies.service.dispatch({ type: "set-explicit-content-consent", consented });
+  }
+
   async saveOvernight(input: { expectationIds: string[]; concernIds: string[]; customNote: string }) {
-    await this.dependencies.service.dispatch({ type: "set-expectation-ids", ids: input.expectationIds });
-    await this.dependencies.service.dispatch({ type: "set-concern-ids", ids: input.concernIds });
-    await this.dependencies.service.dispatch({ type: "set-overnight-custom-note", note: input.customNote });
+    await this.dependencies.service.dispatch({
+      type: "save-overnight",
+      expectationIds: input.expectationIds,
+      concernIds: input.concernIds,
+      customNote: input.customNote,
+    });
   }
 
   async readKnowledge(cardId: string) {
@@ -53,26 +108,58 @@ export class JourneyPageController {
     return this.dependencies.service.dispatch({ type: "set-behavior-attitude", behaviorId, attitude });
   }
 
-  async saveReflection(input: {
-    motivationIds: string[];
-    comfortNeedIds: string[];
-    expressionSupportNeeded: boolean | null;
-    journalSaveChoice: JournalSaveChoice;
-  }) {
-    await this.dependencies.service.dispatch({ type: "set-motivation-ids", ids: input.motivationIds });
-    await this.dependencies.service.dispatch({ type: "set-comfort-need-ids", ids: input.comfortNeedIds });
-    await this.dependencies.service.dispatch({ type: "set-expression-support-needed", needed: input.expressionSupportNeeded });
-    await this.dependencies.service.dispatch({ type: "set-journal-save-choice", choice: input.journalSaveChoice });
-    await this.dependencies.service.dispatch({ type: "record-point-event", key: "reflection:page-5:v1" });
+  async saveReflection(input: ReflectionInput) {
+    const draft = this.requireDraft();
+    const expressionSupportNeeded = input.expressionSupportNeeded !== undefined
+      ? input.expressionSupportNeeded
+      : input.expressionDifficulty !== undefined
+        ? input.expressionDifficulty === null ? null : input.expressionDifficulty === "needs-phrase"
+        : draft.expressionSupportNeeded;
+    const reflection = {
+      pressureWithoutDisappointment: input.pressureWithoutDisappointment === undefined
+        ? draft.reflection.pressureWithoutDisappointment
+        : input.pressureWithoutDisappointment,
+      refusalSafety: input.refusalSafety === undefined ? draft.reflection.refusalSafety : input.refusalSafety,
+      expressionDifficulty: input.expressionDifficulty === undefined
+        ? draft.reflection.expressionDifficulty
+        : input.expressionDifficulty,
+      comfortClarity: input.comfortClarity === undefined ? draft.reflection.comfortClarity : input.comfortClarity,
+      comfortNote: input.comfortNote === undefined ? draft.reflection.comfortNote : input.comfortNote,
+    };
+    const journal = input.journalSaveChoice === "not-saved"
+      ? {
+          text: "",
+          saveChoice: "not-saved" as const,
+        }
+      : {
+          ...((input.journalPromptId ?? draft.journal.promptId)
+            ? { promptId: input.journalPromptId ?? draft.journal.promptId }
+            : {}),
+          text: input.journalText ?? draft.journal.text,
+          saveChoice: "device" as const,
+          savedAt: this.dependencies.now(),
+        };
+    await this.dependencies.service.dispatch({
+      type: "save-reflection",
+      motivationIds: input.motivationIds,
+      comfortNeedIds: input.comfortNeedIds,
+      expressionSupportNeeded,
+      reflection,
+      journal,
+    });
+    const hasReflection = input.motivationIds.length > 0
+      || input.comfortNeedIds.length > 0
+      || Object.values(reflection).some((answer) => typeof answer === "string"
+        ? answer.trim().length > 0
+        : answer !== null)
+      || (journal.saveChoice === "device" && journal.text.trim().length > 0);
+    if (hasReflection) {
+      await this.dependencies.service.dispatch({ type: "record-point-event", key: "reflection:page-5:v1" });
+    }
   }
 
-  async completePractice(input: {
-    behaviorId: string;
-    intent: PracticeIntent;
-    phraseId: string;
-    editedPhrase?: string;
-    branch: PartnerResponseBranch;
-  }) {
+  async completePractice(input: LegacyPracticeInput | CanonicalPracticeInput) {
+    if ("completed" in input) return this.completeCanonicalPractice(input);
     const draft = this.requireDraft();
     const selected = Object.hasOwn(draft.behaviorAttitudes, input.behaviorId)
       || draft.customBehaviors.some(({ id }) => id === input.behaviorId);
@@ -88,6 +175,7 @@ export class JourneyPageController {
         selectedPhraseId: input.phraseId,
         ...(input.editedPhrase === undefined ? {} : { editedPhrase: input.editedPhrase }),
         partnerResponseBranch: input.branch,
+        mirrorRehearsed: draft.practice.mirrorRehearsed,
         completed: true
       }
     });
@@ -95,6 +183,37 @@ export class JourneyPageController {
       type: "record-point-event",
       key: `practice:${completed.scenarioId}:${completed.catalogVersion}`
     });
+  }
+
+  private async completeCanonicalPractice(input: CanonicalPracticeInput) {
+    const draft = this.requireDraft();
+    if (input.behaviorId !== null) {
+      const selected = Object.hasOwn(draft.behaviorAttitudes, input.behaviorId)
+        || draft.customBehaviors.some(({ id }) => id === input.behaviorId);
+      if (!selected) throw new Error("practice-behavior-not-selected");
+    }
+    const phrase = input.phrase.trim();
+    const aftercareId = input.aftercareId.trim();
+    if (!phrase || !aftercareId) throw new Error("practice-completion-required");
+    const safetyTerminal = input.optionalBranch === "ignores-or-blocks-exit";
+    const submission: JourneyPracticeSubmission = {
+      behaviorId: input.behaviorId,
+      intent: input.intent,
+      phrase,
+      aftercareId,
+      ...(input.optionalBranch ? { optionalBranch: input.optionalBranch } : {}),
+      ...(input.optionalResponse ? { optionalResponse: input.optionalResponse } : {}),
+      safetyTerminal,
+      completed: true,
+    };
+    await this.dependencies.service.dispatch({ type: "save-practice-submission", submission });
+    if (
+      !safetyTerminal
+      && input.pointEventKey !== undefined
+      && /^practice:[^:]+:first-completion$/u.test(input.pointEventKey)
+    ) {
+      await this.dependencies.service.dispatch({ type: "record-point-event", key: input.pointEventKey });
+    }
   }
 
   updateChecklist(itemId: string, status: ChecklistItemStatus, userNote?: string) {
@@ -114,13 +233,40 @@ export class JourneyPageController {
     return this.dependencies.service.dispatch({ type: "edit-communication-card-field", sectionId, userText });
   }
 
-  async saveCommunicationCard() {
+  async saveCommunicationCard(confirmedCard?: ConfirmedCommunicationCard) {
     const draft = this.requireDraft();
+    const confirmed = confirmedCard ?? selectConfirmedCommunicationCard(draft);
+    const included = new Map(confirmed.sections.map((section) => [section.id, section.text]));
+    const card = Object.fromEntries(Object.entries(draft.communicationCard).map(([sectionId, field]) => {
+      const text = included.get(sectionId as keyof JourneyDraft["communicationCard"]);
+      return [sectionId, text === undefined
+        ? {
+            generatedText: "",
+            sourceRevision: field.sourceRevision,
+            needsReview: false,
+            visibility: "deleted" as const
+          }
+        : {
+            generatedText: text,
+            sourceRevision: field.sourceRevision,
+            needsReview: false,
+            visibility: "included" as const
+          }];
+    })) as JourneyDraft["communicationCard"];
     await this.dependencies.cards.save({
       id: `card:${draft.id}`,
       journeyId: draft.id,
-      card: draft.communicationCard,
+      card,
       savedAt: this.dependencies.now()
+    });
+  }
+
+  async completeInitialJourney(confirmedCard: ConfirmedCommunicationCard) {
+    const draft = this.requireDraft();
+    await this.saveCommunicationCard(confirmedCard);
+    await this.dependencies.shellState.completeInitialJourney({
+      initialJourneyId: draft.id,
+      initialJourneyCompletedAt: this.dependencies.now()
     });
   }
 
@@ -142,7 +288,9 @@ export class JourneyPageController {
 }
 
 export function formatCommunicationCard(draft: JourneyDraft) {
-  return Object.values(draft.communicationCard)
-    .map((field) => field.userText ?? field.generatedText)
-    .join("\n\n");
+  const confirmed = selectConfirmedCommunicationCard(draft);
+  return [
+    ...confirmed.sections.map(({ text }) => text),
+    confirmed.consentFooter
+  ].join("\n\n");
 }

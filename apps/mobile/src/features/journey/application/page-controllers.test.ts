@@ -1,9 +1,10 @@
-import { buildCommunicationCard } from "../domain/derive-communication-card";
+import { buildCommunicationCard, selectConfirmedCommunicationCard } from "../domain/derive-communication-card";
 import type { PresetPracticeEngine, PresetPracticeState } from "../domain/practice-types";
 import { createJourneyDraft, type JourneyDraft } from "../domain/types";
 import type { CommunicationCardRepository } from "../infrastructure/journey-draft-repository";
+import type { AppShellStateRepository } from "../../shell/infrastructure/app-shell-state-repository";
 import type { JourneyApplicationService } from "./journey-application-service";
-import { JourneyPageController } from "./page-controllers";
+import { JourneyPageController, type ClipboardAdapter } from "./page-controllers";
 
 function activeDraft(): JourneyDraft {
   const draft = {
@@ -12,7 +13,17 @@ function activeDraft(): JourneyDraft {
     behaviorAttitudes: { "draft-kissing": "unsure" as const },
     sourceRevision: 1
   };
-  return { ...draft, communicationCard: buildCommunicationCard(draft) };
+  const communicationCard = buildCommunicationCard(draft);
+  communicationCard["communication-night-expectations"] = {
+    ...communicationCard["communication-night-expectations"],
+    visibility: "included"
+  };
+  communicationCard["communication-not-this-time"] = {
+    ...communicationCard["communication-not-this-time"],
+    userText: "private marker",
+    visibility: "private"
+  };
+  return { ...draft, communicationCard };
 }
 
 function harness() {
@@ -29,7 +40,14 @@ function harness() {
     save: jest.fn(async () => undefined),
     delete: jest.fn(async () => undefined)
   };
-  const clipboard = { setStringAsync: jest.fn(async () => undefined) };
+  const shellState: AppShellStateRepository = {
+    load: jest.fn(async () => null),
+    completeInitialJourney: jest.fn(async (state) => state),
+    clear: jest.fn(async () => undefined)
+  };
+  const clipboard: { setStringAsync: jest.MockedFunction<ClipboardAdapter["setStringAsync"]> } = {
+    setStringAsync: jest.fn(async (value: string) => { void value; })
+  };
   const practiceState: PresetPracticeState = {
     scenarioId: "draft-scenario",
     behaviorId: "draft-kissing",
@@ -53,11 +71,12 @@ function harness() {
   const controller = new JourneyPageController({
     service,
     cards,
+    shellState,
     clipboard,
     practice,
     now: () => "2026-08-27T10:00:00.000Z"
   });
-  return { cards, clipboard, controller, practice, service };
+  return { cards, clipboard, controller, practice, service, shellState };
 }
 
 test("keeps the underage exit unsaved and creates only an adult journey", async () => {
@@ -81,6 +100,12 @@ test("translates Page 2-5 events into page-owned commands and idempotent task ke
   await controller.setBehaviorAttitude("draft-kissing", "unsure");
   await controller.saveReflection({ motivationIds: ["draft-curious"], comfortNeedIds: ["draft-privacy"], expressionSupportNeeded: true, journalSaveChoice: "device" });
 
+  expect(service.dispatch).toHaveBeenCalledWith({
+    type: "save-overnight",
+    expectationIds: ["draft-rest"],
+    concernIds: [],
+    customNote: "",
+  });
   expect(service.dispatch).toHaveBeenCalledWith({ type: "record-point-event", key: "learning:draft-knowledge-consent:v1" });
   expect(service.dispatch).toHaveBeenCalledWith({ type: "record-point-event", key: "reflection:page-5:v1" });
   expect(service.dispatch).toHaveBeenCalledWith({ type: "set-behavior-attitude", behaviorId: "draft-kissing", attitude: "unsure" });
@@ -130,19 +155,52 @@ test("rejects practice for a behavior that is not selected in the active draft",
   expect(service.dispatch).not.toHaveBeenCalled();
 });
 
-test("updates Page 7 and explicitly saves or copies only the current visible Page 8 card", async () => {
+test("updates private preparation and copies only explicitly included final-page sections", async () => {
   const { cards, clipboard, controller, service } = harness();
   await controller.updateChecklist("checklist:expression", "considered", "Pause first");
   await controller.finishChecklistReview();
   expect(cards.save).not.toHaveBeenCalled();
 
-  await controller.saveCommunicationCard();
+  await controller.saveCommunicationCard(selectConfirmedCommunicationCard(activeDraft()));
   await expect(controller.copyCommunicationCard()).resolves.toEqual({ status: "success" });
 
   expect(service.dispatch).toHaveBeenCalledWith(expect.objectContaining({ type: "update-checklist-item" }));
   expect(service.dispatch).toHaveBeenCalledWith({ type: "record-point-event", key: "review:checklist:v1" });
   expect(cards.save).toHaveBeenCalledWith(expect.objectContaining({ id: "card:journey-1", journeyId: "journey-1" }));
-  expect(clipboard.setStringAsync).toHaveBeenCalledWith(expect.stringContaining("draft-card.intentions"));
+  const saveCard = cards.save as jest.MockedFunction<CommunicationCardRepository["save"]>;
+  expect(JSON.stringify(saveCard.mock.calls[0]?.[0].card)).not.toContain("private marker");
+  const copied = clipboard.setStringAsync.mock.calls[0]?.[0] ?? "";
+  expect(copied).toContain("我对这个夜晚暂时没有具体想象。");
+  expect(copied).not.toMatch(/draft-card|draft-/u);
+  expect(copied).toContain("任何人都可以随时改变主意，每一种靠近仍然需要当时再次确认");
+  expect(copied).not.toContain("private marker");
+});
+
+test("persists the confirmed card before recording first-run completion", async () => {
+  const { cards, controller, shellState } = harness();
+  const confirmed = selectConfirmedCommunicationCard(activeDraft());
+
+  await controller.completeInitialJourney(confirmed);
+
+  expect(cards.save).toHaveBeenCalledTimes(1);
+  expect(shellState.completeInitialJourney).toHaveBeenCalledWith({
+    initialJourneyId: "journey-1",
+    initialJourneyCompletedAt: "2026-08-27T10:00:00.000Z"
+  });
+  const saveCard = cards.save as jest.MockedFunction<CommunicationCardRepository["save"]>;
+  const complete = shellState.completeInitialJourney as jest.MockedFunction<AppShellStateRepository["completeInitialJourney"]>;
+  expect(saveCard.mock.invocationCallOrder[0]).toBeLessThan(complete.mock.invocationCallOrder[0] ?? 0);
+});
+
+test("does not write a completion marker when confirmed-card persistence fails", async () => {
+  const { cards, controller, shellState } = harness();
+  (cards.save as jest.MockedFunction<CommunicationCardRepository["save"]>)
+    .mockRejectedValueOnce(new Error("card-write-failed"));
+
+  await expect(controller.completeInitialJourney(selectConfirmedCommunicationCard(activeDraft())))
+    .rejects.toThrow("card-write-failed");
+
+  expect(shellState.completeInitialJourney).not.toHaveBeenCalled();
 });
 
 test("returns a typed clipboard failure that the route can render", async () => {
@@ -153,4 +211,124 @@ test("returns a typed clipboard failure that the route can render", async () => 
     status: "error",
     code: "clipboard-write-failed"
   });
+});
+
+test("persists address preference and explicit-content consent through typed controller commands", async () => {
+  const { controller, service } = harness();
+
+  await controller.setAddressPreference("妳");
+  await controller.setExplicitContentConsent(true);
+
+  expect(service.dispatch).toHaveBeenCalledWith({ type: "set-address-preference", preference: "妳" });
+  expect(service.dispatch).toHaveBeenCalledWith({ type: "set-explicit-content-consent", consented: true });
+});
+
+test("saves the complete Page 5 payload atomically and gives unsaved journals no timestamp or body", async () => {
+  const { controller, service } = harness();
+
+  await controller.saveReflection({
+    motivationIds: ["draft-curious"],
+    comfortNeedIds: ["draft-privacy"],
+    pressureWithoutDisappointment: "slow-down",
+    refusalSafety: "difficult-but-possible",
+    expressionDifficulty: "needs-phrase",
+    comfortClarity: "need-space",
+    comfortNote: "需要自己的空间",
+    journalPromptId: "journal-hesitation",
+    journalText: "不得写入",
+    journalSaveChoice: "not-saved",
+  });
+
+  expect(service.dispatch).toHaveBeenCalledWith({
+    type: "save-reflection",
+    motivationIds: ["draft-curious"],
+    comfortNeedIds: ["draft-privacy"],
+    expressionSupportNeeded: true,
+    reflection: {
+      pressureWithoutDisappointment: "slow-down",
+      refusalSafety: "difficult-but-possible",
+      expressionDifficulty: "needs-phrase",
+      comfortClarity: "need-space",
+      comfortNote: "需要自己的空间",
+    },
+    journal: { text: "", saveChoice: "not-saved" },
+  });
+});
+
+test("does not award reflection participation for an entirely blank submission", async () => {
+  const { controller, service } = harness();
+
+  await controller.saveReflection({
+    motivationIds: [],
+    comfortNeedIds: [],
+    pressureWithoutDisappointment: null,
+    refusalSafety: null,
+    expressionDifficulty: null,
+    comfortClarity: null,
+    comfortNote: "   ",
+    journalText: "discarded text",
+    journalSaveChoice: "not-saved",
+  });
+
+  expect(service.dispatch).not.toHaveBeenCalledWith({
+    type: "record-point-event",
+    key: "reflection:page-5:v1",
+  });
+});
+
+test("persists the canonical Page 6 submission and awards only a valid participation key", async () => {
+  const { controller, service } = harness();
+
+  await controller.completePractice({
+    behaviorId: null,
+    intent: "pause-to-feel",
+    phrase: "先停一下。",
+    aftercareId: "space",
+    completed: true,
+    optionalBranch: "disappointed-but-stops",
+    optionalResponse: "我现在想停。",
+    pointEventKey: "practice:seven-screen-v1:first-completion",
+  });
+
+  expect(service.dispatch).toHaveBeenCalledWith({
+    type: "save-practice-submission",
+    submission: expect.objectContaining({
+      phrase: "先停一下。",
+      aftercareId: "space",
+      optionalBranch: "disappointed-but-stops",
+      optionalResponse: "我现在想停。",
+      safetyTerminal: false,
+      completed: true,
+    }),
+  });
+  expect(service.dispatch).toHaveBeenCalledWith({
+    type: "record-point-event",
+    key: "practice:seven-screen-v1:first-completion",
+  });
+
+  jest.mocked(service.dispatch).mockClear();
+  await controller.completePractice({
+    behaviorId: null,
+    intent: "stop-current-action",
+    phrase: "请停下。",
+    aftercareId: "end-night",
+    completed: true,
+    optionalBranch: "ignores-or-blocks-exit",
+  });
+  expect(service.dispatch).toHaveBeenCalledWith(expect.objectContaining({
+    type: "save-practice-submission",
+    submission: expect.objectContaining({ safetyTerminal: true }),
+  }));
+  expect(service.dispatch).not.toHaveBeenCalledWith(expect.objectContaining({ type: "record-point-event" }));
+
+  jest.mocked(service.dispatch).mockClear();
+  await controller.completePractice({
+    behaviorId: null,
+    intent: "pause-to-feel",
+    phrase: "先停一下。",
+    aftercareId: "space",
+    completed: true,
+    pointEventKey: "practice:free-points",
+  });
+  expect(service.dispatch).not.toHaveBeenCalledWith(expect.objectContaining({ type: "record-point-event" }));
 });

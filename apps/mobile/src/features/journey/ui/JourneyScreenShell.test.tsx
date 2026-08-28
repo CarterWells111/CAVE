@@ -1,74 +1,155 @@
-import { fireEvent, render, screen } from "@testing-library/react-native";
+import { act, fireEvent, render, screen } from "@testing-library/react-native";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { StyleSheet, Text } from "react-native";
 
+import { brand } from "../../../config/brand";
+import { theme } from "../../../core/design/theme";
 import { JourneyScreenShell } from "./JourneyScreenShell";
 
+const onExit = jest.fn();
+
+function deferred<T>() {
+  let resolve!: (value: T | PromiseLike<T>) => void;
+  let reject!: (reason?: unknown) => void;
+  const promise = new Promise<T>((resolvePromise, rejectPromise) => {
+    resolve = resolvePromise;
+    reject = rejectPromise;
+  });
+
+  return { promise, reject, resolve };
+}
+
+beforeEach(() => {
+  jest.clearAllMocks();
+});
+
 test.each([
-  ["welcome", 1],
   ["overnight", 2],
   ["body-knowledge", 3],
-  ["behavior-attitudes", 4],
+  ["behavior-map", 4],
   ["reflection", 5],
   ["preset-practice", 6],
-  ["checklist", 7],
-  ["communication-card", 8]
-] as const)("renders %s as page %i without readiness language", (pageId, pageNumber) => {
-  render(<JourneyScreenShell pageId={pageId} />);
+  ["final-preparation", 7]
+] as const)("renders %s as step %i of the seven-screen journey", (pageId, pageNumber) => {
+  render(<JourneyScreenShell pageId={pageId} onExit={onExit} />);
 
   expect(screen.getByTestId(`journey-page-${pageId}`)).toBeTruthy();
-  expect(screen.getByText(`第 ${pageNumber} 页，共 8 页`)).toBeTruthy();
+  expect(screen.getByText(`${pageNumber} / 7`)).toBeTruthy();
   expect(screen.queryByText(/准备度|readiness|score|percentage/iu)).toBeNull();
 });
 
-test("provides a safe-area, keyboard-aware scroll structure for long and small screens", () => {
+test("keeps Screen 1 unnumbered while preserving the exit action", () => {
+  render(<JourneyScreenShell pageId="welcome" onExit={onExit} />);
+
+  expect(screen.queryByTestId("progress-center")).toBeNull();
+  expect(screen.queryByText(/1\s*\/\s*7/u)).toBeNull();
+  expect(screen.getByRole("button", { name: "退出旅程" })).toBeTruthy();
+});
+
+test.each([
+  ["behavior-map", "行为地图与边界"],
+  ["final-preparation", "私密准备与沟通草稿"]
+] as const)("names the canonical %s screen without legacy page titles", (pageId, title) => {
+  render(<JourneyScreenShell pageId={pageId} onExit={onExit} />);
+
+  expect(screen.getByRole("header", { name: title })).toBeTruthy();
+  expect(screen.queryByText(/行前检查清单|沟通卡片/u)).toBeNull();
+});
+
+test("composes the shared 06A screen, card, progress and status primitives", () => {
+  const source = readFileSync(join(__dirname, "JourneyScreenShell.tsx"), "utf8");
+
+  expect(source).toContain('from "../../../core/ui/Screen"');
+  expect(source).toContain('from "../../../core/ui/Card"');
+  expect(source).toContain('from "../../../core/ui/ProgressHeader"');
+  expect(source).toContain('from "../../../core/ui/StatusBanner"');
+  expect(source).toContain('from "../../../core/design/theme"');
+  expect(source).toContain('from "../../../config/brand"');
+  expect(source).not.toContain("journey-ui-tokens");
+  expect(source).not.toContain("SafeAreaView");
+  expect(source).not.toContain("Platform.OS");
+  expect(source).not.toContain("<ScrollView");
+});
+
+test("keeps one keyboard-aware vertical screen scroll for long content on small screens", () => {
   render(
-    <JourneyScreenShell pageId="overnight">
+    <JourneyScreenShell pageId="overnight" onBack={jest.fn()} onExit={onExit}>
       {Array.from({ length: 40 }, (_, index) => (
         <Text key={index}>{`long-content-${index}`}</Text>
       ))}
     </JourneyScreenShell>
   );
 
-  expect(screen.getByTestId("journey-safe-area")).toBeTruthy();
   expect(screen.getByTestId("journey-keyboard-avoiding")).toBeTruthy();
-  expect(screen.getByTestId("journey-scroll").props).toEqual(expect.objectContaining({
-    keyboardDismissMode: "interactive",
-    keyboardShouldPersistTaps: "handled"
-  }));
+  expect(screen.getAllByTestId("journey-scroll")).toHaveLength(1);
+  const scroll = screen.getByTestId("journey-scroll");
+  expect(scroll.props.contentInsetAdjustmentBehavior).toBe("automatic");
+  expect(scroll.props.horizontal).toBe(false);
+  expect(scroll.props.keyboardDismissMode).toBe("interactive");
+  expect(scroll.props.keyboardShouldPersistTaps).toBe("handled");
+  expect(StyleSheet.flatten(screen.getByTestId("journey-scroll").props.contentContainerStyle)).toEqual(
+    expect.objectContaining({
+      flexGrow: 1,
+      maxWidth: theme.size.readableContentMax,
+      width: "100%"
+    })
+  );
   expect(screen.getByText("long-content-39")).toBeTruthy();
 });
 
-test("keeps a stable localized title, page count and back region", () => {
+test("keeps the page title and header actions flexible for large text", () => {
+  render(<JourneyScreenShell pageId="overnight" onBack={jest.fn()} onExit={onExit} />);
+
+  const title = screen.getByRole("header", { name: "过夜期待与在意" });
+  expect(title.props.numberOfLines).toBeUndefined();
+  expect(title.props.ellipsizeMode).toBeUndefined();
+
+  for (const label of ["返回上一页", "退出旅程"]) {
+    const action = screen.getByRole("button", { name: label });
+    const actionLabel = screen.getByText(label);
+    expect(action).toHaveStyle({ minHeight: 44, minWidth: 44 });
+    expect(actionLabel.props.numberOfLines).toBeUndefined();
+    expect(actionLabel.props.ellipsizeMode).toBeUndefined();
+  }
+});
+
+test("uses the canonical brand in the welcome title and keeps symmetric header slots", () => {
+  render(<JourneyScreenShell pageId="welcome" onExit={onExit} />);
+
+  expect(screen.getByRole("header", { name: `欢迎来到${brand.displayName}` })).toBeTruthy();
+  expect(screen.queryByRole("button", { name: "返回上一页" })).toBeNull();
+  expect(screen.getByRole("button", { name: "退出旅程" })).toBeTruthy();
+  expect(screen.getByTestId("progress-leading-slot")).toHaveStyle({ flex: 1 });
+  expect(screen.getByTestId("progress-trailing-slot")).toHaveStyle({ flex: 1 });
+});
+
+test("exposes working back and exit actions on later pages", () => {
   const onBack = jest.fn();
-  const { rerender } = render(<JourneyScreenShell pageId="overnight" onBack={onBack} />);
+  render(<JourneyScreenShell pageId="overnight" onBack={onBack} onExit={onExit} />);
 
-  expect(screen.getByText("过夜期待与在意")).toBeTruthy();
-  expect(screen.getByText("第 2 页，共 8 页")).toBeTruthy();
   fireEvent.press(screen.getByRole("button", { name: "返回上一页" }));
+  fireEvent.press(screen.getByRole("button", { name: "退出旅程" }));
+
   expect(onBack).toHaveBeenCalledTimes(1);
-
-  rerender(<JourneyScreenShell pageId="welcome" />);
-  expect(screen.queryByRole("button", { name: "返回上一页" })).toBeNull();
-  expect(screen.getByTestId("journey-back-placeholder")).toBeTruthy();
+  expect(onExit).toHaveBeenCalledTimes(1);
 });
 
-test("keeps a disabled back button on later pages when navigation is not injected", () => {
-  const { rerender } = render(<JourneyScreenShell pageId="overnight" />);
+test("renders the page title in a shared surface card", () => {
+  render(<JourneyScreenShell pageId="reflection" onBack={jest.fn()} onExit={onExit} />);
 
-  expect(screen.getByRole("button", { name: "返回上一页" }).props.accessibilityState).toEqual(
-    expect.objectContaining({ disabled: true })
-  );
-  expect(screen.queryByTestId("journey-back-placeholder")).toBeNull();
-
-  rerender(<JourneyScreenShell pageId="welcome" />);
-  expect(screen.queryByRole("button", { name: "返回上一页" })).toBeNull();
-  expect(screen.getByTestId("journey-back-placeholder")).toBeTruthy();
+  const titleCardStyle = StyleSheet.flatten(screen.getByTestId("journey-title-card").props.style);
+  expect(titleCardStyle).toEqual(expect.objectContaining({
+    backgroundColor: theme.color.surface,
+    borderColor: theme.color.border
+  }));
 });
 
-test("renders a runtime-injected Expo Go notice without owning runtime detection", () => {
+test("keeps a runtime-injected notice as one accessible status with its custom label", () => {
   render(
     <JourneyScreenShell
       pageId="welcome"
+      onExit={onExit}
       runtimeNotice={{
         accessibilityLabel: "当前为 Expo Go 演示模式",
         message: "Expo Go 演示模式"
@@ -77,34 +158,103 @@ test("renders a runtime-injected Expo Go notice without owning runtime detection
   );
 
   expect(screen.getByText("Expo Go 演示模式")).toBeTruthy();
-  expect(screen.getByLabelText("当前为 Expo Go 演示模式")).toBeTruthy();
+  expect(screen.getAllByRole("status")).toHaveLength(1);
+  expect(screen.getByRole("status").props.accessibilityLabel).toBe("当前为 Expo Go 演示模式");
 });
 
-function channel(hex: string, offset: number) {
-  const value = Number.parseInt(hex.slice(offset, offset + 2), 16) / 255;
-  return value <= 0.03928 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
-}
+test.each(["resolve", "reject"] as const)(
+  "ignores an old page back %s without releasing the current page operation",
+  async (oldSettlement) => {
+    const oldBack = deferred<void>();
+    const currentBack = deferred<void>();
+    const onOldBack = jest.fn(() => oldBack.promise);
+    const onCurrentBack = jest.fn(() => currentBack.promise);
+    const view = render(
+      <JourneyScreenShell pageId="overnight" onBack={onOldBack} onExit={onExit} />
+    );
 
-function contrastRatio(foreground: unknown, background: unknown) {
-  if (typeof foreground !== "string" || typeof background !== "string") return 0;
-  if (!/^#[0-9a-f]{6}$/iu.test(foreground) || !/^#[0-9a-f]{6}$/iu.test(background)) return 0;
-  const luminance = (hex: string) => (
-    0.2126 * channel(hex, 1) + 0.7152 * channel(hex, 3) + 0.0722 * channel(hex, 5)
-  );
-  const foregroundLuminance = luminance(foreground);
-  const backgroundLuminance = luminance(background);
-  const lighter = Math.max(foregroundLuminance, backgroundLuminance);
-  const darker = Math.min(foregroundLuminance, backgroundLuminance);
-  return (lighter + 0.05) / (darker + 0.05);
-}
+    fireEvent.press(screen.getByRole("button", { name: "返回上一页" }));
+    view.rerender(
+      <JourneyScreenShell pageId="body-knowledge" onBack={onCurrentBack} onExit={onExit} />
+    );
+    fireEvent.press(screen.getByRole("button", { name: "返回上一页" }));
 
-test("uses 44 point back target and baseline AA text contrast", () => {
-  render(<JourneyScreenShell pageId="overnight" onBack={jest.fn()} />);
+    await act(async () => {
+      if (oldSettlement === "resolve") oldBack.resolve();
+      else oldBack.reject(new Error("obsolete back failure must stay hidden"));
+      await oldBack.promise.catch(() => undefined);
+    });
 
-  const back = screen.getByRole("button", { name: "返回上一页" });
-  const backStyle = StyleSheet.flatten(back.props.style);
-  const backLabelStyle = StyleSheet.flatten(screen.getByText("返回修改").props.style);
+    expect(screen.queryByText("返回失败，请重试。")).toBeNull();
+    expect(
+      screen.getByRole("button", { name: "正在返回…" }).props.accessibilityState
+    ).toEqual(expect.objectContaining({ busy: true, disabled: true }));
+    fireEvent.press(screen.getByRole("button", { name: "正在返回…" }));
+    expect(onCurrentBack).toHaveBeenCalledTimes(1);
 
-  expect(backStyle).toEqual(expect.objectContaining({ minHeight: 44, minWidth: 44 }));
-  expect(contrastRatio(backLabelStyle.color, backStyle.backgroundColor)).toBeGreaterThanOrEqual(4.5);
+    await act(async () => {
+      currentBack.resolve();
+      await currentBack.promise;
+    });
+
+    expect(
+      screen.getByRole("button", { name: "返回上一页" }).props.accessibilityState
+    ).toEqual(expect.objectContaining({ busy: false, disabled: false }));
+  }
+);
+
+test.each(["resolve", "reject"] as const)(
+  "invalidates a pending back operation when the shell unmounts before %s",
+  async (settlement) => {
+    const pendingBack = deferred<void>();
+    const onBack = jest.fn(() => pendingBack.promise);
+    const view = render(
+      <JourneyScreenShell pageId="overnight" onBack={onBack} onExit={onExit} />
+    );
+
+    fireEvent.press(screen.getByRole("button", { name: "返回上一页" }));
+    view.unmount();
+
+    await act(async () => {
+      if (settlement === "resolve") pendingBack.resolve();
+      else pendingBack.reject(new Error("obsolete unmounted back failure"));
+      await pendingBack.promise.catch(() => undefined);
+    });
+
+    expect(onBack).toHaveBeenCalledTimes(1);
+  }
+);
+
+test("keeps one safe back error status and allows retry without exposing the raw error", async () => {
+  const failedBack = deferred<void>();
+  const retriedBack = deferred<void>();
+  const onBack = jest.fn()
+    .mockReturnValueOnce(failedBack.promise)
+    .mockReturnValueOnce(retriedBack.promise);
+  render(<JourneyScreenShell pageId="overnight" onBack={onBack} onExit={onExit} />);
+
+  fireEvent.press(screen.getByRole("button", { name: "返回上一页" }));
+  await act(async () => {
+    failedBack.reject(new Error("private storage internals"));
+    await failedBack.promise.catch(() => undefined);
+  });
+
+  expect(screen.getAllByRole("alert")).toHaveLength(1);
+  expect(screen.getByText("返回失败，请重试。")).toBeTruthy();
+  expect(screen.queryByText(/private storage internals/iu)).toBeNull();
+
+  fireEvent.press(screen.getByRole("button", { name: "返回上一页" }));
+  expect(onBack).toHaveBeenCalledTimes(2);
+  expect(screen.queryByText("返回失败，请重试。")).toBeNull();
+  expect(
+    screen.getByRole("button", { name: "正在返回…" }).props.accessibilityState
+  ).toEqual(expect.objectContaining({ busy: true, disabled: true }));
+
+  await act(async () => {
+    retriedBack.resolve();
+    await retriedBack.promise;
+  });
+
+  expect(screen.getByRole("button", { name: "返回上一页" })).toBeTruthy();
+  expect(screen.queryAllByRole("alert")).toHaveLength(0);
 });

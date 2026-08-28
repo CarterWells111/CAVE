@@ -26,7 +26,7 @@ test("confirms an adult by creating and saving the first active draft", async ()
 
   await app.confirmAdult();
 
-  expect(app.getSnapshot()).toMatchObject({ id: "journey-1", ageConfirmed: true, schemaVersion: 1 });
+  expect(app.getSnapshot()).toMatchObject({ id: "journey-1", ageConfirmed: true, schemaVersion: 2 });
   expect(repo.saveActive).toHaveBeenCalledTimes(1);
 });
 
@@ -41,8 +41,12 @@ test("dispatches reducer then builders and performs one atomic save", async () =
   expect(repo.saveActive).toHaveBeenCalledTimes(1);
   expect(app.getSnapshot()).toMatchObject({
     expectationIds: ["draft-rest"],
-    checklistItems: [expect.objectContaining({ id: "checklist:logistics" })],
-    communicationCard: expect.objectContaining({ intentions: expect.any(Object) })
+    privatePreparation: {
+      items: [expect.objectContaining({ id: "checklist:logistics" })]
+    },
+    communicationCard: expect.objectContaining({
+      "communication-night-expectations": expect.any(Object)
+    })
   });
 });
 

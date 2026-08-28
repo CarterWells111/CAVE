@@ -1,4 +1,4 @@
-import { buildChecklist } from "./derive-checklist";
+import { buildChecklist, buildPrivatePreparation } from "./derive-checklist";
 import { createJourneyDraft } from "./types";
 
 function draft() {
@@ -38,6 +38,19 @@ test("only adds a sourced health item for a locally related selected behavior", 
   expect(buildChecklist(draft()).some(({ category }) => category === "health")).toBe(false);
 });
 
+test("uses the canonical content id for oral-genital contact health preparation", () => {
+  const result = buildChecklist({
+    ...draft(),
+    behaviorAttitudes: { "behavior-oral-genital-contact": "decide-in-moment" }
+  });
+
+  expect(result).toContainEqual(expect.objectContaining({
+    id: "checklist:health:behavior-oral-genital-contact",
+    category: "health",
+    sourceIds: ["draft-source-sexual-health"]
+  }));
+});
+
 test("preserves edits for still-applicable items and removes stale derived items", () => {
   const existing = buildChecklist(draft()).map((item) => item.id === "checklist:expression"
     ? { ...item, status: "considered" as const, userNote: "I want a pause phrase" }
@@ -46,7 +59,10 @@ test("preserves edits for still-applicable items and removes stale derived items
     ...draft(),
     expectationIds: [],
     comfortNeedIds: ["draft-time"],
-    checklistItems: existing
+    privatePreparation: {
+      ...draft().privatePreparation,
+      items: existing
+    }
   });
 
   expect(result).toContainEqual(expect.objectContaining({
@@ -71,4 +87,23 @@ test("produces the same checklist for semantically identical unordered input", (
   second.comfortNeedIds = ["draft-breaks", "draft-quiet"];
 
   expect(buildChecklist(first)).toEqual(buildChecklist(second));
+});
+
+test("derives combined private preparation without disturbing private journal state", () => {
+  const input = {
+    ...draft(),
+    journal: { text: "Keep this private reflection", saveChoice: "device" as const },
+    privatePreparation: {
+      items: [],
+      excludedGroupIds: ["attitudes"],
+      aftercareIds: ["rest"]
+    }
+  };
+
+  expect(buildPrivatePreparation(input)).toMatchObject({
+    excludedGroupIds: ["attitudes"],
+    aftercareIds: ["rest"],
+    items: expect.arrayContaining([expect.objectContaining({ id: "checklist:expression" })])
+  });
+  expect(input.journal.text).toBe("Keep this private reflection");
 });

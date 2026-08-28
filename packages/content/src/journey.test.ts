@@ -13,7 +13,7 @@ function productionIssueCodes() {
   }
 }
 
-describe("draft eight-page journey catalogs", () => {
+describe("draft seven-screen journey catalogs", () => {
   it("loads all four versioned local catalogs with explicit unique ordering", () => {
     const { journey } = loadCatalog();
 
