@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { AccessibilityInfo, Pressable, Text, View } from "react-native";
 
-import { theme } from "../design/theme";
+import { useTheme } from "../design/theme-provider";
 
 export type EmptyStateProps = {
   title: string;
@@ -11,6 +11,7 @@ export type EmptyStateProps = {
 };
 
 export function EmptyState({ title, message, actionLabel, onAction }: EmptyStateProps) {
+  const theme = useTheme();
   const [actionFocused, setActionFocused] = useState(false);
   const hasAction = Boolean(actionLabel && onAction);
 

@@ -35,3 +35,6 @@ build/
 Thumbs.db
 .idea/
 .vscode/
+
+# Local isolated worktrees
+.worktrees/

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Text, TextInput, View } from "react-native";
 
-import { theme } from "../../../../core/design/theme";
+import { useTheme } from "../../../../core/design/theme-provider";
 import { BottomSheet } from "../../../../core/ui/bottom-sheet";
 import { Card } from "../../../../core/ui/Card";
 import { InfoCard } from "../../../../core/ui/info-card";
@@ -99,6 +99,7 @@ const journalPrompts = [
 ] as const;
 
 function SectionTitle({ children }: { children: string }) {
+  const theme = useTheme();
   return (
     <Text accessibilityRole="header" selectable style={{ ...theme.typography.heading, color: theme.color.text }}>
       {children}
@@ -107,6 +108,7 @@ function SectionTitle({ children }: { children: string }) {
 }
 
 function SupportingCopy({ children }: { children: string }) {
+  const theme = useTheme();
   return <Text selectable style={{ ...theme.typography.body, color: theme.color.textSecondary }}>{children}</Text>;
 }
 
@@ -119,6 +121,7 @@ export function ReflectionPage({
   onUsePracticePhrase,
   onComplete,
 }: ReflectionPageProps) {
+  const theme = useTheme();
   const [motivationIds, setMotivationIds] = useState(() => [...(initialValue.motivationIds ?? [])]);
   const [pressureWithoutDisappointment, setPressureWithoutDisappointment] = useState<PressureAnswer | null>(
     initialValue.pressureWithoutDisappointment ?? null,
@@ -192,7 +195,7 @@ export function ReflectionPage({
   const showsRefusalSafety = refusalSafety === "fear-reaction" || refusalSafety === "cannot-refuse" || refusalSafety === "unsure";
 
   return (
-    <View style={{ gap: theme.space.xl, maxWidth: "100%", width: "100%" }} testID="page-5-content">
+    <View style={{ gap: theme.space.xl, maxWidth: "100%", width: "100%" }} testID="page-4-content">
       <Card accessible={false} variant="muted">
         <Text accessibilityRole="header" selectable style={{ ...theme.typography.title, color: theme.color.text }}>
           你准备了多少，不代表你做得好不好
@@ -483,8 +486,6 @@ export function ReflectionPage({
         <SupportingCopy>记录不会上传到云端。更换设备、删除 App 或清除数据后，可能无法找回。</SupportingCopy>
         <SupportingCopy>如果其他人能够打开你的设备和 CAVE，也可能看到这些记录。</SupportingCopy>
         {journalSaveChoice === "not-saved" ? <SupportingCopy>这次不会保存记录正文。</SupportingCopy> : null}
-        <JourneyAction disabled label="同时保存到云端｜后续版本" loadingLabel="正在保存…" />
-        <SupportingCopy>云端保存尚未实现；这里不会模拟上传或成功状态。</SupportingCopy>
       </Card> : null}
 
       <JourneyAction

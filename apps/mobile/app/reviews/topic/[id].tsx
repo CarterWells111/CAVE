@@ -1,7 +1,7 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Text } from "react-native";
 
-import { theme } from "../../../src/core/design/theme";
+import { useTheme } from "../../../src/core/design/theme-provider";
 import { Screen } from "../../../src/core/ui/Screen";
 import { ReflectionPage } from "../../../src/features/journey/ui/pages/reflection-page";
 
@@ -11,6 +11,7 @@ const topicTitles: Record<string, string> = {
 };
 
 export default function StandaloneReviewTopicRoute() {
+  const theme = useTheme();
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   return (

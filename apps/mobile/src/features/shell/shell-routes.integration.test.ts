@@ -22,11 +22,12 @@ test("loads long-term lists through metadata-only repository projections", () =>
   expect(source("(tabs)/cards.tsx")).not.toContain("cards.list()");
 });
 
-test("keeps settings outside tabs and cloud disabled", () => {
+test("keeps settings outside tabs and available before journey completion", () => {
   expect(source("(tabs)/index.tsx")).toContain('router.push("/settings")');
-  expect(source("settings/_layout.tsx")).toContain("ShellRouteGate");
+  expect(source("settings/_layout.tsx")).not.toContain("ShellRouteGate");
   expect(source("settings/index.tsx")).toContain("runtime.deleteAllData()");
-  expect(source("../src/features/shell/ui/CardsHubScreen.tsx")).toContain("disabled label=\"保存到云端｜后续版本\"");
+  expect(source("journey/welcome.tsx")).toContain('router.push("/settings")');
+  expect(source("../src/features/shell/ui/CardsHubScreen.tsx")).not.toMatch(/云端|后续版本/u);
 });
 
 test("keeps the long-term navigation available during later full reviews", () => {

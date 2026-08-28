@@ -53,7 +53,7 @@ function legacyDraft(): JourneyDraftV1 {
   };
 }
 
-test("purely migrates all v1 edits into one private seven-screen final page", () => {
+test("purely migrates all v1 edits into one private six-page final page", () => {
   const input = legacyDraft();
   const before = structuredClone(input);
 
@@ -90,7 +90,7 @@ test("purely migrates all v1 edits into one private seven-screen final page", ()
 test("starts a legacy welcome draft at the expectations stage", () => {
   const migrated = migrateJourneyDraftV1ToV2({
     ...legacyDraft(),
-    currentPage: "welcome"
+    currentPage: "body-knowledge"
   });
 
   expect(migrated.overnight).toEqual({

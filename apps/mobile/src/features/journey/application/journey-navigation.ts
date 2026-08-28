@@ -3,8 +3,10 @@ import {
   type JourneyDraft,
   type JourneyPageId
 } from "../domain/types";
+import { OVERNIGHT_COMPLETE_POINT_EVENT_KEY } from "./journey-progress-markers";
 
 export const JOURNEY_PAGE_IDS = DOMAIN_JOURNEY_PAGE_IDS;
+export type JourneyRoutePath = `/journey/${JourneyPageId}` | "/journey/welcome";
 
 export const LEGACY_JOURNEY_PAGE_ALIASES = {
   "behavior-attitudes": "behavior-map",
@@ -13,9 +15,10 @@ export const LEGACY_JOURNEY_PAGE_ALIASES = {
 } as const satisfies Readonly<Record<string, JourneyPageId>>;
 
 export const JOURNEY_ROUTE_MANIFEST = [
-  ...JOURNEY_PAGE_IDS,
-  "underage-exit",
-  "preface"
+  "welcome",
+  "preface",
+  "adult-gate",
+  ...JOURNEY_PAGE_IDS
 ] as const;
 
 const REQUIRED_KNOWLEDGE_CARD_IDS = [
@@ -35,20 +38,20 @@ const REQUIRED_BASE_BEHAVIOR_IDS = [
 ] as const;
 
 export function canAccessJourneyPage(draft: JourneyDraft | null, page: JourneyPageId) {
-  if (page === "welcome") return true;
   if (draft?.ageConfirmed !== true) return false;
+  const onboardingCompleted = draft.addressPreference !== null && draft.prefaceRead;
+  if (page === "body-knowledge") return onboardingCompleted;
 
-  const welcomeCompleted = draft.addressPreference !== null && draft.prefaceRead;
-  if (page === "overnight") return welcomeCompleted;
-
-  const overnightCompleted = welcomeCompleted && draft.overnight.resumeStage === "concerns";
-  if (page === "body-knowledge") return overnightCompleted;
-
-  const knowledgeCompleted = overnightCompleted
+  const knowledgeCompleted = onboardingCompleted
     && REQUIRED_KNOWLEDGE_CARD_IDS.every((id) => draft.readKnowledgeCardIds.includes(id));
-  if (page === "behavior-map") return knowledgeCompleted;
+  if (page === "overnight") return knowledgeCompleted && draft.ageConfirmed;
 
-  const behaviorMapCompleted = knowledgeCompleted
+  const overnightCompleted = knowledgeCompleted
+    && draft.ageConfirmed
+    && draft.pointEventKeys.includes(OVERNIGHT_COMPLETE_POINT_EVENT_KEY);
+  if (page === "behavior-map") return overnightCompleted;
+
+  const behaviorMapCompleted = overnightCompleted
     && draft.explicitContentConsent !== null
     && REQUIRED_BASE_BEHAVIOR_IDS.every((id) => draft.behaviorAttitudes[id] !== undefined);
   if (page === "reflection") return behaviorMapCompleted;
@@ -70,7 +73,7 @@ export function getAdjacentJourneyPage(page: JourneyPageId, direction: -1 | 1): 
   return JOURNEY_PAGE_IDS[index + direction] ?? null;
 }
 
-export function getResumePath(draft: JourneyDraft | null): `/journey/${JourneyPageId}` {
+export function getResumePath(draft: JourneyDraft | null): JourneyRoutePath {
   if (draft === null) return "/journey/welcome";
   const currentIndex = JOURNEY_PAGE_IDS.indexOf(draft.currentPage);
   for (let index = currentIndex; index >= 0; index -= 1) {

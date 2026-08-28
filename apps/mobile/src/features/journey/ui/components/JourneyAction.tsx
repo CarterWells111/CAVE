@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import type { AccessibilityRole, AccessibilityState } from "react-native";
 import { Text, View } from "react-native";
 
-import { theme } from "../../../../core/design/theme";
+import { useTheme } from "../../../../core/design/theme-provider";
 import { Button } from "../../../../core/ui/Button";
 import type {
   JourneyAction as JourneyActionCallback,
@@ -39,6 +39,7 @@ export function JourneyAction({
   accessibilityLabel,
   testID
 }: JourneyActionProps) {
+  const theme = useTheme();
   const inFlightRef = useRef(false);
   const mountedRef = useRef(true);
   const previousExternalStatusRef = useRef(actionState?.status);

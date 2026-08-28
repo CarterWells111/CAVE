@@ -2,13 +2,14 @@ import { useRouter } from "expo-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Text } from "react-native";
 
-import { theme } from "../src/core/design/theme";
+import { useTheme } from "../src/core/design/theme-provider";
 import { ErrorState } from "../src/core/ui/ErrorState";
 import { Screen } from "../src/core/ui/Screen";
 import { resolveShellLaunchPath } from "../src/features/shell/application/app-shell-service";
 import { useJourneyRuntime } from "../src/features/journey/runtime/JourneyRuntimeProvider";
 
 export default function IndexRoute() {
+  const theme = useTheme();
   const router = useRouter();
   const { shellState } = useJourneyRuntime();
   const mountedRef = useRef(true);

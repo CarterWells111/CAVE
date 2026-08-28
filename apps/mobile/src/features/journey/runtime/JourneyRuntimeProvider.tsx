@@ -9,6 +9,7 @@ import {
   useState
 } from "react";
 import { Text, View } from "react-native";
+import { ThemeProvider } from "../../../core/design/theme-provider";
 
 import { JourneyProvider, useJourney } from "../ui/JourneyProvider";
 import type { JourneyDraft } from "../domain/types";
@@ -122,11 +123,13 @@ export function JourneyRuntimeProvider({
   }
 
   return (
-    <JourneyProvider service={state.runtime.service}>
-      <RuntimeContextProvider runtime={state.runtime}>
-        {children}
-      </RuntimeContextProvider>
-    </JourneyProvider>
+    <ThemeProvider repository={state.runtime.appearancePreferences}>
+      <JourneyProvider service={state.runtime.service}>
+        <RuntimeContextProvider runtime={state.runtime}>
+          {children}
+        </RuntimeContextProvider>
+      </JourneyProvider>
+    </ThemeProvider>
   );
 }
 

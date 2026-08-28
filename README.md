@@ -6,6 +6,7 @@
 
 ## 开工入口
 
+- [首发六页本机优先入口决策](docs/product/2026-08-28-six-page-local-first-entry.md)
 - [七屏产品与文案确认稿](docs/product/2026-08-27-seven-screen-product-spec.md)
 - [七屏 UI 装修施工蓝图](docs/design/2026-08-27-seven-screen-ui-renovation-blueprint.md)
 - [医学及教育内容来源台账](docs/content/source-registry.md)

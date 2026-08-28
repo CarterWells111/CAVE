@@ -5,7 +5,7 @@ import { act, fireEvent, render, screen } from "@testing-library/react-native";
 import { StyleSheet } from "react-native";
 
 import { Button } from "../../../../core/ui/Button";
-import { theme } from "../../../../core/design/theme";
+import { darkTheme as theme } from "../../../../core/design/theme";
 import type { JourneyAsyncState } from "../journey-ui-contracts";
 import { JourneyAction } from "./JourneyAction";
 

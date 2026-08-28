@@ -1,10 +1,9 @@
 import { JOURNEY_PAGE_IDS, createJourneyDraft, type JourneyDraft } from "./types";
 
-test("exposes exactly the seven current journey page ids", () => {
+test("exposes exactly the six current journey content page ids", () => {
   expect(JOURNEY_PAGE_IDS).toEqual([
-    "welcome",
-    "overnight",
     "body-knowledge",
+    "overnight",
     "behavior-map",
     "reflection",
     "preset-practice",

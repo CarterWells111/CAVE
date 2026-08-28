@@ -2,7 +2,7 @@ import { fireEvent, render, screen } from "@testing-library/react-native";
 import { AccessibilityInfo } from "react-native";
 import * as ReactNative from "react-native";
 
-import { theme } from "../design/theme";
+import { darkTheme as theme } from "../design/theme";
 import { ProgressHeader } from "./ProgressHeader";
 import { progressHeaderUsesStackedLayout } from "./ProgressHeader";
 

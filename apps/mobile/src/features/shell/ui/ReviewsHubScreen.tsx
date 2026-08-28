@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { View } from "react-native";
 
-import { theme } from "../../../core/design/theme";
+import { useTheme } from "../../../core/design/theme-provider";
 import { Button } from "../../../core/ui/Button";
 import { Card } from "../../../core/ui/Card";
 import { EmptyState } from "../../../core/ui/EmptyState";
@@ -41,6 +41,7 @@ export function ReviewsHubScreen({
   reviews,
   topics,
 }: Props) {
+  const theme = useTheme();
   const [confirmingReplacement, setConfirmingReplacement] = useState(false);
   const requestFullReview = () => {
     if (activeReview) setConfirmingReplacement(true);
@@ -71,8 +72,8 @@ export function ReviewsHubScreen({
           ) : null}
           <Card accessible={false} variant="accent">
             <SectionHeading>选择回顾方式</SectionHeading>
-            <SupportingText>可以直接从一个主题开始，也可以由你主动启动完整七屏回顾。</SupportingText>
-            <Button label="开始完整七屏回顾" onPress={requestFullReview} />
+            <SupportingText>可以直接从一个主题开始，也可以由你主动启动完整六页回顾。</SupportingText>
+            <Button label="开始完整六页回顾" onPress={requestFullReview} />
           </Card>
           <View style={{ gap: theme.space.md }}>
             <SectionHeading>按主题进入</SectionHeading>

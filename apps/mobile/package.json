@@ -15,6 +15,7 @@
     "@cave/content": "workspace:*",
     "@cave/contracts": "workspace:*",
     "@expo/metro-runtime": "~6.1.2",
+    "@expo/vector-icons": "^15.1.1",
     "expo": "~54.0.37",
     "expo-clipboard": "~8.0.8",
     "expo-constants": "~18.0.14",
@@ -26,6 +27,7 @@
     "expo-secure-store": "~15.0.8",
     "expo-sqlite": "~16.0.10",
     "expo-status-bar": "~3.0.9",
+    "expo-system-ui": "~6.0.9",
     "react": "19.1.0",
     "react-native": "0.81.5",
     "react-native-safe-area-context": "~5.6.2",
@@ -44,6 +46,9 @@
     "react-test-renderer": "19.1.0"
   },
   "jest": {
-    "preset": "jest-expo"
+    "preset": "jest-expo",
+    "setupFilesAfterEnv": [
+      "<rootDir>/jest.setup.ts"
+    ]
   }
 }

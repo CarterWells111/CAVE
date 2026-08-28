@@ -7,7 +7,7 @@ import {
 } from "./journey-navigation";
 
 export interface JourneyRouterAdapter {
-  replace(path: `/journey/${JourneyPageId}`): void;
+  replace(path: `/journey/${JourneyPageId}` | "/journey/welcome"): void;
 }
 
 export class JourneyRouteCoordinator {

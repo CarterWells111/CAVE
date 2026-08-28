@@ -1,6 +1,6 @@
 import { View } from "react-native";
 
-import { theme } from "../../../core/design/theme";
+import { useTheme } from "../../../core/design/theme-provider";
 import { Button } from "../../../core/ui/Button";
 import { Card } from "../../../core/ui/Card";
 import { EmptyState } from "../../../core/ui/EmptyState";
@@ -25,6 +25,7 @@ type Props = {
 };
 
 export function PracticeHubScreen({ loadState = "ready", onRetry, onStartPractice, onStartScenario, scenarios }: Props) {
+  const theme = useTheme();
   return (
     <ShellFrame title="练习">
       <StatusBanner message="预设对话，不使用 AI" variant="info" />

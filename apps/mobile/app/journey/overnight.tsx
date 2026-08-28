@@ -20,7 +20,7 @@ export default function OvernightRoute() {
           initialStage={snapshot?.overnight.resumeStage ?? "expectations"}
           {...(consentSource ? { consentSource } : {})}
           onContinue={(input) => runAndRefresh(() => controller.saveOvernight(input))
-            .then(() => goTo("body-knowledge"))}
+            .then(() => goTo("behavior-map"))}
           onSourceAction={(source) => Linking.openURL(source.url)}
           onStageChange={(stage) => runtime.runAndRefresh(
             () => runtime.service.dispatch({ type: "set-overnight-stage", stage }),

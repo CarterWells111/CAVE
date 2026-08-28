@@ -2,7 +2,7 @@ import type { PropsWithChildren } from "react";
 import { View, type ViewProps } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import { theme } from "../design/theme";
+import { useTheme } from "../design/theme-provider";
 
 export const STICKY_ACTION_BAR_CONTENT_INSET = 76;
 
@@ -11,6 +11,7 @@ export function StickyActionSpacer({ bottomInset = 0, style, ...props }: ViewPro
 }
 
 export function StickyActionBar({ children, style, ...props }: PropsWithChildren<ViewProps>) {
+  const theme = useTheme();
   return (
     <SafeAreaView
       edges={["bottom"]}

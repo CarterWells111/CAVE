@@ -179,7 +179,7 @@ function isJourneyDraft(value: unknown): value is JourneyDraft {
   return value.schemaVersion === 2
     && typeof value.id === "string"
     && isOneOf(value.currentPage, [
-      "welcome", "overnight", "body-knowledge", "behavior-map", "reflection",
+      "body-knowledge", "overnight", "behavior-map", "reflection",
       "preset-practice", "final-preparation"
     ])
     && typeof value.ageConfirmed === "boolean"
@@ -200,7 +200,6 @@ function isJourneyDraft(value: unknown): value is JourneyDraft {
     && isReflection(value.reflection)
     && (value.journalSaveChoice === "device" || value.journalSaveChoice === "not-saved")
     && isJournal(value.journal)
-    && value.cloudSaveAvailability === "coming-soon"
     && isPractice(value.practice)
     && isPrivatePreparation(value.privatePreparation)
     && isCommunicationCard(value.communicationCard)

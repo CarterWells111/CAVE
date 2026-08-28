@@ -1,17 +1,19 @@
 import { ScrollView, StyleSheet, type ScrollViewProps, useWindowDimensions } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import { theme } from "../design/theme";
+import { useTheme } from "../design/theme-provider";
+import { space } from "../design/tokens";
 
 type LockedScrollProp = "horizontal" | "contentInsetAdjustmentBehavior" | "keyboardShouldPersistTaps";
 
 export type ScreenProps = Omit<ScrollViewProps, LockedScrollProp>;
 
 export function contentHorizontalPadding(width: number): number {
-  return width < 375 ? theme.space.md : theme.space.card;
+  return width < 375 ? space.md : space.card;
 }
 
 export function Screen({ children, contentContainerStyle, style, ...props }: ScreenProps) {
+  const theme = useTheme();
   const { width } = useWindowDimensions();
   const horizontalPadding = contentHorizontalPadding(width);
   const callerPresentation = { ...(StyleSheet.flatten(contentContainerStyle) ?? {}) };
