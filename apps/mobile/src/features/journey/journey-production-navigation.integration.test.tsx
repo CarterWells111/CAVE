@@ -1,25 +1,19 @@
 import { act, fireEvent, render, screen, waitFor, type RenderAPI } from "@testing-library/react-native";
 import type { ReactElement } from "react";
-import { Alert } from "react-native";
 
-import BehaviorMapRoute from "../../../app/journey/behavior-map";
-import ReflectionRoute from "../../../app/journey/reflection";
+import AdultGateRoute from "../../../app/journey/adult-gate";
+import PrefaceRoute from "../../../app/journey/preface";
 import WelcomeRoute from "../../../app/journey/welcome";
+import { createJourneyDraft } from "./domain/types";
 import {
   InMemoryCommunicationCardRepository,
-  InMemoryJourneyDraftRepository
+  InMemoryJourneyDraftRepository,
 } from "./infrastructure/in-memory-journey-repositories";
 import { composeJourneyRuntime, type JourneyRuntime } from "./runtime/journey-runtime";
 import { JourneyRuntimeProvider } from "./runtime/JourneyRuntimeProvider";
 
-const mockRouter = {
-  push: jest.fn(),
-  replace: jest.fn()
-};
-
-jest.mock("expo-router", () => ({
-  useRouter: () => mockRouter
-}));
+const mockRouter = { push: jest.fn(), replace: jest.fn() };
+jest.mock("expo-router", () => ({ useRouter: () => mockRouter }));
 
 function runtime() {
   return composeJourneyRuntime({
@@ -29,7 +23,7 @@ function runtime() {
     cards: new InMemoryCommunicationCardRepository(),
     clipboard: { setStringAsync: jest.fn(async () => undefined) },
     createId: () => "production-navigation-journey",
-    now: () => "2026-08-27T12:00:00.000Z"
+    now: () => "2026-08-28T12:00:00.000Z",
   });
 }
 
@@ -43,214 +37,204 @@ function deferred<T>() {
 
 async function openRoute(element: ReactElement, journeyRuntime: JourneyRuntime): Promise<RenderAPI> {
   const view = render(
-    <JourneyRuntimeProvider createRuntime={async () => journeyRuntime}>
-      {element}
-    </JourneyRuntimeProvider>
+    <JourneyRuntimeProvider createRuntime={async () => journeyRuntime}>{element}</JourneyRuntimeProvider>,
   );
   expect(await screen.findByText("Expo Go 演示模式，数据仅在本次打开期间暂存")).toBeTruthy();
   return view;
 }
 
-beforeEach(() => {
-  jest.clearAllMocks();
-});
+beforeEach(() => jest.clearAllMocks());
 
-afterEach(() => {
-  jest.restoreAllMocks();
-});
-
-test("the production Welcome route resumes at the persisted journey page", async () => {
+test("landing has one start action and routes to the adult declaration", async () => {
   const journeyRuntime = runtime();
-  await journeyRuntime.service.confirmAdult();
-  await journeyRuntime.controller.setAddressPreference("你");
-  await journeyRuntime.service.dispatch({ type: "set-preface-read", read: true });
-  await journeyRuntime.service.dispatch({ type: "set-overnight-stage", stage: "concerns" });
-  for (const cardId of [
-    "draft-knowledge-body-signals",
-    "draft-knowledge-consent",
-    "draft-knowledge-health",
-  ]) {
-    await journeyRuntime.controller.readKnowledge(cardId);
-  }
-  for (const behaviorId of [
-    "behavior-hug",
-    "draft-kissing",
-    "behavior-same-bed",
-    "behavior-my-nudity",
-    "behavior-partner-nudity",
-    "behavior-over-clothes-touch",
-    "behavior-direct-touch",
-  ]) {
-    await journeyRuntime.controller.setBehaviorAttitude(behaviorId, "skip");
-  }
-  await journeyRuntime.controller.setExplicitContentConsent(false);
-  await journeyRuntime.controller.saveReflection({
-    comfortNeedIds: [],
-    journalSaveChoice: "not-saved",
-    journalText: "",
-    motivationIds: [],
+  const view = await openRoute(<WelcomeRoute />, journeyRuntime);
+
+  fireEvent.press(screen.getByRole("button", { name: "开启旅程" }));
+  expect(mockRouter.push).toHaveBeenCalledWith("/journey/adult-gate");
+  expect(journeyRuntime.service.getSnapshot()).toBeNull();
+  view.unmount();
+});
+
+test("an undeclared legacy draft still starts at the adult declaration", async () => {
+  const journeyRuntime = runtime();
+  await journeyRuntime.drafts.saveActive({
+    ...createJourneyDraft({ id: "undeclared", now: "2026-08-28T10:00:00.000Z" }),
+    addressPreference: "你",
+    prefaceRead: true,
+    currentPage: "reflection",
   });
-  await journeyRuntime.service.dispatch({
-    type: "set-practice",
-    practice: { completed: true, mirrorRehearsed: false },
+  const view = await openRoute(<WelcomeRoute />, journeyRuntime);
+
+  fireEvent.press(screen.getByRole("button", { name: "开启旅程" }));
+
+  expect(mockRouter.push).toHaveBeenCalledWith("/journey/adult-gate");
+  expect(mockRouter.replace).not.toHaveBeenCalled();
+  view.unmount();
+});
+
+test.each([
+  { addressPreference: null, prefaceRead: true, label: "missing address preference" },
+  { addressPreference: "妳" as const, prefaceRead: false, label: "unread preface" },
+])("a confirmed draft with $label continues to the preface", async ({ addressPreference, prefaceRead }) => {
+  const journeyRuntime = runtime();
+  await journeyRuntime.drafts.saveActive({
+    ...createJourneyDraft({ id: "onboarding", now: "2026-08-28T10:00:00.000Z" }),
+    addressPreference,
+    ageConfirmed: true,
+    prefaceRead,
   });
-  await journeyRuntime.service.navigateTo("final-preparation");
   const view = await openRoute(<WelcomeRoute />, journeyRuntime);
 
-  fireEvent.press(screen.getByText("继续本机旅程"));
+  fireEvent.press(screen.getByRole("button", { name: "继续旅程" }));
 
-  expect(mockRouter.replace).toHaveBeenCalledWith("/journey/final-preparation");
+  expect(mockRouter.replace).toHaveBeenCalledWith("/journey/preface");
   view.unmount();
 });
 
-test("the production Welcome route confirms restart before resetting and returning to welcome", async () => {
-  const alert = jest.spyOn(Alert, "alert").mockImplementation(() => undefined);
+test("a confirmed draft with completed onboarding resumes its formal page", async () => {
   const journeyRuntime = runtime();
-  await journeyRuntime.service.confirmAdult();
-  await journeyRuntime.service.navigateTo("reflection");
-  const view = await openRoute(<WelcomeRoute />, journeyRuntime);
-
-  const restartAction = screen.getByText("重新开始（需要确认）");
-  fireEvent.press(restartAction);
-  fireEvent.press(restartAction);
-
-  expect(alert).toHaveBeenCalledTimes(1);
-  expect(screen.getByText("正在重新开始…")).toBeTruthy();
-  expect(alert).toHaveBeenCalledWith(
-    "确认重新开始",
-    "当前旅程草稿会被清除。",
-    expect.arrayContaining([expect.objectContaining({ text: "确认重新开始", style: "destructive" })])
-  );
-  const destructive = alert.mock.calls[0]?.[2]?.find(({ style }) => style === "destructive");
-  await act(async () => { destructive?.onPress?.(); });
-
-  await waitFor(() => expect(journeyRuntime.service.getSnapshot()).toBeNull());
-  expect(mockRouter.replace).toHaveBeenCalledWith("/journey/welcome");
-  view.unmount();
-});
-
-test("the production Welcome route resolves restart cancellation without clearing the draft", async () => {
-  const alert = jest.spyOn(Alert, "alert").mockImplementation(() => undefined);
-  const journeyRuntime = runtime();
-  await journeyRuntime.service.confirmAdult();
-  await journeyRuntime.service.navigateTo("reflection");
-  const resetJourney = jest.spyOn(journeyRuntime.service, "resetJourney");
-  const view = await openRoute(<WelcomeRoute />, journeyRuntime);
-
-  fireEvent.press(screen.getByText("重新开始（需要确认）"));
-  const cancel = alert.mock.calls[0]?.[2]?.find(({ style }) => style === "cancel");
-  await act(async () => { cancel?.onPress?.(); });
-
-  await waitFor(() => expect(screen.getByText("重新开始（需要确认）")).toBeTruthy());
-  expect(resetJourney).not.toHaveBeenCalled();
-  expect(journeyRuntime.service.getSnapshot()?.currentPage).toBe("reflection");
-  expect(mockRouter.replace).not.toHaveBeenCalledWith("/journey/welcome");
-  view.unmount();
-});
-
-test("the production Welcome route hides restart rejection details and allows retry", async () => {
-  const alert = jest.spyOn(Alert, "alert").mockImplementation(() => undefined);
-  const journeyRuntime = runtime();
-  await journeyRuntime.service.confirmAdult();
-  jest.spyOn(journeyRuntime.service, "resetJourney")
-    .mockRejectedValueOnce(new Error("private restart failure"));
-  const view = await openRoute(<WelcomeRoute />, journeyRuntime);
-
-  fireEvent.press(screen.getByText("重新开始（需要确认）"));
-  const destructive = alert.mock.calls[0]?.[2]?.find(({ style }) => style === "destructive");
-  await act(async () => { destructive?.onPress?.(); });
-
-  expect(await screen.findByText("操作失败，请重试。")).toBeTruthy();
-  expect(screen.queryByText("private restart failure")).toBeNull();
-  await waitFor(() => expect(
-    screen.getByRole("button", { name: "重新开始（需要确认）" }).props.accessibilityState.disabled
-  ).toBe(false));
-  view.unmount();
-});
-
-test("the production Welcome route keeps adult confirmation pending and blocks duplicate presses", async () => {
-  const journeyRuntime = runtime();
-  const savingPreference = deferred<void>();
-  const setAddressPreference = jest.spyOn(journeyRuntime.controller, "setAddressPreference")
-    .mockReturnValue(savingPreference.promise);
-  const view = await openRoute(<WelcomeRoute />, journeyRuntime);
-
-  fireEvent.press(screen.getByRole("button", { name: "我已满 18 岁，开始探索" }));
-  fireEvent.press(screen.getByRole("radio", { name: "你｜日常、自然，不限定性别。" }));
-  const saveAction = screen.getByRole("button", { name: "这样称呼我" });
-  fireEvent.press(saveAction);
-  fireEvent.press(saveAction);
-
-  await waitFor(() => expect(setAddressPreference).toHaveBeenCalledTimes(1));
-  expect(screen.getByText("正在保存称呼…")).toBeTruthy();
-  expect(screen.getByRole("button", { name: "正在保存称呼…" }).props.accessibilityState).toEqual(
-    expect.objectContaining({ busy: true, disabled: true })
-  );
-
-  await act(async () => { savingPreference.resolve(); });
-  expect(await screen.findByText("开始前，想告诉你")).toBeTruthy();
-  view.unmount();
-});
-
-test("production back navigation can edit Page 4 and recompute derived output without losing user text", async () => {
-  const journeyRuntime = runtime();
-  await journeyRuntime.service.confirmAdult();
-  await journeyRuntime.controller.setAddressPreference("你");
-  await journeyRuntime.service.dispatch({ type: "set-preface-read", read: true });
-  await journeyRuntime.service.dispatch({ type: "set-overnight-stage", stage: "concerns" });
-  for (const cardId of [
-    "draft-knowledge-body-signals",
-    "draft-knowledge-consent",
-    "draft-knowledge-health",
-  ]) {
-    await journeyRuntime.controller.readKnowledge(cardId);
-  }
-  await journeyRuntime.controller.setBehaviorAttitude("behavior-hug", "looking-forward");
-  await journeyRuntime.controller.setBehaviorAttitude("draft-kissing", "unsure");
-  await journeyRuntime.controller.setBehaviorAttitude("behavior-same-bed", "skip");
-  await journeyRuntime.controller.setBehaviorAttitude("behavior-my-nudity", "skip");
-  await journeyRuntime.controller.setBehaviorAttitude("behavior-partner-nudity", "skip");
-  await journeyRuntime.controller.setBehaviorAttitude("behavior-over-clothes-touch", "skip");
-  await journeyRuntime.controller.setBehaviorAttitude("behavior-direct-touch", "skip");
-  await journeyRuntime.controller.setExplicitContentConsent(false);
-  await journeyRuntime.controller.editCommunicationCard(
-    "communication-decide-in-moment",
-    "请保留我的节奏表达。"
-  );
-  await journeyRuntime.service.navigateTo("reflection");
-  const originalGenerated = journeyRuntime.service.getSnapshot()
-    ?.communicationCard["communication-decide-in-moment"].generatedText;
-  let view = await openRoute(<ReflectionRoute />, journeyRuntime);
-
-  expect(screen.getByRole("button", { name: "修改接吻的答案" })).toBeTruthy();
-  expect(screen.queryByText("draft-kissing")).toBeNull();
-  fireEvent.press(screen.getByRole("button", { name: "修改接吻的答案" }));
-  fireEvent.press(screen.getByRole("radio", { name: "修改接吻：这次我不希望发生" }));
-  await waitFor(() => expect(journeyRuntime.service.getSnapshot()?.behaviorAttitudes["draft-kissing"])
-    .toBe("not-this-time"));
-  expect(journeyRuntime.service.getSnapshot()?.currentPage).toBe("reflection");
-  expect(mockRouter.replace).not.toHaveBeenCalledWith("/journey/behavior-map");
-
-  fireEvent.press(screen.getByRole("button", { name: "返回上一页" }));
-  await waitFor(() => {
-    expect(journeyRuntime.service.getSnapshot()?.currentPage).toBe("behavior-map");
-    expect(mockRouter.replace).toHaveBeenCalledWith("/journey/behavior-map");
+  await journeyRuntime.drafts.saveActive({
+    ...createJourneyDraft({ id: "resumable", now: "2026-08-28T10:00:00.000Z" }),
+    addressPreference: "妳",
+    ageConfirmed: true,
+    prefaceRead: true,
   });
+  const view = await openRoute(<WelcomeRoute />, journeyRuntime);
+
+  fireEvent.press(screen.getByRole("button", { name: "继续旅程" }));
+
+  expect(mockRouter.replace).toHaveBeenCalledWith("/journey/body-knowledge");
+  view.unmount();
+});
+
+test("preface cannot be opened before the local adult declaration", async () => {
+  const journeyRuntime = runtime();
+  const view = await openRoute(<PrefaceRoute />, journeyRuntime);
+
+  await waitFor(() => expect(mockRouter.replace).toHaveBeenCalledWith("/journey/welcome"));
+  expect(screen.queryByText("开始前，想告诉你")).toBeNull();
+  expect(journeyRuntime.service.getSnapshot()).toBeNull();
+  view.unmount();
+});
+
+test("adult declaration creates the local journey and opens the preface", async () => {
+  const journeyRuntime = runtime();
+  const view = await openRoute(<AdultGateRoute />, journeyRuntime);
+
+  expect(screen.queryByText(/验证码|登录/u)).toBeNull();
+  expect(screen.getByText(/不收集.*邮箱/u)).toBeTruthy();
+  fireEvent.press(screen.getByRole("button", { name: "我已年满 18 岁，继续" }));
+
+  await waitFor(() => expect(journeyRuntime.service.getSnapshot()).toMatchObject({
+    ageConfirmed: true,
+    prefaceRead: false,
+    currentPage: "body-knowledge",
+  }));
+  expect(mockRouter.replace).toHaveBeenCalledWith("/journey/preface");
+  view.unmount();
+});
+
+test("adult confirmation blocks the underage decision and only opens the preface when persistence finishes", async () => {
+  const journeyRuntime = runtime();
+  const savingDeclaration = deferred<void>();
+  const saveActive = journeyRuntime.drafts.saveActive.bind(journeyRuntime.drafts);
+  jest.spyOn(journeyRuntime.drafts, "saveActive").mockImplementation(async (draft) => {
+    await savingDeclaration.promise;
+    await saveActive(draft);
+  });
+  const view = await openRoute(<AdultGateRoute />, journeyRuntime);
+
+  fireEvent.press(screen.getByRole("button", { name: "我已年满 18 岁，继续" }));
+  await waitFor(() => expect(journeyRuntime.drafts.saveActive).toHaveBeenCalledTimes(1));
+  fireEvent.press(screen.getByRole("button", { name: "我未满 18 岁" }));
+
+  expect(mockRouter.replace).not.toHaveBeenCalled();
+  expect(journeyRuntime.service.getSnapshot()).toBeNull();
+
+  await act(async () => savingDeclaration.resolve());
+  await waitFor(() => expect(journeyRuntime.service.getSnapshot()).toMatchObject({ ageConfirmed: true }));
+  expect(mockRouter.replace.mock.calls).toEqual([["/journey/preface"]]);
+  view.unmount();
+});
+
+test("adult confirmation can retry after persistence fails", async () => {
+  const journeyRuntime = runtime();
+  const saveActive = journeyRuntime.drafts.saveActive.bind(journeyRuntime.drafts);
+  jest.spyOn(journeyRuntime.drafts, "saveActive")
+    .mockRejectedValueOnce(new Error("private persistence failure"))
+    .mockImplementation(saveActive);
+  const view = await openRoute(<AdultGateRoute />, journeyRuntime);
+
+  fireEvent.press(screen.getByRole("button", { name: "我已年满 18 岁，继续" }));
+
+  expect(await screen.findByText("确认暂时无法保存，请重试。")).toBeTruthy();
+  expect(screen.queryByText("private persistence failure")).toBeNull();
+  expect(journeyRuntime.service.getSnapshot()).toBeNull();
+  expect(mockRouter.replace).not.toHaveBeenCalled();
+
+  fireEvent.press(screen.getByRole("button", { name: "我已年满 18 岁，继续" }));
+  await waitFor(() => expect(journeyRuntime.service.getSnapshot()).toMatchObject({ ageConfirmed: true }));
+  expect(mockRouter.replace.mock.calls).toEqual([["/journey/preface"]]);
+  view.unmount();
+});
+
+test("a pending adult confirmation does not navigate after the route unmounts", async () => {
+  const journeyRuntime = runtime();
+  const savingDeclaration = deferred<void>();
+  const saveActive = journeyRuntime.drafts.saveActive.bind(journeyRuntime.drafts);
+  jest.spyOn(journeyRuntime.drafts, "saveActive").mockImplementation(async (draft) => {
+    await savingDeclaration.promise;
+    await saveActive(draft);
+  });
+  const view = await openRoute(<AdultGateRoute />, journeyRuntime);
+
+  fireEvent.press(screen.getByRole("button", { name: "我已年满 18 岁，继续" }));
+  await waitFor(() => expect(journeyRuntime.drafts.saveActive).toHaveBeenCalledTimes(1));
   view.unmount();
 
-  view = await openRoute(<BehaviorMapRoute />, journeyRuntime);
-  fireEvent.press(screen.getByRole("radio", { name: "行为地图，第 2 项，共 9 项：接吻" }));
-  expect(screen.getAllByRole("radio", { name: "接吻：这不是我这次想要的" })).toHaveLength(1);
-  fireEvent.press(screen.getByRole("radio", { name: "接吻：这不是我这次想要的" }));
+  await act(async () => savingDeclaration.resolve());
 
-  await waitFor(() => expect(journeyRuntime.service.getSnapshot()?.behaviorAttitudes["draft-kissing"])
-    .toBe("not-this-time"));
-  expect(journeyRuntime.service.getSnapshot()?.communicationCard["communication-decide-in-moment"]).toMatchObject({
-    userText: "请保留我的节奏表达。",
-    needsReview: true
-  });
-  expect(journeyRuntime.service.getSnapshot()?.communicationCard["communication-decide-in-moment"].generatedText)
-    .not.toBe(originalGenerated);
+  expect(journeyRuntime.service.getSnapshot()).toMatchObject({ ageConfirmed: true });
+  expect(mockRouter.replace).not.toHaveBeenCalled();
+});
 
+test("underage action opens the blocking route without writing a declaration", async () => {
+  const journeyRuntime = runtime();
+  const view = await openRoute(<AdultGateRoute />, journeyRuntime);
+
+  fireEvent.press(screen.getByRole("button", { name: "我未满 18 岁" }));
+
+  expect(mockRouter.replace).toHaveBeenCalledWith("/underage-exit");
+  expect(journeyRuntime.service.getSnapshot()).toBeNull();
+  view.unmount();
+});
+
+test("preface persists the chosen address after the adult declaration", async () => {
+  const journeyRuntime = runtime();
+  await journeyRuntime.service.confirmAdult();
+  const originalId = journeyRuntime.service.getSnapshot()?.id;
+  const view = await openRoute(<PrefaceRoute />, journeyRuntime);
+
+  fireEvent.press(screen.getByRole("radio", { name: "妳｜明确称呼女性，更有书信感。" }));
+  fireEvent.press(screen.getByRole("button", { name: "这样称呼我" }));
+
+  await waitFor(() => expect(journeyRuntime.service.getSnapshot()).toMatchObject({
+    id: originalId,
+    addressPreference: "妳",
+    ageConfirmed: true,
+    prefaceRead: true,
+    currentPage: "body-knowledge",
+  }));
+  expect(mockRouter.replace).toHaveBeenCalledWith("/journey/body-knowledge");
+  view.unmount();
+});
+
+test("an already confirmed declaration skips forward to the preface", async () => {
+  const journeyRuntime = runtime();
+  await journeyRuntime.service.confirmAdult();
+  const view = await openRoute(<AdultGateRoute />, journeyRuntime);
+
+  await waitFor(() => expect(mockRouter.replace).toHaveBeenCalledWith("/journey/preface"));
+  expect(screen.queryByText("仅限已满 18 岁者")).toBeNull();
   view.unmount();
 });

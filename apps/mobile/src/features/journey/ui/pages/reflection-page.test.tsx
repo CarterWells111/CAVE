@@ -61,8 +61,7 @@ test("asks before saving a journal locally and keeps cloud visibly unavailable",
   expect(screen.getByText("如果其他人能够打开你的设备和 CAVE，也可能看到这些记录。")).toBeTruthy();
   fireEvent.press(screen.getByRole("button", { name: "确认只保存在这台设备" }));
   expect(screen.getByText("只保存在这台设备")).toBeTruthy();
-  expect(screen.getByRole("button", { name: "同时保存到云端｜后续版本" }))
-    .toHaveProp("accessibilityState", expect.objectContaining({ disabled: true }));
+  expect(screen.queryByText(/同时保存到云端|云端保存尚未实现/u)).toBeNull();
   expect(screen.queryByText(/端到端加密|绝对私密|永久删除/u)).toBeNull();
   expect(screen.getByLabelText("给此刻留一句话")).toHaveProp("multiline", true);
 });

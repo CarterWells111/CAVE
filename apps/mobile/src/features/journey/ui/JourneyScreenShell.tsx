@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState, type PropsWithChildren } from "react";
 import { KeyboardAvoidingView, Text, View } from "react-native";
 
-import { brand } from "../../../config/brand";
 import { theme } from "../../../core/design/theme";
 import { Card } from "../../../core/ui/Card";
 import { ProgressHeader } from "../../../core/ui/ProgressHeader";
@@ -13,9 +12,8 @@ import type { JourneyAction as JourneyActionCallback } from "./journey-ui-contra
 import type { JourneyRuntimeNotice } from "./journey-ui-contracts";
 
 const JOURNEY_PAGE_TITLES: Record<JourneyPageId, string> = {
-  welcome: `欢迎来到${brand.displayName}`,
-  overnight: "过夜期待与在意",
   "body-knowledge": "身体与安全知识",
+  overnight: "过夜期待与在意",
   "behavior-map": "行为地图与边界",
   reflection: "自我反思",
   "preset-practice": "预设沟通练习",
@@ -112,9 +110,10 @@ export function JourneyScreenShell({
             backBusy={backState === "loading"}
             backDisabled={backState === "loading"}
             currentPage={pageNumber}
-            showProgress={pageId !== "welcome"}
-            totalPages={7}
+            showProgress
+            totalPages={6}
             onExit={onExit}
+            exitLabel="旅程选项"
             testID="journey-progress-header"
             {...(pageNumber > 1 && onBack ? { onBack: handleBack } : {})}
           />

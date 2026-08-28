@@ -254,10 +254,10 @@ export function FinalPreparationPage({
 
   const confirmed = selectConfirmedCommunicationCard(draftRef.current);
   return (
-    <View style={{ gap: theme.space.lg, maxWidth: "100%", width: "100%" }} testID="page-7-content">
+    <View style={{ gap: theme.space.lg, maxWidth: "100%", width: "100%" }} testID="page-6-content">
       <View style={{ alignItems: "center", flexDirection: "row", justifyContent: "space-between" }}>
         <Text style={{ ...theme.typography.caption, color: theme.color.textMuted }}>最终整理</Text>
-        <Text accessibilityLabel="第 7 屏，共 7 屏" style={{ ...theme.typography.caption, color: theme.color.textMuted }}>7 / 7</Text>
+        <Text accessibilityLabel="第 6 屏，共 6 屏" style={{ ...theme.typography.caption, color: theme.color.textMuted }}>6 / 6</Text>
       </View>
       <Text accessibilityRole="header" style={{ ...theme.typography.title, color: theme.color.text }}>先留给自己，再决定分享什么</Text>
 
@@ -371,7 +371,6 @@ export function FinalPreparationPage({
       {finishSucceeded && onCompleted !== undefined ? (
         <Button label="返回应用入口" onPress={onCompleted} />
       ) : null}
-      <Text style={{ ...theme.typography.caption, color: theme.color.textSecondary }}>云端同步｜后续版本（不可用）</Text>
     </View>
   );
 }

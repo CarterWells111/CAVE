@@ -62,7 +62,7 @@ export function BodyKnowledgePage({
   const zoomPercent = Math.round(diagramZoom * 100);
 
   return (
-    <View style={styles.page} testID="page-3-content">
+    <View style={styles.page} testID="page-1-content">
       <Text accessibilityRole="header" style={styles.title}>身体会回应，决定仍属于{addressPreference}</Text>
       <Text style={styles.body}>认识身体，不是为了找到一条必须走完的路线。它帮助{addressPreference}分清身体正在发生什么，以及自己是否愿意。</Text>
 
@@ -140,7 +140,7 @@ export function BodyKnowledgePage({
       ) : null}
       <JourneyAction
         errorMessage="暂时无法继续，请重试。"
-        label="看看我对不同靠近的感觉"
+        label="看看我对过夜的期待"
         loadingLabel="正在继续…"
         onAction={complete}
       />

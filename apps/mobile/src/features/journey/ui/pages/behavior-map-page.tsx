@@ -159,7 +159,7 @@ export function BehaviorMapPage({
   };
 
   return (
-    <View style={{ gap: theme.space.xl, maxWidth: "100%", width: "100%" }} testID="page-4-content">
+    <View style={{ gap: theme.space.xl, maxWidth: "100%", width: "100%" }} testID="page-3-content">
       <Card accessible={false} variant="muted">
         <Text accessibilityRole="header" selectable style={{ ...theme.typography.title, color: theme.color.text }}>
           每一种靠近，都可以有不同答案

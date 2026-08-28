@@ -1,7 +1,6 @@
 import type {
   BehaviorAttitude,
   ChecklistItem,
-  CloudSaveAvailability,
   JournalSaveChoice,
   JourneyDraft
 } from "./types";
@@ -37,7 +36,7 @@ export type JourneyDraftV1 = {
   comfortNeedIds: string[];
   expressionSupportNeeded: boolean | null;
   journalSaveChoice: JournalSaveChoice;
-  cloudSaveAvailability: CloudSaveAvailability;
+  cloudSaveAvailability: "coming-soon";
   practice: {
     behaviorId?: string;
     intent?: string;
@@ -55,7 +54,7 @@ export type JourneyDraftV1 = {
 };
 
 const LEGACY_PAGE_MAP: Record<LegacyPageId, JourneyDraft["currentPage"]> = {
-  welcome: "welcome",
+  welcome: "body-knowledge",
   overnight: "overnight",
   "body-knowledge": "body-knowledge",
   "behavior-attitudes": "behavior-map",
@@ -136,7 +135,6 @@ export function migrateJourneyDraftV1ToV2(input: JourneyDraftV1): JourneyDraft {
     },
     journalSaveChoice: input.journalSaveChoice,
     journal: { text: "", saveChoice: input.journalSaveChoice },
-    cloudSaveAvailability: input.cloudSaveAvailability,
     practice: {
       ...input.practice,
       mirrorRehearsed: false

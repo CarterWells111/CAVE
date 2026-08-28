@@ -1,7 +1,6 @@
 export const JOURNEY_PAGE_IDS = [
-  "welcome",
-  "overnight",
   "body-knowledge",
+  "overnight",
   "behavior-map",
   "reflection",
   "preset-practice",
@@ -19,7 +18,6 @@ export type BehaviorAttitude =
 
 export type ChecklistItemStatus = "considered" | "prepare-more" | "not-relevant";
 export type JournalSaveChoice = "not-saved" | "device";
-export type CloudSaveAvailability = "coming-soon";
 export type AddressPreference = null | "你" | "妳";
 export type SharingVisibility = "pending" | "included" | "private" | "deleted";
 export type OvernightStage = "expectations" | "concerns";
@@ -108,7 +106,6 @@ export type JourneyDraft = {
     saveChoice: JournalSaveChoice;
     savedAt?: string;
   };
-  cloudSaveAvailability: CloudSaveAvailability;
   practice: {
     behaviorId?: string;
     intent?: string;
@@ -156,7 +153,7 @@ export function createJourneyDraft({ id, now }: { id: string; now: string }): Jo
   return {
     id,
     schemaVersion: 2,
-    currentPage: "welcome",
+    currentPage: "body-knowledge",
     ageConfirmed: false,
     addressPreference: null,
     prefaceRead: false,
@@ -181,7 +178,6 @@ export function createJourneyDraft({ id, now }: { id: string; now: string }): Jo
     },
     journalSaveChoice: "device",
     journal: { text: "", saveChoice: "device" },
-    cloudSaveAvailability: "coming-soon",
     practice: { completed: false, mirrorRehearsed: false },
     privatePreparation: { items: [], excludedGroupIds: [], aftercareIds: [] },
     communicationCard: Object.fromEntries(COMMUNICATION_SECTION_IDS.map((sectionId) => [sectionId, {

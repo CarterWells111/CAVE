@@ -36,15 +36,10 @@ function runtime(clipboard = { setStringAsync: jest.fn(async () => undefined) })
   });
 }
 
-async function unlockAllSevenScreens(journeyRuntime: JourneyRuntime) {
+async function unlockAllSixPages(journeyRuntime: JourneyRuntime) {
   await journeyRuntime.service.confirmAdult();
-  await journeyRuntime.controller.setAddressPreference("你");
+  await journeyRuntime.service.dispatch({ type: "set-address-preference", preference: "你" });
   await journeyRuntime.service.dispatch({ type: "set-preface-read", read: true });
-  await journeyRuntime.controller.saveOvernight({
-    expectationIds: [],
-    concernIds: [],
-    customNote: ""
-  });
   for (const cardId of [
     "draft-knowledge-body-signals",
     "draft-knowledge-consent",
@@ -52,6 +47,11 @@ async function unlockAllSevenScreens(journeyRuntime: JourneyRuntime) {
   ]) {
     await journeyRuntime.controller.readKnowledge(cardId);
   }
+  await journeyRuntime.controller.saveOvernight({
+    expectationIds: [],
+    concernIds: [],
+    customNote: ""
+  });
   for (const behaviorId of [
     "behavior-hug",
     "draft-kissing",
@@ -89,7 +89,7 @@ async function openRoute(element: ReactElement, journeyRuntime: JourneyRuntime):
   return view;
 }
 
-test("the production routes expose all seven screens offline without an eighth route", async () => {
+test("the production routes expose all six content pages offline", async () => {
   const originalFetch = globalThis.fetch;
   const offlineFetch = jest.fn(async () => { throw new Error("offline"); });
   globalThis.fetch = offlineFetch as typeof fetch;
@@ -101,23 +101,23 @@ test("the production routes expose all seven screens offline without an eighth r
     expect(screen.queryByTestId("progress-center")).toBeNull();
     view.unmount();
 
-    await unlockAllSevenScreens(journeyRuntime);
+    await unlockAllSixPages(journeyRuntime);
     const screens: Array<[JourneyPageId, number, ReactElement]> = [
+      ["body-knowledge", 1, <BodyKnowledgeRoute />],
       ["overnight", 2, <OvernightRoute />],
-      ["body-knowledge", 3, <BodyKnowledgeRoute />],
-      ["behavior-map", 4, <BehaviorMapRoute />],
-      ["reflection", 5, <ReflectionRoute />],
-      ["preset-practice", 6, <PresetPracticeRoute />],
-      ["final-preparation", 7, <FinalPreparationRoute />]
+      ["behavior-map", 3, <BehaviorMapRoute />],
+      ["reflection", 4, <ReflectionRoute />],
+      ["preset-practice", 5, <PresetPracticeRoute />],
+      ["final-preparation", 6, <FinalPreparationRoute />]
     ];
 
     for (const [pageId, pageNumber, route] of screens) {
       await journeyRuntime.service.navigateTo(pageId);
       view = await openRoute(route, journeyRuntime);
       expect(screen.getByTestId(`journey-page-${pageId}`)).toBeTruthy();
-      expect(within(screen.getByTestId("progress-center")).getByText(`${pageNumber} / 7`)).toBeTruthy();
+      expect(within(screen.getByTestId("progress-center")).getByText(`${pageNumber} / 6`)).toBeTruthy();
       expect(screen.queryByText(/8\s*\/\s*8|共\s*8\s*页/u)).toBeNull();
-      expect(screen.getByRole("button", { name: "退出旅程" })).toBeTruthy();
+      expect(screen.getByRole("button", { name: "旅程选项" })).toBeTruthy();
       view.unmount();
       view = undefined;
     }
@@ -129,14 +129,13 @@ test("the production routes expose all seven screens offline without an eighth r
   }
 });
 
-test("the production underage route exits without creating an active draft", async () => {
+test("the production landing opens onboarding without creating an active draft", async () => {
   const journeyRuntime = runtime();
   const view = await openRoute(<WelcomeRoute />, journeyRuntime);
 
-  fireEvent.press(screen.getByText("我未满 18 岁"));
-  fireEvent.press(screen.getByText("退出体验"));
+  fireEvent.press(screen.getByText("开启旅程"));
 
-  await waitFor(() => expect(mockRouter.replace).toHaveBeenCalledWith("/journey/underage-exit"));
+  await waitFor(() => expect(mockRouter.push).toHaveBeenCalledWith("/journey/adult-gate"));
   expect(await journeyRuntime.drafts.loadActive()).toBeNull();
   view.unmount();
 });
@@ -144,7 +143,7 @@ test("the production underage route exits without creating an active draft", asy
 test("clipboard failure is structured and visible on the production final screen", async () => {
   const clipboard = { setStringAsync: jest.fn(async () => { throw new Error("denied"); }) };
   const journeyRuntime = runtime(clipboard);
-  await unlockAllSevenScreens(journeyRuntime);
+  await unlockAllSixPages(journeyRuntime);
   await journeyRuntime.service.navigateTo("final-preparation");
   const view = await openRoute(<FinalPreparationRoute />, journeyRuntime);
 

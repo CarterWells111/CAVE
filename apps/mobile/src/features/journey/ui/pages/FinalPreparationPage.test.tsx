@@ -24,11 +24,12 @@ test("starts all seven sections pending and exposes explicit non-color visibilit
   render(<FinalPreparationPage draft={draft()} onCopy={jest.fn()} onEdit={jest.fn()} onFinish={jest.fn()} onSaveImage={jest.fn()} onSetVisibility={jest.fn()} />);
 
   expect(screen.getAllByText("待确认")).toHaveLength(7);
-  expect(screen.getByText("7 / 7")).toBeTruthy();
+  expect(screen.getByText("6 / 6")).toBeTruthy();
   expect(screen.getByRole("radio", { name: "加入分享：我对这个夜晚的期待" })).toBeTruthy();
   expect(screen.getByRole("radio", { name: "保持私密：我对这个夜晚的期待" })).toBeTruthy();
   expect(screen.getByRole("radio", { name: "删除：我对这个夜晚的期待" })).toBeTruthy();
   expect(screen.queryByText("我期待一起休息。", { exact: true })).toBeTruthy();
+  expect(screen.queryByText(/云端同步|后续版本/u)).toBeNull();
 });
 
 test("uses the confirmed selector for preview, clipboard and image export", async () => {
