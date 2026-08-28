@@ -201,7 +201,7 @@ git commit -m "build(web): scaffold static Astro site"
 ```ts
 import { describe, expect, it } from "vitest";
 
-import { experienceSteps, navItems, principles, site } from "../src/content/site";
+import { experienceSteps, navItems, principles, privacyPoints, site } from "../src/content/site";
 
 describe("official site content", () => {
   it("uses the approved identity and five routes", () => {
@@ -210,9 +210,15 @@ describe("official site content", () => {
   });
 
   it("keeps the consent principles and seven-step scope", () => {
-    expect(principles).toContain("身体反应不等于同意。");
+    expect(principles).toEqual([
+      "身体反应不等于同意。",
+      "同意针对具体行为，并且持续、可以撤回。",
+      "犹豫与期待可以同时存在。",
+      "私密探索默认留在用户自己的设备上。"
+    ]);
     expect(experienceSteps).toHaveLength(7);
     expect(JSON.stringify({ experienceSteps, principles })).not.toMatch(/AI|登录|云同步|准备度分数/u);
+    expect(privacyPoints.join("\n")).not.toContain("本机加密数据库");
   });
 });
 ```
@@ -250,7 +256,7 @@ export const navItems = Object.freeze([
 export const principles = Object.freeze([
   "身体反应不等于同意。",
   "同意针对具体行为，并且持续、可以撤回。",
-  "期待、紧张和犹豫可以同时存在。",
+  "犹豫与期待可以同时存在。",
   "私密探索默认留在用户自己的设备上。"
 ]);
 
@@ -266,10 +272,11 @@ export const experienceSteps = Object.freeze([
 
 export const privacyPoints = Object.freeze([
   "首版无需账号或登录，也不会在 App 中收集邮箱地址。",
-  "旅程选择、反思记录、练习结果、沟通卡和界面偏好保存在本机加密数据库中。",
-  "CAVE 不把这些内容上传到自有服务器，也不用于广告、画像或行为分析。",
+  "旅程选择、反思记录、练习结果、沟通卡和界面偏好只保存在当前设备，不会发送到 CAVE 自有服务器；开发预览环境可能使用临时内存存储。",
+  "CAVE 不把这些内容用于广告、画像或行为分析。",
   "只有在你主动操作时，沟通卡图片才会进入系统相册，文字才会进入系统剪贴板。",
-  "设备备份、相册同步和剪贴板由 Apple 与你的设备设置控制。"
+  "设备备份、相册同步和剪贴板由 Apple 与你的设备设置控制。",
+  "设备被解锁或你导出内容后，他人可能通过系统功能看到相关内容；CAVE 不承诺绝对私密。"
 ]);
 
 export const supportFaq = Object.freeze([
@@ -424,7 +431,7 @@ Use `BaseLayout`, `PageHero`, `ContentCard`, `EchoBackdrop`, `principles`, and `
 
 `safety.astro` renders the four consent principles and: `CAVE 是成年人身体认知与同意教育工具，不是医疗器械，不提供诊断或治疗，也不会判断你是否“准备好”。紧急情况下，请联系你所在地的紧急服务。`
 
-`sources.astro` imports `JOURNEY_SOURCE_REGISTRY` from `@cave/content`, groups entries by `sourceType`, renders organization/title/date/access date/applicability/direct link, and shows: `来源已核验不代表中文改写已经通过专家复核。`
+`sources.astro` imports `JOURNEY_SOURCE_REGISTRY` from `@cave/content`, groups all 13 entries by `sourceType` (`EDU` 3, `MED` 7, `SAFE` 3), and renders ID, organization, title, publication/review date as its original string, access date, applicability, `source_verified` as `来源链接已核验`, and the direct URL. Label the SAFE group `中国大陆安全与支持资源`; do not generalize its phone numbers globally. Show: `来源已核验不代表中文改写已经通过专家复核。`
 
 - [ ] **Step 5: Build and run all web tests**
 
