@@ -1,22 +1,30 @@
-import { Redirect, Stack, usePathname } from "expo-router";
+import { Stack } from "expo-router";
 import { View } from "react-native";
 
 import { useAdultDeclaration } from "../../src/features/journey/runtime/JourneyRuntimeProvider";
 import { JourneyLongTermNav } from "../../src/features/shell/ui/JourneyLongTermNav";
 
-const publicJourneyPaths = new Set(["/journey/welcome", "/journey/adult-gate"]);
-
 export default function JourneyLayout() {
   const { status } = useAdultDeclaration();
-  const pathname = usePathname();
-
-  if (status === "public" && !publicJourneyPaths.has(pathname)) {
-    return <Redirect href="/journey/welcome" />;
-  }
 
   return (
     <View style={{ flex: 1 }}>
-      <Stack screenOptions={{ headerShown: false }} />
+      <Stack screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="welcome" />
+        <Stack.Screen name="adult-gate" />
+        <Stack.Protected guard={status === "authorized"}>
+          <Stack.Screen name="preface" />
+          <Stack.Screen name="body-knowledge" />
+          <Stack.Screen name="overnight" />
+          <Stack.Screen name="behavior-map" />
+          <Stack.Screen name="reflection" />
+          <Stack.Screen name="preset-practice" />
+          <Stack.Screen name="final-preparation" />
+          <Stack.Screen name="behavior-attitudes" />
+          <Stack.Screen name="communication-card" />
+          <Stack.Screen name="checklist" />
+        </Stack.Protected>
+      </Stack>
       <JourneyLongTermNav />
     </View>
   );
