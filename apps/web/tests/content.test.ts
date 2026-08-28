@@ -23,10 +23,10 @@ describe("official site content", () => {
     });
     expect(navItems).toEqual([
       { href: "/", label: "了解 CAVE" },
-      { href: "/privacy", label: "隐私" },
-      { href: "/support", label: "支持" },
-      { href: "/safety", label: "安全" },
-      { href: "/sources", label: "内容来源" }
+      { href: "/privacy/", label: "隐私" },
+      { href: "/support/", label: "支持" },
+      { href: "/safety/", label: "安全" },
+      { href: "/sources/", label: "内容来源" }
     ]);
   });
 

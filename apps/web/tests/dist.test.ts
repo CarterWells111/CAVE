@@ -41,10 +41,10 @@ describe("built home page", () => {
       indexHtml.match(/<nav[^>]+aria-label=["']主要导航["'][^>]*>(.*?)<\/nav>/su)?.[1] ?? "";
     const destinations = [
       ["/", "了解 CAVE"],
-      ["/privacy", "隐私"],
-      ["/support", "支持"],
-      ["/safety", "安全"],
-      ["/sources", "内容来源"]
+      ["/privacy/", "隐私"],
+      ["/support/", "支持"],
+      ["/safety/", "安全"],
+      ["/sources/", "内容来源"]
     ] as const;
 
     expect(primaryNavigation).not.toBe("");

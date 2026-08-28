@@ -9,10 +9,10 @@ const routeNames = ["", "privacy", "support", "safety", "sources"] as const;
 
 const expectedCanonicals = [
   "https://neijiecave.com/",
-  "https://neijiecave.com/privacy",
-  "https://neijiecave.com/support",
-  "https://neijiecave.com/safety",
-  "https://neijiecave.com/sources"
+  "https://neijiecave.com/privacy/",
+  "https://neijiecave.com/support/",
+  "https://neijiecave.com/safety/",
+  "https://neijiecave.com/sources/"
 ] as const;
 
 const supportBoundary =
@@ -132,8 +132,8 @@ describe("official site routes", () => {
     );
     expect(homeCallouts).toHaveLength(1);
     const homeCallout = homeCallouts[0] ?? "";
-    expect(homeCallout).toContain('href="/privacy"');
-    expect(homeCallout).toContain('href="/support"');
+    expect(homeCallout).toContain('href="/privacy/"');
+    expect(homeCallout).toContain('href="/support/"');
     expect(textContent(homeCallout)).toContain(
       "首版无需账号。你的旅程内容默认只保存在当前设备，并由你决定是否导出。"
     );
@@ -167,7 +167,7 @@ describe("official site routes", () => {
     expect(html).toMatch(/<html\b[^>]*\blang=["']zh-CN["']/u);
     expect(textContent(html)).toContain("页面不存在");
     expect(html).toContain('href="/"');
-    expect(html).toContain('href="/support"');
+    expect(html).toContain('href="/support/"');
     expect(html).toMatch(/<footer\b/u);
     expect(html).not.toMatch(/<script\b/iu);
     expect(expectedCanonicals).not.toContain("https://neijiecave.com/404");

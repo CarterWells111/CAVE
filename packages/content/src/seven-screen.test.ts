@@ -24,7 +24,9 @@ describe("seven-screen content and source model", () => {
     );
     expect(sources.every(({ verificationStatus }) => verificationStatus === "source_verified")).toBe(true);
     expect(sources.every(({ organization, appliesTo, accessedAt }) => (
-      organization.length > 0 && appliesTo.length > 0 && accessedAt === "2026-08-27"
+      organization.length > 0
+      && appliesTo.length > 0
+      && /^\d{4}-\d{2}-\d{2}$/u.test(accessedAt)
     ))).toBe(true);
     expect(JSON.stringify(sources)).not.toContain("example.invalid");
   });

@@ -18,10 +18,10 @@ const expectedHeaders = [
 
 const expectedSitemapLocations = [
   "https://neijiecave.com/",
-  "https://neijiecave.com/privacy",
-  "https://neijiecave.com/support",
-  "https://neijiecave.com/safety",
-  "https://neijiecave.com/sources"
+  "https://neijiecave.com/privacy/",
+  "https://neijiecave.com/support/",
+  "https://neijiecave.com/safety/",
+  "https://neijiecave.com/sources/"
 ] as const;
 
 const approvedFaviconSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-labelledby="title description">

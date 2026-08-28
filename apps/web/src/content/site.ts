@@ -20,10 +20,10 @@ export type FaqEntry = readonly [question: string, answer: string];
 
 export const navItems: readonly NavItem[] = Object.freeze([
   Object.freeze({ href: "/", label: "了解 CAVE" }),
-  Object.freeze({ href: "/privacy", label: "隐私" }),
-  Object.freeze({ href: "/support", label: "支持" }),
-  Object.freeze({ href: "/safety", label: "安全" }),
-  Object.freeze({ href: "/sources", label: "内容来源" })
+  Object.freeze({ href: "/privacy/", label: "隐私" }),
+  Object.freeze({ href: "/support/", label: "支持" }),
+  Object.freeze({ href: "/safety/", label: "安全" }),
+  Object.freeze({ href: "/sources/", label: "内容来源" })
 ]);
 
 export const principles = Object.freeze([
