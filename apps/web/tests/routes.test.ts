@@ -143,6 +143,37 @@ describe("official site routes", () => {
     expect(html).not.toMatch(/立即下载|App\s*Store|Google\s*Play|商店徽章|下载(?:应用|App)|AI\s*对话|云同步/iu);
   });
 
+  it("builds a noindex 404 document outside the five canonical routes", async () => {
+    const [html, sitemap] = await Promise.all([
+      readFile(new URL("../dist/404.html", import.meta.url), "utf8"),
+      readFile(new URL("../dist/sitemap.xml", import.meta.url), "utf8")
+    ]);
+    const titleMatches = Array.from(html.matchAll(/<title>([\s\S]*?)<\/title>/gu));
+    const title = titleMatches[0]?.[1]?.trim();
+    const descriptions = namedMetaContent(html, "description");
+    const canonicalTags = tags(html, "link").filter(
+      (tag) => attribute(tag, "rel") === "canonical"
+    );
+
+    expect(titleMatches).toHaveLength(1);
+    expect(title).toBe("页面不存在｜CAVE 内界");
+    expect(descriptions).toEqual(["这个页面不存在或已经移动。返回 CAVE 内界首页，或前往支持页面继续查找。"]);
+    expect(namedMetaContent(html, "robots")).toEqual(["noindex"]);
+    expect(canonicalTags).toHaveLength(1);
+    expect(attribute(canonicalTags[0] ?? "", "href")).toBe("https://neijiecave.com/404");
+    expect(metaContent(html, "og:title")).toEqual([title]);
+    expect(metaContent(html, "og:description")).toEqual(descriptions);
+    expect(metaContent(html, "og:url")).toEqual(["https://neijiecave.com/404"]);
+    expect(html).toMatch(/<html\b[^>]*\blang=["']zh-CN["']/u);
+    expect(textContent(html)).toContain("页面不存在");
+    expect(html).toContain('href="/"');
+    expect(html).toContain('href="/support"');
+    expect(html).toMatch(/<footer\b/u);
+    expect(html).not.toMatch(/<script\b/iu);
+    expect(expectedCanonicals).not.toContain("https://neijiecave.com/404");
+    expect(sitemap).not.toContain("https://neijiecave.com/404");
+  });
+
   it("preserves semantics for every markerless navigation and content list", async () => {
     const [homeHtml, privacyHtml, supportHtml, safetyHtml, sourcesHtml] = await Promise.all(
       routeNames.map(readRoute)
