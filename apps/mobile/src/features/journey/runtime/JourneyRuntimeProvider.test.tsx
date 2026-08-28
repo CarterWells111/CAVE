@@ -382,7 +382,10 @@ test("revokes protected runtime access as soon as deletion starts and keeps fail
     </JourneyRuntimeProvider>
   );
 
-  expect(await screen.findByText("设置")).toBeTruthy();
+  expect(await screen.findByRole("header", { name: "设置" })).toBeTruthy();
+  await waitFor(() => {
+    expect(screen.queryByText("正在读取本机隐私设置…")).toBeNull();
+  });
   fireEvent.press(screen.getByRole("button", { name: "删除全部本机数据" }));
   fireEvent.press(screen.getByRole("button", { name: "确认删除全部本机数据" }));
 
