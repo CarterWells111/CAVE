@@ -129,7 +129,7 @@ export function ReviewDetailScreen(_props: ReviewDetailScreenProps) {
         {deleteState === "success" ? (
           <View style={{ gap: theme.space.lg }}>
             <StatusBanner message="这条回顾已删除。" variant="success" />
-            <Button label="返回回顾历史" onPress={onContinueAfterDelete} />
+            <Button label="返回我的回顾" onPress={onContinueAfterDelete} />
           </View>
         ) : (
           <>
@@ -168,7 +168,7 @@ export function ReviewDetailScreen(_props: ReviewDetailScreenProps) {
                 label={branchState === "branching" ? "正在创建新分支…" : branchState === "error" ? "重试创建新分支" : "从这条回顾开始新分支"}
                 onPress={() => { void branchReview(); }}
               />
-              <SecondaryButton disabled={deleting || branchState === "branching"} label="返回回顾历史" onPress={onBack} />
+              <SecondaryButton disabled={deleting || branchState === "branching"} label="返回我的回顾" onPress={onBack} />
             </View>
 
             <Card accessible={false} style={{ borderColor: theme.color.danger }}>

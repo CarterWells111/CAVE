@@ -52,6 +52,9 @@ export function createComposedJourneyRuntime({
         files: adapters.files,
         secrets: adapters.secrets
       });
+      if (await adapters.secrets.hasPendingLocalDataDeletion()) {
+        await deleteAllLocalData({ database, secrets: adapters.secrets });
+      }
       const transactions = new SqlJourneyTransactionRepository(database);
       return composeJourneyRuntime({
         mode: "native-secure",

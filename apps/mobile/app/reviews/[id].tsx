@@ -31,7 +31,7 @@ export default function ReviewDetailRoute() {
   return <ReviewDetailScreen
     metadata={{ id: detail.id, title: detail.title, dateLabel: detail.createdAt.slice(0, 10), statusLabel: detail.status === "completed" ? "已完成" : "未完成" }}
     sections={sections}
-    onBack={() => router.replace("/(tabs)/reviews")}
+    onBack={() => router.replace("/(tabs)/profile")}
     onBranch={async () => {
       const seed = await runtime.reviewHistory.loadBranchSeed(detail.id);
       if (seed === null) throw new Error("review-not-found");
@@ -46,7 +46,7 @@ export default function ReviewDetailRoute() {
       });
       router.replace(`/journey/${branch.currentPage}`);
     }}
-    onContinueAfterDelete={() => router.replace("/(tabs)/reviews")}
+    onContinueAfterDelete={() => router.replace("/(tabs)/profile")}
     onDelete={async (reviewId) => { await runtime.reviewHistory.deleteVersion(reviewId); }}
   />;
 }

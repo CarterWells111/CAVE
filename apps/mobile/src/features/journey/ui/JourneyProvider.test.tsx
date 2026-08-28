@@ -3,6 +3,7 @@ import { startTransition, Suspense, useState, type ReactNode } from "react";
 import { Pressable, Text, View } from "react-native";
 
 import { createJourneyDraft, type JourneyDraft } from "../domain/types";
+import { DatabaseRecoveryRequiredError } from "../../../core/storage/database";
 import { JourneyProvider, useJourney } from "./JourneyProvider";
 
 function service(initialSnapshotId?: string) {
@@ -117,6 +118,16 @@ test("shows retry and reset actions instead of a blank screen after initializati
   fireEvent.press(screen.getByRole("button", { name: "重试" }));
   await waitFor(() => expect(app.initialize).toHaveBeenCalledTimes(2));
   expect(await screen.findByText("journey-ready")).toBeTruthy();
+});
+
+test("falls back to a safe error when database recovery has no outer handler", async () => {
+  const app = service();
+  app.initialize.mockRejectedValueOnce(new DatabaseRecoveryRequiredError("key-mismatch"));
+
+  render(<JourneyProvider service={app}><Consumer /></JourneyProvider>);
+
+  expect(await screen.findByRole("header", { name: "无法读取本机旅程" })).toBeTruthy();
+  expect(screen.queryByText("journey-ready")).toBeNull();
 });
 
 test("runAndRefresh returns the command result and publishes its updated snapshot", async () => {

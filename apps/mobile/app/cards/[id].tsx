@@ -6,19 +6,13 @@ import { Screen } from "../../src/core/ui/Screen";
 import { selectConfirmedCommunicationCard } from "../../src/features/journey/domain/derive-communication-card";
 import type { SavedCommunicationCardRecord } from "../../src/features/journey/domain/types";
 import { useJourneyRuntime } from "../../src/features/journey/runtime/JourneyRuntimeProvider";
+import {
+  applySavedCardSectionUpdates,
+  buildEditableSavedCardSections,
+} from "../../src/features/shell/application/saved-card-edit";
 import { CardDetailScreen } from "../../src/features/shell/ui/CardDetailScreen";
 import { SavedCardEditScreen } from "../../src/features/shell/ui/SavedCardEditScreen";
 import { ShellLoading } from "../../src/features/shell/ui/shell-ui-components";
-
-const sectionTitles: Record<string, string> = {
-  "communication-night-expectations": "对这次相处的期待",
-  "communication-possible-closeness": "可能愿意的靠近",
-  "communication-decide-in-moment": "希望当下再决定",
-  "communication-not-this-time": "这次不想做的事",
-  "communication-comfort": "让我更安心的方式",
-  "communication-changed-feelings": "感受变化时怎么说",
-  "communication-mutual-boundaries": "共同边界",
-};
 
 export default function SavedCardRoute() {
   const { id, mode } = useLocalSearchParams<{ id: string; mode?: string }>();
@@ -59,9 +53,11 @@ export default function SavedCardRoute() {
   }
 
   const confirmed = selectConfirmedCommunicationCard({ communicationCard: record.card });
-  const sections = confirmed.sections.map((section) => ({
+  const editableSections = buildEditableSavedCardSections(record);
+  const titlesById = new Map(editableSections.map(({ id: sectionId, title }) => [sectionId, title]));
+  const confirmedSections = confirmed.sections.map((section) => ({
     ...section,
-    title: sectionTitles[section.id] ?? "确认内容",
+    title: titlesById.get(section.id) ?? "确认内容",
   }));
   const metadata = {
     id: record.id,
@@ -72,34 +68,23 @@ export default function SavedCardRoute() {
   if (mode === "edit") {
     return (
       <SavedCardEditScreen
-        confirmedSections={sections}
+        sections={editableSections}
         metadata={metadata}
         onCancel={() => router.replace(`/cards/${record.id}`)}
-        onSave={async (updatedSections) => {
-          const textById = new Map(updatedSections.map(({ id: sectionId, text }) => [sectionId, text]));
-          await runtime.cards.save({
-            ...record,
-            card: Object.fromEntries(Object.entries(record.card).map(([sectionId, field]) => {
-              const text = textById.get(sectionId);
-              return [sectionId, text === undefined ? field : {
-                ...field,
-                generatedText: text,
-                userText: undefined,
-                needsReview: false,
-              }];
-            })) as SavedCommunicationCardRecord["card"],
-          });
-          await load();
+        onSave={async (updates) => {
+          const updatedRecord = applySavedCardSectionUpdates(record, updates);
+          await runtime.cards.save(updatedRecord);
+          setRecord(updatedRecord);
         }}
       />
     );
   }
   return (
     <CardDetailScreen
-      confirmedSections={sections}
+      confirmedSections={confirmedSections}
       metadata={metadata}
       mode={mode === "fullscreen" ? "fullscreen" : "normal"}
-      onBack={() => router.replace("/(tabs)/cards")}
+      onBack={() => router.replace("/(tabs)/profile")}
       onCopy={async () => {
         const result = await runtime.controller.copyConfirmedCommunicationCard(confirmed);
         if (result.status === "error") throw new Error(result.code);

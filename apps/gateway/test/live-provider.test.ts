@@ -128,6 +128,38 @@ describe("OpenAICompatibleProvider", () => {
     expect(attempts).toBe(2);
   });
 
+  it("cancels a retryable response body before starting the next attempt", async () => {
+    let attempts = 0;
+    let cancelled = false;
+    const provider = new OpenAICompatibleProvider({
+      baseUrl: "https://models.example.test/v1",
+      apiKey: "secret",
+      modelName: "model-a",
+      sleep: async () => undefined,
+      fetch: async () => {
+        attempts += 1;
+        if (attempts === 1) {
+          return new Response(new ReadableStream({
+            cancel() {
+              cancelled = true;
+            }
+          }), { status: 503 });
+        }
+        expect(cancelled).toBe(true);
+        return completion({
+          requestId: "live-turn-1",
+          roleMessage: "回应",
+          candidateStage: "opening"
+        });
+      }
+    });
+
+    await provider.generateTurn(turnInput, new AbortController().signal);
+
+    expect(attempts).toBe(2);
+    expect(cancelled).toBe(true);
+  });
+
   it("retries a network failure exactly once", async () => {
     let attempts = 0;
     const provider = new OpenAICompatibleProvider({
@@ -165,6 +197,25 @@ describe("OpenAICompatibleProvider", () => {
       provider.generateTurn(turnInput, new AbortController().signal)
     ).rejects.toMatchObject({ code: "unavailable", status: 400 });
     expect(attempts).toBe(1);
+  });
+
+  it("cancels an ordinary 4xx response body before returning the typed error", async () => {
+    let cancelled = false;
+    const provider = new OpenAICompatibleProvider({
+      baseUrl: "https://models.example.test/v1",
+      apiKey: "secret",
+      modelName: "model-a",
+      fetch: async () => new Response(new ReadableStream({
+        cancel() {
+          cancelled = true;
+        }
+      }), { status: 400 })
+    });
+
+    await expect(
+      provider.generateTurn(turnInput, new AbortController().signal)
+    ).rejects.toMatchObject({ code: "unavailable", status: 400 });
+    expect(cancelled).toBe(true);
   });
 
   it("caps Retry-After at five seconds", async () => {

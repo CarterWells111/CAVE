@@ -1,4 +1,7 @@
-import type { DatabaseConnection, EncryptedDatabaseManager } from "../../../core/storage/database";
+import type {
+  DatabaseConnection,
+  TransactionalEncryptedDatabaseManager
+} from "../../../core/storage/database";
 import type { JourneyDraftV2 } from "../../journey/domain/migrate-journey-draft";
 import { createJourneyDraft, type JourneyDraft } from "../../journey/domain/types";
 import { JourneyStorageError } from "../../journey/infrastructure/journey-draft-repository";
@@ -15,9 +18,26 @@ function harness() {
     getFirstAsync: jest.fn(async () => ({ id: "v1" }) as never),
     closeAsync: jest.fn(async () => undefined),
   };
-  const database: EncryptedDatabaseManager = { initialize: jest.fn(async () => connection), close: jest.fn(), removeDatabaseFiles: jest.fn() };
+  const database: TransactionalEncryptedDatabaseManager = {
+    initialize: jest.fn(async () => connection),
+    withTransaction: jest.fn(async (operation) => {
+      await connection.execAsync("BEGIN IMMEDIATE");
+      try {
+        const result = await operation(connection);
+        await connection.execAsync("COMMIT");
+        return result;
+      } catch (error) {
+        await connection.execAsync("ROLLBACK");
+        throw error;
+      }
+    }),
+    close: jest.fn(),
+    removeDatabaseFiles: jest.fn(),
+    withExclusiveMaintenance: jest.fn()
+  };
   return {
     connection,
+    database,
     repository: new SqlReviewHistoryRepository<{ sourceRevision: number }>(database, {
       decode(value) { return value as { sourceRevision: number }; }
     })
@@ -64,10 +84,12 @@ function journeyRepositoryWith(row: Record<string, unknown>) {
     getFirstAsync: jest.fn(async () => row as never),
     closeAsync: jest.fn(async () => undefined),
   };
-  const database: EncryptedDatabaseManager = {
+  const database: TransactionalEncryptedDatabaseManager = {
     initialize: jest.fn(async () => connection),
+    withTransaction: jest.fn(async (operation) => operation(connection)),
     close: jest.fn(async () => undefined),
-    removeDatabaseFiles: jest.fn(async () => undefined)
+    removeDatabaseFiles: jest.fn(async () => undefined),
+    withExclusiveMaintenance: jest.fn()
   };
   return new SqlReviewHistoryRepository<JourneyDraft>(database, journeyDraftReviewPayloadCodec);
 }
@@ -77,6 +99,15 @@ test("lists neutral review metadata without selecting payload", async () => {
   await expect(repository.listMetadata()).resolves.toEqual([expect.objectContaining({ id: "v1", title: "回顾", status: "completed" })]);
   const sql = (connection.getAllAsync as jest.Mock).mock.calls[0]?.[0] as string;
   expect(sql).not.toMatch(/payload/iu);
+});
+
+test("delegates multi-table review writes to the database transaction manager", async () => {
+  const { database, repository } = harness();
+
+  await repository.clearAll();
+
+  expect(database.withTransaction).toHaveBeenCalledTimes(1);
+  expect(database.initialize).not.toHaveBeenCalled();
 });
 
 test("rolls back a failed transactional version deletion", async () => {

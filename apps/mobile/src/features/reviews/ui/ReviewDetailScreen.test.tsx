@@ -33,7 +33,7 @@ test("shows detail body only here and exposes back and branch actions", async ()
   expect(screen.getByText("我需要更多时间。")).toBeTruthy();
   fireEvent.press(screen.getByRole("button", { name: "从这条回顾开始新分支" }));
   await screen.findByRole("button", { name: "从这条回顾开始新分支" });
-  fireEvent.press(screen.getByRole("button", { name: "返回回顾历史" }));
+  fireEvent.press(screen.getByRole("button", { name: "返回我的回顾" }));
   expect(onBranch).toHaveBeenCalledWith("review-1");
   expect(onBack).toHaveBeenCalledTimes(1);
 });
@@ -70,7 +70,7 @@ test("shows non-color pending and success states and prevents duplicate deletion
 
   pending.resolve();
   expect(await screen.findByText("这条回顾已删除。")).toBeTruthy();
-  fireEvent.press(screen.getByRole("button", { name: "返回回顾历史" }));
+  fireEvent.press(screen.getByRole("button", { name: "返回我的回顾" }));
   expect(onContinueAfterDelete).toHaveBeenCalledTimes(1);
 });
 

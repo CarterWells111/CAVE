@@ -31,7 +31,10 @@ export type JourneyRuntimeMode = "expo-go-demo" | "native-secure";
 export type JourneyRuntimePersistence = "memory-only" | "sqlcipher-secure-store";
 export type AdultDeclarationRepository = Pick<
   DatabaseSecretRepository,
-  "hasAdultDeclaration" | "recordAdultDeclaration" | "deleteAdultDeclaration"
+  | "hasAdultDeclaration"
+  | "recordAdultDeclaration"
+  | "deleteAdultDeclaration"
+  | "hasPendingLocalDataDeletion"
 >;
 
 export type JourneyRuntime = {
@@ -94,7 +97,8 @@ export function composeJourneyRuntime({
   adultDeclaration = {
     hasAdultDeclaration: async () => true,
     recordAdultDeclaration: async () => undefined,
-    deleteAdultDeclaration: async () => undefined
+    deleteAdultDeclaration: async () => undefined,
+    hasPendingLocalDataDeletion: async () => false
   },
   deleteStorage,
   clipboard,

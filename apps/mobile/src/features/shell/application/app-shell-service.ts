@@ -52,11 +52,10 @@ export function resolveShellLaunchPath(
 }
 
 export function guardLongTermPath<Path extends ShellLongTermPath>(
-  snapshot: Pick<AppShellSnapshot, "completion">,
+  _snapshot: Pick<AppShellSnapshot, "completion">,
   requestedPath: Path,
-): Path | "/journey/welcome" {
-  if (requestedPath.startsWith("/settings")) return requestedPath;
-  return snapshot.completion === null ? "/journey/welcome" : requestedPath;
+): Path {
+  return requestedPath;
 }
 
 export function isActiveLongTermReview(
@@ -66,6 +65,17 @@ export function isActiveLongTermReview(
   return draft !== null
     && completion !== null
     && draft.id !== completion.initialJourneyId;
+}
+
+export type ActiveJourneyKind = "initial" | "review";
+
+export function classifyActiveJourney(
+  draft: Readonly<{ ageConfirmed: boolean; id: string }> | null,
+  completion: AppShellState | null,
+): ActiveJourneyKind | null {
+  if (draft?.ageConfirmed !== true) return null;
+  if (completion === null) return "initial";
+  return draft.id === completion.initialJourneyId ? null : "review";
 }
 
 export class AppShellService {
