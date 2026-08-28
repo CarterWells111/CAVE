@@ -139,7 +139,7 @@ describe("static control regression guards", () => {
       ),
       sitemap.replace("</urlset>", "<loc>https://neijiecave.com/extra</loc></urlset>"),
       sitemap.replace("<lastmod>2026-08-28</lastmod>", "<lastmod>2026-08-27</lastmod>"),
-      sitemap.replace(/    <lastmod>2026-08-28<\/lastmod>\r?\n/u, "")
+      sitemap.replace(/ {4}<lastmod>2026-08-28<\/lastmod>\r?\n/u, "")
     ];
 
     for (const variant of invalidVariants) {
