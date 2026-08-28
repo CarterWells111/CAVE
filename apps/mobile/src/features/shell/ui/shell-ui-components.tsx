@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { Text, View } from "react-native";
 
-import { theme } from "../../../core/design/theme";
+import { useTheme } from "../../../core/design/theme-provider";
 import { Card } from "../../../core/ui/Card";
 import { SecondaryButton } from "../../../core/ui/secondary-button";
 import { StatusBanner } from "../../../core/ui/StatusBanner";
@@ -16,6 +16,7 @@ export type ShellMetadataItem = Readonly<{
 }>;
 
 export function ShellFrame({ children, title }: { children: ReactNode; title: string }) {
+  const theme = useTheme();
   return (
     <View style={{ flexGrow: 1, gap: theme.space.xl, minWidth: 0, width: "100%" }}>
       <Text accessibilityRole="header" selectable style={{ ...theme.typography.title, color: theme.color.text }}>
@@ -31,10 +32,12 @@ export function ShellLoading() {
 }
 
 export function SectionHeading({ children }: { children: string }) {
+  const theme = useTheme();
   return <Text accessibilityRole="header" selectable style={{ ...theme.typography.heading, color: theme.color.text }}>{children}</Text>;
 }
 
 export function SupportingText({ children }: { children: string }) {
+  const theme = useTheme();
   return <Text selectable style={{ ...theme.typography.body, color: theme.color.textSecondary }}>{children}</Text>;
 }
 
@@ -47,6 +50,7 @@ export function MetadataCard({
   item: ShellMetadataItem;
   onAction?: ((id: string) => void) | undefined;
 }) {
+  const theme = useTheme();
   return (
     <Card accessible={false}>
       <Text selectable style={{ ...theme.typography.cardTitle, color: theme.color.text }}>{item.title}</Text>

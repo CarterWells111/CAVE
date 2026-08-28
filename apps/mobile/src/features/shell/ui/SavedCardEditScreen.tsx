@@ -1,7 +1,7 @@
 import { useRef, useState } from "react";
 import { ScrollView, Text, TextInput, View } from "react-native";
 
-import { theme } from "../../../core/design/theme";
+import { useTheme } from "../../../core/design/theme-provider";
 import { Button } from "../../../core/ui/Button";
 import { Card } from "../../../core/ui/Card";
 import { InfoCard } from "../../../core/ui/info-card";
@@ -36,6 +36,7 @@ export function SavedCardEditScreen({
   onCancel,
   onSave
 }: SavedCardEditScreenProps) {
+  const theme = useTheme();
   const [sections, setSections] = useState<EditableConfirmedCardSection[]>(() => confirmedSections.map(
     ({ id, text, title }) => ({ id, text, title })
   ));

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Text, View } from "react-native";
 
-import { theme } from "../../../../core/design/theme";
+import { useTheme } from "../../../../core/design/theme-provider";
 import { Card } from "../../../../core/ui/Card";
 import { ChoiceChip } from "../../../../core/ui/ChoiceChip";
 import { JourneyAction } from "../components/JourneyAction";
@@ -13,6 +13,7 @@ export function PrefacePage({
 }: {
   onContinue(preference: AddressPreference): void | Promise<void>;
 }) {
+  const theme = useTheme();
   const [preference, setPreference] = useState<AddressPreference | null>(null);
   const addressed = preference ?? "你";
   return (

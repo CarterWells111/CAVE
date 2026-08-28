@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Pressable, Text } from "react-native";
 
-import { theme } from "../design/theme";
+import { useTheme } from "../design/theme-provider";
 
 type ChoiceChipProps = {
   label: string;
@@ -20,6 +20,7 @@ export function ChoiceChip({
   disabled = false,
   testID
 }: ChoiceChipProps) {
+  const theme = useTheme();
   const [focused, setFocused] = useState(false);
   const marker = semantics === "checkbox" ? (selected ? "✓" : "□") : selected ? "●" : "○";
   const state =

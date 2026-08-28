@@ -1,6 +1,6 @@
 import { Text, View } from "react-native";
 
-import { theme } from "../design/theme";
+import { useTheme } from "../design/theme-provider";
 import { BottomSheet } from "./bottom-sheet";
 import { SecondaryButton } from "./secondary-button";
 
@@ -29,6 +29,7 @@ export function SourceDrawer({
   onRestoreFocus,
   reducedMotion,
 }: SourceDrawerProps) {
+  const theme = useTheme();
   return (
     <BottomSheet
       {...(onInitialFocus ? { onInitialFocus } : {})}

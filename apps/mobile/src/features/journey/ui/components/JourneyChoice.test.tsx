@@ -5,7 +5,7 @@ import { act, fireEvent, render, screen } from "@testing-library/react-native";
 import { StyleSheet } from "react-native";
 
 import { ChoiceChip } from "../../../../core/ui/ChoiceChip";
-import { theme } from "../../../../core/design/theme";
+import { darkTheme as theme } from "../../../../core/design/theme";
 import { JourneyChoice } from "./JourneyChoice";
 
 function deferred<T>() {

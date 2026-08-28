@@ -1,4 +1,4 @@
-export const CURRENT_SCHEMA_VERSION = 5;
+export const CURRENT_SCHEMA_VERSION = 6;
 
 export const SCHEMA_V1 = `
 CREATE TABLE IF NOT EXISTS course_progress (
@@ -85,4 +85,10 @@ CREATE TABLE IF NOT EXISTS review_migration_receipts (
   source_id TEXT PRIMARY KEY NOT NULL,
   target_version_id TEXT NOT NULL,
   migrated_at TEXT NOT NULL
+);`;
+
+export const SCHEMA_V6 = `
+CREATE TABLE IF NOT EXISTS app_preferences (
+  singleton_id INTEGER PRIMARY KEY NOT NULL CHECK (singleton_id = 1),
+  theme_preference TEXT NOT NULL CHECK (theme_preference IN ('system', 'light', 'dark'))
 );`;

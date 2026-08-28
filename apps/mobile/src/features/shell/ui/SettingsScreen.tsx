@@ -1,18 +1,85 @@
-import { useRef, useState } from "react";
+import { Ionicons } from "@expo/vector-icons";
+import { type ComponentProps, useRef, useState } from "react";
 import { Pressable, ScrollView, Text, View } from "react-native";
 
-import { theme } from "../../../core/design/theme";
+import { useTheme } from "../../../core/design/theme-provider";
+import type { ResolvedTheme, ThemePreference } from "../../../core/design/theme";
 import { Button } from "../../../core/ui/Button";
 import { Card } from "../../../core/ui/Card";
 import { InfoCard } from "../../../core/ui/info-card";
+import { IconTextAction } from "../../../core/ui/icon-text-action";
 import { SecondaryButton } from "../../../core/ui/secondary-button";
 
 export type SettingsScreenProps = {
+  appearancePreference: ThemePreference;
+  appearanceSaving: boolean;
+  resolvedTheme: ResolvedTheme;
+  onAppearancePreferenceChange(preference: ThemePreference): Promise<void>;
+  onBack(): void;
   onDeleteAllData(): Promise<void>;
   onContinueAfterDelete(): void;
 };
 
 type DeleteState = "idle" | "confirming" | "deleting" | "error" | "success";
+
+function AppearanceChoice({
+  checked,
+  detail,
+  disabled,
+  icon,
+  label,
+  onPress,
+}: {
+  checked: boolean;
+  detail?: string;
+  disabled: boolean;
+  icon: ComponentProps<typeof Ionicons>["name"];
+  label: string;
+  onPress(): void;
+}) {
+  const theme = useTheme();
+  const [focused, setFocused] = useState(false);
+  const accessibilityLabel = detail ? `${label}，${detail}` : label;
+  return (
+    <Pressable
+      accessibilityLabel={accessibilityLabel}
+      accessibilityRole="radio"
+      accessibilityState={{ checked, disabled }}
+      disabled={disabled}
+      onBlur={() => setFocused(false)}
+      onFocus={() => setFocused(true)}
+      onPress={onPress}
+      style={({ pressed }) => ({
+        alignItems: "center",
+        backgroundColor: checked
+          ? theme.color.surfaceAccent
+          : pressed ? theme.color.surfacePressed : theme.color.surface,
+        borderColor: checked ? theme.color.primary : theme.color.interactiveBorder,
+        borderCurve: "continuous",
+        borderRadius: theme.radius.control,
+        borderWidth: checked ? theme.border.selectedWidth : theme.border.width,
+        flexDirection: "row",
+        gap: theme.space.md,
+        minHeight: theme.size.primaryActionHeight,
+        minWidth: theme.size.minimumTouchTarget,
+        opacity: disabled ? 0.65 : 1,
+        outlineColor: theme.color.focus,
+        outlineOffset: theme.border.focusOffset,
+        outlineWidth: focused ? theme.border.focusWidth : 0,
+        paddingHorizontal: theme.space.md,
+        paddingVertical: theme.space.compact,
+        width: "100%",
+      })}
+    >
+      <Ionicons accessible={false} color={checked ? theme.color.primary : theme.color.textSecondary} name={icon} size={theme.size.iconLarge} />
+      <View style={{ flex: 1, gap: theme.space.xs }}>
+        <Text style={{ ...theme.typography.button, color: theme.color.text }}>{label}</Text>
+        {detail ? <Text style={{ ...theme.typography.caption, color: theme.color.textSecondary }}>{detail}</Text> : null}
+      </View>
+      {checked ? <Ionicons accessible={false} color={theme.color.primary} name="checkmark-circle" size={theme.size.iconLarge} /> : null}
+    </Pressable>
+  );
+}
 
 function DestructiveButton({
   label,
@@ -23,6 +90,7 @@ function DestructiveButton({
   loading?: boolean;
   onPress(): void;
 }) {
+  const theme = useTheme();
   const [focused, setFocused] = useState(false);
   return (
     <Pressable
@@ -63,10 +131,17 @@ function DestructiveButton({
 }
 
 export function SettingsScreen({
+  appearancePreference,
+  appearanceSaving,
+  onAppearancePreferenceChange,
+  onBack,
   onContinueAfterDelete,
-  onDeleteAllData
+  onDeleteAllData,
+  resolvedTheme,
 }: SettingsScreenProps) {
+  const theme = useTheme();
   const [deleteState, setDeleteState] = useState<DeleteState>("idle");
+  const [appearanceError, setAppearanceError] = useState(false);
   const deletionInFlight = useRef(false);
 
   const deleteAll = async () => {
@@ -80,6 +155,16 @@ export function SettingsScreen({
       setDeleteState("error");
     } finally {
       deletionInFlight.current = false;
+    }
+  };
+
+  const changeAppearance = async (preference: ThemePreference) => {
+    if (appearanceSaving || preference === appearancePreference) return;
+    setAppearanceError(false);
+    try {
+      await onAppearancePreferenceChange(preference);
+    } catch {
+      setAppearanceError(true);
     }
   };
 
@@ -98,14 +183,55 @@ export function SettingsScreen({
       keyboardShouldPersistTaps="handled"
       testID="settings-scroll"
     >
+      <IconTextAction icon="arrow-back" label="返回" onPress={onBack} />
       <View style={{ gap: theme.space.sm }}>
         <Text accessibilityRole="header" selectable style={{ ...theme.typography.title, color: theme.color.text }}>
           设置
         </Text>
         <Text selectable style={{ ...theme.typography.body, color: theme.color.textSecondary }}>
-          管理保存在这台设备上的内容。
+          管理外观与保存在这台设备上的内容。
         </Text>
       </View>
+
+      <Card accessible={false}>
+        <Text accessibilityRole="header" selectable style={{ ...theme.typography.heading, color: theme.color.text }}>
+          外观
+        </Text>
+        <View accessibilityRole="radiogroup" style={{ gap: theme.space.compact }}>
+          <AppearanceChoice
+            checked={appearancePreference === "system"}
+            detail={`当前：${resolvedTheme === "dark" ? "深色" : "亮色"}`}
+            disabled={appearanceSaving}
+            icon="phone-portrait-outline"
+            label="跟随系统"
+            onPress={() => { void changeAppearance("system"); }}
+          />
+          <AppearanceChoice
+            checked={appearancePreference === "light"}
+            disabled={appearanceSaving}
+            icon="sunny-outline"
+            label="亮色"
+            onPress={() => { void changeAppearance("light"); }}
+          />
+          <AppearanceChoice
+            checked={appearancePreference === "dark"}
+            disabled={appearanceSaving}
+            icon="moon-outline"
+            label="深色"
+            onPress={() => { void changeAppearance("dark"); }}
+          />
+        </View>
+        {appearanceSaving ? (
+          <Text accessibilityLiveRegion="polite" selectable style={{ ...theme.typography.caption, color: theme.color.textSecondary }}>
+            正在保存外观设置…
+          </Text>
+        ) : null}
+        {appearanceError ? (
+          <Text accessibilityRole="alert" selectable style={{ ...theme.typography.body, color: theme.color.error }}>
+            外观设置未保存，请重试。
+          </Text>
+        ) : null}
+      </Card>
 
       <InfoCard title="隐私与本机数据">
         <Text selectable style={{ ...theme.typography.body, color: theme.color.textSecondary }}>

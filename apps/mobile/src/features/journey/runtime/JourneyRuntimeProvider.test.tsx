@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react-native";
 import { StrictMode } from "react";
 import { Pressable, Text, View } from "react-native";
+import { useTheme } from "../../../core/design/theme-provider";
 
 import {
   InMemoryCommunicationCardRepository,
@@ -26,11 +27,13 @@ function runtime(mode: JourneyRuntimeMode = "expo-go-demo") {
 }
 
 function RuntimeConsumer() {
+  const theme = useTheme();
   const { controller, deleteAllData, mode, restart, runAndRefresh, service, shellState, snapshot } = useJourneyRuntime();
 
   return (
     <View>
       <Text>{mode}</Text>
+      <Text>{`theme-${theme.name}`}</Text>
       <Text>{controller === undefined ? "missing-controller" : "controller-ready"}</Text>
       <Text>{shellState === undefined ? "missing-shell-state" : "shell-state-ready"}</Text>
       <Text>{snapshot?.id ?? "no-runtime-snapshot"}</Text>
@@ -63,6 +66,7 @@ test("creates one runtime across rerenders and keeps the Expo Go notice visible"
   expect(screen.getByText("正在启动旅程运行时…")).toHaveProp("accessibilityLiveRegion", "polite");
   expect(await screen.findByText("Expo Go 演示模式，数据仅在本次打开期间暂存")).toBeTruthy();
   expect(screen.getByText("controller-ready")).toBeTruthy();
+  expect(screen.getByText("theme-light")).toBeTruthy();
   expect(screen.getByText("shell-state-ready")).toBeTruthy();
 
   rerender(

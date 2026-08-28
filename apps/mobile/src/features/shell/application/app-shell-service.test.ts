@@ -65,14 +65,14 @@ test("completes once, refreshes from the repository result, and clears", async (
   expect(repository.clear).toHaveBeenCalledTimes(1);
 });
 
-test("guards launch, tab, and settings routes only from the completion marker", () => {
+test("guards long-term tabs while keeping settings available before completion", () => {
   const incomplete = { status: "ready", completion: null } as const;
   const completed = { status: "ready", completion: firstCompletion } as const;
 
   expect(resolveShellLaunchPath(incomplete)).toBe("/journey/welcome");
   expect(resolveShellLaunchPath(completed)).toBe("/(tabs)");
   expect(guardLongTermPath(incomplete, "/(tabs)/reviews")).toBe("/journey/welcome");
-  expect(guardLongTermPath(incomplete, "/settings/privacy")).toBe("/journey/welcome");
+  expect(guardLongTermPath(incomplete, "/settings/privacy")).toBe("/settings/privacy");
   expect(guardLongTermPath(completed, "/(tabs)/reviews")).toBe("/(tabs)/reviews");
   expect(guardLongTermPath(completed, "/settings/privacy")).toBe("/settings/privacy");
 

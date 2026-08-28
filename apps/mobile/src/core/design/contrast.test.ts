@@ -1,4 +1,5 @@
 import { color } from "./tokens";
+import { lightTheme } from "./theme";
 
 function luminance(hex: string): number {
   const values = hex.slice(1).match(/.{2}/gu)!.map((value) => Number.parseInt(value, 16) / 255)
@@ -43,6 +44,34 @@ describe("approved DARK/PAPER WCAG pairings", () => {
     ["default info line/surface", color.brandLavender, color.surface],
     ["education info line/surface", color.infoMuted, color.surface],
   ])("keeps large text or non-text %s at 3:1 or greater", (_name, foreground, background) => {
+    expect(contrast(foreground, background)).toBeGreaterThanOrEqual(3);
+  });
+});
+
+describe("approved LIGHT WCAG pairings", () => {
+  const light = lightTheme.color;
+
+  it.each([
+    ["primary/background", light.text, light.background],
+    ["primary/surface", light.text, light.surface],
+    ["secondary/background", light.textSecondary, light.background],
+    ["secondary/surface", light.textSecondary, light.surface],
+    ["primary button", light.onPrimary, light.primary],
+    ["pressed button", light.onPrimary, light.primaryPressed],
+    ["danger text", light.onDanger, light.dangerSurface],
+    ["success", light.success, light.background],
+    ["warning", light.warning, light.background],
+    ["error", light.error, light.background],
+  ])("keeps normal text %s at 4.5:1 or greater", (_name, foreground, background) => {
+    expect(contrast(foreground, background)).toBeGreaterThanOrEqual(4.5);
+  });
+
+  it.each([
+    ["focus/background", light.focus, light.background],
+    ["focus/surface", light.focus, light.surface],
+    ["selected/surface", light.primary, light.surface],
+    ["interactive border/background", light.interactiveBorder, light.background],
+  ])("keeps non-text %s at 3:1 or greater", (_name, foreground, background) => {
     expect(contrast(foreground, background)).toBeGreaterThanOrEqual(3);
   });
 });

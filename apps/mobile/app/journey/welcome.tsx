@@ -19,6 +19,7 @@ export default function WelcomeRoute() {
   return (
     <Screen>
       <WelcomePage
+        onOpenSettings={() => router.push("/settings")}
         onResume={resume}
         onStart={() => router.push("/journey/adult-gate")}
         resumeAvailable={resumeAvailable}

@@ -4,17 +4,23 @@ import { WelcomePage } from "./WelcomePage";
 
 test("shows one journey action and a top-right help action without age or login prompts", () => {
   const onStart = jest.fn();
-  render(<WelcomePage onStart={onStart} resumeAvailable={false} />);
+  const onOpenSettings = jest.fn();
+  render(<WelcomePage onOpenSettings={onOpenSettings} onStart={onStart} resumeAvailable={false} />);
 
   expect(screen.getByRole("button", { name: "开启旅程" })).toBeTruthy();
   expect(screen.getByRole("button", { name: "帮助" })).toBeTruthy();
+  expect(screen.getByRole("button", { name: "设置" })).toBeTruthy();
+  expect(screen.getAllByRole("button").slice(0, 2).map((button) => button.props.accessibilityLabel))
+    .toEqual(["设置", "帮助"]);
   expect(screen.queryByText(/18|成年|登录|邮箱|验证码/u)).toBeNull();
   fireEvent.press(screen.getByRole("button", { name: "开启旅程" }));
   expect(onStart).toHaveBeenCalledTimes(1);
+  fireEvent.press(screen.getByRole("button", { name: "设置" }));
+  expect(onOpenSettings).toHaveBeenCalledTimes(1);
 });
 
 test("help explains product scope, 18+ gate, non-diagnosis and local-first privacy", () => {
-  render(<WelcomePage onStart={jest.fn()} resumeAvailable={false} />);
+  render(<WelcomePage onOpenSettings={jest.fn()} onStart={jest.fn()} resumeAvailable={false} />);
   fireEvent.press(screen.getByRole("button", { name: "帮助" }));
 
   expect(screen.getByRole("header", { name: "关于内界 CAVE" })).toBeTruthy();
@@ -31,7 +37,7 @@ test("help explains product scope, 18+ gate, non-diagnosis and local-first priva
 
 test("uses a continue label when an unfinished local journey exists", () => {
   const onResume = jest.fn();
-  render(<WelcomePage onStart={jest.fn()} onResume={onResume} resumeAvailable />);
+  render(<WelcomePage onOpenSettings={jest.fn()} onStart={jest.fn()} onResume={onResume} resumeAvailable />);
 
   expect(screen.queryByRole("button", { name: "开启旅程" })).toBeNull();
   fireEvent.press(screen.getByRole("button", { name: "继续旅程" }));

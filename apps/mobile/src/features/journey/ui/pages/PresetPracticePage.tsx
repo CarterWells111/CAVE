@@ -2,7 +2,7 @@ import type { JourneyPracticeCatalog } from "@cave/content";
 import { useMemo, useRef, useState } from "react";
 import { Text, TextInput, View } from "react-native";
 
-import { theme } from "../../../../core/design/theme";
+import { useTheme } from "../../../../core/design/theme-provider";
 import { Button } from "../../../../core/ui/Button";
 import { Card } from "../../../../core/ui/Card";
 import { ChoiceChip } from "../../../../core/ui/ChoiceChip";
@@ -82,10 +82,12 @@ const COMPLETION_FEELINGS = [
 ] as const;
 
 function Heading({ children }: { children: string }) {
+  const theme = useTheme();
   return <Text accessibilityRole="header" style={{ ...theme.typography.heading, color: theme.color.text }}>{children}</Text>;
 }
 
 function Body({ children }: { children: string }) {
+  const theme = useTheme();
   return <Text selectable style={{ ...theme.typography.body, color: theme.color.text }}>{children}</Text>;
 }
 
@@ -99,6 +101,7 @@ export function PresetPracticePage({
   onPracticeAgain,
   context = "journey",
 }: Props) {
+  const theme = useTheme();
   const initial = useMemo(() => beginPractice(catalog), [catalog]);
   const [state, setState] = useState<SevenScreenPracticeState>(initial);
   const [mirrorVisible, setMirrorVisible] = useState(false);

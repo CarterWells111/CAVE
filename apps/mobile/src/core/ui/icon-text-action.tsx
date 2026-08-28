@@ -1,43 +1,49 @@
-import { forwardRef, useState } from "react";
-import { Pressable, Text, type View } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import { type ComponentProps, useState } from "react";
+import { Pressable, Text } from "react-native";
 
 import { useTheme } from "../design/theme-provider";
 
-export type TextActionProps = {
+export type IconTextActionProps = {
+  icon: ComponentProps<typeof Ionicons>["name"];
   label: string;
-  onPress: () => void;
+  onPress(): void;
   disabled?: boolean;
   loading?: boolean;
-  underlined?: boolean;
   testID?: string;
 };
 
-export const TextAction = forwardRef<View, TextActionProps>(function TextAction(
-  { label, onPress, disabled = false, loading = false, underlined = false, testID },
-  ref,
-) {
+export function IconTextAction({
+  disabled = false,
+  icon,
+  label,
+  loading = false,
+  onPress,
+  testID,
+}: IconTextActionProps) {
   const theme = useTheme();
   const [focused, setFocused] = useState(false);
   const unavailable = disabled || loading;
+
   return (
     <Pressable
-      ref={ref}
       accessibilityLabel={label}
       accessibilityRole="button"
       accessibilityState={{ busy: loading, disabled: unavailable }}
       disabled={unavailable}
       onBlur={() => setFocused(false)}
       onFocus={() => setFocused(true)}
-      onPress={() => { if (!unavailable) onPress(); }}
+      onPress={onPress}
       style={({ pressed }) => ({
         alignItems: "center",
-        alignSelf: "flex-start",
         borderCurve: "continuous",
         borderRadius: theme.radius.label,
+        flexDirection: "row",
+        gap: theme.space.xs,
         justifyContent: "center",
         minHeight: theme.size.minimumTouchTarget,
         minWidth: theme.size.minimumTouchTarget,
-        opacity: disabled ? 0.65 : pressed ? 0.72 : 1,
+        opacity: unavailable ? 0.65 : pressed ? 0.72 : 1,
         outlineColor: theme.color.focus,
         outlineOffset: theme.border.focusOffset,
         outlineWidth: focused ? theme.border.focusWidth : 0,
@@ -46,11 +52,10 @@ export const TextAction = forwardRef<View, TextActionProps>(function TextAction(
       })}
       testID={testID}
     >
-      <Text style={{ ...theme.typography.button, color: disabled ? theme.color.disabledText : theme.color.textSecondary, flexShrink: 1, flexWrap: "wrap", textDecorationLine: underlined ? "underline" : "none" }}>
+      <Ionicons accessible={false} color={unavailable ? theme.color.disabledText : theme.color.textSecondary} name={icon} size={theme.size.icon} />
+      <Text style={{ ...theme.typography.button, color: unavailable ? theme.color.disabledText : theme.color.textSecondary }}>
         {label}
       </Text>
-      {loading ? <Text style={{ ...theme.typography.numericLabel, color: theme.color.textSecondary }}>加载中</Text> : null}
-      {disabled && !loading ? <Text style={{ ...theme.typography.numericLabel, color: theme.color.disabledText }}>不可用</Text> : null}
     </Pressable>
   );
-});
+}

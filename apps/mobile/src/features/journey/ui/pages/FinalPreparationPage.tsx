@@ -3,7 +3,8 @@ import { useRef, useState } from "react";
 import { Text, TextInput, View } from "react-native";
 import { captureRef } from "react-native-view-shot";
 
-import { paperTheme, theme } from "../../../../core/design/theme";
+import { paperTheme } from "../../../../core/design/theme";
+import { useTheme } from "../../../../core/design/theme-provider";
 import { Button } from "../../../../core/ui/Button";
 import { Card } from "../../../../core/ui/Card";
 import { SecondaryButton } from "../../../../core/ui/secondary-button";
@@ -72,6 +73,7 @@ function cloneDraft(draft: JourneyDraft): JourneyDraft {
 }
 
 function SharePreview({ card }: { card: ConfirmedCommunicationCard }) {
+  const theme = useTheme();
   return (
     <View
       accessibilityLabel="沟通卡分享预览"
@@ -101,6 +103,7 @@ export function FinalPreparationPage({
   onSetVisibility,
   onUpdatePreparation
 }: Props) {
+  const theme = useTheme();
   const draftRef = useRef(cloneDraft(draft));
   const previewRef = useRef<View>(null);
   const queueRef = useRef<Promise<void>>(Promise.resolve());

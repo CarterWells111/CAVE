@@ -1,8 +1,9 @@
 import { Text, View } from "react-native";
 
-import { theme } from "../../../../core/design/theme";
+import { useTheme } from "../../../../core/design/theme-provider";
 
 export function UnderageExitPage() {
+  const theme = useTheme();
   return (
     <View style={{ gap: theme.space.md }} testID="underage-exit">
       <Text accessibilityRole="header" style={{ ...theme.typography.title, color: theme.color.text }}>
