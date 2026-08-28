@@ -1,6 +1,7 @@
 ---
 import EchoBackdrop from "../components/EchoBackdrop.astro";
-import { site } from "../content/site";
+import ContentCard from "../components/ContentCard.astro";
+import { experienceSteps, principles, site } from "../content/site";
 import BaseLayout from "../layouts/BaseLayout.astro";
 ---
 
@@ -19,6 +20,58 @@ import BaseLayout from "../layouts/BaseLayout.astro";
         <p class="hero__reassurance">{site.reassurance}</p>
         <p class="adult-notice">面向 18 岁及以上成年人</p>
       </div>
+    </div>
+  </section>
+
+  <section class="section section--compact" aria-labelledby="principles-title">
+    <div class="section-heading">
+      <p class="eyebrow">从边界开始</p>
+      <h2 id="principles-title">四条不会退让的原则</h2>
+    </div>
+    <ul class="card-grid card-grid--two" role="list">
+      {principles.map((principle, index) => (
+        <li data-principle>
+          <ContentCard title={`原则 ${index + 1}`}>
+            <p>{principle}</p>
+          </ContentCard>
+        </li>
+      ))}
+    </ul>
+  </section>
+
+  <section class="section" aria-labelledby="journey-title">
+    <div class="section-heading">
+      <p class="eyebrow">七步体验</p>
+      <h2 id="journey-title">一次由你掌握节奏的整理</h2>
+      <p>每一步都可以慢下来。抵达某个页面，不代表你必须继续。</p>
+    </div>
+    <ol class="journey-grid" role="list">
+      {experienceSteps.map(([stepNumber, title, description]) => (
+        <li>
+          <article class="content-card journey-card" data-experience-step>
+            <p class="content-card__eyebrow">步骤 {stepNumber}</p>
+            <h3>{title}</h3>
+            <p>{description}</p>
+          </article>
+        </li>
+      ))}
+    </ol>
+  </section>
+
+  <section class="section section--compact" aria-labelledby="before-title" data-home-callout>
+    <div class="section-heading">
+      <p class="eyebrow">开始之前</p>
+      <h2 id="before-title">先了解数据边界与支持范围</h2>
+    </div>
+    <div class="card-grid card-grid--two">
+      <ContentCard title="隐私从本机开始" eyebrow="隐私">
+        <p>首版无需账号。你的旅程内容默认只保存在当前设备，并由你决定是否导出。</p>
+        <a class="text-link" href="/privacy">阅读隐私说明</a>
+      </ContentCard>
+      <ContentCard title="需要帮助时" eyebrow="支持">
+        <p>查看常见问题、删除说明、联系渠道，以及 CAVE 能做与不能做的事。</p>
+        <a class="text-link" href="/support">前往支持页面</a>
+      </ContentCard>
     </div>
   </section>
 </BaseLayout>

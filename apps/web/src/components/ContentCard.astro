@@ -1,0 +1,16 @@
+---
+type Props = {
+  title: string;
+  eyebrow?: string;
+};
+
+const { title, eyebrow } = Astro.props;
+---
+
+<article class="content-card">
+  {eyebrow && <p class="content-card__eyebrow">{eyebrow}</p>}
+  <h3>{title}</h3>
+  <div class="content-card__body">
+    <slot />
+  </div>
+</article>
