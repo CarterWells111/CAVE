@@ -38,6 +38,17 @@ test("help explains product scope, 18+ gate, non-diagnosis and local-first priva
   expect(screen.queryByText(/验证码|登录|账号|多设备/u)).toBeNull();
 });
 
+test("shows the AI assistance disclosure only inside help", () => {
+  render(<WelcomePage onStart={jest.fn()} resumeAvailable={false} />);
+
+  expect(screen.queryByText(/部分页面内容由 AI 辅助生成/u)).toBeNull();
+
+  fireEvent.press(screen.getByRole("button", { name: "帮助" }));
+
+  expect(screen.getByText(/部分页面内容由 AI 辅助生成，并经团队编辑审核/u)).toBeTruthy();
+  expect(screen.getByText(/AI 辅助、团队编辑审核和免责声明都不能代替医疗、安全及紧急支持内容所需的专业审核/u)).toBeTruthy();
+});
+
 test("uses a continue label when an unfinished local journey exists", () => {
   const onResume = jest.fn();
   render(<WelcomePage onOpenSettings={jest.fn()} onStart={jest.fn()} onResume={onResume} resumeAvailable />);

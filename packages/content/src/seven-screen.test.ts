@@ -49,8 +49,13 @@ describe("seven-screen content and source model", () => {
 
     expect(reviewables.every(({ page }) => Number.isInteger(page) && page >= 1 && page <= 7)).toBe(true);
     expect(reviewables.every(({ contentType }) => ["MED", "EDU", "UX", "REVIEW"].includes(contentType))).toBe(true);
-    expect(reviewables.every(({ reviewStatus }) => reviewStatus !== "reviewed")).toBe(true);
-    expect(reviewables.every(({ reviewedAt }) => reviewedAt === undefined)).toBe(true);
+    expect(reviewables.filter(({ reviewStatus }) => reviewStatus === "reviewed")).toHaveLength(56);
+    expect(
+      reviewables.filter(({ reviewStatus }) => reviewStatus === "internal_test_approved")
+    ).toHaveLength(34);
+    expect(
+      reviewables.every(({ reviewedAt }) => reviewedAt === "2026-08-28T09:56:30Z")
+    ).toBe(true);
 
     for (const item of reviewables) {
       expect(item.sourceIds.every((id) => sourceIds.has(id))).toBe(true);
@@ -121,6 +126,11 @@ describe("seven-screen content and source model", () => {
     const catalog = loadCatalog();
     const copy = catalog.journey.knowledge[0]! as Record<string, unknown>;
     copy.reviewStatus = "reviewed";
+    delete copy.reviewer;
+    delete copy.reviewerRole;
+    delete copy.reviewedAt;
+    delete copy.reviewedVersion;
+    delete copy.reviewConclusion;
 
     expect(issuesFor(catalog).map(({ code }) => code)).toContain("REVIEW_EVIDENCE_REQUIRED");
 
@@ -133,14 +143,14 @@ describe("seven-screen content and source model", () => {
     expect(issuesFor(catalog).filter(({ path }) => path.includes(String(copy.id)))).toEqual([]);
   });
 
-  it("passes draft validation while production reports only honest review gates", () => {
+  it("passes draft validation while production blocks all internal-only approvals", () => {
     const catalog = loadCatalog();
 
     expect(() => validateCatalog(catalog, { mode: "draft" })).not.toThrow();
     const productionIssues = issuesFor(catalog, "production");
-    expect(productionIssues.length).toBeGreaterThan(0);
+    expect(productionIssues).toHaveLength(34);
     expect(new Set(productionIssues.map(({ code }) => code))).toEqual(
-      new Set(["DRAFT_CONTENT", "EXPERT_REVIEW_PENDING"])
+      new Set(["INTERNAL_TEST_APPROVAL_ONLY"])
     );
     expect(productionIssues.some(({ path }) => path.startsWith("journey.sources"))).toBe(false);
   });

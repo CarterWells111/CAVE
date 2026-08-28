@@ -14,6 +14,58 @@ function productionIssueCodes() {
 }
 
 describe("draft seven-screen journey catalogs", () => {
+  it("records the approved review evidence for every journey reviewable", () => {
+    const { journey } = loadCatalog();
+    const reviewables = [
+      ...journey.options,
+      ...journey.knowledge,
+      ...journey.practice.phrases,
+      ...journey.practice.responses,
+      ...journey.practice.partnerResponses,
+      ...journey.practice.safetyBranches,
+      ...journey.practice.supportResources,
+      ...journey.uiCopy.behaviorMapPoints,
+      ...journey.uiCopy.attitudes,
+      ...journey.uiCopy.communicationSections
+    ];
+    const reviewed = reviewables.filter(({ reviewStatus }) => reviewStatus === "reviewed");
+    const internalTestApproved = reviewables.filter(
+      ({ reviewStatus }) => reviewStatus === "internal_test_approved"
+    );
+    const internalOnlyContentTypes = new Set(["MED", "EDU", "REVIEW"]);
+    const internalOnlyUxIds = new Set([
+      "behavior-oral-genital-contact",
+      "draft-penetrative-sex"
+    ]);
+
+    expect(reviewables).toHaveLength(90);
+    expect(reviewed).toHaveLength(56);
+    expect(internalTestApproved).toHaveLength(34);
+    for (const entry of reviewables) {
+      const requiresInternalApproval =
+        internalOnlyContentTypes.has(entry.contentType) || internalOnlyUxIds.has(entry.id);
+      expect(entry, entry.id).toMatchObject(
+        requiresInternalApproval
+          ? {
+              reviewStatus: "internal_test_approved",
+              reviewer: "annie",
+              reviewerRole: "内部测试审核人",
+              reviewedAt: "2026-08-28T09:56:30Z",
+              reviewedVersion: "2026-08-28-review-1",
+              reviewConclusion: "仅内测通过；发布前仍需合格专家完成医疗、安全或性教育审核"
+            }
+          : {
+              reviewStatus: "reviewed",
+              reviewer: "annie",
+              reviewerRole: "产品与编辑审核人",
+              reviewedAt: "2026-08-28T09:56:30Z",
+              reviewedVersion: "2026-08-28-review-1",
+              reviewConclusion: "产品与编辑审核通过"
+            }
+      );
+    }
+  });
+
   it("loads all four versioned local catalogs with explicit unique ordering", () => {
     const { journey } = loadCatalog();
 
@@ -50,9 +102,14 @@ describe("draft seven-screen journey catalogs", () => {
     expect(journey.practice.responses.every(({ scripted }) => scripted)).toBe(true);
   });
 
-  it("passes draft validation while production reports genuine pending review", () => {
+  it("passes internal validation while production keeps internal-only approvals blocked", () => {
     expect(() => validateCatalog(loadCatalog(), { mode: "draft" })).not.toThrow();
-    expect(productionIssueCodes()).toContain("DRAFT_CONTENT");
-    expect(loadCatalog().journey.options.some(({ reviewedAt }) => reviewedAt !== undefined)).toBe(false);
+    expect(() => validateCatalog(loadCatalog(), { mode: "internal" })).not.toThrow();
+
+    const issueCodes = productionIssueCodes();
+    expect(issueCodes).toHaveLength(34);
+    expect(issueCodes.every((code) => code === "INTERNAL_TEST_APPROVAL_ONLY")).toBe(true);
+    expect(issueCodes).not.toContain("DRAFT_CONTENT");
+    expect(issueCodes).not.toContain("EXPERT_REVIEW_PENDING");
   });
 });

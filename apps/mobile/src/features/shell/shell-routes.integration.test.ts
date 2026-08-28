@@ -52,10 +52,14 @@ test("classifies and resumes the unfinished initial journey without replacing it
 });
 
 test("opens standalone practice and saved-card details without journey prerequisites", () => {
-  expect(source("(tabs)/practice.tsx")).toContain('router.push("/practice/session")');
+  expect(source("(tabs)/practice.tsx")).toContain('pathname: "/practice/session"');
+  expect(source("(tabs)/practice.tsx")).toContain("params: { scenario: id }");
   expect(source("(tabs)/index.tsx")).toContain('router.push("/practice/session")');
   expect(source("practice/session.tsx")).toContain('context="standalone"');
+  expect(source("practice/session.tsx")).toContain("parseStandalonePracticeScenario");
+  expect(source("practice/session.tsx")).toContain("openJourneySources");
   expect(source("(tabs)/reviews.tsx")).toContain("`/reviews/topic/${id}`");
+  expect(source("reviews/topic/[id].tsx")).toContain('storageMode="session-only"');
   expect(source("(tabs)/profile.tsx")).toContain("`/cards/${id}`");
   expect(source("cards/[id].tsx")).toContain("runtime.cards.load(id)");
   expect(source("cards/[id].tsx")).toContain('router.replace("/(tabs)/profile")');

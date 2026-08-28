@@ -32,6 +32,7 @@ import { JourneyAction } from "../components/JourneyAction";
 
 type Props = {
   context?: "journey" | "standalone";
+  initialIntent?: PracticeIntent;
   catalog: JourneyPracticeCatalog;
   behaviorOptions: Array<{
     id: string;
@@ -100,6 +101,7 @@ export function PresetPracticePage({
   onOpenSources,
   onPracticeAgain,
   context = "journey",
+  initialIntent,
 }: Props) {
   const theme = useTheme();
   const initial = useMemo(() => beginPractice(catalog), [catalog]);
@@ -119,7 +121,12 @@ export function PresetPracticePage({
   const selectedNeedLabel = NEEDS.find(({ intent }) => intent === state.intent)?.label;
   const selectedAftercareLabel = AFTERCARE.find(({ id }) => id === state.aftercareId)?.label;
 
-  const chooseBehavior = (behaviorId: string | null) => setState((current) => selectPracticeBehavior(current, behaviorId));
+  const chooseBehavior = (behaviorId: string | null) => {
+    const selected = selectPracticeBehavior(state, behaviorId);
+    const next = initialIntent ? selectPracticeNeed(selected, initialIntent) : selected;
+    if (next.phrase) setDraftPhrase(next.phrase);
+    setState(next);
+  };
   const chooseNeed = (intent: PracticeIntent) => {
     const next = selectPracticeNeed(state, intent);
     setDraftPhrase(next.phrase ?? "");
@@ -401,12 +408,15 @@ export function PresetPracticePage({
           />
           <JourneyAction
             disabled={submitted}
-            errorMessage="保存练习失败，请重试。"
-            label={submitted ? "已保存练习" : "继续整理我的准备"}
-            loadingLabel="正在保存练习…"
+            errorMessage={context === "standalone" ? "完成练习失败，请重试。" : "保存练习失败，请重试。"}
+            label={context === "standalone"
+              ? "完成本次练习"
+              : submitted ? "已保存练习" : "继续整理我的准备"}
+            loadingLabel={context === "standalone" ? "正在完成练习…" : "正在保存练习…"}
             onAction={submit}
           />
-          {submitted ? <Body>+1 回响｜你完成了一次表达练习</Body> : null}
+          {submitted && context === "standalone" ? <Body>本次练习已完成，内容不会保存。</Body> : null}
+          {submitted && context === "journey" ? <Body>+1 回响｜你完成了一次表达练习</Body> : null}
         </Card>
       ) : null}
     </View>
