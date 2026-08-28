@@ -105,19 +105,15 @@ describe("versioned content validation", () => {
 
   it("accepts complete internal approval internally but rejects it in production", () => {
     const catalog = loadCatalog();
+    const approvedReviewables = structuredClone(allJourneyReviewables(catalog));
     completeInternalReviewForTest(catalog);
-    const approvalStatuses = allJourneyReviewables(catalog).map(
-      ({ reviewStatus }) => reviewStatus
-    );
     completeInternalReviewForTest(catalog);
 
-    expect(allJourneyReviewables(catalog).map(({ reviewStatus }) => reviewStatus)).toEqual(
-      approvalStatuses
-    );
+    expect(allJourneyReviewables(catalog)).toEqual(approvedReviewables);
     expect(() => validateCatalog(catalog, { mode: "internal" })).not.toThrow();
-    expect(new Set(issueCodes(() => validateCatalog(catalog, { mode: "production" })))).toEqual(
-      new Set(["INTERNAL_TEST_APPROVAL_ONLY"])
-    );
+    const productionCodes = issueCodes(() => validateCatalog(catalog, { mode: "production" }));
+    expect(productionCodes).toHaveLength(34);
+    expect(new Set(productionCodes)).toEqual(new Set(["INTERNAL_TEST_APPROVAL_ONLY"]));
   });
 
   it.each([
@@ -162,7 +158,7 @@ describe("versioned content validation", () => {
     );
   });
 
-  it("keeps seven legacy reviewed entries while rejecting seven-screen pending copy in production", () => {
+  it("keeps seven legacy reviewed entries while rejecting 34 internal-only approvals in production", () => {
     const catalog = loadCatalog();
     const reviewableEntries = [
       ...catalog.courses,
@@ -183,9 +179,9 @@ describe("versioned content validation", () => {
       validateCatalog(catalog, { mode: "production" })
     );
 
-    expect(productionIssues.length).toBeGreaterThan(0);
+    expect(productionIssues).toHaveLength(34);
     expect(new Set(productionIssues.map(({ code }) => code))).toEqual(
-      new Set(["DRAFT_CONTENT", "EXPERT_REVIEW_PENDING"])
+      new Set(["INTERNAL_TEST_APPROVAL_ONLY"])
     );
     expect(productionIssues.every(({ path }) => path.startsWith("journey."))).toBe(
       true
@@ -296,6 +292,11 @@ describe("versioned content validation", () => {
 
   it("rejects review evidence on copy that is not reviewed", () => {
     const catalog = loadCatalog();
+    catalog.journey.knowledge[0]!.reviewStatus = "draft";
+    delete catalog.journey.knowledge[0]!.reviewerRole;
+    delete catalog.journey.knowledge[0]!.reviewedAt;
+    delete catalog.journey.knowledge[0]!.reviewedVersion;
+    delete catalog.journey.knowledge[0]!.reviewConclusion;
     catalog.journey.knowledge[0]!.reviewer = "Unapproved reviewer";
 
     expect(issueCodes(() => validateCatalog(catalog, { mode: "draft" }))).toContain(
