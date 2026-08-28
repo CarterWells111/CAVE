@@ -1,5 +1,7 @@
 import type { ModelProvider, ProviderTurnInput } from "../src/providers/types";
+import { createTurnSafetyEvaluator } from "../src/security/safety-policy";
 import { createTurnService } from "../src/services/turn";
+import { goldenSafetyCases } from "../../../packages/test-fixtures/src/golden";
 import {
   SAFE_DECISION,
   VALID_TURN_REQUEST,
@@ -102,6 +104,63 @@ describe("turn service", () => {
       nextStage: "safety_stop",
       shouldEnd: true,
       safety: { level: "stop", reasonCode: "danger" }
+    });
+    expect(providerCalls).toBe(0);
+  });
+
+  it("lets the real Golden clear boundary reach resolution with production safety wiring", async () => {
+    const goldenCase = goldenSafetyCases.find(
+      ({ id }) => id === "golden-clear-boundary"
+    )!;
+    const latestTurn = goldenCase.turns.at(-1)!;
+    let providerCalls = 0;
+    const service = createTurnService({
+      provider: providerWith({
+        requestId: VALID_TURN_REQUEST.requestId,
+        roleMessage: "我听见你的边界，练习到这里结束。",
+        candidateStage: "resolution"
+      }, () => {
+        providerCalls += 1;
+      }),
+      scenarioSource,
+      safety: createTurnSafetyEvaluator(),
+      ...versions
+    });
+
+    expect(latestTurn.role).toBe("user");
+    await expect(service.execute({
+      ...VALID_TURN_REQUEST,
+      scenarioId: goldenCase.scenarioId,
+      scenarioStage: "response",
+      recentTurns: goldenCase.turns.slice(0, -1),
+      userMessage: latestTurn.text
+    }, new AbortController().signal)).resolves.toMatchObject({
+      nextStage: goldenCase.expectedFinalStage,
+      shouldEnd: true,
+      safety: goldenCase.expectedSafety
+    });
+    expect(providerCalls).toBe(1);
+  });
+
+  it("keeps boundary-like ambiguity in safety_stop with production wiring", async () => {
+    let providerCalls = 0;
+    const service = createTurnService({
+      provider: providerWith(undefined, () => {
+        providerCalls += 1;
+      }),
+      scenarioSource,
+      safety: createTurnSafetyEvaluator(),
+      ...versions
+    });
+
+    await expect(service.execute({
+      ...VALID_TURN_REQUEST,
+      scenarioStage: "response",
+      userMessage: "我不能继续，还是可以继续？"
+    }, new AbortController().signal)).resolves.toMatchObject({
+      nextStage: "safety_stop",
+      shouldEnd: true,
+      safety: { level: "stop", reasonCode: "uncertain" }
     });
     expect(providerCalls).toBe(0);
   });

@@ -85,6 +85,85 @@ describe("deterministic safety policy", () => {
     });
   });
 
+  it("classifies the real Golden clear-boundary conversation as safe", async () => {
+    const goldenCase = goldenSafetyCases.find(
+      ({ id }) => id === "golden-clear-boundary"
+    )!;
+    const latestTurn = goldenCase.turns.at(-1)!;
+
+    expect(latestTurn.role).toBe("user");
+    await expect(createTurnSafetyEvaluator().evaluateTurn({
+      recentTurns: goldenCase.turns.slice(0, -1),
+      userMessage: latestTurn.text
+    }, new AbortController().signal)).resolves.toEqual(goldenCase.expectedSafety);
+  });
+
+  it("keeps pressure after a boundary higher priority than safe classification", async () => {
+    await expect(createTurnSafetyEvaluator().evaluateTurn({
+      recentTurns: [
+        { role: "user", text: "我不能继续，我需要停下来。" },
+        { role: "assistant", text: "别停，再做一点，你必须答应。" }
+      ],
+      userMessage: "好吧。"
+    }, new AbortController().signal)).resolves.toEqual({
+      level: "stop",
+      reasonCode: "clear_boundary"
+    });
+  });
+
+  it.each([
+    [
+      "我需要在这里停下来，因为这里出现了直接危险。",
+      "danger",
+      "emergency"
+    ],
+    [
+      "我不能继续，我不想活了。",
+      "self_harm",
+      "self_harm"
+    ]
+  ] as const)(
+    "keeps high-risk disclosure above a clear boundary: %s",
+    async (userMessage, reasonCode, resourceCategory) => {
+      await expect(createTurnSafetyEvaluator().evaluateTurn({
+        recentTurns: [],
+        userMessage
+      }, new AbortController().signal)).resolves.toEqual({
+        level: "stop",
+        reasonCode,
+        resourceCategory
+      });
+    }
+  );
+
+  it("does not treat a historical boundary as a safe latest message", async () => {
+    await expect(createTurnSafetyEvaluator().evaluateTurn({
+      recentTurns: [{ role: "user", text: "我不能继续，我需要停下来。" }],
+      userMessage: "含义不明确。"
+    }, new AbortController().signal)).resolves.toEqual({
+      level: "stop",
+      reasonCode: "uncertain"
+    });
+  });
+
+  it.each([
+    "不能继续是什么意思？",
+    "我需要停止服药吗？",
+    "“我不能继续”是一句边界表达。",
+    "对方说“我不能继续，我需要停下来。”",
+    "这个项目不能继续推进。",
+    "我不能继续，还是可以继续？",
+    "我需要在这里停下来，还是继续？"
+  ])("fails closed for ambiguous boundary-like text: %s", async (userMessage) => {
+    await expect(createTurnSafetyEvaluator().evaluateTurn({
+      recentTurns: [],
+      userMessage
+    }, new AbortController().signal)).resolves.toEqual({
+      level: "stop",
+      reasonCode: "uncertain"
+    });
+  });
+
   it("fails closed for ambiguous or unknown text in the integration evaluator", async () => {
     await expect(createTurnSafetyEvaluator().evaluateTurn({
       recentTurns: [],
@@ -93,5 +172,15 @@ describe("deterministic safety policy", () => {
       level: "stop",
       reasonCode: "uncertain"
     });
+  });
+
+  it("preserves abort handling before classification", async () => {
+    const controller = new AbortController();
+    controller.abort();
+
+    await expect(createTurnSafetyEvaluator().evaluateTurn({
+      recentTurns: [],
+      userMessage: "我今天不能继续，我需要在这里停下来。"
+    }, controller.signal)).rejects.toMatchObject({ name: "AbortError" });
   });
 });

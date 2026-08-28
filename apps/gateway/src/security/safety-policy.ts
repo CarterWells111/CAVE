@@ -77,6 +77,12 @@ const STOP_PATTERNS: StopPattern[] = [
 ];
 
 const BOUNDARY_PATTERNS = [/不能继续/u, /需要(?:在这里)?停/u, /不要再/u, /到此为止/u];
+const CLEAR_BOUNDARY_CLAUSE_PATTERNS = [
+  /^我(?:今天|现在)?不能继续(?:了|下去)?$/u,
+  /^我需要(?:在这里)?停(?:下来|止)(?:了)?$/u,
+  /^我(?:不想|不要)再继续(?:了)?$/u,
+  /^我(?:想|要)到此为止$/u
+];
 const PRESSURE_PATTERNS = [/必须/u, /别停/u, /再做一点/u, /不许拒绝/u, /you have to/iu];
 const EXPLICIT_SAFE_PRACTICE_PATTERNS = [
   /我想练习/u,
@@ -90,14 +96,27 @@ function matches(text: string, patterns: RegExp[]) {
   return patterns.some((pattern) => pattern.test(text));
 }
 
+function isClearBoundary(text: string) {
+  const clauses = text
+    .split(/[，。！]/u)
+    .map((clause) => clause.trim())
+    .filter(Boolean);
+  return clauses.length > 0 && clauses.every(
+    (clause) => matches(clause, CLEAR_BOUNDARY_CLAUSE_PATTERNS)
+  );
+}
+
 export function classifySafetyDeterministically(
   input: Pick<SafetyPolicyInput, "turns">
 ): "safe" | "uncertain" {
-  const combined = input.turns
-    .filter((turn) => turn.role === "user")
-    .map((turn) => turn.text)
-    .join("\n");
-  return matches(combined, EXPLICIT_SAFE_PRACTICE_PATTERNS)
+  const latestUserTurn = input.turns
+    .slice()
+    .reverse()
+    .find((turn) => turn.role === "user");
+  return latestUserTurn && (
+    isClearBoundary(latestUserTurn.text) ||
+    matches(latestUserTurn.text, EXPLICIT_SAFE_PRACTICE_PATTERNS)
+  )
     ? "safe"
     : "uncertain";
 }
