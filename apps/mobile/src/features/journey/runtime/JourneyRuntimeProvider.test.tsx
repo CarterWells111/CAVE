@@ -54,6 +54,7 @@ beforeEach(() => {
 function nativePersistenceHarness({
   adultDeclared = false,
   failAdultClearOnce = false,
+  failAdultRecordOnce = false,
   failFileRemovalOnce = false
 } = {}) {
   let databaseExists = false;
@@ -61,6 +62,7 @@ function nativePersistenceHarness({
   let deletionPending = false;
   let shouldFailFileRemoval = failFileRemovalOnce;
   let shouldFailAdultClear = failAdultClearOnce;
+  let shouldFailAdultRecord = failAdultRecordOnce;
   const sqlCalls: string[] = [];
   const database = {
     execAsync: jest.fn(async (sql: string) => { sqlCalls.push(sql); }),
@@ -96,7 +98,13 @@ function nativePersistenceHarness({
       deleteDatabaseKey: jest.fn(async () => undefined),
       deleteAllSecrets: jest.fn(async () => { hasAdultDeclaration = false; }),
       hasAdultDeclaration: jest.fn(async () => hasAdultDeclaration),
-      recordAdultDeclaration: jest.fn(async () => { hasAdultDeclaration = true; }),
+      recordAdultDeclaration: jest.fn(async () => {
+        if (shouldFailAdultRecord) {
+          shouldFailAdultRecord = false;
+          throw new Error("adult-record-failed");
+        }
+        hasAdultDeclaration = true;
+      }),
       deleteAdultDeclaration: jest.fn(async () => {
         if (shouldFailAdultClear) {
           shouldFailAdultClear = false;
@@ -584,6 +592,45 @@ test("does not confirm adulthood or write its marker when an existing draft need
   expect(confirmAdult).not.toHaveBeenCalled();
   expect(recordAdultDeclaration).not.toHaveBeenCalled();
   expect(mockRouter.replace).not.toHaveBeenCalledWith("/journey/preface");
+});
+
+test("a successful first native declaration remounts the authorized route and opens the preface", async () => {
+  const harness = nativePersistenceHarness();
+
+  render(
+    <JourneyRuntimeProvider createRuntime={harness.createRuntime}>
+      <AdultGateRoute />
+    </JourneyRuntimeProvider>
+  );
+
+  fireEvent.press(await screen.findByRole("button", { name: "我已年满 18 岁，继续" }));
+
+  await waitFor(() => expect(mockRouter.replace.mock.calls).toEqual([["/journey/preface"]]));
+  expect(harness.adapters.secrets.recordAdultDeclaration).toHaveBeenCalledTimes(1);
+  expect(harness.adapters.native.openDatabaseAsync).toHaveBeenCalledTimes(1);
+});
+
+test("a failed first native declaration marker stays public and retries the marker before opening the preface", async () => {
+  const harness = nativePersistenceHarness({ failAdultRecordOnce: true });
+  const appRuntime = await harness.createRuntime();
+
+  render(
+    <JourneyRuntimeProvider createRuntime={async () => appRuntime}>
+      <AdultGateRoute />
+    </JourneyRuntimeProvider>
+  );
+
+  fireEvent.press(await screen.findByRole("button", { name: "我已年满 18 岁，继续" }));
+
+  expect(await screen.findByText("确认暂时无法保存，请重试。")).toBeTruthy();
+  expect(appRuntime.service.getSnapshot()).toMatchObject({ ageConfirmed: true });
+  expect(harness.adapters.secrets.recordAdultDeclaration).toHaveBeenCalledTimes(1);
+  expect(mockRouter.replace).not.toHaveBeenCalledWith("/journey/preface");
+
+  fireEvent.press(screen.getByRole("button", { name: "我已年满 18 岁，继续" }));
+
+  await waitFor(() => expect(harness.adapters.secrets.recordAdultDeclaration).toHaveBeenCalledTimes(2));
+  await waitFor(() => expect(mockRouter.replace.mock.calls).toEqual([["/journey/preface"]]));
 });
 
 test("first launch through the underage exit never creates a key, database, migration, draft, or declaration", async () => {
