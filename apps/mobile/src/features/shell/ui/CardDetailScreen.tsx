@@ -7,6 +7,7 @@ import { useTheme } from "../../../core/design/theme-provider";
 import { Button } from "../../../core/ui/Button";
 import { SecondaryButton } from "../../../core/ui/secondary-button";
 import { StatusBanner } from "../../../core/ui/StatusBanner";
+import type { CommunicationCardExportModel } from "../../journey/domain/communication-card-export";
 
 export type CommunicationDraftSection = Readonly<{
   id: string;
@@ -28,17 +29,18 @@ export type CardDetailScreenProps = {
   onEdit(): Promise<void>;
   exportEligible?: boolean;
   onReconfirm?(): Promise<void>;
-  onCopy?(): Promise<void>;
-  onSaveImage?(imageUri: string): Promise<void>;
+  exportModel?: CommunicationCardExportModel;
+  onCopy?(model: CommunicationCardExportModel): Promise<void>;
+  onSaveImage?(model: CommunicationCardExportModel, imageUri: string): Promise<void>;
 };
 
 type ActionState = "idle" | "editing" | "edit-error" | "reconfirming" | "reconfirm-error" | "copying" | "copy-error" | "saving-image" | "save-image-error";
 
-export function CardDetailScreen({ metadata, onBack, onCopy, onEdit, onReconfirm, onSaveImage, exportEligible = false, sections }: CardDetailScreenProps) {
+export function CardDetailScreen({ exportModel, metadata, onBack, onCopy, onEdit, onReconfirm, onSaveImage, exportEligible = false, sections }: CardDetailScreenProps) {
   const theme = useTheme();
   const [actionState, setActionState] = useState<ActionState>("idle");
   const editing = useRef(false);
-  const paperRef = useRef<View>(null);
+  const exportPaperRef = useRef<View>(null);
 
   const openEdit = async () => {
     if (editing.current) return;
@@ -67,18 +69,18 @@ export function CardDetailScreen({ metadata, onBack, onCopy, onEdit, onReconfirm
     }
   };
   const copy = async () => {
-    if (editing.current || onCopy === undefined) return;
+    if (editing.current || onCopy === undefined || exportModel === undefined) return;
     editing.current = true;
     setActionState("copying");
-    try { await onCopy(); setActionState("idle"); } catch { setActionState("copy-error"); } finally { editing.current = false; }
+    try { await onCopy(exportModel); setActionState("idle"); } catch { setActionState("copy-error"); } finally { editing.current = false; }
   };
   const saveImage = async () => {
-    if (editing.current || onSaveImage === undefined || paperRef.current === null) return;
+    if (editing.current || onSaveImage === undefined || exportPaperRef.current === null || exportModel === undefined) return;
     editing.current = true;
     setActionState("saving-image");
     try {
-      const imageUri = await captureRef(paperRef, { format: "png", quality: 1, result: "tmpfile" });
-      await onSaveImage(imageUri);
+      const imageUri = await captureRef(exportPaperRef, { format: "png", quality: 1, result: "tmpfile" });
+      await onSaveImage(exportModel, imageUri);
       setActionState("idle");
     } catch { setActionState("save-image-error"); } finally { editing.current = false; }
   };
@@ -109,7 +111,6 @@ export function CardDetailScreen({ metadata, onBack, onCopy, onEdit, onReconfirm
         <View
           accessibilityLabel="沟通草稿卡纸"
           collapsable={false}
-          ref={paperRef}
           style={{
             backgroundColor: paperTheme.color.canvas,
             borderCurve: "continuous",
@@ -156,6 +157,13 @@ export function CardDetailScreen({ metadata, onBack, onCopy, onEdit, onReconfirm
         ) : null}
         {exportEligible ? (
           <View style={{ gap: theme.space.sm }}>
+            {exportModel === undefined ? null : (
+              <View ref={exportPaperRef} collapsable={false} style={{ backgroundColor: paperTheme.color.canvas, borderRadius: theme.radius.lg, gap: theme.space.md, padding: theme.space.lg }} testID="confirmed-card-export-paper">
+                <Text accessibilityRole="header" style={{ ...theme.typography.heading, color: paperTheme.color.text }}>{exportModel.title}</Text>
+                {exportModel.sections.map((section) => <View key={section.id}><Text accessibilityRole="header" style={{ ...theme.typography.cardTitle, color: paperTheme.color.text }}>{section.title}</Text><Text selectable style={{ ...theme.typography.body, color: paperTheme.color.text }}>{section.text}</Text></View>)}
+                <Text selectable style={{ ...theme.typography.caption, color: paperTheme.color.secondary }}>{exportModel.consentFooter}</Text>
+              </View>
+            )}
             <Text selectable style={{ ...theme.typography.body, color: theme.color.textSecondary }}>复制会写入系统剪贴板；保存图片会写入系统相册，并可能依设备设置同步到 iCloud。</Text>
             {actionState === "copy-error" || actionState === "save-image-error" ? <StatusBanner actionLabel="重试" message="本机导出没有完成，请重试。" onAction={() => { void (actionState === "copy-error" ? copy() : saveImage()); }} variant="error" /> : null}
             <Button disabled={onCopy === undefined || actionState === "saving-image"} label={actionState === "copying" ? "正在复制…" : "复制文字"} loading={actionState === "copying"} onPress={() => { void copy(); }} />

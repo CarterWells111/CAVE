@@ -88,7 +88,7 @@ test("deletes a card in place, announces the state, and restores it", async () =
 });
 
 test("requires explicit confirmation before writing an immutable preview snapshot to the clipboard", async () => {
-  const onCopy = jest.fn(async () => undefined);
+  const onCopy = jest.fn<Promise<void>, [Parameters<NonNullable<ComponentProps<typeof FinalPreparationPage>["onCopy"]>>[0]]>(async () => undefined);
   const value = draft();
   value.communicationCard["communication-night-expectations"].visibility = "included";
   renderPage({ draft: value, onCopy });
@@ -103,8 +103,8 @@ test("requires explicit confirmation before writing an immutable preview snapsho
 });
 
 test("uses the same frozen snapshot for preview, copy, and PNG save until content changes", async () => {
-  const onCopy = jest.fn(async () => undefined);
-  const onSaveImage = jest.fn(async () => undefined);
+  const onCopy = jest.fn<Promise<void>, [Parameters<NonNullable<ComponentProps<typeof FinalPreparationPage>["onCopy"]>>[0]]>(async () => undefined);
+  const onSaveImage = jest.fn<Promise<void>, [Parameters<NonNullable<ComponentProps<typeof FinalPreparationPage>["onSaveImage"]>>[0], string]>(async () => undefined);
   const value = draft();
   value.communicationCard["communication-night-expectations"].visibility = "included";
   renderPage({ draft: value, onCopy, onSaveImage });

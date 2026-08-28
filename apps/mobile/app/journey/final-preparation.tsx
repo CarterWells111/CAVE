@@ -1,7 +1,7 @@
 import { useRouter } from "expo-router";
 
 import { useJourneyRuntime } from "../../src/features/journey/runtime/JourneyRuntimeProvider";
-import { saveCardImageToLibrary } from "../../src/features/journey/infrastructure/expo-card-image-adapter";
+import { cardImagePermissionRecovery, saveCardImageToLibrary } from "../../src/features/journey/infrastructure/expo-card-image-adapter";
 import { JourneyRouteScreen } from "../../src/features/journey/ui/JourneyRouteScreen";
 import { FinalPreparationPage } from "../../src/features/journey/ui/pages/FinalPreparationPage";
 
@@ -30,6 +30,7 @@ export default function FinalPreparationRoute() {
           }}
           onSaveDraft={async () => { await controller.saveCommunicationCard(); }}
           onSaveImage={(_model, imageUri) => saveCardImageToLibrary(imageUri)}
+          onOpenImageSettings={cardImagePermissionRecovery.openSettings}
           onSetVisibility={(sectionId, visibility) => runtime.runAndRefresh(
             () => runtime.service.dispatch({ type: "set-communication-card-visibility", sectionId, visibility })
           )}

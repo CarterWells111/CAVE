@@ -5,6 +5,7 @@ import { ErrorState } from "../../src/core/ui/ErrorState";
 import { Screen } from "../../src/core/ui/Screen";
 import type { SavedCommunicationCardRecord } from "../../src/features/journey/domain/types";
 import { selectConfirmedSavedCommunicationCard } from "../../src/features/journey/domain/derive-communication-card";
+import { createCommunicationCardExportModel } from "../../src/features/journey/domain/communication-card-export";
 import { saveCardImageToLibrary } from "../../src/features/journey/infrastructure/expo-card-image-adapter";
 import { useJourneyRuntime } from "../../src/features/journey/runtime/JourneyRuntimeProvider";
 import {
@@ -81,11 +82,18 @@ export default function SavedCardRoute() {
   }
 
   const confirmedCard = selectConfirmedSavedCommunicationCard(record);
+  const confirmedExportModel = confirmedCard === null ? undefined : createCommunicationCardExportModel(
+    confirmedCard.sections.map((section) => ({
+      ...section,
+      title: editableSections.find(({ id: sectionId }) => sectionId === section.id)?.title ?? "沟通内容",
+    })),
+  );
 
   return (
     <CardDetailScreen
       metadata={metadata}
       exportEligible={confirmedCard !== null}
+      {...(confirmedExportModel === undefined ? {} : { exportModel: confirmedExportModel })}
       sections={retainedSections}
       onBack={() => router.replace("/(tabs)/profile")}
       onEdit={async () => { router.replace(`/cards/${record.id}?mode=edit`); }}
@@ -95,11 +103,14 @@ export default function SavedCardRoute() {
         setRecord(confirmedRecord);
       }}
       {...(confirmedCard === null ? {} : {
-        onCopy: async () => {
-          const result = await runtime.controller.copyConfirmedCommunicationCard(confirmedCard);
+        onCopy: async (model) => {
+          const result = await runtime.controller.copyConfirmedCommunicationCard({
+            consentFooter: model.consentFooter,
+            sections: model.sections.map(({ id: sectionId, text }) => ({ id: sectionId, text })),
+          });
           if (result.status !== "success") throw new Error(result.code);
         },
-        onSaveImage: (imageUri: string) => saveCardImageToLibrary(imageUri),
+        onSaveImage: (_model, imageUri: string) => saveCardImageToLibrary(imageUri),
       })}
     />
   );

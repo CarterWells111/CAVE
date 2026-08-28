@@ -45,8 +45,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
         "expo-media-library",
         {
           photosPermission: "允许内界 CAVE 仅在你主动保存沟通卡图片时写入照片。",
-          savePhotosPermission: "允许内界 CAVE 将你确认的沟通卡图片保存到本机相册。",
-          granularPermissions: ["photo"]
+          savePhotosPermission: "允许内界 CAVE 将你确认的沟通卡图片保存到本机相册。"
         }
       ],
       [

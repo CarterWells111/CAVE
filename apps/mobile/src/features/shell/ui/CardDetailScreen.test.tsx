@@ -5,6 +5,8 @@ import { StyleSheet, Text } from "react-native";
 import { darkTheme } from "../../../core/design/theme";
 import { CardDetailScreen } from "./CardDetailScreen";
 
+jest.mock("react-native-view-shot", () => ({ captureRef: jest.fn(async () => "file:///confirmed.png") }));
+
 const metadata = {
   id: "card-1",
   title: "沟通草稿",
@@ -62,6 +64,22 @@ test("shows copy and image actions only after a saved card is export eligible", 
 
   expect(screen.getByRole("button", { name: "复制文字" })).toBeTruthy();
   expect(screen.getByRole("button", { name: "保存图片" })).toBeTruthy();
+});
+
+test("captures only the confirmed export paper, never mixed private card text", async () => {
+  const onSaveImage = jest.fn(async () => undefined);
+  renderScreen({
+    exportEligible: true,
+    exportModel: Object.freeze({ title: "靠近之前，我想告诉你" as const, sections: Object.freeze([{ id: "communication-comfort" as const, title: "什么会让我更安心", text: "确认的文字" }]), consentFooter: "这张卡只代表我整理它时的感受。任何人都可以随时改变主意，每一种靠近仍然需要当时再次确认。" as const }),
+    onSaveImage,
+    sections: [...sections, { id: "communication-not-this-time", title: "私密段落", text: "PRIVATE-CANARY" }],
+  });
+
+  expect(screen.getByTestId("confirmed-card-export-paper")).toBeTruthy();
+  expect(screen.queryByTestId("communication-draft-paper")?.props.ref).toBeUndefined();
+  fireEvent.press(screen.getByRole("button", { name: "保存图片" }));
+  await screen.findByText("保存图片");
+  expect(onSaveImage).toHaveBeenCalledWith(expect.objectContaining({ sections: [expect.objectContaining({ text: "确认的文字" })] }), "file:///confirmed.png");
 });
 
 test("shows a safe edit error and retry state", async () => {

@@ -232,6 +232,15 @@ test("atomically saves an overnight progress snapshot and completes it idempoten
   }).pointEventKeys).toEqual(["progress:overnight-complete:v1"]);
 });
 
+test("persists an edited included communication field as pending", () => {
+  const draft = adultDraft();
+  draft.communicationCard["communication-not-this-time"] = { generatedText: "old", sourceRevision: 1, needsReview: false, visibility: "included" };
+
+  const updated = reduceJourneyDraft(draft, { type: "edit-communication-card-field", sectionId: "communication-not-this-time", userText: "new" });
+
+  expect(updated.communicationCard["communication-not-this-time"]).toMatchObject({ userText: "new", visibility: "pending" });
+});
+
 test("changes communication visibility only through the four explicit privacy states", () => {
   const base = adultDraft();
   const included = reduceJourneyDraft(base, {

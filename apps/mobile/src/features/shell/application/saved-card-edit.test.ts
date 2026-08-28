@@ -66,6 +66,14 @@ test("applies only submitted section updates while preserving generated text and
   expect(updated.sharingPolicyVersion).toBeUndefined();
 });
 
+test("moves an edited included saved-card field back to pending", () => {
+  const original = record();
+  original.card["communication-night-expectations"].visibility = "included";
+  const updated = applySavedCardSectionUpdates(original, [{ id: "communication-night-expectations", text: "changed", visibility: "included" }]);
+
+  expect(updated.card["communication-night-expectations"]).toMatchObject({ userText: "changed", visibility: "pending" });
+});
+
 test("only the explicit confirmation transition stamps the current sharing policy", () => {
   const original = record();
   const edited = applySavedCardSectionUpdates(original, []);

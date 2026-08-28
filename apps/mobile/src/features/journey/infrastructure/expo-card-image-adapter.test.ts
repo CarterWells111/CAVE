@@ -7,7 +7,6 @@ jest.mock("expo-media-library", () => ({
 import { Linking } from "react-native";
 
 import {
-  CardImageSaveError,
   cardImagePermissionRecovery,
   saveCardImageToLibrary
 } from "./expo-card-image-adapter";

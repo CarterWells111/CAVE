@@ -134,7 +134,14 @@ export function reduceJourneyDraft(draft: JourneyDraft, command: JourneyCommand)
       return userChanged(draft, {
         communicationCard: {
           ...draft.communicationCard,
-          [command.sectionId]: { ...field, userText: command.userText, needsReview: false }
+          [command.sectionId]: {
+            ...field,
+            userText: command.userText,
+            visibility: field.visibility === "included" && command.userText !== (field.userText ?? field.generatedText)
+              ? "pending"
+              : field.visibility,
+            needsReview: false
+          }
         }
       });
     }

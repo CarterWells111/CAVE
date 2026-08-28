@@ -216,3 +216,10 @@ Observed: 5 suites passed, 36 tests passed. This included tests for limited/deni
 ### Verification concern
 
 After that green run, a `pnpm --filter @cave/mobile typecheck` invocation attempted to recreate the shared root `node_modules` and aborted in its noninteractive supply-chain policy check. A follow-up install was stopped at the coordinator's instruction. The dependency links are therefore unavailable in this worktree at handoff, so the final focused Jest rerun, mobile TypeScript, and ESLint remain for the main session to rerun after it restores dependencies. `git diff --check` exits cleanly. No physical-device Photos/iCloud/VoiceOver claim is made.
+
+### Batch 4 review correction
+
+- Saved-card reading remains complete and local, but its paper is no longer a PNG capture target. Copy and PNG consume the same frozen confirmed-export model, which contains only `included && !needsReview` sections; a mixed private canary capture test exercises this boundary.
+- A text edit now changes an included journey or saved-card section to `pending` in the persisted domain result, not merely in local UI state. Domain and saved-card tests cover the transition.
+- Final-page image export waits for queued writes and refuses export after a failed queued write. “Save for myself” now follows the same coordinator and retry/error state. Permanent denial exposes Settings only as a user-pressed recovery control.
+- `granularPermissions` was removed from the iOS Media Library plugin configuration. Focused Jest (7 suites/58 tests), mobile TypeScript, and ESLint all passed for this correction.

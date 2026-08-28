@@ -9,7 +9,7 @@ import { Button } from "../../../../core/ui/Button";
 import { Card } from "../../../../core/ui/Card";
 import { SecondaryButton } from "../../../../core/ui/secondary-button";
 import { TextAction } from "../../../../core/ui/text-action";
-import { COMMUNICATION_CARD_CONSENT_FOOTER } from "../../domain/derive-communication-card";
+import { createCommunicationCardExportModel, type CommunicationCardExportModel } from "../../domain/communication-card-export";
 import type { ChecklistItemStatus, CommunicationSectionId, JourneyDraft, SharingVisibility } from "../../domain/types";
 import {
   CommunicationDraftGrid,
@@ -23,20 +23,17 @@ type Props = {
   onSetVisibility(sectionId: CommunicationSectionId, visibility: SharingVisibility): void | Promise<void>;
   onCopy?(model: CommunicationCardExportModel): void | Promise<void>;
   onSaveImage?(model: CommunicationCardExportModel, imageUri: string): void | Promise<void>;
+  onOpenImageSettings?(): void | Promise<void>;
   onSaveDraft?(): void | Promise<void>;
   onUpdatePreparation?(itemId: string, status: ChecklistItemStatus): void | Promise<void>;
 };
 
-export type CommunicationCardExportModel = Readonly<{
-  title: "靠近之前，我想告诉你";
-  sections: readonly Readonly<{ id: CommunicationSectionId; title: string; text: string }>[];
-  consentFooter: typeof COMMUNICATION_CARD_CONSENT_FOOTER;
-}>;
+export type { CommunicationCardExportModel } from "../../domain/communication-card-export";
 
 const sectionCatalog = [...loadCatalog().journey.uiCopy.communicationSections]
   .sort((left, right) => left.order - right.order);
 
-type ActiveOperation = "finish" | "retry-writes";
+type ActiveOperation = "finish" | "retry-writes" | "save-draft" | "save-image";
 
 function cloneDraft(draft: JourneyDraft): JourneyDraft {
   return {
@@ -64,17 +61,13 @@ function privatePreparationDetails(draft: JourneyDraft) {
 }
 
 function exportModel(draft: JourneyDraft): CommunicationCardExportModel {
-  return Object.freeze({
-    title: "靠近之前，我想告诉你" as const,
-    sections: Object.freeze(sectionCatalog.flatMap((section) => {
+  return createCommunicationCardExportModel(sectionCatalog.flatMap((section) => {
       const id = section.id as CommunicationSectionId;
       const field = draft.communicationCard[id];
       return field.visibility === "included" && !field.needsReview
-        ? [Object.freeze({ id, title: section.title, text: field.userText ?? field.generatedText })]
+        ? [{ id, title: section.title, text: field.userText ?? field.generatedText }]
         : [];
-    })),
-    consentFooter: COMMUNICATION_CARD_CONSENT_FOOTER,
-  });
+    }));
 }
 
 function gridSections(draft: JourneyDraft): CommunicationDraftGridSection[] {
@@ -91,7 +84,7 @@ function gridSections(draft: JourneyDraft): CommunicationDraftGridSection[] {
   });
 }
 
-export function FinalPreparationPage({ draft, onCopy, onEdit, onFinish, onSaveDraft, onSaveImage, onSetVisibility, onUpdatePreparation }: Props) {
+export function FinalPreparationPage({ draft, onCopy, onEdit, onFinish, onOpenImageSettings, onSaveDraft, onSaveImage, onSetVisibility, onUpdatePreparation }: Props) {
   const theme = useTheme();
   const draftRef = useRef(cloneDraft(draft));
   const previewRef = useRef<View>(null);
@@ -106,6 +99,7 @@ export function FinalPreparationPage({ draft, onCopy, onEdit, onFinish, onSaveDr
   const [previewVisible, setPreviewVisible] = useState(false);
   const [copyConfirmationVisible, setCopyConfirmationVisible] = useState(false);
   const [imageConfirmationVisible, setImageConfirmationVisible] = useState(false);
+  const [imageSettingsRecoveryVisible, setImageSettingsRecoveryVisible] = useState(false);
   const [handwritingVisible, setHandwritingVisible] = useState(false);
 
   const updateLocal = (update: (current: JourneyDraft) => JourneyDraft) => {
@@ -224,8 +218,28 @@ export function FinalPreparationPage({ draft, onCopy, onEdit, onFinish, onSaveDr
   };
   const saveImage = async () => {
     if (onSaveImage === undefined || previewRef.current === null || operationRef.current !== undefined || model === null) return;
-    operationRef.current = "finish"; setActiveOperation("finish");
-    try { const imageUri = await captureRef(previewRef, { format: "png", quality: 1, result: "tmpfile" }); await onSaveImage(model, imageUri); setStatus("图片已保存。相册或 iCloud 的后续处理由设备设置决定。"); } catch { setStatus("图片保存失败，请检查权限后重试。"); } finally { operationRef.current = undefined; setActiveOperation(undefined); }
+    operationRef.current = "save-image"; setActiveOperation("save-image");
+    try {
+      await queueRef.current;
+      if (failedWritesRef.current.length > 0) throw new Error("pending-write-failed");
+      const imageUri = await captureRef(previewRef, { format: "png", quality: 1, result: "tmpfile" });
+      await onSaveImage(model, imageUri);
+      setStatus("图片已保存。相册或 iCloud 的后续处理由设备设置决定。");
+    } catch (error) {
+      if ((error as { recovery?: unknown }).recovery === "open-settings") setImageSettingsRecoveryVisible(true);
+      setStatus("图片保存失败，请检查权限后重试。");
+    } finally { operationRef.current = undefined; setActiveOperation(undefined); }
+  };
+  const saveDraft = async () => {
+    if (onSaveDraft === undefined || operationRef.current !== undefined) return;
+    operationRef.current = "save-draft"; setActiveOperation("save-draft");
+    try {
+      await queueRef.current;
+      if (failedWritesRef.current.length > 0) throw new Error("pending-write-failed");
+      await onSaveDraft();
+      setStatus("已保存给自己。");
+    } catch { setStatus("保存给自己失败，请先重试未完成的更改。"); }
+    finally { operationRef.current = undefined; setActiveOperation(undefined); }
   };
 
   return (
@@ -287,9 +301,10 @@ export function FinalPreparationPage({ draft, onCopy, onEdit, onFinish, onSaveDr
       {copyConfirmationVisible ? <View style={{ gap: theme.space.sm }}><Text selectable style={{ ...theme.typography.body, color: theme.color.textSecondary }}>复制会写入系统剪贴板。请只在你愿意粘贴到的位置使用它。</Text><Button label="确认复制到剪贴板" onPress={() => { void copy(); }} /></View> : null}
       <SecondaryButton disabled={onSaveImage === undefined} label="保存为图片" onPress={() => { showPreview(); setImageConfirmationVisible(true); }} />
       {imageConfirmationVisible ? <View style={{ gap: theme.space.sm }}><Text selectable style={{ ...theme.typography.body, color: theme.color.textSecondary }}>保存前请确认：图片会进入系统相册；设备如开启 iCloud 相册同步，图片也可能同步到你的云端账户。</Text><Button label="确认并保存图片" onPress={() => { void saveImage(); }} /></View> : null}
+      {imageSettingsRecoveryVisible && onOpenImageSettings !== undefined ? <Button label="打开系统设置" onPress={() => { void onOpenImageSettings(); }} /> : null}
       <TextAction label="我想手写" onPress={() => setHandwritingVisible(true)} />
       {handwritingVisible ? <Text selectable style={{ ...theme.typography.body, color: theme.color.text }}>可以把确认后的内容抄写到纸上；CAVE 不会自动分享。</Text> : null}
-      <SecondaryButton disabled={onSaveDraft === undefined} label="保存给自己" onPress={() => { void onSaveDraft?.(); }} />
+      <SecondaryButton disabled={onSaveDraft === undefined || activeOperation !== undefined || hasFailedWrites} label={activeOperation === "save-draft" ? "正在保存给自己…" : "保存给自己"} onPress={() => { void saveDraft(); }} />
 
       {status ? (
         <Text accessibilityLiveRegion="polite" selectable style={{ ...theme.typography.body, color: theme.color.text }}>
