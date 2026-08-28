@@ -2,9 +2,10 @@ declare const __dirname: string;
 
 const { existsSync, readFileSync } = jest.requireActual<typeof import("node:fs")>("node:fs");
 const { resolve } = jest.requireActual<typeof import("node:path")>("node:path");
+const routeDirectory = resolve(__dirname, "../../../app/journey");
 
 function route(name: string) {
-  return readFileSync(resolve(__dirname, `${name}.tsx`), "utf8");
+  return readFileSync(resolve(routeDirectory, `${name}.tsx`), "utf8");
 }
 
 test.each([
@@ -40,7 +41,7 @@ test("pages two through five hydrate canonical state and persist before navigati
   const knowledge = route("body-knowledge");
   expect(knowledge).toContain("sources={catalog.sources}");
   expect(knowledge).toContain('require("../../../../assets/medical/vulva-anatomy-review-current.png")');
-  expect(existsSync(resolve(__dirname, "../../../../assets/medical/vulva-anatomy-review-current.png"))).toBe(true);
+  expect(existsSync(resolve(__dirname, "../../../../../assets/medical/vulva-anatomy-review-current.png"))).toBe(true);
   expect(knowledge).toContain("diagramSource={medicalDiagram}");
   expect(knowledge).toContain("onSourceAction");
   expect(knowledge).toContain('goTo("behavior-map")');

@@ -1,9 +1,6 @@
 declare const __dirname: string;
 
-const { readFileSync, readdirSync } = jest.requireActual<{
-  readFileSync(path: string, encoding: "utf8"): string;
-  readdirSync(path: string): string[];
-}>("node:fs");
+const { readFileSync, readdirSync } = jest.requireActual<typeof import("node:fs")>("node:fs");
 const { resolve } = jest.requireActual<{
   resolve(...paths: string[]): string;
 }>("node:path");
@@ -54,6 +51,15 @@ test("exactly seven canonical routes compose their matching page components", ()
   for (const [route, component] of Object.entries(expected)) {
     expect(readFileSync(resolve(routeDirectory, `${route}.tsx`), "utf8")).toContain(`<${component}`);
   }
+});
+
+test("the Expo Router app directory contains no test or spec modules", () => {
+  const appDirectory = resolve(__dirname, "../../../../app");
+  const testModules = readdirSync(appDirectory, { recursive: true })
+    .map((name) => name.toString())
+    .filter((name) => /(?:^|[\\/]).+\.(?:test|spec)\.[jt]sx?$/u.test(name));
+
+  expect(testModules).toEqual([]);
 });
 
 test("exactly three legacy aliases redirect to canonical routes", () => {
