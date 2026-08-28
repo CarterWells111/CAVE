@@ -71,6 +71,48 @@ test("runs the respectful deterministic path and returns the user's edited phras
   })));
 });
 
+test("uses a typed standalone scenario intent after behavior selection", () => {
+  render(
+    <PresetPracticePage
+      behaviorOptions={[]}
+      catalog={catalog}
+      initialIntent="pause-and-decide"
+      onComplete={jest.fn()}
+    />,
+  );
+
+  fireEvent.press(screen.getByText("开始情境练习"));
+  fireEvent.press(screen.getByText("不说具体行为"));
+
+  expect(screen.getByText("把需要说出来")).toBeTruthy();
+  expect(screen.getByText("我现在感觉有些不对，可以先休息一下，过一会儿再决定要不要继续吗？")).toBeTruthy();
+  expect(screen.queryByText("此刻，你更接近哪一种需要？")).toBeNull();
+});
+
+test("finishes standalone practice without claiming persistence or awarding an echo", async () => {
+  const onComplete = jest.fn();
+  render(
+    <PresetPracticePage
+      behaviorOptions={[]}
+      catalog={catalog}
+      context="standalone"
+      onComplete={onComplete}
+    />,
+  );
+
+  fireEvent.press(screen.getByText("开始情境练习"));
+  fireEvent.press(screen.getByText("不说具体行为"));
+  fireEvent.press(screen.getByText("整体推进得有点快"));
+  fireEvent.press(screen.getByText("就用这句话"));
+  fireEvent.press(screen.getByText("安静待一会儿"));
+  fireEvent.press(screen.getByText("跳过不太理想的回应"));
+  fireEvent.press(screen.getByRole("button", { name: "完成本次练习" }));
+
+  await waitFor(() => expect(onComplete).toHaveBeenCalledTimes(1));
+  expect(screen.getByText("本次练习已完成，内容不会保存。")).toBeTruthy();
+  expect(screen.queryByText(/已保存练习|正在保存练习|\+1 回响/u)).toBeNull();
+});
+
 test("returns safely when mirror practice is skipped from phrase editing", () => {
   render(<PresetPracticePage behaviorOptions={[]} catalog={catalog} onComplete={jest.fn()} />);
 

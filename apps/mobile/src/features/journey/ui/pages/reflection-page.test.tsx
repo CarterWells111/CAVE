@@ -80,6 +80,22 @@ test("lets the user explicitly skip the journal without persisting its text", ()
   }));
 });
 
+test("keeps standalone reflection session-only and never submits journal text", () => {
+  const onComplete = jest.fn();
+  render(<ReflectionPage onComplete={onComplete} storageMode="session-only" />);
+
+  expect(screen.getByText("仅用于本次回顾，离开后内容会清除。")).toBeTruthy();
+  expect(screen.queryByRole("button", { name: "保存这次记录" })).toBeNull();
+  expect(screen.queryByText("确认只保存在这台设备")).toBeNull();
+  fireEvent.changeText(screen.getByLabelText("给此刻留一句话"), "不应传出当前页面");
+  fireEvent.press(screen.getByRole("button", { name: "完成本次回顾" }));
+
+  expect(onComplete).toHaveBeenCalledWith(expect.objectContaining({
+    journalSaveChoice: "not-saved",
+    journalText: "",
+  }));
+});
+
 test("restores an interrupted reflection and submits the complete local-only payload", () => {
   const onComplete = jest.fn();
   render(

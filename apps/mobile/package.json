@@ -4,12 +4,14 @@
   "private": true,
   "main": "expo-router/entry",
   "scripts": {
-    "start": "expo start --dev-client",
+    "start": "expo start --go --offline",
+    "start:dev-client": "expo start --dev-client",
     "typecheck": "tsc --noEmit",
     "lint": "expo lint",
     "test": "jest --runInBand",
     "test:watch": "jest --watch",
-    "expo:doctor": "expo-doctor"
+    "expo:doctor": "expo-doctor",
+    "export:ios": "expo export --platform ios --output-dir dist"
   },
   "dependencies": {
     "@cave/content": "workspace:*",
@@ -21,6 +23,7 @@
     "expo-constants": "~18.0.14",
     "expo-dev-client": "~6.0.21",
     "expo-file-system": "~19.0.24",
+    "expo-font": "~14.0.12",
     "expo-linking": "~8.0.12",
     "expo-media-library": "~18.2.1",
     "expo-router": "~6.0.24",

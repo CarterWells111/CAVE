@@ -2,3 +2,13 @@ packages:
   - "apps/*"
   - "packages/*"
 
+overrides:
+  postcss: "8.5.26"
+
+patchedDependencies:
+  image-size@1.2.1: "patches/image-size@1.2.1.patch"
+
+auditConfig:
+  ignoreGhsas:
+    - GHSA-w3rx-r6r6-pgpr
+    - GHSA-5p2g-fcmc-qvqq

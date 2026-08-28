@@ -3,16 +3,42 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 import packageJson from "../package.json";
+import mobilePackageJson from "../apps/mobile/package.json";
 
 describe("repository security configuration", () => {
   it("defines the fixed security scripts", () => {
     expect(packageJson.scripts["test:safety"]).toBe(
       "pnpm --filter @cave/gateway test:safety"
     );
-    expect(packageJson.scripts["security:audit"]).toBe("pnpm audit --prod");
+    expect(packageJson.scripts["security:audit"]).toBe(
+      "pnpm audit --prod --audit-level high"
+    );
     expect(packageJson.scripts["security:scan-bundle"]).toBe(
       "node scripts/scan-bundle-secrets.mjs"
     );
+  });
+
+  it("declares the Expo font peer dependency directly", () => {
+    expect(mobilePackageJson.dependencies["expo-font"]).toBe("~14.0.12");
+  });
+
+  it("pins patched build dependencies and narrowly allowlists patched advisories", () => {
+    const workspace = readFileSync(
+      new URL("../pnpm-workspace.yaml", import.meta.url),
+      "utf8"
+    );
+    const imageSizePatch = readFileSync(
+      new URL("../patches/image-size@1.2.1.patch", import.meta.url),
+      "utf8"
+    );
+
+    expect(workspace).toContain('postcss: "8.5.26"');
+    expect(workspace).toContain('image-size@1.2.1: "patches/image-size@1.2.1.patch"');
+    expect(workspace).toContain("GHSA-w3rx-r6r6-pgpr");
+    expect(workspace).toContain("GHSA-5p2g-fcmc-qvqq");
+    expect(workspace).not.toContain("ignoreUnfixable");
+    expect(imageSizePatch).toContain("box.size <= 0");
+    expect(imageSizePatch).toContain("imageHeader[1] <= 0");
   });
 
   it("runs JavaScript and TypeScript CodeQL analysis", () => {
