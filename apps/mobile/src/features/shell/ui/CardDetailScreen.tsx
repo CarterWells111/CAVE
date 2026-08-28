@@ -32,13 +32,15 @@ export type CardDetailScreenProps = {
   exportModel?: CommunicationCardExportModel;
   onCopy?(model: CommunicationCardExportModel): Promise<void>;
   onSaveImage?(model: CommunicationCardExportModel, imageUri: string): Promise<void>;
+  onOpenImageSettings?(): void | Promise<void>;
 };
 
 type ActionState = "idle" | "editing" | "edit-error" | "reconfirming" | "reconfirm-error" | "copying" | "copy-error" | "saving-image" | "save-image-error";
 
-export function CardDetailScreen({ exportModel, metadata, onBack, onCopy, onEdit, onReconfirm, onSaveImage, exportEligible = false, sections }: CardDetailScreenProps) {
+export function CardDetailScreen({ exportModel, metadata, onBack, onCopy, onEdit, onOpenImageSettings, onReconfirm, onSaveImage, exportEligible = false, sections }: CardDetailScreenProps) {
   const theme = useTheme();
   const [actionState, setActionState] = useState<ActionState>("idle");
+  const [imageSettingsRecoveryVisible, setImageSettingsRecoveryVisible] = useState(false);
   const editing = useRef(false);
   const exportPaperRef = useRef<View>(null);
 
@@ -82,7 +84,10 @@ export function CardDetailScreen({ exportModel, metadata, onBack, onCopy, onEdit
       const imageUri = await captureRef(exportPaperRef, { format: "png", quality: 1, result: "tmpfile" });
       await onSaveImage(exportModel, imageUri);
       setActionState("idle");
-    } catch { setActionState("save-image-error"); } finally { editing.current = false; }
+    } catch (error) {
+      if ((error as { recovery?: unknown }).recovery === "open-settings") setImageSettingsRecoveryVisible(true);
+      setActionState("save-image-error");
+    } finally { editing.current = false; }
   };
 
   return (
@@ -168,6 +173,7 @@ export function CardDetailScreen({ exportModel, metadata, onBack, onCopy, onEdit
             {actionState === "copy-error" || actionState === "save-image-error" ? <StatusBanner actionLabel="重试" message="本机导出没有完成，请重试。" onAction={() => { void (actionState === "copy-error" ? copy() : saveImage()); }} variant="error" /> : null}
             <Button disabled={onCopy === undefined || actionState === "saving-image"} label={actionState === "copying" ? "正在复制…" : "复制文字"} loading={actionState === "copying"} onPress={() => { void copy(); }} />
             <SecondaryButton disabled={onSaveImage === undefined || actionState === "copying"} label={actionState === "saving-image" ? "正在保存图片…" : "保存图片"} onPress={() => { void saveImage(); }} />
+            {imageSettingsRecoveryVisible && onOpenImageSettings !== undefined ? <Button label="打开系统设置" onPress={() => { void onOpenImageSettings(); }} /> : null}
           </View>
         ) : null}
 

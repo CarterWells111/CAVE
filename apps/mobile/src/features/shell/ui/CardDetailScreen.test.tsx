@@ -82,6 +82,18 @@ test("captures only the confirmed export paper, never mixed private card text", 
   expect(onSaveImage).toHaveBeenCalledWith(expect.objectContaining({ sections: [expect.objectContaining({ text: "确认的文字" })] }), "file:///confirmed.png");
 });
 
+test("reveals Settings only after a permanent photo denial and only opens it when pressed", async () => {
+  const onOpenImageSettings = jest.fn(async () => undefined);
+  const onSaveImage = jest.fn(async () => { throw Object.assign(new Error("safe"), { recovery: "open-settings" }); });
+  renderScreen({ exportEligible: true, exportModel: Object.freeze({ title: "靠近之前，我想告诉你" as const, sections: Object.freeze([]), consentFooter: "这张卡只代表我整理它时的感受。任何人都可以随时改变主意，每一种靠近仍然需要当时再次确认。" as const }), onOpenImageSettings, onSaveImage });
+
+  fireEvent.press(screen.getByRole("button", { name: "保存图片" }));
+  expect(await screen.findByRole("button", { name: "打开系统设置" })).toBeTruthy();
+  expect(onOpenImageSettings).not.toHaveBeenCalled();
+  fireEvent.press(screen.getByRole("button", { name: "打开系统设置" }));
+  expect(onOpenImageSettings).toHaveBeenCalledTimes(1);
+});
+
 test("shows a safe edit error and retry state", async () => {
   const onEdit = jest.fn()
     .mockRejectedValueOnce(new Error("private storage details"))

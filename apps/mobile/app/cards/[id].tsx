@@ -6,7 +6,7 @@ import { Screen } from "../../src/core/ui/Screen";
 import type { SavedCommunicationCardRecord } from "../../src/features/journey/domain/types";
 import { selectConfirmedSavedCommunicationCard } from "../../src/features/journey/domain/derive-communication-card";
 import { createCommunicationCardExportModel } from "../../src/features/journey/domain/communication-card-export";
-import { saveCardImageToLibrary } from "../../src/features/journey/infrastructure/expo-card-image-adapter";
+import { cardImagePermissionRecovery, saveCardImageToLibrary } from "../../src/features/journey/infrastructure/expo-card-image-adapter";
 import { useJourneyRuntime } from "../../src/features/journey/runtime/JourneyRuntimeProvider";
 import {
   applySavedCardSectionUpdates,
@@ -111,6 +111,7 @@ export default function SavedCardRoute() {
           if (result.status !== "success") throw new Error(result.code);
         },
         onSaveImage: (_model, imageUri: string) => saveCardImageToLibrary(imageUri),
+        onOpenImageSettings: cardImagePermissionRecovery.openSettings,
       })}
     />
   );
