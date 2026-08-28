@@ -41,7 +41,8 @@ function makeHarness() {
   const database = {
     initialize: jest.fn(async () => connection),
     close: jest.fn(async () => undefined),
-    removeDatabaseFiles: jest.fn(async () => undefined)
+    removeDatabaseFiles: jest.fn(async () => undefined),
+    withExclusiveMaintenance: jest.fn()
   } satisfies EncryptedDatabaseManager;
   return { connection, database, getFirstAsync, runAsync };
 }

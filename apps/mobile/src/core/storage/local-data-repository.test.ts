@@ -16,7 +16,8 @@ function connectionWithRows() {
   const manager: EncryptedDatabaseManager = {
     initialize: jest.fn(async () => connection as unknown as DatabaseConnection),
     close: jest.fn(async () => undefined),
-    removeDatabaseFiles: jest.fn(async () => undefined)
+    removeDatabaseFiles: jest.fn(async () => undefined),
+    withExclusiveMaintenance: jest.fn()
   };
   return { calls, connection, manager };
 }

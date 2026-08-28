@@ -1,4 +1,7 @@
-import type { EncryptedDatabaseManager } from "../../../core/storage/database";
+import type {
+  EncryptedDatabaseManager,
+  TransactionalEncryptedDatabaseManager
+} from "../../../core/storage/database";
 import {
   migrateLegacyCommunicationCard,
   migrateJourneyDraftV1ToV3,
@@ -36,7 +39,7 @@ function parseJson(payload: string): unknown {
 }
 
 export class SqlJourneyDraftRepository implements JourneyDraftRepository {
-  constructor(private readonly database: EncryptedDatabaseManager) {}
+  constructor(private readonly database: TransactionalEncryptedDatabaseManager) {}
 
   async loadActive(): Promise<JourneyDraft | null> {
     const connection = await this.database.initialize();
@@ -50,8 +53,7 @@ export class SqlJourneyDraftRepository implements JourneyDraftRepository {
       return value;
     }
 
-    await connection.execAsync("BEGIN IMMEDIATE");
-    try {
+    return await this.database.withTransaction(async (connection) => {
       const concurrentRow = await connection.getFirstAsync<DraftRow>(
         "SELECT schema_version, payload FROM journey_drafts_v3 ORDER BY updated_at DESC LIMIT 1"
       );
@@ -59,7 +61,6 @@ export class SqlJourneyDraftRepository implements JourneyDraftRepository {
         if (concurrentRow.schema_version !== 3) throw new JourneyStorageError("unsupported-schema");
         const concurrentValue = parseJson(concurrentRow.payload);
         if (!isJourneyDraftV3(concurrentValue)) throw new JourneyStorageError("malformed-payload");
-        await connection.execAsync("COMMIT");
         return concurrentValue;
       }
 
@@ -80,7 +81,6 @@ export class SqlJourneyDraftRepository implements JourneyDraftRepository {
           migrated.createdAt,
           migrated.updatedAt
         );
-        await connection.execAsync("COMMIT");
         return migrated;
       }
 
@@ -88,7 +88,6 @@ export class SqlJourneyDraftRepository implements JourneyDraftRepository {
         "SELECT schema_version, payload FROM journey_drafts ORDER BY updated_at DESC LIMIT 1"
       );
       if (legacyRow === null) {
-        await connection.execAsync("COMMIT");
         return null;
       }
       if (legacyRow.schema_version !== 1) throw new JourneyStorageError("unsupported-schema");
@@ -99,7 +98,6 @@ export class SqlJourneyDraftRepository implements JourneyDraftRepository {
         legacyValue.id
       );
       if (receipt !== null) {
-        await connection.execAsync("COMMIT");
         return null;
       }
       const migrated = migrateJourneyDraftV1ToV3(legacyValue);
@@ -122,12 +120,8 @@ export class SqlJourneyDraftRepository implements JourneyDraftRepository {
         3,
         migrated.updatedAt
       );
-      await connection.execAsync("COMMIT");
       return migrated;
-    } catch (error) {
-      await connection.execAsync("ROLLBACK");
-      throw error;
-    }
+    });
   }
 
   async saveActive(draft: JourneyDraft): Promise<void> {
@@ -143,17 +137,11 @@ export class SqlJourneyDraftRepository implements JourneyDraftRepository {
   }
 
   async deleteActive(): Promise<void> {
-    const connection = await this.database.initialize();
-    await connection.execAsync("BEGIN IMMEDIATE");
-    try {
+    await this.database.withTransaction(async (connection) => {
       await connection.runAsync("DELETE FROM journey_drafts_v3");
       await connection.runAsync("DELETE FROM journey_drafts_v2");
       await connection.runAsync("DELETE FROM journey_drafts");
-      await connection.execAsync("COMMIT");
-    } catch (error) {
-      await connection.execAsync("ROLLBACK");
-      throw error;
-    }
+    });
   }
 }
 

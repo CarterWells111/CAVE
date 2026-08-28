@@ -111,6 +111,7 @@ describe("Expo journey adapters", () => {
     const harness = makeModules({ databaseDirectory: directory, existingFiles: ["cave.db"] });
     const adapters = createExpoJourneyAdapters(harness.dependencies);
 
+    expect(adapters.files.coordinationKey).toBe(expected);
     await expect(adapters.files.databaseExists("cave.db")).resolves.toBe(true);
     expect(harness.constructedFileUris).toEqual([[expected, "cave.db"]]);
   });

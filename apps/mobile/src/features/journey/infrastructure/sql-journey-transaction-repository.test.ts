@@ -1,4 +1,7 @@
-import type { DatabaseConnection, EncryptedDatabaseManager } from "../../../core/storage/database";
+import type {
+  DatabaseConnection,
+  TransactionalEncryptedDatabaseManager
+} from "../../../core/storage/database";
 import { createJourneyDraft } from "../domain/types";
 import { SqlJourneyTransactionRepository } from "./sql-journey-transaction-repository";
 
@@ -15,15 +18,39 @@ function harness(failRun?: number) {
     getFirstAsync: jest.fn(async () => null),
     closeAsync: jest.fn(async () => undefined),
   };
-  const database: EncryptedDatabaseManager = {
+  const database: TransactionalEncryptedDatabaseManager = {
     initialize: jest.fn(async () => connection),
+    withTransaction: jest.fn(async (operation) => {
+      await connection.execAsync("BEGIN IMMEDIATE");
+      try {
+        const result = await operation(connection);
+        await connection.execAsync("COMMIT");
+        return result;
+      } catch (error) {
+        await connection.execAsync("ROLLBACK");
+        throw error;
+      }
+    }),
     close: jest.fn(async () => undefined),
     removeDatabaseFiles: jest.fn(async () => undefined),
+    withExclusiveMaintenance: jest.fn()
   };
-  return { connection, repository: new SqlJourneyTransactionRepository(database) };
+  return { connection, database, repository: new SqlJourneyTransactionRepository(database) };
 }
 
 const draft = { ...createJourneyDraft({ id: "branch-1", now: "2026-08-27T12:00:00.000Z" }), ageConfirmed: true };
+
+test("delegates transaction ownership to the database manager", async () => {
+  const { database, repository } = harness();
+
+  await repository.saveActive(draft, {
+    id: "active:branch-1", rootId: "root-1", sourceVersionId: "version-1",
+    title: "分支", updatedAt: draft.updatedAt, payload: draft,
+  });
+
+  expect(database.withTransaction).toHaveBeenCalledTimes(1);
+  expect(database.initialize).not.toHaveBeenCalled();
+});
 
 test.each([1, 2])("rolls back branch activation when statement %s fails", async (failRun) => {
   const { connection, repository } = harness(failRun);
