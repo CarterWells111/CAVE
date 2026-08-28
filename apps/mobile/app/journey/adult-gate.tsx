@@ -1,5 +1,5 @@
 import { useRouter } from "expo-router";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef } from "react";
 
 import { Screen } from "../../src/core/ui/Screen";
 import {
@@ -12,9 +12,7 @@ export default function AdultGateRoute() {
   const router = useRouter();
   const adultDeclaration = useAdultDeclaration();
   const runtime = useOptionalJourneyRuntime();
-  const [, setConfirmationRevision] = useState(0);
-  const authorizationReady = adultDeclaration.status === "authorized"
-    && runtime?.service.getSnapshot()?.ageConfirmed === true;
+  const alreadyConfirmed = runtime?.snapshot?.ageConfirmed === true;
   const activeRef = useRef(false);
   const decisionRef = useRef<object | null>(null);
   const navigatedRef = useRef(false);
@@ -35,8 +33,8 @@ export default function AdultGateRoute() {
   }, [router]);
 
   useEffect(() => {
-    if (authorizationReady) openPreface();
-  }, [authorizationReady, openPreface]);
+    if (alreadyConfirmed) openPreface();
+  }, [alreadyConfirmed, openPreface]);
 
   const confirmAdult = () => {
     if (!activeRef.current || decisionRef.current !== null || navigatedRef.current) return;
@@ -44,9 +42,7 @@ export default function AdultGateRoute() {
     decisionRef.current = decision;
     return adultDeclaration.confirmAdult()
       .then(() => {
-        if (activeRef.current && decisionRef.current === decision) {
-          setConfirmationRevision((revision) => revision + 1);
-        }
+        if (activeRef.current && decisionRef.current === decision) openPreface();
       })
       .catch((error: unknown) => {
         if (activeRef.current && decisionRef.current === decision) decisionRef.current = null;
@@ -61,7 +57,7 @@ export default function AdultGateRoute() {
     router.replace("/underage-exit");
   };
 
-  if (authorizationReady) return null;
+  if (alreadyConfirmed) return null;
   return (
     <Screen>
       <AdultGatePage
