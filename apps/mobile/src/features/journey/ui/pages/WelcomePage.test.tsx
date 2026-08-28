@@ -1,5 +1,7 @@
 import { fireEvent, render, screen } from "@testing-library/react-native";
+import { StyleSheet } from "react-native";
 
+import { darkTheme } from "../../../../core/design/theme";
 import { WelcomePage } from "./WelcomePage";
 
 test("shows one journey action and a top-right help action without age or login prompts", () => {
@@ -14,7 +16,7 @@ test("shows one journey action and a top-right help action without age or login 
   expect(onStart).toHaveBeenCalledTimes(1);
 });
 
-test("shows settings only when an authorized route supplies the action", () => {
+test("opens settings whenever its public or authorized route supplies the action", () => {
   const onOpenSettings = jest.fn();
   render(<WelcomePage onOpenSettings={onOpenSettings} onStart={jest.fn()} resumeAvailable />);
 
@@ -56,4 +58,48 @@ test("uses a continue label when an unfinished local journey exists", () => {
   expect(screen.queryByRole("button", { name: "开启旅程" })).toBeNull();
   fireEvent.press(screen.getByRole("button", { name: "继续旅程" }));
   expect(onResume).toHaveBeenCalledTimes(1);
+});
+
+test("keeps the original landing rhythm without pushing or shrinking the primary action", () => {
+  render(<WelcomePage onStart={jest.fn()} resumeAvailable={false} />);
+
+  const landingStyle = StyleSheet.flatten(screen.getByTestId("welcome-landing").props.style);
+  const brandStyle = StyleSheet.flatten(screen.getByTestId("welcome-brand").props.style);
+  const actionsStyle = StyleSheet.flatten(screen.getByTestId("welcome-actions").props.style);
+  const primaryActionStyle = StyleSheet.flatten(
+    screen.getByRole("button", { name: "开启旅程" }).props.style,
+  );
+
+  expect(landingStyle.gap).toBe(darkTheme.space.lg);
+  expect(brandStyle.paddingTop).toBe(darkTheme.space.card);
+  expect(actionsStyle.gap).toBe(darkTheme.space.compact);
+  expect(actionsStyle.marginTop).toBeUndefined();
+  expect(primaryActionStyle.minHeight).toBe(darkTheme.size.primaryActionHeight);
+  expect(primaryActionStyle.minHeight).toBe(52);
+});
+
+test("reflows only external brand space on constrained screens", () => {
+  render(
+    <WelcomePage
+      brandPaddingTop={0}
+      layout="inline-brand"
+      onStart={jest.fn()}
+      resumeAvailable={false}
+    />,
+  );
+
+  const landingStyle = StyleSheet.flatten(screen.getByTestId("welcome-landing").props.style);
+  const brandStyle = StyleSheet.flatten(screen.getByTestId("welcome-brand").props.style);
+  const brandNamesStyle = StyleSheet.flatten(screen.getByTestId("welcome-brand-names").props.style);
+  const cardStyle = StyleSheet.flatten(screen.getByTestId("welcome-intro-card").props.style);
+  const primaryActionStyle = StyleSheet.flatten(
+    screen.getByRole("button", { name: "开启旅程" }).props.style,
+  );
+
+  expect(landingStyle.gap).toBe(darkTheme.space.lg);
+  expect(brandStyle.paddingTop).toBe(0);
+  expect(brandNamesStyle.flexDirection).toBe("row");
+  expect(cardStyle.gap).toBe(darkTheme.space.md);
+  expect(cardStyle.padding).toBe(darkTheme.space.lg);
+  expect(primaryActionStyle.minHeight).toBe(52);
 });

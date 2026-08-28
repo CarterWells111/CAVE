@@ -104,24 +104,6 @@ export function JourneyRouteScreen({
       },
     ]);
   };
-  const restart = () => {
-    setRestartFailed(false);
-    Alert.alert("确认重新开始", "只会清除当前未完成的本机旅程草稿。", [
-      { text: "取消", style: "cancel" },
-      {
-        text: "确认重新开始",
-        style: "destructive",
-        onPress: () => {
-          void runtime.restart()
-            .then(() => {
-              setOptionsOpen(false);
-              router.replace("/journey/welcome");
-            })
-            .catch(() => setRestartFailed(true));
-        },
-      },
-    ]);
-  };
 
   return (
     <>

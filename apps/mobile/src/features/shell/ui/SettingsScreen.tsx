@@ -10,14 +10,18 @@ import { InfoCard } from "../../../core/ui/info-card";
 import { IconTextAction } from "../../../core/ui/icon-text-action";
 import { SecondaryButton } from "../../../core/ui/secondary-button";
 
+type DeleteCapability = {
+  deleteAllData(): Promise<void>;
+  onContinue(): void;
+};
+
 export type SettingsScreenProps = {
   appearancePreference: ThemePreference;
   appearanceSaving: boolean;
+  deletion?: DeleteCapability | undefined;
   resolvedTheme: ResolvedTheme;
   onAppearancePreferenceChange(preference: ThemePreference): Promise<void>;
   onBack(): void;
-  onDeleteAllData(): Promise<void>;
-  onContinueAfterDelete(): void;
 };
 
 type DeleteState = "idle" | "confirming" | "deleting" | "error" | "success";
@@ -133,10 +137,9 @@ function DestructiveButton({
 export function SettingsScreen({
   appearancePreference,
   appearanceSaving,
+  deletion,
   onAppearancePreferenceChange,
   onBack,
-  onContinueAfterDelete,
-  onDeleteAllData,
   resolvedTheme,
 }: SettingsScreenProps) {
   const theme = useTheme();
@@ -145,11 +148,11 @@ export function SettingsScreen({
   const deletionInFlight = useRef(false);
 
   const deleteAll = async () => {
-    if (deletionInFlight.current) return;
+    if (!deletion || deletionInFlight.current) return;
     deletionInFlight.current = true;
     setDeleteState("deleting");
     try {
-      await onDeleteAllData();
+      await deletion.deleteAllData();
       setDeleteState("success");
     } catch {
       setDeleteState("error");
@@ -267,7 +270,7 @@ export function SettingsScreen({
         </Text>
       </InfoCard>
 
-      <Card accessible={false} style={{ borderColor: theme.color.danger }}>
+      {deletion ? <Card accessible={false} style={{ borderColor: theme.color.danger }}>
         <Text accessibilityRole="header" selectable style={{ ...theme.typography.heading, color: theme.color.text }}>
           删除本机数据
         </Text>
@@ -313,10 +316,10 @@ export function SettingsScreen({
             <Text accessibilityRole="alert" selectable style={{ ...theme.typography.body, color: theme.color.success }}>
               本机数据已删除。
             </Text>
-            <Button label="返回欢迎页" onPress={onContinueAfterDelete} />
+            <Button label="返回首页" onPress={deletion.onContinue} />
           </View>
         ) : null}
-      </Card>
+      </Card> : null}
     </ScrollView>
   );
 }

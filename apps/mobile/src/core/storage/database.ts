@@ -487,9 +487,6 @@ export function createEncryptedDatabaseManager({
           );
         }
       }
-      if (currentVersion < 6) {
-        await applyMigration(opened, SCHEMA_V6, 6);
-      }
       return opened;
     } catch (error) {
       try {

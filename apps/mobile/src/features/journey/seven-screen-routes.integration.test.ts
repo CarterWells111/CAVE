@@ -63,10 +63,10 @@ test("connects every canonical continue action without an eighth page or dead-en
   expect(canonicalSources).not.toMatch(/\b8\s*\/\s*8\b|\/8\b|共\s*8\s*页/u);
 });
 
-test("opens the public landing before consulting private shell state", () => {
+test("opens the public tabs before consulting private shell state", () => {
   const entry = readFileSync(resolve(routeDirectory, "../index.tsx"), "utf8");
 
-  expect(entry).toContain('router.replace("/journey/welcome")');
+  expect(entry).toContain('router.replace("/(tabs)")');
   expect(entry).not.toContain("resolveShellLaunchPath");
   expect(entry).not.toContain("shellState.load()");
   expect(entry).not.toContain("八屏");

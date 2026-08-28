@@ -24,13 +24,13 @@ test("journey routes stay thin and contain no storage, network, model or SQL imp
   expect(sources).not.toMatch(new RegExp(forbidden.join("|"), "u"));
 });
 
-test("the root entry opens the public landing without reading persisted shell state", () => {
+test("the root entry opens the public tabs without reading persisted shell state", () => {
   const indexSource = readFileSync(
     resolve(__dirname, "../../../../app/index.tsx"),
     "utf8"
   );
 
-  expect(indexSource).toContain('router.replace("/journey/welcome")');
+  expect(indexSource).toContain('router.replace("/(tabs)")');
   expect(indexSource).not.toContain("shellState.load()");
   expect(indexSource).not.toContain("resolveShellLaunchPath");
   expect(indexSource).not.toContain("<HealthScreen");
