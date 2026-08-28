@@ -1,8 +1,10 @@
 import {
   COMMUNICATION_SECTION_IDS,
+  CURRENT_COMMUNICATION_CARD_SHARING_POLICY_VERSION,
   type CommunicationSectionId,
   type EditableDerivedField,
-  type JourneyDraft
+  type JourneyDraft,
+  type SavedCommunicationCardRecord
 } from "./types";
 
 export const COMMUNICATION_CARD_SECTION_IDS = COMMUNICATION_SECTION_IDS;
@@ -107,12 +109,17 @@ export function buildCommunicationCard(draft: JourneyDraft): JourneyDraft["commu
     const generatedText = generated[sectionId];
     const userEdited = previous?.userText !== undefined;
     const generatedChanged = previous !== undefined && previous.generatedText !== generatedText;
+    const visibility = previous === undefined
+      ? "pending"
+      : previous.visibility === "included" && generatedChanged
+        ? "pending"
+        : previous.visibility;
     return [sectionId, {
       generatedText,
       ...(userEdited ? { userText: previous.userText } : {}),
       sourceRevision: draft.sourceRevision,
       needsReview: userEdited && (previous.needsReview || generatedChanged),
-      visibility: previous?.visibility === "deleted" ? "deleted" : "included"
+      visibility
     } satisfies EditableDerivedField];
   })) as JourneyDraft["communicationCard"];
 }
@@ -126,8 +133,7 @@ export function normalizeCommunicationDraft(
   card: JourneyDraft["communicationCard"]
 ): JourneyDraft["communicationCard"] {
   return Object.fromEntries(COMMUNICATION_CARD_SECTION_IDS.map((id) => [id, {
-    ...card[id],
-    visibility: card[id].visibility === "deleted" ? "deleted" : "included"
+    ...card[id]
   }])) as JourneyDraft["communicationCard"];
 }
 
@@ -137,10 +143,20 @@ export function selectConfirmedCommunicationCard(
   return {
     sections: COMMUNICATION_CARD_SECTION_IDS.flatMap((id) => {
       const field = draft.communicationCard[id];
-      return field.visibility === "included"
+      return field.visibility === "included" && !field.needsReview
         ? [{ id, text: field.userText ?? field.generatedText }]
         : [];
     }),
     consentFooter: COMMUNICATION_CARD_CONSENT_FOOTER
   };
+}
+
+export function selectConfirmedSavedCommunicationCard(
+  record: SavedCommunicationCardRecord
+): ConfirmedCommunicationCard | null {
+  if (
+    record.sharingPolicyVersion
+    !== CURRENT_COMMUNICATION_CARD_SHARING_POLICY_VERSION
+  ) return null;
+  return selectConfirmedCommunicationCard({ communicationCard: record.card });
 }

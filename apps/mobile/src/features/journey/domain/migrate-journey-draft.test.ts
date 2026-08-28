@@ -1,12 +1,63 @@
 import {
   migrateJourneyDraftV1ToV3,
   migrateJourneyDraftV2ToV3,
+  migrateJourneyDraftV3ToV4,
   migrateLegacyCommunicationCard,
   type JourneyDraftV1,
   type JourneyDraftV2
 } from "./migrate-journey-draft";
 import { OVERNIGHT_COMPLETE_POINT_EVENT_KEY } from "../application/journey-progress-markers";
 import { createJourneyDraft } from "./types";
+
+test("v3 to v4 preserves private content and resets every non-deleted section to pending", () => {
+  const current = createJourneyDraft({ id: "journey-v3", now: "created" });
+  const input = {
+    ...current,
+    schemaVersion: 3 as const,
+    overnightCustomNote: "private overnight note",
+    communicationCard: {
+      ...current.communicationCard,
+      "communication-night-expectations": {
+        generatedText: "generated",
+        userText: "private edit",
+        sourceRevision: 7,
+        needsReview: false,
+        visibility: "included" as const
+      },
+      "communication-possible-closeness": {
+        generatedText: "private only",
+        sourceRevision: 4,
+        needsReview: false,
+        visibility: "private" as const
+      },
+      "communication-not-this-time": {
+        generatedText: "removed",
+        sourceRevision: 2,
+        needsReview: false,
+        visibility: "deleted" as const
+      }
+    }
+  };
+  const before = JSON.stringify(input);
+
+  const migrated = migrateJourneyDraftV3ToV4(input);
+
+  expect(JSON.stringify(input)).toBe(before);
+  expect(migrated).toMatchObject({
+    id: input.id,
+    schemaVersion: 4,
+    overnightCustomNote: "private overnight note"
+  });
+  expect(migrated.communicationCard["communication-night-expectations"]).toEqual({
+    ...input.communicationCard["communication-night-expectations"],
+    visibility: "pending"
+  });
+  expect(migrated.communicationCard["communication-possible-closeness"].visibility).toBe("pending");
+  expect(migrated.communicationCard["communication-not-this-time"].visibility).toBe("deleted");
+  expect(Object.values(migrated.communicationCard).every(({ visibility }) => (
+    visibility === "pending" || visibility === "deleted"
+  ))).toBe(true);
+});
 
 function legacyDraft(): JourneyDraftV1 {
   return {

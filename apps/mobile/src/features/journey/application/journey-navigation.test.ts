@@ -1,6 +1,7 @@
 import { createJourneyDraft } from "../domain/types";
 import {
   migrateJourneyDraftV2ToV3,
+  migrateJourneyDraftV3ToV4,
   type JourneyDraftV2
 } from "../domain/migrate-journey-draft";
 import {
@@ -170,5 +171,6 @@ test("resumes a migrated v2 draft after overnight instead of falling back", () =
     pointEventKeys: []
   };
 
-  expect(getResumePath(migrateJourneyDraftV2ToV3(oldDraft))).toBe("/journey/behavior-map");
+  expect(getResumePath(migrateJourneyDraftV3ToV4(migrateJourneyDraftV2ToV3(oldDraft))))
+    .toBe("/journey/behavior-map");
 });

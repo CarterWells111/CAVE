@@ -1,5 +1,6 @@
 import {
   COMMUNICATION_SECTION_IDS,
+  CURRENT_COMMUNICATION_CARD_SHARING_POLICY_VERSION,
   type CommunicationSectionId,
   type SavedCommunicationCardRecord,
   type SharingVisibility,
@@ -42,6 +43,15 @@ export function buildEditableSavedCardSections(
       needsReview: field.needsReview,
     };
   });
+}
+
+export function confirmSavedCardSharingPolicy(
+  record: SavedCommunicationCardRecord
+): SavedCommunicationCardRecord {
+  return {
+    ...record,
+    sharingPolicyVersion: CURRENT_COMMUNICATION_CARD_SHARING_POLICY_VERSION
+  };
 }
 
 export function applySavedCardSectionUpdates(

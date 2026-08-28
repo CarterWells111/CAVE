@@ -3,16 +3,22 @@ import type {
   TransactionalEncryptedDatabaseManager
 } from "../../../core/storage/database";
 import type { JourneyDraftV1, JourneyDraftV2 } from "../domain/migrate-journey-draft";
-import { createJourneyDraft, type SavedCommunicationCardRecord } from "../domain/types";
+import {
+  CURRENT_COMMUNICATION_CARD_SHARING_POLICY_VERSION,
+  createJourneyDraft,
+  type SavedCommunicationCardRecord
+} from "../domain/types";
 import { JourneyStorageError } from "./journey-draft-repository";
 import { SqlCommunicationCardRepository, SqlJourneyDraftRepository } from "./sql-journey-draft-repository";
 
 function harness(options: { failLegacyDeleteOnce?: boolean; failCurrentInsertOnce?: boolean } = {}) {
   let draftRow: Record<string, unknown> | null = null;
+  let v3DraftRow: Record<string, unknown> | null = null;
   let v2DraftRow: Record<string, unknown> | null = null;
   let legacyDraftRow: Record<string, unknown> | null = null;
   let transactionSnapshot: {
     draftRow: Record<string, unknown> | null;
+    v3DraftRow: Record<string, unknown> | null;
     v2DraftRow: Record<string, unknown> | null;
     legacyDraftRow: Record<string, unknown> | null;
     receiptSourceIds: Set<string>;
@@ -28,6 +34,7 @@ function harness(options: { failLegacyDeleteOnce?: boolean; failCurrentInsertOnc
       if (sql === "BEGIN IMMEDIATE") {
         transactionSnapshot = {
           draftRow,
+          v3DraftRow,
           v2DraftRow,
           legacyDraftRow,
           receiptSourceIds: new Set(receiptSourceIds),
@@ -36,6 +43,7 @@ function harness(options: { failLegacyDeleteOnce?: boolean; failCurrentInsertOnc
         transactionSnapshot = null;
       } else if (sql === "ROLLBACK" && transactionSnapshot !== null) {
         draftRow = transactionSnapshot.draftRow;
+        v3DraftRow = transactionSnapshot.v3DraftRow;
         v2DraftRow = transactionSnapshot.v2DraftRow;
         legacyDraftRow = transactionSnapshot.legacyDraftRow;
         receiptSourceIds.clear();
@@ -45,14 +53,16 @@ function harness(options: { failLegacyDeleteOnce?: boolean; failCurrentInsertOnc
     }),
     runAsync: jest.fn(async (sql: string, ...params: unknown[]) => {
       sqlCalls.push(sql);
-      if (sql.startsWith("INSERT INTO journey_drafts_v3")) {
+      if (sql.startsWith("INSERT INTO journey_drafts_v4")) {
         if (failCurrentInsertOnce) {
           failCurrentInsertOnce = false;
           throw new Error("disk write failed");
         }
         draftRow = { id: params[0], schema_version: params[1], payload: params[2] };
-      } else if (sql === "DELETE FROM journey_drafts_v3") {
+      } else if (sql === "DELETE FROM journey_drafts_v4") {
         draftRow = null;
+      } else if (sql === "DELETE FROM journey_drafts_v3") {
+        v3DraftRow = null;
       } else if (sql === "DELETE FROM journey_drafts_v2") {
         v2DraftRow = null;
       } else if (sql === "DELETE FROM journey_drafts") {
@@ -81,7 +91,8 @@ function harness(options: { failLegacyDeleteOnce?: boolean; failCurrentInsertOnc
       if (sql.includes("journey_migration_receipts")) {
         return (receiptSourceIds.has(String(params[0])) ? { migration_id: `receipt:${String(params[0])}` } : null) as never;
       }
-      if (sql.includes("journey_drafts_v3")) return draftRow as never;
+      if (sql.includes("journey_drafts_v4")) return draftRow as never;
+      if (sql.includes("journey_drafts_v3")) return v3DraftRow as never;
       if (sql.includes("journey_drafts_v2")) return v2DraftRow as never;
       return legacyDraftRow as never;
     }),
@@ -109,6 +120,7 @@ function harness(options: { failLegacyDeleteOnce?: boolean; failCurrentInsertOnc
     manager,
     sqlCalls,
     setDraftRow: (row: Record<string, unknown> | null) => { draftRow = row; },
+    setV3DraftRow: (row: Record<string, unknown> | null) => { v3DraftRow = row; },
     setV2DraftRow: (row: Record<string, unknown> | null) => { v2DraftRow = row; },
     setLegacyDraftRow: (row: Record<string, unknown> | null) => { legacyDraftRow = row; }
   };
@@ -189,7 +201,7 @@ describe("SqlJourneyDraftRepository", () => {
     expect(fake.manager.initialize).not.toHaveBeenCalled();
   });
 
-  test("loads empty storage, then upserts and deletes an active v3 draft", async () => {
+  test("loads empty storage, then upserts and deletes an active v4 draft", async () => {
     const fake = harness();
     const repository = new SqlJourneyDraftRepository(fake.manager);
     const draft = { ...createJourneyDraft({ id: "journey-1", now: "now" }), ageConfirmed: true };
@@ -199,11 +211,58 @@ describe("SqlJourneyDraftRepository", () => {
     await expect(repository.loadActive()).resolves.toEqual(draft);
     await repository.deleteActive();
     await expect(repository.loadActive()).resolves.toBeNull();
-    expect(fake.sqlCalls.join("\n")).toContain("journey_drafts_v3");
+    expect(fake.sqlCalls.join("\n")).toContain("journey_drafts_v4");
     expect(fake.sqlCalls.join("\n")).not.toContain("INSERT INTO journey_drafts (");
   });
 
-  test("atomically migrates an origin/main v2 row into the v3 table without losing private data", async () => {
+  test("atomically copies v3 into v4, preserves private text, and requires fresh sharing confirmation", async () => {
+    const fake = harness();
+    const current = createJourneyDraft({ id: "journey-v3", now: "now" });
+    const v3 = {
+      ...current,
+      schemaVersion: 3 as const,
+      overnightCustomNote: "private note",
+      communicationCard: {
+        ...current.communicationCard,
+        "communication-night-expectations": {
+          generatedText: "generated",
+          userText: "private edit",
+          sourceRevision: 3,
+          needsReview: false,
+          visibility: "included" as const
+        },
+        "communication-not-this-time": {
+          generatedText: "deleted text",
+          sourceRevision: 2,
+          needsReview: false,
+          visibility: "deleted" as const
+        }
+      }
+    };
+    fake.setV3DraftRow({ schema_version: 3, payload: JSON.stringify(v3) });
+    const repository = new SqlJourneyDraftRepository(fake.manager);
+
+    await expect(repository.loadActive()).resolves.toMatchObject({
+      schemaVersion: 4,
+      overnightCustomNote: "private note",
+      communicationCard: {
+        "communication-night-expectations": {
+          userText: "private edit",
+          visibility: "pending"
+        },
+        "communication-not-this-time": { visibility: "deleted" }
+      }
+    });
+    expect(fake.sqlCalls).not.toContain("DELETE FROM journey_drafts_v3");
+    expect(fake.sqlCalls.some((sql) => sql.startsWith("INSERT INTO journey_migration_receipts")))
+      .toBe(true);
+    const writeCount = fake.sqlCalls.filter((sql) => sql.startsWith("INSERT INTO journey_drafts_v4")).length;
+    await repository.loadActive();
+    expect(fake.sqlCalls.filter((sql) => sql.startsWith("INSERT INTO journey_drafts_v4")))
+      .toHaveLength(writeCount);
+  });
+
+  test("atomically migrates an origin/main v2 row into the v4 table without losing private data", async () => {
     const fake = harness();
     fake.setV2DraftRow({ schema_version: 2, payload: JSON.stringify(v2Draft("behavior-map")) });
     const repository = new SqlJourneyDraftRepository(fake.manager);
@@ -212,7 +271,7 @@ describe("SqlJourneyDraftRepository", () => {
 
     expect(migrated).toMatchObject({
       id: "journey-v2",
-      schemaVersion: 3,
+      schemaVersion: 4,
       currentPage: "behavior-map",
       overnightCustomNote: "private overnight note",
       journal: { text: "private journal text" },
@@ -223,14 +282,14 @@ describe("SqlJourneyDraftRepository", () => {
       .toBe("private boundary edit");
     const begin = fake.sqlCalls.indexOf("BEGIN IMMEDIATE");
     const readV2 = fake.sqlCalls.findIndex((sql) => sql.includes("FROM journey_drafts_v2"));
-    const writeV3 = fake.sqlCalls.findIndex((sql) => sql.startsWith("INSERT INTO journey_drafts_v3"));
+    const writeV3 = fake.sqlCalls.findIndex((sql) => sql.startsWith("INSERT INTO journey_drafts_v4"));
     const commit = fake.sqlCalls.indexOf("COMMIT");
     expect(begin).toBeLessThan(readV2);
     expect(readV2).toBeLessThan(writeV3);
     expect(writeV3).toBeLessThan(commit);
 
     await expect(repository.loadActive()).resolves.toEqual(migrated);
-    expect(fake.sqlCalls.filter((sql) => sql.startsWith("INSERT INTO journey_drafts_v3")))
+    expect(fake.sqlCalls.filter((sql) => sql.startsWith("INSERT INTO journey_drafts_v4")))
       .toHaveLength(1);
   });
 
@@ -243,7 +302,7 @@ describe("SqlJourneyDraftRepository", () => {
     expect(fake.sqlCalls).toContain("ROLLBACK");
     await expect(repository.loadActive()).resolves.toMatchObject({
       id: "journey-v2",
-      schemaVersion: 3,
+      schemaVersion: 4,
       currentPage: "behavior-map"
     });
   });
@@ -253,7 +312,7 @@ describe("SqlJourneyDraftRepository", () => {
     fake.setV2DraftRow({ schema_version: 2, payload: JSON.stringify(v2Draft("welcome")) });
 
     await expect(new SqlJourneyDraftRepository(fake.manager).loadActive()).resolves.toMatchObject({
-      schemaVersion: 3,
+      schemaVersion: 4,
       currentPage: "body-knowledge",
       pointEventKeys: []
     });
@@ -271,7 +330,7 @@ describe("SqlJourneyDraftRepository", () => {
 
     await expect(new SqlJourneyDraftRepository(fake.manager).loadActive()).resolves.toMatchObject({
       id: "interim-v2",
-      schemaVersion: 3,
+      schemaVersion: 4,
       currentPage: "reflection",
       pointEventKeys: expect.arrayContaining(["progress:overnight-complete:v1"])
     });
@@ -289,13 +348,13 @@ describe("SqlJourneyDraftRepository", () => {
 
     await expect(new SqlJourneyDraftRepository(fake.manager).loadActive()).resolves.toMatchObject({
       id: "interim-body-knowledge",
-      schemaVersion: 3,
+      schemaVersion: 4,
       currentPage: "body-knowledge",
       pointEventKeys: []
     });
   });
 
-  test("transactionally migrates one legacy v1 draft to v3 and records an idempotent receipt", async () => {
+  test("transactionally migrates one legacy v1 draft to v4 and records an idempotent receipt", async () => {
     const fake = harness();
     const legacy = legacyDraft();
     fake.setLegacyDraftRow({ schema_version: 1, payload: JSON.stringify(legacy) });
@@ -304,13 +363,13 @@ describe("SqlJourneyDraftRepository", () => {
     const migrated = await repository.loadActive();
     expect(migrated).toMatchObject({
       id: legacy.id,
-      schemaVersion: 3,
+      schemaVersion: 4,
       currentPage: "final-preparation",
       addressPreference: null
     });
     expect(migrated?.communicationCard["communication-not-this-time"]).toMatchObject({
       userText: "Please ask.",
-      visibility: "included",
+      visibility: "pending",
       needsReview: true
     });
     expect(fake.sqlCalls).toContain("BEGIN IMMEDIATE");
@@ -331,7 +390,7 @@ describe("SqlJourneyDraftRepository", () => {
     fake.setLegacyDraftRow({ schema_version: 1, payload: JSON.stringify(legacy) });
     const repository = new SqlJourneyDraftRepository(fake.manager);
 
-    await expect(repository.loadActive()).resolves.toMatchObject({ id: legacy.id, schemaVersion: 3 });
+    await expect(repository.loadActive()).resolves.toMatchObject({ id: legacy.id, schemaVersion: 4 });
     fake.setDraftRow(null);
 
     await expect(repository.loadActive()).resolves.toBeNull();
@@ -342,7 +401,7 @@ describe("SqlJourneyDraftRepository", () => {
     const fake = harness();
     fake.setLegacyDraftRow({ schema_version: 1, payload: JSON.stringify(legacyDraft()) });
 
-    await expect(new SqlJourneyDraftRepository(fake.manager).loadActive()).resolves.toMatchObject({ schemaVersion: 3 });
+    await expect(new SqlJourneyDraftRepository(fake.manager).loadActive()).resolves.toMatchObject({ schemaVersion: 4 });
     await new SqlJourneyDraftRepository(fake.manager).deleteActive();
 
     await expect(new SqlJourneyDraftRepository(fake.manager).loadActive()).resolves.toBeNull();
@@ -390,19 +449,19 @@ describe("SqlJourneyDraftRepository", () => {
 
     await expect(repository.loadActive()).rejects.toThrow("disk write failed");
     expect(fake.sqlCalls).toContain("ROLLBACK");
-    await expect(repository.loadActive()).resolves.toMatchObject({ id: legacy.id, schemaVersion: 3 });
+    await expect(repository.loadActive()).resolves.toMatchObject({ id: legacy.id, schemaVersion: 4 });
   });
 
   test("rejects unknown schemas and malformed v2 payloads with typed errors", async () => {
     const fake = harness();
     const repository = new SqlJourneyDraftRepository(fake.manager);
-    fake.setDraftRow({ id: "journey-1", schema_version: 4, payload: "{}" });
+    fake.setDraftRow({ id: "journey-1", schema_version: 5, payload: "{}" });
     await expect(repository.loadActive()).rejects.toEqual(new JourneyStorageError("unsupported-schema"));
 
-    fake.setDraftRow({ id: "journey-1", schema_version: 3, payload: "not-json" });
+    fake.setDraftRow({ id: "journey-1", schema_version: 4, payload: "not-json" });
     await expect(repository.loadActive()).rejects.toEqual(new JourneyStorageError("malformed-payload"));
 
-    fake.setDraftRow({ id: "journey-1", schema_version: 3, payload: "{}" });
+    fake.setDraftRow({ id: "journey-1", schema_version: 4, payload: "{}" });
     await expect(repository.loadActive()).rejects.toEqual(new JourneyStorageError("malformed-payload"));
 
     fake.setDraftRow(null);
@@ -435,7 +494,7 @@ describe("SqlJourneyDraftRepository", () => {
     const fake = harness();
     const repository = new SqlJourneyDraftRepository(fake.manager);
     const malformed = { ...createJourneyDraft({ id: "journey-1", now: "now" }), ...patch };
-    fake.setDraftRow({ id: "journey-1", schema_version: 3, payload: JSON.stringify(malformed) });
+    fake.setDraftRow({ id: "journey-1", schema_version: 4, payload: JSON.stringify(malformed) });
 
     await expect(repository.loadActive()).rejects.toEqual(new JourneyStorageError("malformed-payload"));
   });
@@ -468,6 +527,7 @@ describe("SqlCommunicationCardRepository", () => {
       needsReview: true,
       visibility: "included"
     });
+    expect(record.sharingPolicyVersion).toBeUndefined();
   });
 
   test("lists, upserts and deletes cards through the same encrypted connection", async () => {
@@ -484,13 +544,33 @@ describe("SqlCommunicationCardRepository", () => {
       id: "card-1",
       journeyId: "journey-1",
       card,
-      savedAt: "now"
+      savedAt: "now",
+      sharingPolicyVersion: CURRENT_COMMUNICATION_CARD_SHARING_POLICY_VERSION
     };
 
     await repository.save(record);
     await expect(repository.list()).resolves.toEqual([record]);
     await repository.delete("card-1");
     await expect(repository.list()).resolves.toEqual([]);
+  });
+
+  test("keeps an older policy envelope privately readable but not current", async () => {
+    const fake = harness();
+    const card = createJourneyDraft({ id: "older-card", now: "now" }).communicationCard;
+    await fake.connection.runAsync(
+      "INSERT INTO journey_cards (id, journey_id, payload, saved_at) VALUES (?, ?, ?, ?)",
+      "older-card",
+      "older-journey",
+      JSON.stringify({ card, sharingPolicyVersion: 7 }),
+      "now"
+    );
+
+    await expect(new SqlCommunicationCardRepository(fake.manager).load("older-card"))
+      .resolves.toMatchObject({
+        id: "older-card",
+        card,
+        sharingPolicyVersion: 7
+      });
   });
 
   test("lists card metadata without selecting or returning payload", async () => {

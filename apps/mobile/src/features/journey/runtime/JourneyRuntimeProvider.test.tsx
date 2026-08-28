@@ -69,19 +69,19 @@ function nativePersistenceHarness({
     execAsync: jest.fn(async (sql: string) => { sqlCalls.push(sql); }),
     runAsync: jest.fn(async (sql: string, ...params: unknown[]) => {
       sqlCalls.push(sql);
-      if (sql.startsWith("INSERT INTO journey_drafts_v3")) {
+      if (sql.startsWith("INSERT INTO journey_drafts_v4")) {
         savedDraftRow = {
           schema_version: params[1] as number,
           payload: params[2] as string,
         };
       }
-      if (sql === "DELETE FROM journey_drafts_v3") savedDraftRow = null;
+      if (sql === "DELETE FROM journey_drafts_v4") savedDraftRow = null;
       return { changes: 0 };
     }),
     getAllAsync: jest.fn(async <T,>(sql: string) => { sqlCalls.push(sql); return [] as T[]; }),
     getFirstAsync: jest.fn(async <T,>(sql: string) => {
       sqlCalls.push(sql);
-      if (sql.startsWith("SELECT schema_version, payload FROM journey_drafts_v3")) {
+      if (sql.startsWith("SELECT schema_version, payload FROM journey_drafts_v4")) {
         return savedDraftRow as T | null;
       }
       return (sql === "PRAGMA user_version" ? { user_version: 0 } : null) as T | null;

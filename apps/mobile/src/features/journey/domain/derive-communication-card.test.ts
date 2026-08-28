@@ -3,9 +3,13 @@ import {
   buildCommunicationCard,
   COMMUNICATION_CARD_SECTION_IDS,
   normalizeCommunicationDraft,
-  selectConfirmedCommunicationCard
+  selectConfirmedCommunicationCard,
+  selectConfirmedSavedCommunicationCard
 } from "./derive-communication-card";
-import { createJourneyDraft } from "./types";
+import {
+  CURRENT_COMMUNICATION_CARD_SHARING_POLICY_VERSION,
+  createJourneyDraft
+} from "./types";
 
 function draft() {
   return {
@@ -19,13 +23,13 @@ function draft() {
   };
 }
 
-test("derives seven default-retained local sections at the current source revision", () => {
+test("derives seven pending local sections at the current source revision", () => {
   const card = buildCommunicationCard(draft());
 
   expect(Object.keys(card)).toEqual(COMMUNICATION_CARD_SECTION_IDS);
   expect(Object.values(card).every((field) => field.sourceRevision === 3)).toBe(true);
   expect(Object.values(card).every((field) => field.needsReview === false)).toBe(true);
-  expect(Object.values(card).every((field) => field.visibility === "included")).toBe(true);
+  expect(Object.values(card).every((field) => field.visibility === "pending")).toBe(true);
   expect(JSON.stringify(card)).not.toMatch(/score|percentage|readiness/iu);
 });
 
@@ -100,18 +104,18 @@ test("refreshes untouched fields but preserves user text and flags it for review
   expect(changed["communication-night-expectations"].needsReview).toBe(false);
 });
 
-test("preserves deletion across regeneration and normalizes old non-deleted states", () => {
+test("preserves every explicit privacy state across regeneration and normalization", () => {
   const input = buildCommunicationCard(draft());
   input["communication-comfort"].visibility = "deleted";
   input["communication-night-expectations"].visibility = "private";
 
   const rebuilt = buildCommunicationCard({ ...draft(), communicationCard: input, sourceRevision: 4 });
   expect(rebuilt["communication-comfort"].visibility).toBe("deleted");
-  expect(rebuilt["communication-night-expectations"].visibility).toBe("included");
+  expect(rebuilt["communication-night-expectations"].visibility).toBe("private");
   expect(Object.values(normalizeCommunicationDraft(input)).map(({ visibility }) => visibility))
     .toContain("deleted");
   expect(Object.values(normalizeCommunicationDraft(input)).some(({ visibility }) => visibility === "private"))
-    .toBe(false);
+    .toBe(true);
 });
 
 test("produces the same generated text for semantically identical unordered selections", () => {
@@ -148,14 +152,32 @@ test("selects only explicitly included sections plus the fixed consent footer", 
     generatedText: "PENDING",
     visibility: "pending"
   };
+  card["communication-mutual-boundaries"] = {
+    ...card["communication-mutual-boundaries"],
+    generatedText: "STALE INCLUDED",
+    visibility: "included",
+    needsReview: true
+  };
 
   expect(selectConfirmedCommunicationCard({ ...draft(), communicationCard: card })).toEqual({
     sections: [{ id: "communication-night-expectations", text: "I hope we can rest together." }],
     consentFooter: COMMUNICATION_CARD_CONSENT_FOOTER
   });
   expect(JSON.stringify(selectConfirmedCommunicationCard({ ...draft(), communicationCard: card })))
-    .not.toMatch(/PRIVATE|DELETED|PENDING/);
+    .not.toMatch(/PRIVATE|DELETED|PENDING|STALE INCLUDED/);
   expect(COMMUNICATION_CARD_CONSENT_FOOTER).toBe(
     "这张卡只代表我整理它时的感受。任何人都可以随时改变主意，每一种靠近仍然需要当时再次确认。"
   );
+});
+
+test("requires the current sharing policy before a saved card can be selected for export", () => {
+  const card = buildCommunicationCard(draft());
+  card["communication-night-expectations"].visibility = "included";
+  const legacy = { id: "legacy", journeyId: "journey-1", card, savedAt: "now" };
+
+  expect(selectConfirmedSavedCommunicationCard(legacy)).toBeNull();
+  expect(selectConfirmedSavedCommunicationCard({
+    ...legacy,
+    sharingPolicyVersion: CURRENT_COMMUNICATION_CARD_SHARING_POLICY_VERSION
+  })?.sections).toHaveLength(1);
 });

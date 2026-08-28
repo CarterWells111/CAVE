@@ -235,8 +235,11 @@ test("saves all seven draft sections while preserving deletion-ready text", asyn
   expect(cards.save).toHaveBeenCalledWith(expect.objectContaining({ id: "card:journey-1", journeyId: "journey-1" }));
   const saveCard = cards.save as jest.MockedFunction<CommunicationCardRepository["save"]>;
   expect(JSON.stringify(saveCard.mock.calls[0]?.[0].card)).toContain("private marker");
-  expect(Object.values(saveCard.mock.calls[0]![0].card).every(({ visibility }) => visibility === "included"))
-    .toBe(true);
+  expect(saveCard.mock.calls[0]![0].card["communication-night-expectations"].visibility)
+    .toBe("included");
+  expect(saveCard.mock.calls[0]![0].card["communication-not-this-time"].visibility)
+    .toBe("private");
+  expect(saveCard.mock.calls[0]![0].sharingPolicyVersion).toBeUndefined();
   const copied = clipboard.setStringAsync.mock.calls[0]?.[0] ?? "";
   expect(copied).toContain("我对这个夜晚暂时没有具体想象。");
   expect(copied).not.toMatch(/draft-card|draft-/u);

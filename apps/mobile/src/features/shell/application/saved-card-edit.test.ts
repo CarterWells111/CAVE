@@ -2,6 +2,7 @@ import { COMMUNICATION_SECTION_IDS, type SavedCommunicationCardRecord } from "..
 import {
   applySavedCardSectionUpdates,
   buildEditableSavedCardSections,
+  confirmSavedCardSharingPolicy,
 } from "./saved-card-edit";
 
 function record(): SavedCommunicationCardRecord {
@@ -62,4 +63,13 @@ test("applies only submitted section updates while preserving generated text and
   );
   expect(updated.id).toBe(original.id);
   expect(updated.savedAt).toBe(original.savedAt);
+  expect(updated.sharingPolicyVersion).toBeUndefined();
+});
+
+test("only the explicit confirmation transition stamps the current sharing policy", () => {
+  const original = record();
+  const edited = applySavedCardSectionUpdates(original, []);
+
+  expect(edited.sharingPolicyVersion).toBeUndefined();
+  expect(confirmSavedCardSharingPolicy(edited).sharingPolicyVersion).toBe(1);
 });

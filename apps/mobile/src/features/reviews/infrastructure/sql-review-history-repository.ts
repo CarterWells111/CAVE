@@ -3,11 +3,13 @@ import {
   isJourneyDraftV1,
   isJourneyDraftV2,
   isJourneyDraftV3,
+  isJourneyDraftV4,
   isRecord
 } from "../../journey/domain/journey-draft-schema";
 import {
   migrateJourneyDraftV1ToV3,
-  migrateJourneyDraftV2ToV3
+  migrateJourneyDraftV2ToV3,
+  migrateJourneyDraftV3ToV4
 } from "../../journey/domain/migrate-journey-draft";
 import type { JourneyDraft } from "../../journey/domain/types";
 import { JourneyStorageError } from "../../journey/infrastructure/journey-draft-repository";
@@ -43,14 +45,18 @@ export const journeyDraftReviewPayloadCodec: ReviewPayloadCodec<JourneyDraft> = 
     }
     if (value.schemaVersion === 1) {
       if (!isJourneyDraftV1(value)) throw new JourneyStorageError("malformed-payload");
-      return migrateJourneyDraftV1ToV3(value);
+      return migrateJourneyDraftV3ToV4(migrateJourneyDraftV1ToV3(value));
     }
     if (value.schemaVersion === 2) {
       if (!isJourneyDraftV2(value)) throw new JourneyStorageError("malformed-payload");
-      return migrateJourneyDraftV2ToV3(value);
+      return migrateJourneyDraftV3ToV4(migrateJourneyDraftV2ToV3(value));
     }
     if (value.schemaVersion === 3) {
       if (!isJourneyDraftV3(value)) throw new JourneyStorageError("malformed-payload");
+      return migrateJourneyDraftV3ToV4(value);
+    }
+    if (value.schemaVersion === 4) {
+      if (!isJourneyDraftV4(value)) throw new JourneyStorageError("malformed-payload");
       return value;
     }
     if (typeof value.schemaVersion === "number") {

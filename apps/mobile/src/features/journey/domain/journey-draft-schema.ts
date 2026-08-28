@@ -4,7 +4,8 @@ import {
 } from "./migrate-journey-draft";
 import {
   COMMUNICATION_SECTION_IDS,
-  type JourneyDraft
+  type JourneyDraft,
+  type JourneyDraftV3
 } from "./types";
 
 function isStringArray(value: unknown): value is string[] {
@@ -211,9 +212,19 @@ export function isJourneyDraftV2(value: unknown): value is JourneyDraftV2 {
   return isOriginMainV2 || isInterimV2;
 }
 
-export function isJourneyDraftV3(value: unknown): value is JourneyDraft {
+export function isJourneyDraftV3(value: unknown): value is JourneyDraftV3 {
   return isRecord(value)
     && value.schemaVersion === 3
+    && isOneOf(value.currentPage, [
+      "body-knowledge", "overnight", "behavior-map", "reflection",
+      "preset-practice", "final-preparation"
+    ])
+    && isSharedV2OrV3Fields(value);
+}
+
+export function isJourneyDraftV4(value: unknown): value is JourneyDraft {
+  return isRecord(value)
+    && value.schemaVersion === 4
     && isOneOf(value.currentPage, [
       "body-knowledge", "overnight", "behavior-map", "reflection",
       "preset-practice", "final-preparation"

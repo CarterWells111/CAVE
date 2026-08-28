@@ -1,10 +1,11 @@
-import type {
-  AddressPreference,
-  BehaviorAttitude,
-  ChecklistItemStatus,
-  JournalSaveChoice,
-  JourneyDraft,
-  JourneyPracticeSubmission,
+import {
+  CURRENT_COMMUNICATION_CARD_SHARING_POLICY_VERSION,
+  type AddressPreference,
+  type BehaviorAttitude,
+  type ChecklistItemStatus,
+  type JournalSaveChoice,
+  type JourneyDraft,
+  type JourneyPracticeSubmission,
 } from "../domain/types";
 import { normalizeCommunicationDraft, selectConfirmedCommunicationCard } from "../domain/derive-communication-card";
 import type { ConfirmedCommunicationCard } from "../domain/derive-communication-card";
@@ -285,11 +286,18 @@ export class JourneyPageController {
 
   private buildSavedCommunicationDraft(draft: JourneyDraft, savedAt: string) {
     const card = normalizeCommunicationDraft(draft.communicationCard);
+    const sharingConfirmed = Object.values(card).every((field) => (
+      field.visibility !== "pending"
+      && (field.visibility !== "included" || !field.needsReview)
+    ));
     return {
       id: `card:${draft.id}`,
       journeyId: draft.id,
       card,
-      savedAt
+      savedAt,
+      ...(sharingConfirmed
+        ? { sharingPolicyVersion: CURRENT_COMMUNICATION_CARD_SHARING_POLICY_VERSION }
+        : {})
     };
   }
 

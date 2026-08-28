@@ -50,7 +50,7 @@ test("deterministically recomputes derived fields while preserving edits for rev
     ...original.communicationCard[section],
     userText: "my own wording",
     needsReview: false,
-    visibility: "included",
+    visibility: "pending",
   };
   const changed = {
     ...original,

@@ -1,4 +1,15 @@
-export const CURRENT_SCHEMA_VERSION = 8;
+export const CURRENT_SCHEMA_VERSION = 10;
+
+export type MigrationCallbackConnection = {
+  runAsync(sql: string, ...params: unknown[]): Promise<{ changes: number }>;
+  getAllAsync<T>(sql: string, ...params: unknown[]): Promise<T[]>;
+};
+
+export type DatabaseMigration = {
+  version: number;
+  schema: string;
+  afterSchema?: (connection: MigrationCallbackConnection) => Promise<void>;
+};
 
 export const SCHEMA_V1 = `
 CREATE TABLE IF NOT EXISTS course_progress (
@@ -112,7 +123,40 @@ CREATE TABLE IF NOT EXISTS local_journal_preferences (
   show_save_notice INTEGER NOT NULL CHECK (show_save_notice IN (0, 1))
 );`;
 
-export const DATABASE_MIGRATIONS = [
+export const SCHEMA_V9 = `
+CREATE TABLE IF NOT EXISTS local_journal_preferences (
+  singleton_id INTEGER PRIMARY KEY NOT NULL CHECK (singleton_id = 1),
+  show_save_notice INTEGER NOT NULL CHECK (show_save_notice IN (0, 1))
+);`;
+
+export const SCHEMA_V10 = `
+CREATE TABLE IF NOT EXISTS journey_drafts_v4 (
+  id TEXT PRIMARY KEY NOT NULL,
+  schema_version INTEGER NOT NULL CHECK (schema_version = 4),
+  payload TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);`;
+
+type TableInfoRow = { name: string };
+
+async function copyLegacyJournalPreference(
+  connection: MigrationCallbackConnection
+): Promise<void> {
+  const columns = await connection.getAllAsync<TableInfoRow>(
+    "PRAGMA table_info(privacy_settings)"
+  );
+  if (!columns.some(({ name }) => name === "show_local_journal_save_notice")) return;
+
+  await connection.runAsync(`
+INSERT INTO local_journal_preferences (singleton_id, show_save_notice)
+SELECT singleton_id, show_local_journal_save_notice
+FROM privacy_settings
+WHERE singleton_id = 1
+ON CONFLICT(singleton_id) DO NOTHING`);
+}
+
+export const DATABASE_MIGRATIONS: readonly DatabaseMigration[] = [
   { version: 1, schema: SCHEMA_V1 },
   { version: 2, schema: SCHEMA_V2 },
   { version: 3, schema: SCHEMA_V3 },
@@ -120,5 +164,7 @@ export const DATABASE_MIGRATIONS = [
   { version: 5, schema: SCHEMA_V5 },
   { version: 6, schema: SCHEMA_V6 },
   { version: 7, schema: SCHEMA_V7 },
-  { version: 8, schema: SCHEMA_V8 }
-] as const;
+  { version: 8, schema: SCHEMA_V8 },
+  { version: 9, schema: SCHEMA_V9, afterSchema: copyLegacyJournalPreference },
+  { version: 10, schema: SCHEMA_V10 }
+];

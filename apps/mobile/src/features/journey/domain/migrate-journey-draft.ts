@@ -2,7 +2,8 @@ import type {
   BehaviorAttitude,
   ChecklistItem,
   JournalSaveChoice,
-  JourneyDraft
+  JourneyDraft,
+  JourneyDraftV3
 } from "./types";
 import { createJourneyDraft, type CommunicationSectionId } from "./types";
 import { OVERNIGHT_COMPLETE_POINT_EVENT_KEY } from "../application/journey-progress-markers";
@@ -166,7 +167,7 @@ function derivePointEventKeys(pointEventKeys: string[], overnightCompleted: bool
   return migrated;
 }
 
-export function migrateJourneyDraftV1ToV3(input: JourneyDraftV1): JourneyDraft {
+export function migrateJourneyDraftV1ToV3(input: JourneyDraftV1): JourneyDraftV3 {
   const base = createJourneyDraft({ id: input.id, now: input.createdAt });
   const communicationCard = migrateLegacyCommunicationCard(input.communicationCard);
   const checklistItems = cloneChecklist(input.checklistItems);
@@ -176,6 +177,7 @@ export function migrateJourneyDraftV1ToV3(input: JourneyDraftV1): JourneyDraft {
 
   return {
     ...base,
+    schemaVersion: 3,
     currentPage: LEGACY_PAGE_MAP[input.currentPage],
     ageConfirmed: input.ageConfirmed,
     addressPreference: input.addressPreference === "你" || input.addressPreference === "妳"
@@ -221,7 +223,7 @@ export function migrateJourneyDraftV1ToV3(input: JourneyDraftV1): JourneyDraft {
   };
 }
 
-export function migrateJourneyDraftV2ToV3(input: JourneyDraftV2): JourneyDraft {
+export function migrateJourneyDraftV2ToV3(input: JourneyDraftV2): JourneyDraftV3 {
   const overnightCompleted = input.cloudSaveAvailability === "coming-soon"
     ? ORIGIN_MAIN_V2_PAGES_AFTER_OVERNIGHT.has(input.currentPage)
     : INTERIM_V2_PAGES_AFTER_OVERNIGHT.has(input.currentPage);
@@ -236,5 +238,21 @@ export function migrateJourneyDraftV2ToV3(input: JourneyDraftV2): JourneyDraft {
       input.pointEventKeys,
       overnightCompleted
     )
+  };
+}
+
+export function migrateJourneyDraftV3ToV4(input: JourneyDraftV3): JourneyDraft {
+  return {
+    ...input,
+    schemaVersion: 4,
+    communicationCard: Object.fromEntries(
+      Object.entries(input.communicationCard).map(([sectionId, field]) => [
+        sectionId,
+        {
+          ...field,
+          visibility: field.visibility === "deleted" ? "deleted" : "pending"
+        }
+      ])
+    ) as JourneyDraft["communicationCard"]
   };
 }
