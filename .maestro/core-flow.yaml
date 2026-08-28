@@ -81,5 +81,5 @@ tags:
     timeout: 20000
 - assertVisible: "回顾"
 - assertVisible: "练习"
-- assertVisible: "卡片"
+- assertVisible: "我的"
 - assertNotVisible: "设置.*当前"

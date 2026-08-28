@@ -6,7 +6,7 @@ const routes = [
   { key: "home-key", name: "index" },
   { key: "reviews-key", name: "reviews" },
   { key: "practice-key", name: "practice" },
-  { key: "cards-key", name: "cards" },
+  { key: "profile-key", name: "profile" },
 ] as const;
 
 test("renders the shared navigation with the Expo tab selection and navigation behavior", () => {
@@ -22,15 +22,15 @@ test("renders the shared navigation with the Expo tab selection and navigation b
   );
 
   expect(screen.getByRole("tab", { name: "回顾" }).props.accessibilityState).toEqual({ selected: true });
-  expect(screen.getByText("⌂")).toBeTruthy();
-  expect(screen.getByText("↺")).toBeTruthy();
-  expect(screen.getByText("◇")).toBeTruthy();
-  expect(screen.getByText("▤")).toBeTruthy();
+  expect(screen.getByText("home-outline")).toBeTruthy();
+  expect(screen.getByText("time-outline")).toBeTruthy();
+  expect(screen.getByText("chatbubbles-outline")).toBeTruthy();
+  expect(screen.getByText("person-outline")).toBeTruthy();
 
-  fireEvent.press(screen.getByRole("tab", { name: "卡片" }));
+  fireEvent.press(screen.getByRole("tab", { name: "我的" }));
 
-  expect(emitTabPress).toHaveBeenCalledWith("cards-key");
-  expect(navigate).toHaveBeenCalledWith("cards");
+  expect(emitTabPress).toHaveBeenCalledWith("profile-key");
+  expect(navigate).toHaveBeenCalledWith("profile");
 });
 
 test("emits current and prevented tab presses without navigating", () => {
@@ -49,8 +49,8 @@ test("emits current and prevented tab presses without navigating", () => {
   );
 
   fireEvent.press(screen.getByRole("tab", { name: "回顾" }));
-  fireEvent.press(screen.getByRole("tab", { name: "卡片" }));
+  fireEvent.press(screen.getByRole("tab", { name: "我的" }));
 
-  expect(emitTabPress.mock.calls).toEqual([["reviews-key"], ["cards-key"]]);
+  expect(emitTabPress.mock.calls).toEqual([["reviews-key"], ["profile-key"]]);
   expect(navigate).not.toHaveBeenCalled();
 });

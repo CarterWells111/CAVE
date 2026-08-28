@@ -8,7 +8,7 @@ tags:
 - assertVisible: "首页"
 - assertVisible: "回顾"
 - assertVisible: "练习"
-- assertVisible: "卡片"
+- assertVisible: "我的"
 - tapOn:
     text: "打开回顾：.*"
     index: 0

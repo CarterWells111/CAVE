@@ -56,7 +56,7 @@ describe("Maestro release selectors", () => {
     const shell = read("apps/mobile/src/features/journey/ui/JourneyScreenShell.tsx");
 
     expect(nav).toContain("LONG_TERM_DESTINATIONS.map");
-    for (const label of ["首页", "回顾", "练习", "卡片"]) {
+    for (const label of ["首页", "回顾", "练习", "我的"]) {
       expect(destinations).toContain(`label: "${label}"`);
       expect(flow).toContain(`"${label}"`);
     }

@@ -2,6 +2,7 @@ import { LongTermBottomNav } from "./LongTermBottomNav";
 import {
   getLongTermDestination,
   getLongTermDestinationByRouteName,
+  type LongTermRouteName,
 } from "./long-term-navigation";
 
 type LongTermTabBarRoute = Readonly<{
@@ -11,7 +12,7 @@ type LongTermTabBarRoute = Readonly<{
 
 export type LongTermTabBarProps = Readonly<{
   emitTabPress: (target: string) => Readonly<{ defaultPrevented: boolean }>;
-  navigate: (routeName: string) => void;
+  navigate: (routeName: LongTermRouteName) => void;
   state: Readonly<{
     index: number;
     routes: ReadonlyArray<LongTermTabBarRoute>;
@@ -33,7 +34,7 @@ export function LongTermTabBar({ emitTabPress, navigate, state }: LongTermTabBar
         if (route === undefined) return;
 
         const event = emitTabPress(route.key);
-        if (routeIndex !== state.index && !event.defaultPrevented) navigate(route.name);
+        if (routeIndex !== state.index && !event.defaultPrevented) navigate(destination.routeName);
       }}
     />
   );
