@@ -20,6 +20,7 @@ export type JourneyContentType = "MED" | "EDU" | "UX" | "REVIEW";
 export type JourneyReviewStatus =
   | "draft"
   | "expert_review_pending"
+  | "internal_test_approved"
   | "reviewed"
   | "revision_required";
 

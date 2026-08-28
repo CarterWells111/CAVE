@@ -7,7 +7,11 @@ import {
 
 function readMode(): ContentValidationMode {
   const modeIndex = process.argv.indexOf("--mode");
-  return process.argv[modeIndex + 1] === "draft" ? "draft" : "production";
+  const mode = modeIndex >= 0 ? process.argv[modeIndex + 1] : undefined;
+  if (mode === "draft" || mode === "internal" || mode === "production") {
+    return mode;
+  }
+  throw new Error("--mode must be exactly one of: draft, internal, production");
 }
 
 try {

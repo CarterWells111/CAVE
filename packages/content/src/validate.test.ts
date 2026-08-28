@@ -17,6 +17,21 @@ function issueCodes(run: () => unknown) {
   return validationIssues(run).map((issue) => issue.code);
 }
 
+function allJourneyReviewables(catalog: ReturnType<typeof loadCatalog>) {
+  return [
+    ...catalog.journey.options,
+    ...catalog.journey.knowledge,
+    ...catalog.journey.practice.phrases,
+    ...catalog.journey.practice.responses,
+    ...catalog.journey.practice.partnerResponses,
+    ...catalog.journey.practice.safetyBranches,
+    ...catalog.journey.practice.supportResources,
+    ...catalog.journey.uiCopy.behaviorMapPoints,
+    ...catalog.journey.uiCopy.attitudes,
+    ...catalog.journey.uiCopy.communicationSections
+  ];
+}
+
 describe("versioned content validation", () => {
   it("uses the CAVE course identity and lesson back-reference", () => {
     const catalog = loadCatalog();
@@ -29,6 +44,66 @@ describe("versioned content validation", () => {
 
   it("accepts the checked-in catalog in draft mode", () => {
     expect(() => validateCatalog(loadCatalog(), { mode: "draft" })).not.toThrow();
+  });
+
+  it("accepts complete internal approval internally but rejects it in production", () => {
+    const catalog = loadCatalog();
+    for (const item of allJourneyReviewables(catalog)) {
+      const requiresExpertReview = item.reviewStatus === "expert_review_pending";
+      Object.assign(item, {
+        reviewStatus: requiresExpertReview ? "internal_test_approved" : "reviewed",
+        reviewer: "annie",
+        reviewerRole: requiresExpertReview ? "内部测试审核人" : "产品与编辑审核人",
+        reviewedAt: "2026-08-28T09:56:30Z",
+        reviewedVersion: "2026-08-28-review-1",
+        reviewConclusion: requiresExpertReview
+          ? "仅内测通过；发布前仍需合格专家完成医疗、安全或性教育审核"
+          : "产品与编辑审核通过"
+      });
+    }
+
+    expect(() => validateCatalog(catalog, { mode: "internal" })).not.toThrow();
+    expect(new Set(issueCodes(() => validateCatalog(catalog, { mode: "production" })))).toEqual(
+      new Set(["INTERNAL_TEST_APPROVAL_ONLY"])
+    );
+  });
+
+  it("requires complete evidence for internal approval even in draft mode", () => {
+    const catalog = loadCatalog();
+    Object.assign(catalog.journey.knowledge[0]!, {
+      reviewStatus: "internal_test_approved",
+      reviewer: "annie",
+      reviewerRole: "内部测试审核人",
+      reviewedAt: "2026-08-28T09:56:30Z",
+      reviewedVersion: "2026-08-28-review-1"
+    });
+
+    expect(issueCodes(() => validateCatalog(catalog, { mode: "draft" }))).toContain(
+      "REVIEW_EVIDENCE_REQUIRED"
+    );
+  });
+
+  it.each([
+    ["draft", "DRAFT_CONTENT"],
+    ["expert_review_pending", "EXPERT_REVIEW_PENDING"],
+    ["revision_required", "REVISION_REQUIRED"]
+  ] as const)("rejects %s journey content in internal mode", (reviewStatus, expectedCode) => {
+    const catalog = loadCatalog();
+    Object.assign(catalog.journey.knowledge[0]!, { reviewStatus });
+
+    expect(issueCodes(() => validateCatalog(catalog, { mode: "internal" }))).toContain(
+      expectedCode
+    );
+  });
+
+  it("rejects legacy draft content in internal mode", () => {
+    const catalog = loadCatalog();
+    catalog.courses[0]!.reviewStatus = "draft";
+    delete catalog.courses[0]!.reviewedAt;
+
+    expect(issueCodes(() => validateCatalog(catalog, { mode: "internal" }))).toContain(
+      "DRAFT_CONTENT"
+    );
   });
 
   it("keeps seven legacy reviewed entries while rejecting seven-screen pending copy in production", () => {

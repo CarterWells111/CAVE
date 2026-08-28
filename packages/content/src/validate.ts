@@ -9,7 +9,7 @@ import type {
 import { ContentCatalogSchema } from "./load";
 import { JOURNEY_SOURCE_REGISTRY } from "./source-registry";
 
-export type ContentValidationMode = "draft" | "production";
+export type ContentValidationMode = "draft" | "internal" | "production";
 
 export type ContentValidationIssue = {
   code: string;
@@ -104,9 +104,16 @@ function matchesSequence(actual: readonly string[], expected: readonly string[])
     && actual.every((value, index) => value === expected[index]);
 }
 
-function productionReviewIssue(status: JourneyReviewStatus): string | undefined {
+function reviewStatusIssue(
+  status: JourneyReviewStatus,
+  mode: ContentValidationMode
+): string | undefined {
+  if (mode === "draft") return undefined;
   if (status === "draft") return "DRAFT_CONTENT";
   if (status === "expert_review_pending") return "EXPERT_REVIEW_PENDING";
+  if (status === "internal_test_approved" && mode === "production") {
+    return "INTERNAL_TEST_APPROVAL_ONLY";
+  }
   if (status === "revision_required") return "REVISION_REQUIRED";
   return undefined;
 }
@@ -124,7 +131,10 @@ function validateJourneyReview(
     item.reviewedVersion,
     item.reviewConclusion
   ];
-  if (item.reviewStatus === "reviewed" && evidence.some((value) => value === undefined)) {
+  const hasReviewEvidence = ["reviewed", "internal_test_approved"].includes(
+    item.reviewStatus
+  );
+  if (hasReviewEvidence && evidence.some((value) => value === undefined)) {
     addIssue(
       issues,
       "REVIEW_EVIDENCE_REQUIRED",
@@ -132,13 +142,11 @@ function validateJourneyReview(
       `${item.id} requires reviewer, role, date, version, and conclusion`
     );
   }
-  if (item.reviewStatus !== "reviewed" && evidence.some((value) => value !== undefined)) {
-    addIssue(issues, "UNEXPECTED_REVIEW_EVIDENCE", path, `${item.id} has evidence without reviewed status`);
+  if (!hasReviewEvidence && evidence.some((value) => value !== undefined)) {
+    addIssue(issues, "UNEXPECTED_REVIEW_EVIDENCE", path, `${item.id} has evidence without an approved status`);
   }
-  if (mode === "production") {
-    const code = productionReviewIssue(item.reviewStatus);
-    if (code) addIssue(issues, code, path, `${item.id} is ${item.reviewStatus}`);
-  }
+  const code = reviewStatusIssue(item.reviewStatus, mode);
+  if (code) addIssue(issues, code, path, `${item.id} is ${item.reviewStatus}`);
 }
 
 function validateJourney(catalog: ContentCatalog, mode: ContentValidationMode, issues: ContentValidationIssue[]) {
@@ -292,7 +300,7 @@ function validateReviewable(
   if (item.reviewStatus === "reviewed" && !item.reviewedAt) {
     addIssue(issues, "REVIEW_DATE_REQUIRED", path, `${item.id} is reviewed without reviewedAt`);
   }
-  if (mode === "production" && item.reviewStatus === "draft") {
+  if (mode !== "draft" && item.reviewStatus === "draft") {
     addIssue(issues, "DRAFT_CONTENT", path, `${item.id} is still draft`);
   }
 }

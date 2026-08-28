@@ -30,7 +30,13 @@ const JourneyReviewFields = {
   page: z.number().int().min(1).max(7),
   contentType: z.enum(["MED", "EDU", "UX", "REVIEW"]),
   sourceIds: z.array(z.string().min(1)),
-  reviewStatus: z.enum(["draft", "expert_review_pending", "reviewed", "revision_required"]),
+  reviewStatus: z.enum([
+    "draft",
+    "expert_review_pending",
+    "internal_test_approved",
+    "reviewed",
+    "revision_required"
+  ]),
   reviewer: z.string().min(1).optional(),
   reviewerRole: z.string().min(1).optional(),
   reviewedAt: z.string().datetime({ offset: true }).optional(),
