@@ -1,18 +1,20 @@
 import { useRef, useState } from "react";
-import { ScrollView, Text, TextInput, View } from "react-native";
+import { Text, TextInput, View } from "react-native";
 
 import { useTheme } from "../../../core/design/theme-provider";
 import { Button } from "../../../core/ui/Button";
 import { Card } from "../../../core/ui/Card";
-import { InfoCard } from "../../../core/ui/info-card";
+import { ChoiceChip } from "../../../core/ui/ChoiceChip";
+import { Screen } from "../../../core/ui/Screen";
 import { SecondaryButton } from "../../../core/ui/secondary-button";
 import { StatusBanner } from "../../../core/ui/StatusBanner";
+import type { SharingVisibility } from "../../journey/domain/types";
+import type {
+  EditableSavedCardSection,
+  SavedCardSectionUpdate,
+} from "../application/saved-card-edit";
 
-export type EditableConfirmedCardSection = Readonly<{
-  id: string;
-  title: string;
-  text: string;
-}>;
+export type { EditableSavedCardSection, SavedCardSectionUpdate } from "../application/saved-card-edit";
 
 export type SavedCardEditMetadata = Readonly<{
   id: string;
@@ -23,31 +25,61 @@ export type SavedCardEditMetadata = Readonly<{
 
 export type SavedCardEditScreenProps = {
   metadata: SavedCardEditMetadata;
-  confirmedSections: readonly EditableConfirmedCardSection[];
-  onSave(sections: readonly EditableConfirmedCardSection[]): Promise<void>;
+  sections: readonly EditableSavedCardSection[];
+  onSave(updates: readonly SavedCardSectionUpdate[]): Promise<void>;
   onCancel(): void;
 };
 
 type SaveState = "idle" | "saving" | "error" | "success";
 
+const VISIBILITY_LABELS: Readonly<Record<SharingVisibility, string>> = {
+  pending: "尚未决定",
+  included: "已加入展示",
+  private: "只留给自己",
+  deleted: "已删除，可恢复",
+};
+
+const VISIBILITY_CHOICES = [
+  { label: "加入展示", visibility: "included" },
+  { label: "只留给自己", visibility: "private" },
+  { label: "删除这一段", visibility: "deleted" },
+] as const;
+
+function baselineById(sections: readonly EditableSavedCardSection[]) {
+  return new Map(sections.map((section) => [section.id, {
+    text: section.text,
+    visibility: section.visibility,
+  }]));
+}
+
 export function SavedCardEditScreen({
-  confirmedSections,
+  sections: initialSections,
   metadata,
   onCancel,
   onSave
 }: SavedCardEditScreenProps) {
   const theme = useTheme();
-  const [sections, setSections] = useState<EditableConfirmedCardSection[]>(() => confirmedSections.map(
-    ({ id, text, title }) => ({ id, text, title })
+  const [sections, setSections] = useState<EditableSavedCardSection[]>(() => initialSections.map(
+    (section) => ({ ...section })
   ));
+  const baselineRef = useRef(baselineById(initialSections));
   const [saveState, setSaveState] = useState<SaveState>("idle");
   const [invalidIds, setInvalidIds] = useState<ReadonlySet<string>>(() => new Set());
   const [focusedId, setFocusedId] = useState<string | null>(null);
   const saveInFlight = useRef(false);
   const saving = saveState === "saving";
 
-  const updateSection = (id: string, text: string) => {
-    setSections((current) => current.map((section) => section.id === id ? { ...section, text } : section));
+  const isDirty = (section: EditableSavedCardSection) => {
+    const baseline = baselineRef.current.get(section.id);
+    return baseline?.text !== section.text || baseline.visibility !== section.visibility;
+  };
+  const hasChanges = sections.some(isDirty);
+
+  const updateSection = (
+    id: EditableSavedCardSection["id"],
+    update: Partial<Pick<EditableSavedCardSection, "text" | "visibility">>,
+  ) => {
+    setSections((current) => current.map((section) => section.id === id ? { ...section, ...update } : section));
     setInvalidIds((current) => {
       if (!current.has(id)) return current;
       const next = new Set(current);
@@ -59,18 +91,27 @@ export function SavedCardEditScreen({
 
   const save = async () => {
     if (saveInFlight.current) return;
-    const blankIds = sections.filter(({ text }) => text.trim().length === 0).map(({ id }) => id);
+    const blankIds = sections
+      .filter(({ text, visibility }) => visibility !== "deleted" && text.trim().length === 0)
+      .map(({ id }) => id);
     if (blankIds.length > 0) {
       setInvalidIds(new Set(blankIds));
       setSaveState("idle");
       return;
     }
-    const updated = sections.map(({ id, text, title }) => ({ id, title, text: text.trim() }));
+    const normalized = sections.map((section) => ({ ...section, text: section.text.trim() }));
+    const updates = normalized.filter(isDirty).map(({ id, text, visibility }) => ({ id, text, visibility }));
+    if (updates.length === 0) return;
     saveInFlight.current = true;
     setSaveState("saving");
     try {
-      await onSave(updated);
-      setSections(updated);
+      await onSave(updates);
+      const updatedIds = new Set(updates.map(({ id }) => id));
+      const savedSections = normalized.map((section) => updatedIds.has(section.id)
+        ? { ...section, needsReview: false }
+        : section);
+      baselineRef.current = baselineById(savedSections);
+      setSections(savedSections);
       setSaveState("success");
     } catch {
       setSaveState("error");
@@ -80,19 +121,9 @@ export function SavedCardEditScreen({
   };
 
   return (
-    <ScrollView
-      automaticallyAdjustKeyboardInsets
-      contentContainerStyle={{
-        alignSelf: "center",
-        gap: theme.space.xl,
-        maxWidth: theme.size.readableContentMax,
-        paddingHorizontal: theme.space.lg,
-        paddingVertical: theme.space.xl,
-        width: "100%"
-      }}
-      contentInsetAdjustmentBehavior="automatic"
+    <Screen
+      contentContainerStyle={{ gap: theme.space.xl }}
       keyboardDismissMode="interactive"
-      keyboardShouldPersistTaps="handled"
       testID="saved-card-edit-scroll"
     >
       <View style={{ gap: theme.space.sm }}>
@@ -103,11 +134,11 @@ export function SavedCardEditScreen({
           {`${metadata.dateLabel} · ${metadata.statusLabel}`}
         </Text>
         <Text selectable style={{ ...theme.typography.body, color: theme.color.textSecondary }}>
-          这里只编辑已经明确加入卡片的内容。
+          修改文字，并决定每一段是加入展示、只留给自己，还是从这张卡中删除。
         </Text>
       </View>
 
-      {sections.length > 0 ? sections.map((section) => {
+      {sections.map((section) => {
         const invalid = invalidIds.has(section.id);
         const focused = focusedId === section.id;
         return (
@@ -115,14 +146,22 @@ export function SavedCardEditScreen({
             <Text accessibilityRole="header" selectable style={{ ...theme.typography.cardTitle, color: theme.color.text }}>
               {section.title}
             </Text>
+            <Text selectable style={{ ...theme.typography.caption, color: theme.color.textSecondary }}>
+              {VISIBILITY_LABELS[section.visibility]}
+            </Text>
+            {section.needsReview ? (
+              <Text selectable style={{ ...theme.typography.caption, color: theme.color.warning }}>
+                内容已变化，需要重新确认
+              </Text>
+            ) : null}
             <TextInput
-              accessibilityHint={invalid ? "此段不能为空。" : "编辑已加入卡片的文字。"}
+              accessibilityHint={invalid ? "此段不能为空。" : "编辑这段沟通卡文字。"}
               accessibilityLabel={`编辑：${section.title}`}
               accessibilityState={{ disabled: saving }}
               editable={!saving}
               multiline
               onBlur={() => setFocusedId((current) => current === section.id ? null : current)}
-              onChangeText={(text) => updateSection(section.id, text)}
+              onChangeText={(text) => updateSection(section.id, { text })}
               onFocus={() => setFocusedId(section.id)}
               style={{
                 ...theme.typography.body,
@@ -145,15 +184,22 @@ export function SavedCardEditScreen({
                 {`${section.title}不能为空；请填写内容后再保存。`}
               </Text>
             ) : null}
+            <View accessibilityRole="radiogroup" style={{ gap: theme.space.sm }}>
+              {VISIBILITY_CHOICES.map(({ label, visibility }) => (
+                <ChoiceChip
+                  accessibilityLabel={`${label}：${section.title}`}
+                  disabled={saving}
+                  key={visibility}
+                  label={label}
+                  onPress={() => updateSection(section.id, { visibility })}
+                  selected={section.visibility === visibility}
+                  semantics="radio"
+                />
+              ))}
+            </View>
           </Card>
         );
-      }) : (
-        <InfoCard title="没有可编辑的已确认内容">
-          <Text selectable style={{ ...theme.typography.body, color: theme.color.textSecondary }}>
-            返回卡片后，可以先选择要加入的部分。
-          </Text>
-        </InfoCard>
-      )}
+      })}
 
       {saveState === "error" ? (
         <StatusBanner
@@ -170,8 +216,8 @@ export function SavedCardEditScreen({
           <Button label="完成编辑" onPress={onCancel} />
         ) : (
           <Button
-            disabled={sections.length === 0}
-            label={saving ? "正在保存更改…" : "保存更改"}
+            disabled={!hasChanges}
+            label={saving ? "正在保存更改…" : "保存沟通卡"}
             loading={saving}
             onPress={() => { void save(); }}
           />
@@ -180,6 +226,6 @@ export function SavedCardEditScreen({
           <SecondaryButton disabled={saving} label="取消编辑" onPress={onCancel} />
         ) : null}
       </View>
-    </ScrollView>
+    </Screen>
   );
 }

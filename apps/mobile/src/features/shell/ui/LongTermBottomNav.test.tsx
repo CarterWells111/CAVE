@@ -23,6 +23,9 @@ test("renders exactly four long-term destinations with an explicit current state
 test("keeps every destination touchable at 44 by 44 and supports no active tab", () => {
   render(<LongTermBottomNav navigate={jest.fn()} />);
 
+  expect(screen.getByTestId("long-term-bottom-nav-safe-area").props.edges).toEqual(
+    expect.objectContaining({ bottom: "additive" }),
+  );
   for (const tab of screen.getAllByRole("tab")) {
     expect(StyleSheet.flatten(tab.props.style)).toEqual(expect.objectContaining({ minHeight: 44, minWidth: 44 }));
     expect(tab.props.accessibilityState).toEqual({ selected: false });

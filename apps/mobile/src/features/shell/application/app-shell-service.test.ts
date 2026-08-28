@@ -3,6 +3,7 @@ import type { AppShellStateRepository } from "../infrastructure/app-shell-state-
 import {
   AppShellService,
   AppShellServiceError,
+  classifyActiveJourney,
   guardLongTermPath,
   isActiveLongTermReview,
   resolveShellLaunchPath,
@@ -49,6 +50,14 @@ test("treats a later draft as active without mistaking the completed initial jou
   expect(isActiveLongTermReview({ id: "review-later" }, null)).toBe(false);
 });
 
+test("classifies an adult-confirmed draft as the initial journey until the first completion", () => {
+  expect(classifyActiveJourney(null, null)).toBeNull();
+  expect(classifyActiveJourney({ id: "journey-first", ageConfirmed: false }, null)).toBeNull();
+  expect(classifyActiveJourney({ id: "journey-first", ageConfirmed: true }, null)).toBe("initial");
+  expect(classifyActiveJourney({ id: "journey-first", ageConfirmed: true }, firstCompletion)).toBeNull();
+  expect(classifyActiveJourney({ id: "journey-later", ageConfirmed: true }, firstCompletion)).toBe("review");
+});
+
 test("completes once, refreshes from the repository result, and clears", async () => {
   const { repository, service } = harness();
   const laterCompletion: AppShellState = {
@@ -65,13 +74,13 @@ test("completes once, refreshes from the repository result, and clears", async (
   expect(repository.clear).toHaveBeenCalledTimes(1);
 });
 
-test("guards long-term tabs while keeping settings available before completion", () => {
+test("keeps long-term tabs available before completion while preserving cold-launch routing", () => {
   const incomplete = { status: "ready", completion: null } as const;
   const completed = { status: "ready", completion: firstCompletion } as const;
 
   expect(resolveShellLaunchPath(incomplete)).toBe("/journey/welcome");
   expect(resolveShellLaunchPath(completed)).toBe("/(tabs)");
-  expect(guardLongTermPath(incomplete, "/(tabs)/reviews")).toBe("/journey/welcome");
+  expect(guardLongTermPath(incomplete, "/(tabs)/reviews")).toBe("/(tabs)/reviews");
   expect(guardLongTermPath(incomplete, "/settings/privacy")).toBe("/settings/privacy");
   expect(guardLongTermPath(completed, "/(tabs)/reviews")).toBe("/(tabs)/reviews");
   expect(guardLongTermPath(completed, "/settings/privacy")).toBe("/settings/privacy");

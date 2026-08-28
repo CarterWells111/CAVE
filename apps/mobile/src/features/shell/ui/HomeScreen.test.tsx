@@ -3,16 +3,16 @@ import { StyleSheet } from "react-native";
 
 import { HomeScreen } from "./HomeScreen";
 
-const activeReview = { id: "active", title: "八月回顾", dateLabel: "2026年8月27日", statusLabel: "进行中" };
+const activeReview = { id: "active", kind: "review" as const, title: "八月回顾", dateLabel: "2026年8月27日", statusLabel: "进行中" };
 const currentCard = { id: "card", title: "当前沟通卡", dateLabel: "2026年8月27日", statusLabel: "仅本机" };
 const recent = { id: "recent", title: "周末回顾", dateLabel: "2026年8月20日", statusLabel: "已完成" };
 
 test("shows all long-term home destinations using neutral metadata only", () => {
   const callbacks = {
-    onContinueReview: jest.fn(), onOpenCurrentCard: jest.fn(), onOpenRecord: jest.fn(),
+    onContinueJourney: jest.fn(), onOpenCurrentCard: jest.fn(), onOpenRecord: jest.fn(),
     onOpenSettings: jest.fn(), onStartPractice: jest.fn(), onStartReview: jest.fn(),
   };
-  render(<HomeScreen activeReview={activeReview} currentCard={currentCard} recentRecords={[recent]} {...callbacks} />);
+  render(<HomeScreen activeJourney={activeReview} currentCard={currentCard} recentRecords={[recent]} {...callbacks} />);
 
   expect(screen.getByText("首页")).toBeTruthy();
   expect(screen.getByText("八月回顾")).toBeTruthy();
@@ -36,6 +36,31 @@ test("shows all long-term home destinations using neutral metadata only", () => 
 
   const action = screen.getByRole("button", { name: "开始练习" });
   expect(StyleSheet.flatten(action.props.style)).toEqual(expect.objectContaining({ minWidth: 44 }));
+});
+
+test("continues an unfinished initial journey without offering to replace it", () => {
+  const onContinueJourney = jest.fn();
+  const onStartReview = jest.fn();
+  render(
+    <HomeScreen
+      activeJourney={{
+        id: "initial",
+        kind: "initial",
+        title: "首次旅程",
+        dateLabel: "2026年8月28日",
+        statusLabel: "进行中",
+      }}
+      onContinueJourney={onContinueJourney}
+      onStartPractice={jest.fn()}
+      onStartReview={onStartReview}
+      recentRecords={[]}
+    />,
+  );
+
+  fireEvent.press(screen.getByRole("button", { name: "继续首次旅程" }));
+  expect(onContinueJourney).toHaveBeenCalledWith("initial");
+  expect(screen.queryByRole("button", { name: "开始一次回顾" })).toBeNull();
+  expect(onStartReview).not.toHaveBeenCalled();
 });
 
 test("renders loading, retryable error, and real empty destinations", () => {

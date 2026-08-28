@@ -13,6 +13,7 @@ import {
   ShellFrame,
   ShellLoading,
   SupportingText,
+  type ActiveJourneyMetadataItem,
   type ShellLoadState,
   type ShellMetadataItem,
 } from "./shell-ui-components";
@@ -20,11 +21,11 @@ import { ReplaceReviewConfirmation } from "./ReplaceReviewConfirmation";
 
 type Props = {
   loadState?: ShellLoadState;
-  activeReview?: ShellMetadataItem | null;
+  activeJourney?: ActiveJourneyMetadataItem | null;
   currentCard?: ShellMetadataItem | null;
   recentRecords: ShellMetadataItem[];
   onRetry?: () => void;
-  onContinueReview?: (id: string) => void;
+  onContinueJourney?: (id: string) => void;
   onOpenCurrentCard?: (id: string) => void;
   onOpenRecord?: (id: string) => void;
   onOpenSettings?: () => void;
@@ -33,10 +34,10 @@ type Props = {
 };
 
 export function HomeScreen({
-  activeReview,
+  activeJourney,
   currentCard,
   loadState = "ready",
-  onContinueReview,
+  onContinueJourney,
   onOpenCurrentCard,
   onOpenRecord,
   onOpenSettings,
@@ -48,7 +49,7 @@ export function HomeScreen({
   const theme = useTheme();
   const [confirmingReplacement, setConfirmingReplacement] = useState(false);
   const requestReview = () => {
-    if (activeReview) setConfirmingReplacement(true);
+    if (activeJourney?.kind === "review") setConfirmingReplacement(true);
     else onStartReview();
   };
   return (
@@ -65,8 +66,12 @@ export function HomeScreen({
       ) : null}
       {loadState === "ready" ? (
         <>
-          {activeReview ? (
-            <MetadataCard actionLabel="继续本次回顾" item={activeReview} onAction={onContinueReview} />
+          {activeJourney ? (
+            <MetadataCard
+              actionLabel={activeJourney.kind === "initial" ? "继续首次旅程" : "继续本次回顾"}
+              item={activeJourney}
+              onAction={onContinueJourney}
+            />
           ) : null}
           {confirmingReplacement ? (
             <ReplaceReviewConfirmation
@@ -79,10 +84,16 @@ export function HomeScreen({
           ) : null}
           <Card accessible={false} variant="accent">
             <SectionHeading>现在想做什么？</SectionHeading>
-            <SupportingText>可以直接练习，也可以开始一次新的回顾；已有进行中回顾不会封锁其他入口。</SupportingText>
+            <SupportingText>
+              {activeJourney?.kind === "initial"
+                ? "可以继续首次旅程，也可以直接使用练习、主题回顾和其他页面。"
+                : "可以直接练习，也可以开始一次新的回顾；已有进行中回顾不会封锁其他入口。"}
+            </SupportingText>
             <View style={{ gap: theme.space.md }}>
               <Button label="开始练习" onPress={onStartPractice} />
-              <SecondaryButton label="开始一次回顾" onPress={requestReview} />
+              {activeJourney?.kind !== "initial" ? (
+                <SecondaryButton label="开始一次回顾" onPress={requestReview} />
+              ) : null}
             </View>
           </Card>
           <View style={{ gap: theme.space.md }}>

@@ -1,20 +1,24 @@
 import { Tabs } from "expo-router";
 
-import { useTheme } from "../../src/core/design/theme-provider";
 import { ShellRouteGate } from "../../src/features/shell/ui/ShellRouteGate";
+import { LongTermTabBar } from "../../src/features/shell/ui/LongTermTabBar";
 
 export default function LongTermTabsLayout() {
-  const theme = useTheme();
   return (
     <ShellRouteGate>
       <Tabs
-        screenOptions={{
-          headerShown: false,
-          tabBarActiveTintColor: theme.color.primary,
-          tabBarInactiveTintColor: theme.color.textSecondary,
-          tabBarStyle: { backgroundColor: theme.color.surface, borderTopColor: theme.color.border },
-          tabBarLabelStyle: { ...theme.typography.caption }
-        }}
+        screenOptions={{ headerShown: false }}
+        tabBar={({ navigation, state }) => (
+          <LongTermTabBar
+            emitTabPress={(target) => navigation.emit({
+              type: "tabPress",
+              target,
+              canPreventDefault: true
+            })}
+            navigate={(routeName) => navigation.navigate(routeName)}
+            state={state}
+          />
+        )}
       >
         <Tabs.Screen name="index" options={{ title: "首页", tabBarAccessibilityLabel: "首页，底部导航" }} />
         <Tabs.Screen name="reviews" options={{ title: "回顾", tabBarAccessibilityLabel: "回顾，底部导航" }} />
