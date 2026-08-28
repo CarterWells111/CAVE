@@ -15,6 +15,12 @@ import {
 } from "../infrastructure/in-memory-journey-repositories";
 import type { AppShellStateRepository } from "../../shell/infrastructure/app-shell-state-repository";
 import { InMemoryAppShellStateRepository } from "../../shell/infrastructure/in-memory-app-shell-state-repository";
+import type { ReviewHistoryRepository } from "../../reviews/infrastructure/review-history-repository";
+import { InMemoryPayloadReviewHistoryRepository } from "../../reviews/infrastructure/in-memory-payload-review-history-repository";
+import { VersionedJourneyDraftRepository } from "../../reviews/infrastructure/versioned-journey-draft-repository";
+import type { ActiveReview } from "../../reviews/infrastructure/review-history-repository";
+import type { JourneyBranchTransaction, JourneyCompletionTransaction } from "../infrastructure/journey-write-coordinator";
+import type { JourneyDraft } from "../domain/types";
 
 export type JourneyRuntimeMode = "expo-go-demo" | "native-secure";
 export type JourneyRuntimePersistence = "memory-only" | "sqlcipher-secure-store";
@@ -27,7 +33,10 @@ export type JourneyRuntime = {
   drafts: JourneyDraftRepository;
   cards: CommunicationCardRepository;
   shellState: AppShellStateRepository;
+  reviewHistory: ReviewHistoryRepository<JourneyDraft>;
   deleteAllData(): Promise<void>;
+  replaceActiveReview(): Promise<void>;
+  branchFromReview(draft: JourneyDraft, lineage: { rootId: string; sourceVersionId: string; title: string }): Promise<void>;
 };
 
 type RuntimeDependencies = {
@@ -42,7 +51,11 @@ type ComposeDependencies = RuntimeDependencies & {
   drafts: JourneyDraftRepository;
   cards: CommunicationCardRepository;
   shellState?: AppShellStateRepository;
+  reviewHistory?: ReviewHistoryRepository<JourneyDraft>;
   deleteStorage?: () => Promise<void>;
+  saveVersionedDraft?: (draft: JourneyDraft, active: ActiveReview<JourneyDraft>) => Promise<void>;
+  completeJourney?: (transaction: JourneyCompletionTransaction) => Promise<void>;
+  branchReview?: (transaction: JourneyBranchTransaction) => Promise<void>;
 };
 
 type CreateDependencies = RuntimeDependencies & {
@@ -60,16 +73,23 @@ export function composeJourneyRuntime({
   drafts,
   cards,
   shellState = new InMemoryAppShellStateRepository(),
+  reviewHistory = new InMemoryPayloadReviewHistoryRepository<JourneyDraft>(),
+  saveVersionedDraft,
+  completeJourney,
+  branchReview,
   deleteStorage,
   clipboard,
   createId,
   now
 }: ComposeDependencies): JourneyRuntime {
-  const service = new DefaultJourneyApplicationService(drafts, { createId, now });
+  const versionedDrafts = new VersionedJourneyDraftRepository(drafts, reviewHistory, saveVersionedDraft);
+  const service = new DefaultJourneyApplicationService(versionedDrafts, { createId, now });
   const controller = new JourneyPageController({
     service,
     cards,
     shellState,
+    reviewHistory,
+    ...(completeJourney === undefined ? {} : { completeAtomically: completeJourney }),
     clipboard,
     practice: new LocalPresetPracticeEngine(loadJourneyContentCatalog().practice),
     now
@@ -83,9 +103,44 @@ export function composeJourneyRuntime({
     const savedCards = await cards.listMetadata();
     await Promise.all(savedCards.map(({ id }) => cards.delete(id)));
     await shellState.clear();
+    await reviewHistory.clearAll();
     await service.resetJourney();
   };
-  return { mode, persistence, service, controller, drafts, cards, shellState, deleteAllData };
+  const replaceActiveReview = async () => {
+    const persistedActive = await reviewHistory.loadActive();
+    const legacyDraft = service.getSnapshot();
+    const active = persistedActive ?? (legacyDraft === null ? null : {
+      id: `active:${legacyDraft.id}`, rootId: legacyDraft.id, sourceVersionId: null,
+      title: "迁移的未完成回顾", updatedAt: legacyDraft.updatedAt, payload: legacyDraft,
+    });
+    if (active !== null) {
+      const id = `review:${active.payload.id}:incomplete`;
+      if (await reviewHistory.loadDetail(id) === null) {
+        await reviewHistory.appendVersionAndClearActive({ id, rootId: active.rootId, parentVersionId: active.sourceVersionId, title: active.title, createdAt: active.updatedAt, status: "incomplete", payload: active.payload });
+      }
+    }
+    await service.resetJourney();
+  };
+  const branchFromReview = async (draft: JourneyDraft, lineage: { rootId: string; sourceVersionId: string; title: string }) => {
+    const current = await reviewHistory.loadActive();
+    const archivedActive = current === null ? null : {
+      id: `review:${current.payload.id}:incomplete`, rootId: current.rootId,
+      parentVersionId: current.sourceVersionId, title: current.title, createdAt: current.updatedAt,
+      status: "incomplete" as const, payload: current.payload,
+    };
+    const active = { id: `active:${draft.id}`, ...lineage, updatedAt: draft.updatedAt, payload: draft };
+    if (branchReview !== undefined) {
+      await branchReview({ archivedActive, branch: draft, active });
+    } else {
+      if (archivedActive !== null && await reviewHistory.loadDetail(archivedActive.id) === null) {
+        await reviewHistory.appendVersionAndClearActive(archivedActive);
+      }
+      await service.resetJourney();
+      await versionedDrafts.saveWithLineage(draft, lineage);
+    }
+    service.adoptPersistedJourney(draft);
+  };
+  return { mode, persistence, service, controller, drafts: versionedDrafts, cards, shellState, reviewHistory, deleteAllData, replaceActiveReview, branchFromReview };
 }
 
 export async function createJourneyRuntime({

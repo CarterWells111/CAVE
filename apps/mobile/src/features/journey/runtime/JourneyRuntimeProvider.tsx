@@ -19,11 +19,15 @@ export type JourneyRuntimeContextValue = {
   snapshot: JourneyDraft | null;
   controller: JourneyRuntime["controller"];
   cards: JourneyRuntime["cards"];
+  drafts: JourneyRuntime["drafts"];
   service: JourneyRuntime["service"];
   shellState: JourneyRuntime["shellState"];
+  reviewHistory: JourneyRuntime["reviewHistory"];
   deleteAllData(): Promise<void>;
   runAndRefresh<T>(action: () => Promise<T>): Promise<T>;
   restart(): Promise<void>;
+  replaceActiveReview(): Promise<void>;
+  branchFromReview: JourneyRuntime["branchFromReview"];
 };
 
 type JourneyRuntimeProviderProps = PropsWithChildren<{
@@ -50,17 +54,25 @@ function RuntimeContextProvider({
     () => runAndRefresh(() => runtime.deleteAllData()),
     [runAndRefresh, runtime]
   );
+  const replaceActiveReview = useCallback(
+    () => runAndRefresh(() => runtime.replaceActiveReview()),
+    [runAndRefresh, runtime]
+  );
   const context = useMemo<JourneyRuntimeContextValue>(() => ({
     mode: runtime.mode,
     snapshot,
     controller: runtime.controller,
     cards: runtime.cards,
+    drafts: runtime.drafts,
     service: runtime.service,
     shellState: runtime.shellState,
+    reviewHistory: runtime.reviewHistory,
     deleteAllData,
     runAndRefresh,
-    restart
-  }), [deleteAllData, restart, runAndRefresh, runtime, snapshot]);
+    restart,
+    replaceActiveReview,
+    branchFromReview: runtime.branchFromReview
+  }), [deleteAllData, replaceActiveReview, restart, runAndRefresh, runtime, snapshot]);
 
   return (
     <JourneyRuntimeContext.Provider value={context}>

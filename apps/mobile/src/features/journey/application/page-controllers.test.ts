@@ -2,6 +2,7 @@ import { buildCommunicationCard, COMMUNICATION_CARD_CONSENT_FOOTER, selectConfir
 import type { PresetPracticeEngine, PresetPracticeState } from "../domain/practice-types";
 import { createJourneyDraft, type JourneyDraft } from "../domain/types";
 import type { CommunicationCardRepository } from "../infrastructure/journey-draft-repository";
+import type { JourneyCompletionTransaction } from "../infrastructure/journey-write-coordinator";
 import type { AppShellStateRepository } from "../../shell/infrastructure/app-shell-state-repository";
 import type { JourneyApplicationService } from "./journey-application-service";
 import { JourneyPageController, type ClipboardAdapter } from "./page-controllers";
@@ -26,7 +27,7 @@ function activeDraft(): JourneyDraft {
   return { ...draft, communicationCard };
 }
 
-function harness() {
+function harness(completeAtomically?: (transaction: JourneyCompletionTransaction) => Promise<void>) {
   let snapshot: JourneyDraft | null = activeDraft();
   const service: JourneyApplicationService = {
     getSnapshot: jest.fn(() => snapshot),
@@ -34,6 +35,7 @@ function harness() {
     dispatch: jest.fn(async () => undefined),
     navigateTo: jest.fn(async () => undefined),
     resetJourney: jest.fn(async () => { snapshot = null; })
+    ,adoptCompletedJourney: jest.fn(() => { snapshot = null; })
   };
   const cards: CommunicationCardRepository = {
     list: jest.fn(async () => []),
@@ -76,10 +78,39 @@ function harness() {
     shellState,
     clipboard,
     practice,
-    now: () => "2026-08-27T10:00:00.000Z"
+    now: () => "2026-08-27T10:00:00.000Z",
+    ...(completeAtomically === undefined ? {} : { completeAtomically }),
   });
   return { cards, clipboard, controller, practice, service, shellState };
 }
+
+test("uses one atomic native completion and only then clears the in-memory snapshot", async () => {
+  const completeAtomically = jest.fn(async () => undefined);
+  const { cards, controller, service, shellState } = harness(completeAtomically);
+
+  await controller.completeInitialJourney(selectConfirmedCommunicationCard(activeDraft()));
+
+  expect(completeAtomically).toHaveBeenCalledWith(expect.objectContaining({
+    draft: expect.objectContaining({ id: "journey-1" }),
+    card: expect.objectContaining({ id: "card:journey-1" }),
+    version: expect.objectContaining({ id: "review:journey-1:completed" }),
+    shell: expect.objectContaining({ initialJourneyId: "journey-1" }),
+  }));
+  expect(cards.save).not.toHaveBeenCalled();
+  expect(shellState.completeInitialJourney).not.toHaveBeenCalled();
+  expect(service.adoptCompletedJourney).toHaveBeenCalledTimes(1);
+  expect(service.resetJourney).not.toHaveBeenCalled();
+});
+
+test("keeps the active snapshot when atomic native completion fails", async () => {
+  const completeAtomically = jest.fn(async () => { throw new Error("transaction-failed"); });
+  const { controller, service } = harness(completeAtomically);
+
+  await expect(controller.completeInitialJourney(selectConfirmedCommunicationCard(activeDraft())))
+    .rejects.toThrow("transaction-failed");
+  expect(service.adoptCompletedJourney).not.toHaveBeenCalled();
+  expect(service.getSnapshot()).not.toBeNull();
+});
 
 test("keeps the underage exit unsaved and creates only an adult journey", async () => {
   const { controller, service } = harness();

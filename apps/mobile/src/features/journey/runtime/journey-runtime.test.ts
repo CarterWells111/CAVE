@@ -1,5 +1,9 @@
 import type { ClipboardAdapter } from "../application/page-controllers";
+import { selectConfirmedCommunicationCard } from "../domain/derive-communication-card";
+import { createJourneyDraft } from "../domain/types";
+import { InMemoryCommunicationCardRepository, InMemoryJourneyDraftRepository } from "../infrastructure/in-memory-journey-repositories";
 import {
+  composeJourneyRuntime,
   createJourneyRuntime,
   resolveJourneyRuntimeMode,
   type JourneyRuntime
@@ -72,4 +76,51 @@ test("deletes the Expo Go draft, cards, and completion marker together", async (
   expect(runtime.service.getSnapshot()).toBeNull();
   await expect(runtime.cards.listMetadata()).resolves.toEqual([]);
   await expect(runtime.shellState.load()).resolves.toBeNull();
+});
+
+test("archives a completed review version and clears the active draft", async () => {
+  const runtime = await createJourneyRuntime({
+    executionEnvironment: "storeClient", clipboard,
+    createId: () => "completed-journey", now: () => "2026-08-27T12:00:00.000Z",
+    createNativeRuntime: jest.fn(),
+  });
+  await runtime.service.confirmAdult();
+  const draft = runtime.service.getSnapshot();
+  if (draft === null) throw new Error("missing draft");
+
+  await runtime.controller.completeInitialJourney(selectConfirmedCommunicationCard(draft));
+
+  expect(runtime.service.getSnapshot()).toBeNull();
+  await expect(runtime.reviewHistory.listMetadata()).resolves.toEqual([
+    expect.objectContaining({ id: "review:completed-journey:completed", status: "completed" }),
+  ]);
+  await expect(runtime.shellState.load()).resolves.toMatchObject({ initialJourneyId: "completed-journey" });
+});
+
+test("archives the one active draft before an explicitly confirmed replacement", async () => {
+  const runtime = await createJourneyRuntime({
+    executionEnvironment: "storeClient", clipboard,
+    createId: () => "replaced-journey", now: () => "2026-08-27T12:00:00.000Z",
+    createNativeRuntime: jest.fn(),
+  });
+  await runtime.service.confirmAdult();
+  await runtime.replaceActiveReview();
+  expect(runtime.service.getSnapshot()).toBeNull();
+  await expect(runtime.reviewHistory.listMetadata()).resolves.toEqual([
+    expect.objectContaining({ id: "review:replaced-journey:incomplete", status: "incomplete" }),
+  ]);
+});
+
+test("archives a v4-era active draft even before the v5 active singleton has been backfilled", async () => {
+  const drafts = new InMemoryJourneyDraftRepository();
+  const legacy = { ...createJourneyDraft({ id: "legacy-active", now: "2026-08-20T12:00:00.000Z" }), ageConfirmed: true };
+  await drafts.saveActive(legacy);
+  const runtime = composeJourneyRuntime({ mode: "expo-go-demo", persistence: "memory-only", drafts,
+    cards: new InMemoryCommunicationCardRepository(), clipboard, createId: () => "unused", now: () => "2026-08-27T12:00:00.000Z" });
+  await runtime.service.initialize();
+  expect(await runtime.reviewHistory.loadActive()).toBeNull();
+  await runtime.replaceActiveReview();
+  await expect(runtime.reviewHistory.listMetadata()).resolves.toEqual([
+    expect.objectContaining({ id: "review:legacy-active:incomplete", status: "incomplete" }),
+  ]);
 });

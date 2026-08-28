@@ -159,7 +159,7 @@ export function SettingsScreen({
         {deleteState === "error" ? (
           <View style={{ gap: theme.space.md }}>
             <Text accessibilityRole="alert" selectable style={{ ...theme.typography.body, color: theme.color.error }}>
-              删除失败，请重试。你的当前画面会保留。
+              删除尚未完成；部分本机清理步骤可能已经完成。当前画面会保留，请安全重试直到显示完成。
             </Text>
             <DestructiveButton label="重试删除" onPress={() => { void deleteAll(); }} />
             <SecondaryButton label="取消删除" onPress={() => setDeleteState("idle")} />

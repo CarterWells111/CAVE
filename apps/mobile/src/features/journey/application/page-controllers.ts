@@ -15,7 +15,9 @@ import type {
 } from "../domain/practice-types";
 import type { CommunicationCardRepository } from "../infrastructure/journey-draft-repository";
 import type { AppShellStateRepository } from "../../shell/infrastructure/app-shell-state-repository";
+import type { ReviewHistoryRepository } from "../../reviews/infrastructure/review-history-repository";
 import type { JourneyApplicationService } from "./journey-application-service";
+import type { JourneyCompletionTransaction } from "../infrastructure/journey-write-coordinator";
 
 export interface ClipboardAdapter {
   setStringAsync(value: string): Promise<void>;
@@ -32,6 +34,8 @@ type Dependencies = {
   clipboard: ClipboardAdapter;
   practice: PresetPracticeEngine;
   now(): string;
+  reviewHistory?: ReviewHistoryRepository<JourneyDraft>;
+  completeAtomically?: (transaction: JourneyCompletionTransaction) => Promise<void>;
 };
 
 type ReflectionInput = {
@@ -263,11 +267,43 @@ export class JourneyPageController {
 
   async completeInitialJourney(confirmedCard: ConfirmedCommunicationCard) {
     const draft = this.requireDraft();
-    await this.saveCommunicationCard(confirmedCard);
-    await this.dependencies.shellState.completeInitialJourney({
-      initialJourneyId: draft.id,
-      initialJourneyCompletedAt: this.dependencies.now()
-    });
+    const completedAt = this.dependencies.now();
+    const card = this.buildSavedCommunicationCard(draft, confirmedCard, completedAt);
+    const versionId = `review:${draft.id}:completed`;
+    const active = await this.dependencies.reviewHistory?.loadActive();
+    const version = {
+      id: versionId,
+      rootId: active?.rootId ?? draft.id,
+      parentVersionId: active?.sourceVersionId ?? null,
+      title: active?.title ?? `回顾 ${draft.updatedAt.slice(0, 10)}`,
+      createdAt: completedAt,
+      status: "completed" as const,
+      payload: draft,
+    };
+    const shell = { initialJourneyId: draft.id, initialJourneyCompletedAt: completedAt };
+    if (this.dependencies.completeAtomically !== undefined) {
+      await this.dependencies.completeAtomically({ draft, card, version, shell });
+      this.dependencies.service.adoptCompletedJourney?.();
+      return;
+    }
+    await this.dependencies.cards.save(card);
+    if (this.dependencies.reviewHistory !== undefined
+      && await this.dependencies.reviewHistory.loadDetail(versionId) === null) {
+      await this.dependencies.reviewHistory.appendVersionAndClearActive(version);
+    }
+    await this.dependencies.shellState.completeInitialJourney(shell);
+    await this.dependencies.service.resetJourney();
+  }
+
+  private buildSavedCommunicationCard(draft: JourneyDraft, confirmed: ConfirmedCommunicationCard, savedAt: string) {
+    const included = new Map(confirmed.sections.map((section) => [section.id, section.text]));
+    const card = Object.fromEntries(Object.entries(draft.communicationCard).map(([sectionId, field]) => {
+      const text = included.get(sectionId as keyof JourneyDraft["communicationCard"]);
+      return [sectionId, text === undefined
+        ? { generatedText: "", sourceRevision: field.sourceRevision, needsReview: false, visibility: "deleted" as const }
+        : { generatedText: text, sourceRevision: field.sourceRevision, needsReview: false, visibility: "included" as const }];
+    })) as JourneyDraft["communicationCard"];
+    return { id: `card:${draft.id}`, journeyId: draft.id, card, savedAt };
   }
 
   async copyCommunicationCard(): Promise<ClipboardCopyResult> {

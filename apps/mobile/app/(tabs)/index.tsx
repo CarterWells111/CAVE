@@ -61,7 +61,7 @@ export default function HomeRoute() {
         onRetry={() => { void load(); }}
         onStartPractice={() => router.push("/practice/session")}
         onStartReview={() => {
-          void runtime.restart().then(() => router.push("/journey/welcome"));
+          void runtime.replaceActiveReview().then(() => router.push("/journey/welcome"));
         }}
         recentRecords={cards}
       />
