@@ -23,11 +23,14 @@ function routeSource(name: string) {
   return readFileSync(resolve(routeDirectory, name), "utf8");
 }
 
-test("journey layout mounts one runtime composition provider", () => {
-  const layout = routeSource("_layout.tsx");
+test("root layout mounts one runtime composition provider shared by journey and shell routes", () => {
+  const layout = readFileSync(resolve(routeDirectory, "../_layout.tsx"), "utf8");
+  const journeyLayout = routeSource("_layout.tsx");
 
   expect(layout).toContain("JourneyRuntimeProvider");
   expect(layout).toContain("<JourneyRuntimeProvider");
+  expect(journeyLayout).not.toContain("JourneyRuntimeProvider");
+  expect(journeyLayout).toContain("JourneyLongTermNav");
 });
 
 test("exactly seven production routes consume runtime state without no-op callbacks", () => {

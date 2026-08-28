@@ -146,6 +146,12 @@ export type SavedCommunicationCardRecord = {
   savedAt: string;
 };
 
+export type SavedCommunicationCardMetadata = {
+  id: string;
+  journeyId: string;
+  savedAt: string;
+};
+
 export function createJourneyDraft({ id, now }: { id: string; now: string }): JourneyDraft {
   return {
     id,

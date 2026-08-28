@@ -26,12 +26,13 @@ function runtime(mode: JourneyRuntimeMode = "expo-go-demo") {
 }
 
 function RuntimeConsumer() {
-  const { controller, mode, restart, runAndRefresh, service, snapshot } = useJourneyRuntime();
+  const { controller, deleteAllData, mode, restart, runAndRefresh, service, shellState, snapshot } = useJourneyRuntime();
 
   return (
     <View>
       <Text>{mode}</Text>
       <Text>{controller === undefined ? "missing-controller" : "controller-ready"}</Text>
+      <Text>{shellState === undefined ? "missing-shell-state" : "shell-state-ready"}</Text>
       <Text>{snapshot?.id ?? "no-runtime-snapshot"}</Text>
       <Pressable accessibilityRole="button" onPress={() => {
         void runAndRefresh(() => service.confirmAdult());
@@ -40,6 +41,9 @@ function RuntimeConsumer() {
       </Pressable>
       <Pressable accessibilityRole="button" onPress={() => { void restart(); }}>
         <Text>重新开始</Text>
+      </Pressable>
+      <Pressable accessibilityRole="button" onPress={() => { void deleteAllData(); }}>
+        <Text>删除全部</Text>
       </Pressable>
     </View>
   );
@@ -59,6 +63,7 @@ test("creates one runtime across rerenders and keeps the Expo Go notice visible"
   expect(screen.getByText("正在启动旅程运行时…")).toHaveProp("accessibilityLiveRegion", "polite");
   expect(await screen.findByText("Expo Go 演示模式，数据仅在本次打开期间暂存")).toBeTruthy();
   expect(screen.getByText("controller-ready")).toBeTruthy();
+  expect(screen.getByText("shell-state-ready")).toBeTruthy();
 
   rerender(
     <JourneyRuntimeProvider createRuntime={replacementFactory}>
@@ -98,6 +103,19 @@ test("runAndRefresh and restart publish service snapshot changes", async () => {
   expect(await screen.findByText("journey-runtime-1")).toBeTruthy();
 
   fireEvent.press(screen.getByText("重新开始"));
+  await waitFor(() => expect(screen.getByText("no-runtime-snapshot")).toBeTruthy());
+});
+
+test("publishes a cleared snapshot after deleting all local data", async () => {
+  render(
+    <JourneyRuntimeProvider createRuntime={async () => runtime()}>
+      <RuntimeConsumer />
+    </JourneyRuntimeProvider>
+  );
+  expect(await screen.findByText("no-runtime-snapshot")).toBeTruthy();
+  fireEvent.press(screen.getByText("开始旅程"));
+  expect(await screen.findByText("journey-runtime-1")).toBeTruthy();
+  fireEvent.press(screen.getByText("删除全部"));
   await waitFor(() => expect(screen.getByText("no-runtime-snapshot")).toBeTruthy());
 });
 

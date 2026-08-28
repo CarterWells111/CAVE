@@ -31,6 +31,7 @@ import {
 import { JourneyAction } from "../components/JourneyAction";
 
 type Props = {
+  context?: "journey" | "standalone";
   catalog: JourneyPracticeCatalog;
   behaviorOptions: Array<{
     id: string;
@@ -96,6 +97,7 @@ export function PresetPracticePage({
   onCopySupportNumber,
   onOpenSources,
   onPracticeAgain,
+  context = "journey",
 }: Props) {
   const initial = useMemo(() => beginPractice(catalog), [catalog]);
   const [state, setState] = useState<SevenScreenPracticeState>(initial);
@@ -162,7 +164,9 @@ export function PresetPracticePage({
     <View style={{ gap: theme.space.lg, width: "100%" }} testID="page-6-content">
       <View style={{ alignItems: "center", flexDirection: "row", flexWrap: "wrap", gap: theme.space.sm, justifyContent: "space-between" }}>
         <Text style={{ ...theme.typography.caption, color: theme.color.info }}>预设对话，不使用 AI</Text>
-        <Text accessibilityLabel="第 6 屏，共 7 屏" style={{ ...theme.typography.caption, color: theme.color.textMuted }}>6 / 7</Text>
+        {context === "journey" ? (
+          <Text accessibilityLabel="第 6 屏，共 7 屏" style={{ ...theme.typography.caption, color: theme.color.textMuted }}>6 / 7</Text>
+        ) : <Text style={{ ...theme.typography.caption, color: theme.color.textMuted }}>独立练习</Text>}
       </View>
       <Heading>改变主意，也属于过程</Heading>
       <Card variant="accent">

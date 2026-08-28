@@ -63,10 +63,10 @@ test("connects every canonical continue action without an eighth page or dead-en
   expect(canonicalSources).not.toMatch(/\b8\s*\/\s*8\b|\/8\b|共\s*8\s*页/u);
 });
 
-test("describes the current seven-screen experience at the application entry", () => {
+test("guards the seven-screen first run and the long-term shell at the application entry", () => {
   const entry = readFileSync(resolve(routeDirectory, "../index.tsx"), "utf8");
 
-  expect(entry).toContain("七屏本地旅程");
-  expect(entry).toContain("进入七屏体验");
+  expect(entry).toContain("resolveShellLaunchPath");
+  expect(entry).toContain("shellState.load()");
   expect(entry).not.toContain("八屏");
 });

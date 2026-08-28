@@ -27,6 +27,7 @@ export type JourneyRuntime = {
   drafts: JourneyDraftRepository;
   cards: CommunicationCardRepository;
   shellState: AppShellStateRepository;
+  deleteAllData(): Promise<void>;
 };
 
 type RuntimeDependencies = {
@@ -41,6 +42,7 @@ type ComposeDependencies = RuntimeDependencies & {
   drafts: JourneyDraftRepository;
   cards: CommunicationCardRepository;
   shellState?: AppShellStateRepository;
+  deleteStorage?: () => Promise<void>;
 };
 
 type CreateDependencies = RuntimeDependencies & {
@@ -58,6 +60,7 @@ export function composeJourneyRuntime({
   drafts,
   cards,
   shellState = new InMemoryAppShellStateRepository(),
+  deleteStorage,
   clipboard,
   createId,
   now
@@ -71,7 +74,18 @@ export function composeJourneyRuntime({
     practice: new LocalPresetPracticeEngine(loadJourneyContentCatalog().practice),
     now
   });
-  return { mode, persistence, service, controller, drafts, cards, shellState };
+  const deleteAllData = async () => {
+    if (deleteStorage !== undefined) {
+      await deleteStorage();
+      await service.resetJourney();
+      return;
+    }
+    const savedCards = await cards.listMetadata();
+    await Promise.all(savedCards.map(({ id }) => cards.delete(id)));
+    await shellState.clear();
+    await service.resetJourney();
+  };
+  return { mode, persistence, service, controller, drafts, cards, shellState, deleteAllData };
 }
 
 export async function createJourneyRuntime({

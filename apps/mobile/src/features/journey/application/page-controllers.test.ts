@@ -1,4 +1,4 @@
-import { buildCommunicationCard, selectConfirmedCommunicationCard } from "../domain/derive-communication-card";
+import { buildCommunicationCard, COMMUNICATION_CARD_CONSENT_FOOTER, selectConfirmedCommunicationCard, type ConfirmedCommunicationCard } from "../domain/derive-communication-card";
 import type { PresetPracticeEngine, PresetPracticeState } from "../domain/practice-types";
 import { createJourneyDraft, type JourneyDraft } from "../domain/types";
 import type { CommunicationCardRepository } from "../infrastructure/journey-draft-repository";
@@ -37,6 +37,8 @@ function harness() {
   };
   const cards: CommunicationCardRepository = {
     list: jest.fn(async () => []),
+    listMetadata: jest.fn(async () => []),
+    load: jest.fn(async () => null),
     save: jest.fn(async () => undefined),
     delete: jest.fn(async () => undefined)
   };
@@ -211,6 +213,19 @@ test("returns a typed clipboard failure that the route can render", async () => 
     status: "error",
     code: "clipboard-write-failed"
   });
+});
+
+test("copies an explicitly loaded saved card rather than the active draft", async () => {
+  const { clipboard, controller } = harness();
+  const confirmed: ConfirmedCommunicationCard = {
+    sections: [{ id: "communication-comfort" as const, text: "请先问我。" }],
+    consentFooter: COMMUNICATION_CARD_CONSENT_FOOTER,
+  };
+
+  await expect(controller.copyConfirmedCommunicationCard(confirmed)).resolves.toEqual({ status: "success" });
+  expect(clipboard.setStringAsync).toHaveBeenLastCalledWith(
+    `${confirmed.sections[0]!.text}\n\n${confirmed.consentFooter}`,
+  );
 });
 
 test("persists address preference and explicit-content consent through typed controller commands", async () => {
