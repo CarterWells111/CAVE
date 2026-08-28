@@ -28,6 +28,9 @@ function nativeAdapters(): ExpoJourneyAdapters {
       getOrCreateDatabaseKey: jest.fn(async () => "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="),
       getOrCreateInstallationToken: jest.fn(async () => "token"),
       deleteDatabaseKey: jest.fn(async () => undefined),
+      hasAdultDeclaration: jest.fn(async () => true),
+      recordAdultDeclaration: jest.fn(async () => undefined),
+      deleteAdultDeclaration: jest.fn(async () => undefined),
       deleteAllSecrets: jest.fn(async () => undefined)
     },
     clipboard

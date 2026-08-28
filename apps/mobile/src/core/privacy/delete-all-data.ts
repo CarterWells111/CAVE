@@ -10,5 +10,4 @@ export async function deleteAllData({ database, secrets }: DeleteAllDataDependen
   await database.close();
   await database.removeDatabaseFiles();
   await secrets.deleteAllSecrets();
-  await database.initialize();
 }

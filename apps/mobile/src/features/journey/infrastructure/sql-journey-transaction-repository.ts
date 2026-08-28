@@ -11,7 +11,7 @@ export class SqlJourneyTransactionRepository implements JourneyWriteCoordinator,
     await db.execAsync("BEGIN IMMEDIATE");
     try {
       await db.runAsync(
-        "INSERT INTO journey_drafts_v2 (id, schema_version, payload, created_at, updated_at) VALUES (?, ?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET schema_version = excluded.schema_version, payload = excluded.payload, created_at = excluded.created_at, updated_at = excluded.updated_at",
+        "INSERT INTO journey_drafts_v3 (id, schema_version, payload, created_at, updated_at) VALUES (?, ?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET schema_version = excluded.schema_version, payload = excluded.payload, created_at = excluded.created_at, updated_at = excluded.updated_at",
         draft.id, draft.schemaVersion, JSON.stringify(draft), draft.createdAt, draft.updatedAt,
       );
       await db.runAsync(
@@ -37,10 +37,11 @@ export class SqlJourneyTransactionRepository implements JourneyWriteCoordinator,
           archivedActive.payload.sourceRevision, archivedActive.createdAt,
         );
       }
+      await db.runAsync("DELETE FROM journey_drafts_v3");
       await db.runAsync("DELETE FROM journey_drafts_v2");
       await db.runAsync("DELETE FROM journey_drafts");
       await db.runAsync(
-        "INSERT INTO journey_drafts_v2 (id, schema_version, payload, created_at, updated_at) VALUES (?, ?, ?, ?, ?)",
+        "INSERT INTO journey_drafts_v3 (id, schema_version, payload, created_at, updated_at) VALUES (?, ?, ?, ?, ?)",
         branch.id, branch.schemaVersion, JSON.stringify(branch), branch.createdAt, branch.updatedAt,
       );
       await db.runAsync(
@@ -72,6 +73,7 @@ export class SqlJourneyTransactionRepository implements JourneyWriteCoordinator,
         "INSERT INTO app_shell_state (singleton_id, initial_journey_completed_at, initial_journey_id) VALUES (1, ?, ?) ON CONFLICT(singleton_id) DO NOTHING",
         shell.initialJourneyCompletedAt, shell.initialJourneyId,
       );
+      await db.runAsync("DELETE FROM journey_drafts_v3");
       await db.runAsync("DELETE FROM journey_drafts_v2");
       await db.runAsync("DELETE FROM journey_drafts");
       await db.execAsync("COMMIT");

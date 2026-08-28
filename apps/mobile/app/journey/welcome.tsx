@@ -2,12 +2,12 @@ import { useRouter } from "expo-router";
 
 import { Screen } from "../../src/core/ui/Screen";
 import { getResumePath } from "../../src/features/journey/application/journey-navigation";
-import { useJourneyRuntime } from "../../src/features/journey/runtime/JourneyRuntimeProvider";
+import { useOptionalJourneyRuntime } from "../../src/features/journey/runtime/JourneyRuntimeProvider";
 import { WelcomePage } from "../../src/features/journey/ui/pages/WelcomePage";
 
 export default function WelcomeRoute() {
   const router = useRouter();
-  const { snapshot } = useJourneyRuntime();
+  const snapshot = useOptionalJourneyRuntime()?.snapshot ?? null;
   const resumeAvailable = snapshot?.ageConfirmed === true;
   const resume = () => {
     if (snapshot === null || snapshot.addressPreference === null || !snapshot.prefaceRead) {

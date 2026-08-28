@@ -1,4 +1,4 @@
-export const CURRENT_SCHEMA_VERSION = 5;
+export const CURRENT_SCHEMA_VERSION = 6;
 
 export const SCHEMA_V1 = `
 CREATE TABLE IF NOT EXISTS course_progress (
@@ -85,4 +85,13 @@ CREATE TABLE IF NOT EXISTS review_migration_receipts (
   source_id TEXT PRIMARY KEY NOT NULL,
   target_version_id TEXT NOT NULL,
   migrated_at TEXT NOT NULL
+);`;
+
+export const SCHEMA_V6 = `
+CREATE TABLE IF NOT EXISTS journey_drafts_v3 (
+  id TEXT PRIMARY KEY NOT NULL,
+  schema_version INTEGER NOT NULL CHECK (schema_version = 3),
+  payload TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
 );`;

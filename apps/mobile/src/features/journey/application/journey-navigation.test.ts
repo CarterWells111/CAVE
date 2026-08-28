@@ -1,5 +1,9 @@
 import { createJourneyDraft } from "../domain/types";
 import {
+  migrateJourneyDraftV2ToV3,
+  type JourneyDraftV2
+} from "../domain/migrate-journey-draft";
+import {
   JOURNEY_PAGE_IDS,
   JOURNEY_ROUTE_MANIFEST,
   resolveJourneyPageAlias,
@@ -146,4 +150,25 @@ test("resumes at the persisted page and defaults to welcome", () => {
     currentPage: "overnight",
     readKnowledgeCardIds: ["draft-knowledge-body-signals", "draft-knowledge-consent", "draft-knowledge-health"],
   })).toBe("/journey/overnight");
+});
+
+test("resumes a migrated v2 draft after overnight instead of falling back", () => {
+  const current = createJourneyDraft({ id: "journey-v2", now: "now" });
+  const oldDraft: JourneyDraftV2 = {
+    ...current,
+    schemaVersion: 2,
+    currentPage: "behavior-map",
+    cloudSaveAvailability: "coming-soon",
+    ageConfirmed: true,
+    addressPreference: "你",
+    prefaceRead: true,
+    readKnowledgeCardIds: [
+      "draft-knowledge-body-signals",
+      "draft-knowledge-consent",
+      "draft-knowledge-health"
+    ],
+    pointEventKeys: []
+  };
+
+  expect(getResumePath(migrateJourneyDraftV2ToV3(oldDraft))).toBe("/journey/behavior-map");
 });

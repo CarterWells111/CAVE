@@ -21,9 +21,14 @@ import { VersionedJourneyDraftRepository } from "../../reviews/infrastructure/ve
 import type { ActiveReview } from "../../reviews/infrastructure/review-history-repository";
 import type { JourneyBranchTransaction, JourneyCompletionTransaction } from "../infrastructure/journey-write-coordinator";
 import type { JourneyDraft } from "../domain/types";
+import type { DatabaseSecretRepository } from "../../../core/storage/key-store";
 
 export type JourneyRuntimeMode = "expo-go-demo" | "native-secure";
 export type JourneyRuntimePersistence = "memory-only" | "sqlcipher-secure-store";
+export type AdultDeclarationRepository = Pick<
+  DatabaseSecretRepository,
+  "hasAdultDeclaration" | "recordAdultDeclaration" | "deleteAdultDeclaration"
+>;
 
 export type JourneyRuntime = {
   mode: JourneyRuntimeMode;
@@ -34,6 +39,7 @@ export type JourneyRuntime = {
   cards: CommunicationCardRepository;
   shellState: AppShellStateRepository;
   reviewHistory: ReviewHistoryRepository<JourneyDraft>;
+  adultDeclaration: AdultDeclarationRepository;
   deleteAllData(): Promise<void>;
   replaceActiveReview(): Promise<void>;
   branchFromReview(draft: JourneyDraft, lineage: { rootId: string; sourceVersionId: string; title: string }): Promise<void>;
@@ -56,6 +62,7 @@ type ComposeDependencies = RuntimeDependencies & {
   saveVersionedDraft?: (draft: JourneyDraft, active: ActiveReview<JourneyDraft>) => Promise<void>;
   completeJourney?: (transaction: JourneyCompletionTransaction) => Promise<void>;
   branchReview?: (transaction: JourneyBranchTransaction) => Promise<void>;
+  adultDeclaration?: AdultDeclarationRepository;
 };
 
 type CreateDependencies = RuntimeDependencies & {
@@ -77,6 +84,11 @@ export function composeJourneyRuntime({
   saveVersionedDraft,
   completeJourney,
   branchReview,
+  adultDeclaration = {
+    hasAdultDeclaration: async () => true,
+    recordAdultDeclaration: async () => undefined,
+    deleteAdultDeclaration: async () => undefined
+  },
   deleteStorage,
   clipboard,
   createId,
@@ -97,7 +109,7 @@ export function composeJourneyRuntime({
   const deleteAllData = async () => {
     if (deleteStorage !== undefined) {
       await deleteStorage();
-      await service.resetJourney();
+      service.adoptCompletedJourney();
       return;
     }
     const savedCards = await cards.listMetadata();
@@ -140,7 +152,7 @@ export function composeJourneyRuntime({
     }
     service.adoptPersistedJourney(draft);
   };
-  return { mode, persistence, service, controller, drafts: versionedDrafts, cards, shellState, reviewHistory, deleteAllData, replaceActiveReview, branchFromReview };
+  return { mode, persistence, service, controller, drafts: versionedDrafts, cards, shellState, reviewHistory, adultDeclaration, deleteAllData, replaceActiveReview, branchFromReview };
 }
 
 export async function createJourneyRuntime({

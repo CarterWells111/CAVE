@@ -2,13 +2,17 @@ import { useRouter } from "expo-router";
 import { useCallback, useEffect, useRef } from "react";
 
 import { Screen } from "../../src/core/ui/Screen";
-import { useJourneyRuntime } from "../../src/features/journey/runtime/JourneyRuntimeProvider";
+import {
+  useAdultDeclaration,
+  useOptionalJourneyRuntime
+} from "../../src/features/journey/runtime/JourneyRuntimeProvider";
 import { AdultGatePage } from "../../src/features/journey/ui/pages/adult-gate-page";
 
 export default function AdultGateRoute() {
   const router = useRouter();
-  const runtime = useJourneyRuntime();
-  const alreadyConfirmed = runtime.snapshot?.ageConfirmed === true;
+  const adultDeclaration = useAdultDeclaration();
+  const runtime = useOptionalJourneyRuntime();
+  const alreadyConfirmed = runtime?.snapshot?.ageConfirmed === true;
   const activeRef = useRef(false);
   const decisionRef = useRef<object | null>(null);
   const navigatedRef = useRef(false);
@@ -36,7 +40,7 @@ export default function AdultGateRoute() {
     if (!activeRef.current || decisionRef.current !== null || navigatedRef.current) return;
     const decision = {};
     decisionRef.current = decision;
-    return runtime.runAndRefresh(() => runtime.service.confirmAdult())
+    return adultDeclaration.confirmAdult()
       .then(() => {
         if (activeRef.current && decisionRef.current === decision) openPreface();
       })

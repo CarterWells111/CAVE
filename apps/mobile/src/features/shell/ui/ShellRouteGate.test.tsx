@@ -7,13 +7,35 @@ const mockReplace = jest.fn();
 const mockLoad = jest.fn();
 const mockRouter = { replace: mockReplace };
 const mockShellState = { load: mockLoad };
+const mockRedirect = jest.fn();
+let mockRuntime: { shellState: typeof mockShellState } | null = { shellState: mockShellState };
 
-jest.mock("expo-router", () => ({ useRouter: () => mockRouter }));
+jest.mock("expo-router", () => ({
+  Redirect: (props: { href: string }) => {
+    mockRedirect(props);
+    return null;
+  },
+  useRouter: () => mockRouter
+}));
 jest.mock("../../journey/runtime/JourneyRuntimeProvider", () => ({
-  useJourneyRuntime: () => ({ shellState: mockShellState })
+  useJourneyRuntime: () => mockRuntime,
+  useOptionalJourneyRuntime: () => mockRuntime
 }));
 
-beforeEach(() => jest.clearAllMocks());
+beforeEach(() => {
+  jest.clearAllMocks();
+  mockRuntime = { shellState: mockShellState };
+});
+
+test("redirects public tab deep links without reading private shell state", () => {
+  mockRuntime = null;
+
+  render(<ShellRouteGate><Text>four-tabs</Text></ShellRouteGate>);
+
+  expect(mockRedirect).toHaveBeenCalledWith({ href: "/journey/welcome" });
+  expect(mockLoad).not.toHaveBeenCalled();
+  expect(screen.queryByText("four-tabs")).toBeNull();
+});
 
 test("never reveals long-term navigation before a completion marker exists", async () => {
   mockLoad.mockResolvedValueOnce(null);

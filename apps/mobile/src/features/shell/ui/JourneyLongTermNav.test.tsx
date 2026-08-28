@@ -6,10 +6,12 @@ const mockReplace = jest.fn();
 const mockLoad = jest.fn();
 const mockRouter = { replace: mockReplace };
 const mockShellState = { load: mockLoad };
+let mockRuntime: { shellState: typeof mockShellState } | null = { shellState: mockShellState };
 
 jest.mock("expo-router", () => ({ useRouter: () => mockRouter }));
 jest.mock("../../journey/runtime/JourneyRuntimeProvider", () => ({
-  useJourneyRuntime: () => ({ shellState: mockShellState })
+  useJourneyRuntime: () => mockRuntime,
+  useOptionalJourneyRuntime: () => mockRuntime
 }));
 
 function deferred<T>() {
@@ -22,7 +24,19 @@ function deferred<T>() {
   return { promise, reject, resolve };
 }
 
-beforeEach(() => jest.clearAllMocks());
+beforeEach(() => {
+  jest.clearAllMocks();
+  mockRuntime = { shellState: mockShellState };
+});
+
+test("renders nothing and never reads private shell state before authorization", () => {
+  mockRuntime = null;
+
+  render(<JourneyLongTermNav activeTab="home" />);
+
+  expect(mockLoad).not.toHaveBeenCalled();
+  expect(screen.queryAllByRole("tab")).toHaveLength(0);
+});
 
 test("renders no long-term navigation while completion is loading or absent", async () => {
   const pending = deferred<null>();

@@ -63,6 +63,30 @@ describe("SecretRepository", () => {
     expect(secureStore.deleteItemAsync).toHaveBeenCalledWith(SECRET_NAMES.installationToken);
   });
 
+  test("reads the adult declaration without creating a secret and clears it with all local secrets", async () => {
+    const secureStore = makeSecureStore();
+    const repository = createSecretRepository({
+      secureStore,
+      randomBytes: jest.fn((length: number) => new Uint8Array(length).fill(9))
+    });
+
+    expect("hasAdultDeclaration" in repository).toBe(true);
+    await expect(repository.hasAdultDeclaration()).resolves.toBe(false);
+    expect(secureStore.setItemAsync).not.toHaveBeenCalled();
+
+    await repository.recordAdultDeclaration();
+    await expect(repository.hasAdultDeclaration()).resolves.toBe(true);
+    expect(secureStore.setItemAsync).toHaveBeenCalledWith(
+      SECRET_NAMES.adultDeclaration,
+      "confirmed",
+      expect.objectContaining({ keychainAccessible: "AFTER_FIRST_UNLOCK_THIS_DEVICE_ONLY" })
+    );
+
+    await repository.deleteAllSecrets();
+    await expect(repository.hasAdultDeclaration()).resolves.toBe(false);
+    expect(secureStore.deleteItemAsync).toHaveBeenCalledWith(SECRET_NAMES.adultDeclaration);
+  });
+
   test("maps device-only accessibility to the native SecureStore constant", async () => {
     const module = {
       AFTER_FIRST_UNLOCK_THIS_DEVICE_ONLY: 123,
