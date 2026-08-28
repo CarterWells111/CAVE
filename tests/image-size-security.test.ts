@@ -37,6 +37,19 @@ describe("patched image-size parsers", () => {
     expect(parseInChildProcess([0, 0, 0, 0, 0x4a, 0x58, 0x4c, 0x20])).not.toThrow();
   });
 
+  it("terminates on a zero-sized matching jxlp box", () => {
+    expect(parseInChildProcess([
+      0, 0, 0, 12,
+      0x4a, 0x58, 0x4c, 0x20,
+      0x0d, 0x0a, 0x87, 0x0a,
+      0, 0, 0, 12,
+      0x66, 0x74, 0x79, 0x70,
+      0x6a, 0x78, 0x6c, 0x20,
+      0, 0, 0, 0,
+      0x6a, 0x78, 0x6c, 0x70,
+    ])).not.toThrow();
+  });
+
   it("terminates on zero-length ICNS entries", () => {
     expect(parseInChildProcess([
       0x69, 0x63, 0x6e, 0x73,
