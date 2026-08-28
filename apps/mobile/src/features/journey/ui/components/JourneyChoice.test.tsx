@@ -134,7 +134,7 @@ test("removes the custom adapter's pressed scale when iOS reduced motion is acti
   expect(style.transform).toBeUndefined();
 });
 
-test("keeps the core chip static by default and uses no journey-local visual tokens", () => {
+test("keeps the core chip free of transform motion while retaining an opacity cue", () => {
   render(
     <JourneyChoice label="选项" onSelect={jest.fn()} selected={false} />
   );
@@ -144,7 +144,8 @@ test("keeps the core chip static by default and uses no journey-local visual tok
 
   fireEvent(choice, "responderGrant", { nativeEvent: {}, persist: jest.fn() });
 
-  expect(choice.props.style.opacity).toBe(defaultOpacity);
+  expect(choice.props.style.opacity).not.toBe(defaultOpacity);
+  expect(choice.props.style.opacity).toBe(0.9);
   expect(source).not.toContain('from "./JourneyAction"');
   expect(source).not.toContain("journey-ui-tokens");
 });
