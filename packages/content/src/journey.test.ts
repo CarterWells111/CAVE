@@ -32,27 +32,37 @@ describe("draft seven-screen journey catalogs", () => {
     const internalTestApproved = reviewables.filter(
       ({ reviewStatus }) => reviewStatus === "internal_test_approved"
     );
+    const internalOnlyContentTypes = new Set(["MED", "EDU", "REVIEW"]);
+    const internalOnlyUxIds = new Set([
+      "behavior-oral-genital-contact",
+      "draft-penetrative-sex"
+    ]);
 
     expect(reviewables).toHaveLength(90);
     expect(reviewed).toHaveLength(56);
     expect(internalTestApproved).toHaveLength(34);
-    for (const entry of reviewed) {
-      expect(entry).toMatchObject({
-        reviewer: "annie",
-        reviewerRole: "产品与编辑审核人",
-        reviewedAt: "2026-08-28T09:56:30Z",
-        reviewedVersion: "2026-08-28-review-1",
-        reviewConclusion: "产品与编辑审核通过"
-      });
-    }
-    for (const entry of internalTestApproved) {
-      expect(entry).toMatchObject({
-        reviewer: "annie",
-        reviewerRole: "内部测试审核人",
-        reviewedAt: "2026-08-28T09:56:30Z",
-        reviewedVersion: "2026-08-28-review-1",
-        reviewConclusion: "仅内测通过；发布前仍需合格专家完成医疗、安全或性教育审核"
-      });
+    for (const entry of reviewables) {
+      const requiresInternalApproval =
+        internalOnlyContentTypes.has(entry.contentType) || internalOnlyUxIds.has(entry.id);
+      expect(entry, entry.id).toMatchObject(
+        requiresInternalApproval
+          ? {
+              reviewStatus: "internal_test_approved",
+              reviewer: "annie",
+              reviewerRole: "内部测试审核人",
+              reviewedAt: "2026-08-28T09:56:30Z",
+              reviewedVersion: "2026-08-28-review-1",
+              reviewConclusion: "仅内测通过；发布前仍需合格专家完成医疗、安全或性教育审核"
+            }
+          : {
+              reviewStatus: "reviewed",
+              reviewer: "annie",
+              reviewerRole: "产品与编辑审核人",
+              reviewedAt: "2026-08-28T09:56:30Z",
+              reviewedVersion: "2026-08-28-review-1",
+              reviewConclusion: "产品与编辑审核通过"
+            }
+      );
     }
   });
 

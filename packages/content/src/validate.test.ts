@@ -105,11 +105,49 @@ describe("versioned content validation", () => {
 
   it("accepts complete internal approval internally but rejects it in production", () => {
     const catalog = loadCatalog();
-    const approvedReviewables = structuredClone(allJourneyReviewables(catalog));
+    const ordinaryReview = catalog.journey.options[0]!;
+    const internalReview = catalog.journey.knowledge[0]!;
+    const alreadyApproved = structuredClone(
+      allJourneyReviewables(catalog).filter(
+        ({ id }) => id !== ordinaryReview.id && id !== internalReview.id
+      )
+    );
+    ordinaryReview.reviewStatus = "draft";
+    internalReview.reviewStatus = "expert_review_pending";
+    for (const item of [ordinaryReview, internalReview]) {
+      delete item.reviewer;
+      delete item.reviewerRole;
+      delete item.reviewedAt;
+      delete item.reviewedVersion;
+      delete item.reviewConclusion;
+    }
+
     completeInternalReviewForTest(catalog);
+    expect(ordinaryReview).toMatchObject({
+      reviewStatus: "reviewed",
+      reviewer: "annie",
+      reviewerRole: "产品与编辑审核人",
+      reviewedAt: "2026-08-28T09:56:30Z",
+      reviewedVersion: "2026-08-28-review-1",
+      reviewConclusion: "产品与编辑审核通过"
+    });
+    expect(internalReview).toMatchObject({
+      reviewStatus: "internal_test_approved",
+      reviewer: "annie",
+      reviewerRole: "内部测试审核人",
+      reviewedAt: "2026-08-28T09:56:30Z",
+      reviewedVersion: "2026-08-28-review-1",
+      reviewConclusion: "仅内测通过；发布前仍需合格专家完成医疗、安全或性教育审核"
+    });
+    expect(
+      allJourneyReviewables(catalog).filter(
+        ({ id }) => id !== ordinaryReview.id && id !== internalReview.id
+      )
+    ).toEqual(alreadyApproved);
+    const completedReviewables = structuredClone(allJourneyReviewables(catalog));
     completeInternalReviewForTest(catalog);
 
-    expect(allJourneyReviewables(catalog)).toEqual(approvedReviewables);
+    expect(allJourneyReviewables(catalog)).toEqual(completedReviewables);
     expect(() => validateCatalog(catalog, { mode: "internal" })).not.toThrow();
     const productionCodes = issueCodes(() => validateCatalog(catalog, { mode: "production" }));
     expect(productionCodes).toHaveLength(34);
