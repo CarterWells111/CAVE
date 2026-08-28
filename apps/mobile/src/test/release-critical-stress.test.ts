@@ -316,7 +316,14 @@ describe("release-critical deterministic production-runtime stress", () => {
     const longText = "界".repeat(16_384);
 
     await runtime.service.confirmAdult();
-    await runtime.service.dispatch({ type: "set-overnight-custom-note", note: longText });
+    await runtime.service.dispatch({
+      type: "save-overnight-progress",
+      completed: false,
+      stage: "expectations",
+      expectationIds: [],
+      concernIds: [],
+      customNote: longText,
+    });
     for (const page of JOURNEY_PAGE_IDS) await runtime.service.navigateTo(page);
 
     const draft = runtime.service.getSnapshot()!;

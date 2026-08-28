@@ -24,7 +24,7 @@ export function WelcomePage({
   onOpenSettings,
   resumeAvailable,
   onResume,
-  reducedMotion = false,
+  reducedMotion,
 }: WelcomePageProps) {
   const theme = useTheme();
   const styles = createStyles(theme);

@@ -53,7 +53,7 @@ test("Pages 1 through 4 hydrate canonical state and persist before navigation", 
   const overnight = route("overnight");
   expect(overnight).toContain("options={catalog.options}");
   expect(overnight).toContain("initialStage={snapshot?.overnight.resumeStage");
-  expect(overnight).toContain('type: "set-overnight-stage"');
+  expect(overnight).toContain("controller.saveOvernightProgress(input)");
   expect(overnight).toMatch(/onContinue[\s\S]*saveOvernight\(input\)[\s\S]*goTo\("behavior-map"\)/u);
 
   const knowledge = route("body-knowledge");
@@ -82,9 +82,9 @@ test("Pages 1 through 4 hydrate canonical state and persist before navigation", 
   expect(reflection).toContain("pressureWithoutDisappointment: input.pressureWithoutDisappointment");
   expect(reflection).toContain("journalPromptId: input.journalPromptId");
   expect(reflection).toContain("journalText: input.journalText");
-  expect(reflection).not.toContain("behaviorAnswers=");
-  expect(reflection).not.toContain("controller.setBehaviorAttitude");
-  expect(reflection).not.toContain("onEditBehaviorAttitude");
+  expect(reflection).toContain("behaviorAnswers={Object.entries(snapshot?.behaviorAttitudes ?? {})");
+  expect(reflection).toContain("controller.setBehaviorAttitude");
+  expect(reflection).toContain("onEditBehaviorAttitude");
   expect(reflection).toMatch(/saveReflection\([\s\S]*goTo\("preset-practice"\)/u);
 });
 

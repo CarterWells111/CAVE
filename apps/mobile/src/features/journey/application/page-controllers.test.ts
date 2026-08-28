@@ -123,7 +123,9 @@ test("translates Page 2-5 events into page-owned commands and idempotent task ke
   await controller.saveReflection({ motivationIds: ["draft-curious"], comfortNeedIds: ["draft-privacy"], expressionSupportNeeded: true, journalSaveChoice: "device" });
 
   expect(service.dispatch).toHaveBeenCalledWith({
-    type: "save-overnight",
+    type: "save-overnight-progress",
+    completed: true,
+    stage: "concerns",
     expectationIds: ["draft-rest"],
     concernIds: [],
     customNote: "",
@@ -133,7 +135,7 @@ test("translates Page 2-5 events into page-owned commands and idempotent task ke
   expect(service.dispatch).toHaveBeenCalledWith({ type: "set-behavior-attitude", behaviorId: "draft-kissing", attitude: "unsure" });
 });
 
-test("marks overnight complete only after saving optional blank selections", async () => {
+test("marks overnight complete in the same persisted selection snapshot", async () => {
   const { controller, service } = harness();
   let snapshot: JourneyDraft = {
     ...activeDraft(),
@@ -154,29 +156,25 @@ test("marks overnight complete only after saving optional blank selections", asy
   await controller.saveOvernight({ expectationIds: [], concernIds: [], customNote: "" });
 
   expect(service.dispatch).toHaveBeenNthCalledWith(1, {
-    type: "save-overnight",
+    type: "save-overnight-progress",
+    completed: true,
+    stage: "concerns",
     expectationIds: [],
     concernIds: [],
     customNote: "",
   });
-  expect(service.dispatch).toHaveBeenNthCalledWith(2, {
-    type: "record-point-event",
-    key: "progress:overnight-complete:v1",
-  });
+  expect(service.dispatch).toHaveBeenCalledTimes(1);
   expect(canAccessJourneyPage(snapshot, "behavior-map")).toBe(true);
 });
 
-test("does not mark overnight complete when saving its answers fails", async () => {
+test("does not mark overnight complete when its atomic snapshot write fails", async () => {
   const { controller, service } = harness();
   jest.mocked(service.dispatch).mockRejectedValueOnce(new Error("overnight-save-failed"));
 
   await expect(controller.saveOvernight({ expectationIds: [], concernIds: [], customNote: "" }))
     .rejects.toThrow("overnight-save-failed");
 
-  expect(service.dispatch).not.toHaveBeenCalledWith({
-    type: "record-point-event",
-    key: "progress:overnight-complete:v1",
-  });
+  expect(service.dispatch).toHaveBeenCalledTimes(1);
 });
 
 test("marks the medical diagram opened through the controller", async () => {

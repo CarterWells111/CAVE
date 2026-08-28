@@ -5,6 +5,11 @@ packages:
 overrides:
   postcss: "8.5.26"
 
+allowBuilds:
+  esbuild: true
+  unrs-resolver: true
+  workerd: true
+
 patchedDependencies:
   image-size@1.2.1: "patches/image-size@1.2.1.patch"
 

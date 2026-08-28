@@ -18,7 +18,6 @@ import type { AppShellStateRepository } from "../../shell/infrastructure/app-she
 import type { ReviewHistoryRepository } from "../../reviews/infrastructure/review-history-repository";
 import type { JourneyApplicationService } from "./journey-application-service";
 import type { JourneyCompletionTransaction } from "../infrastructure/journey-write-coordinator";
-import { OVERNIGHT_COMPLETE_POINT_EVENT_KEY } from "./journey-progress-markers";
 
 export interface ClipboardAdapter {
   setStringAsync(value: string): Promise<void>;
@@ -83,16 +82,24 @@ export class JourneyPageController {
     return this.dependencies.service.dispatch({ type: "set-explicit-content-consent", consented });
   }
 
+  saveOvernightProgress(input: {
+    stage: "expectations" | "concerns";
+    expectationIds: string[];
+    concernIds: string[];
+    customNote: string;
+    completed: boolean;
+  }) {
+    return this.dependencies.service.dispatch({ type: "save-overnight-progress", ...input });
+  }
+
   async saveOvernight(input: { expectationIds: string[]; concernIds: string[]; customNote: string }) {
     await this.dependencies.service.dispatch({
-      type: "save-overnight",
+      type: "save-overnight-progress",
+      completed: true,
+      stage: "concerns",
       expectationIds: input.expectationIds,
       concernIds: input.concernIds,
       customNote: input.customNote,
-    });
-    await this.dependencies.service.dispatch({
-      type: "record-point-event",
-      key: OVERNIGHT_COMPLETE_POINT_EVENT_KEY,
     });
   }
 

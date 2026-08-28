@@ -148,6 +148,31 @@ test("offers labelled button-only zoom with bounded state and reset", async () =
   );
 });
 
+test("keeps the 100–200% anatomy image in a pannable viewport and retries image loading", async () => {
+  render(
+    <BodyKnowledgePage
+      cards={cards}
+      definition={definition}
+      diagramSource={{ uri: "medical-review" }}
+      onContinue={jest.fn()}
+      onOpenDiagram={jest.fn()}
+      sources={[source]}
+    />,
+  );
+  fireEvent.press(screen.getByRole("button", { name: "查看外阴结构图" }));
+  fireEvent.press(screen.getByRole("button", { name: "我愿意查看" }));
+  const image = await screen.findByLabelText(/阴阜、大阴唇/u);
+  const viewport = screen.getByTestId("body-diagram-viewport");
+  expect(viewport).toHaveProp("maximumZoomScale", 2);
+  expect(viewport).toHaveProp("minimumZoomScale", 1);
+  expect(viewport).toHaveProp("pinchGestureEnabled", true);
+
+  fireEvent(image, "error");
+  expect(await screen.findByRole("alert")).toHaveTextContent("身体图加载失败，请重试。");
+  fireEvent.press(screen.getByRole("button", { name: "重试加载身体图" }));
+  expect(screen.getByLabelText(/阴阜、大阴唇/u)).toBeTruthy();
+});
+
 test("SourceDrawer shows passed catalog metadata and invokes only the passed user action", () => {
   const onSourceAction = jest.fn();
   render(

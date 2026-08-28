@@ -11,6 +11,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { useTheme } from "../design/theme-provider";
+import { useReducedMotion } from "../design/motion-preferences";
 import { TextAction } from "./text-action";
 
 export type BottomSheetProps = PropsWithChildren<{
@@ -20,7 +21,7 @@ export type BottomSheetProps = PropsWithChildren<{
   onInitialFocus?: () => void;
   onRestoreFocus?: () => void;
   closeLabel?: string;
-  reducedMotion?: boolean;
+  reducedMotion?: boolean | undefined;
   resolveFocusHandle?: typeof findNodeHandle;
 }>;
 
@@ -32,10 +33,12 @@ export function BottomSheet({
   onInitialFocus,
   onRestoreFocus,
   closeLabel = `关闭${title}`,
-  reducedMotion = false,
+  reducedMotion,
   resolveFocusHandle = findNodeHandle,
 }: BottomSheetProps) {
   const theme = useTheme();
+  const systemReducedMotion = useReducedMotion();
+  const shouldReduceMotion = reducedMotion ?? systemReducedMotion;
   const wasVisible = useRef(false);
   const closeRef = useRef<View>(null);
 
@@ -52,7 +55,7 @@ export function BottomSheet({
 
   return (
     <Modal
-      animationType={reducedMotion ? "none" : "slide"}
+      animationType={shouldReduceMotion ? "none" : "slide"}
       onRequestClose={onClose}
       onShow={handleShow}
       testID="bottom-sheet-modal"

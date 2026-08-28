@@ -1,5 +1,5 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react-native";
-import { Animated, StyleSheet } from "react-native";
+import { AccessibilityInfo, Animated, StyleSheet } from "react-native";
 
 import { BehaviorMapPage } from "./behavior-map-page";
 
@@ -52,6 +52,12 @@ test("opens one card and offers all six non-ranked answers", async () => {
   expect(screen.getByText("对于拥抱或依偎，此刻的你更接近哪种感觉？")).toBeTruthy();
   expect(screen.getAllByRole("radio", { name: /^拥抱或依偎：/u })).toHaveLength(6);
   expect(screen.getByRole("radio", { name: "拥抱或依偎：我已经习惯 / 我享受这类亲密行为" })).toBeTruthy();
+  expect(screen.getByText("期待不代表已经答应，到了当时仍然需要彼此确认。")).toBeTruthy();
+  expect(screen.getByText("熟悉或享受过，不代表这一次已经同意；仍然可以根据当下的感受重新决定。")).toBeTruthy();
+  expect(screen.getByText("可以等到那一刻，再听听自己的感觉。")).toBeTruthy();
+  expect(screen.getByText("不确定也是一个完整的答案。")).toBeTruthy();
+  expect(screen.getByText("你不需要为这个答案补充理由。")).toBeTruthy();
+  expect(screen.getByText("可以先留白，之后再回来看看。")).toBeTruthy();
   expect(screen.getByRole("button", { name: "带着这些感受继续" })).toBeTruthy();
   expect(onCardVisibilityChange).toHaveBeenCalledWith(true);
 });
@@ -78,6 +84,19 @@ test("keeps a selection local until save, then returns to the updated card front
   expect(screen.getByText("已选择：我已经习惯 / 我享受这类亲密行为")).toBeTruthy();
   expect(screen.getByText("点击修改")).toBeTruthy();
   expect(onCardVisibilityChange).toHaveBeenLastCalledWith(false);
+});
+
+test("restores VoiceOver focus to the card trigger after saving", async () => {
+  const focus = jest.spyOn(AccessibilityInfo, "setAccessibilityFocus").mockImplementation(jest.fn());
+  render(<BehaviorMapPage onComplete={jest.fn()} onSetAttitude={jest.fn()} reducedMotion resolveFocusHandle={() => 42} />);
+  await openCard("behavior-card-front-behavior-hug", "behavior-card-back-behavior-hug");
+  fireEvent.press(screen.getByRole("radio", { name: "拥抱或依偎：我还没想清楚" }));
+  fireEvent.press(screen.getByRole("button", { name: "带着这些感受继续" }));
+
+  await waitFor(() => expect(screen.getByTestId("behavior-card-grid")).toBeTruthy());
+  await waitFor(() => expect(focus.mock.calls.length).toBeGreaterThanOrEqual(2));
+  expect(focus).toHaveBeenLastCalledWith(42);
+  focus.mockRestore();
 });
 
 test("restores a saved answer on edit without treating it as current consent", async () => {
@@ -107,6 +126,7 @@ test("stays on the card back when persistence fails and supports retry", async (
   fireEvent.press(screen.getByRole("button", { name: "带着这些感受继续" }));
   expect(await screen.findByRole("alert")).toHaveTextContent(/暂时无法保存，请重试。/u);
   expect(screen.getByTestId("behavior-card-back-behavior-hug")).toBeTruthy();
+  expect(screen.getByText("不确定也是一个完整的答案。")).toBeTruthy();
 
   fireEvent.press(screen.getByRole("button", { name: "带着这些感受继续" }));
   await waitFor(() => expect(onSetAttitude).toHaveBeenCalledTimes(2));

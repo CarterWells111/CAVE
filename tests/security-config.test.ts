@@ -41,6 +41,17 @@ describe("repository security configuration", () => {
     expect(imageSizePatch).toContain("imageHeader[1] <= 0");
   });
 
+  it("allows only the three audited native postinstall packages with exact booleans", () => {
+    const workspace = readFileSync(
+      new URL("../pnpm-workspace.yaml", import.meta.url),
+      "utf8"
+    );
+
+    expect(workspace).toContain("allowBuilds:");
+    expect(workspace).toMatch(/allowBuilds:\s*\r?\n\s+esbuild: true\s*\r?\n\s+unrs-resolver: true\s*\r?\n\s+workerd: true/u);
+    expect(workspace).not.toMatch(/allowBuilds:[\s\S]*(?:\*|all|true\s*#\s*all)/iu);
+  });
+
   it("runs JavaScript and TypeScript CodeQL analysis", () => {
     const workflow = readFileSync(
       new URL("../.github/workflows/codeql.yml", import.meta.url),

@@ -2,6 +2,7 @@ import { forwardRef, useState } from "react";
 import { Pressable, Text, type View } from "react-native";
 
 import { useTheme } from "../design/theme-provider";
+import { useReducedMotion } from "../design/motion-preferences";
 
 export type TextActionProps = {
   label: string;
@@ -17,6 +18,7 @@ export const TextAction = forwardRef<View, TextActionProps>(function TextAction(
   ref,
 ) {
   const theme = useTheme();
+  const reducedMotion = useReducedMotion();
   const [focused, setFocused] = useState(false);
   const unavailable = disabled || loading;
   return (
@@ -37,7 +39,7 @@ export const TextAction = forwardRef<View, TextActionProps>(function TextAction(
         justifyContent: "center",
         minHeight: theme.size.minimumTouchTarget,
         minWidth: theme.size.minimumTouchTarget,
-        opacity: disabled ? 0.65 : pressed ? 0.72 : 1,
+        opacity: disabled ? 0.65 : pressed && !reducedMotion ? 0.72 : 1,
         outlineColor: theme.color.focus,
         outlineOffset: theme.border.focusOffset,
         outlineWidth: focused ? theme.border.focusWidth : 0,

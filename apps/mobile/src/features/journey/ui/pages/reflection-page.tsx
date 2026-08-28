@@ -13,6 +13,7 @@ import {
 
 import type { AppTheme } from "../../../../core/design/theme";
 import { useTheme } from "../../../../core/design/theme-provider";
+import { useReducedMotion } from "../../../../core/design/motion-preferences";
 import { BottomSheet } from "../../../../core/ui/bottom-sheet";
 import { Card } from "../../../../core/ui/Card";
 import { InfoCard } from "../../../../core/ui/info-card";
@@ -210,11 +211,12 @@ export function ReflectionPage({
   onSave,
   onUsePracticePhrase,
   onComplete,
-  reducedMotion = false,
+  reducedMotion,
   showLocalJournalSaveNotice = true,
   storageMode = "device",
 }: ReflectionPageProps) {
   const theme = useTheme();
+  const shouldReduceMotion = reducedMotion ?? useReducedMotion();
   const styles = createStyles(theme);
   const { height } = useWindowDimensions();
   const flipRotation = useRef(new Animated.Value(0)).current;
@@ -238,7 +240,7 @@ export function ReflectionPage({
 
   const animateTo = (toValue: number) => new Promise<void>((resolve) => {
     Animated.timing(flipRotation, {
-      duration: reducedMotion ? 0 : flipDuration,
+      duration: shouldReduceMotion ? 0 : flipDuration,
       easing: Easing.inOut(Easing.ease),
       toValue,
       useNativeDriver: true,
@@ -261,13 +263,13 @@ export function ReflectionPage({
     flipRotation.setValue(0);
     await frame();
     if (!mountedRef.current) return;
-    if (!reducedMotion) await animateTo(90);
+    if (!shouldReduceMotion) await animateTo(90);
     if (!mountedRef.current) return;
     setCardFace("back");
-    flipRotation.setValue(reducedMotion ? 0 : -90);
+    flipRotation.setValue(shouldReduceMotion ? 0 : -90);
     await frame();
     if (!mountedRef.current) return;
-    if (!reducedMotion) await animateTo(0);
+    if (!shouldReduceMotion) await animateTo(0);
     if (!mountedRef.current) return;
     setAnimating(false);
     const title = cards.find(({ id }) => id === cardId)?.title ?? "反思卡";
@@ -278,13 +280,13 @@ export function ReflectionPage({
   const returnToGallery = async () => {
     if (animating) return;
     setAnimating(true);
-    if (!reducedMotion) await animateTo(90);
+    if (!shouldReduceMotion) await animateTo(90);
     if (!mountedRef.current) return;
     setCardFace("front");
-    flipRotation.setValue(reducedMotion ? 0 : -90);
+    flipRotation.setValue(shouldReduceMotion ? 0 : -90);
     await frame();
     if (!mountedRef.current) return;
-    if (!reducedMotion) await animateTo(0);
+    if (!shouldReduceMotion) await animateTo(0);
     if (!mountedRef.current) return;
     const title = cards.find(({ id }) => id === activeCardId)?.title;
     setActiveCardId(null);

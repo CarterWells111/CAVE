@@ -17,11 +17,17 @@ type Panel = "expectations" | "concerns";
 export type OvernightPageProps = {
   options: JourneyOption[];
   onContinue: (input: { expectationIds: string[]; concernIds: string[]; customNote: string }) => ActionResult;
+  onProgress?: (input: {
+    stage: Stage;
+    expectationIds: string[];
+    concernIds: string[];
+    customNote: string;
+    completed: false;
+  }) => ActionResult;
   initialExpectationIds?: string[];
   initialConcernIds?: string[];
   initialCustomNote?: string;
   initialStage?: Stage;
-  onStageChange?: (stage: Stage) => ActionResult;
   consentSource?: JourneySource;
   onSourceAction?: (source: JourneySource) => ActionResult;
   reducedMotion?: boolean;
@@ -107,16 +113,15 @@ export function OvernightPage({
   initialConcernIds = [],
   initialCustomNote = "",
   initialStage = "expectations",
-  onStageChange,
+  onProgress,
   consentSource,
   onSourceAction,
-  reducedMotion = false,
+  reducedMotion,
 }: OvernightPageProps) {
   const theme = useTheme();
   const styles = createStyles(theme);
   const expectations = options.filter((item) => item.group === "expectation").sort((a, b) => a.order - b.order);
   const concerns = options.filter((item) => item.group === "concern").sort((a, b) => a.order - b.order);
-  const [stage, setStage] = useState<Stage>(initialStage);
   const [expectationIds, setExpectationIds] = useState([...initialExpectationIds]);
   const [concernIds, setConcernIds] = useState([...initialConcernIds]);
   const [expanded, setExpanded] = useState<Record<Panel, boolean>>({
@@ -125,50 +130,86 @@ export function OvernightPage({
   });
   const [stagePending, setStagePending] = useState(false);
   const [stageError, setStageError] = useState(false);
+  const [failedProgress, setFailedProgress] = useState<{
+    stage: Stage;
+    expectationIds: string[];
+    concernIds: string[];
+    customNote: string;
+    completed: false;
+  } | null>(null);
   const [sourceOpen, setSourceOpen] = useState(false);
   const stageChangeInFlightRef = useRef(false);
+  const persistedStageRef = useRef<Stage>(initialStage);
   const bothCollapsed = !expanded.expectations && !expanded.concerns;
 
   const finishOpening = (panel: Panel) => {
-    setStage("concerns");
+    persistedStageRef.current = panel;
     setExpanded((current) => ({ ...current, [panel]: true }));
     setStagePending(false);
     stageChangeInFlightRef.current = false;
   };
+
+  const saveProgress = async (input: NonNullable<OvernightPageProps["onProgress"]> extends (value: infer Input) => ActionResult ? Input : never) => {
+    setStageError(false);
+    setStagePending(true);
+    try {
+      await onProgress?.(input);
+      persistedStageRef.current = input.stage;
+      setFailedProgress(null);
+    } catch {
+      setStageError(true);
+      setFailedProgress(input);
+      throw new Error("overnight-progress-save-failed");
+    } finally {
+      setStagePending(false);
+    }
+  };
+
+  const progressInput = (nextStage: Stage, nextExpectationIds = expectationIds, nextConcernIds = concernIds) => ({
+    completed: false as const,
+    concernIds: nextConcernIds,
+    customNote: initialCustomNote,
+    expectationIds: nextExpectationIds,
+    stage: nextStage,
+  });
 
   const togglePanel = (panel: Panel) => {
     if (expanded[panel]) {
       setExpanded((current) => ({ ...current, [panel]: false }));
       return;
     }
-    if (stage === "concerns") {
-      setExpanded((current) => ({ ...current, [panel]: true }));
+    if (onProgress === undefined) {
+      finishOpening(panel);
       return;
     }
     if (stageChangeInFlightRef.current) return;
 
     stageChangeInFlightRef.current = true;
-    setStageError(false);
-    setStagePending(true);
-    try {
-      const result = onStageChange?.("concerns");
-      if (result && typeof result.then === "function") {
-        void Promise.resolve(result).then(
-          () => finishOpening(panel),
-          () => {
-            setStageError(true);
-            setStagePending(false);
-            stageChangeInFlightRef.current = false;
-          },
-        );
-        return;
-      }
-      finishOpening(panel);
-    } catch {
-      setStageError(true);
-      setStagePending(false);
-      stageChangeInFlightRef.current = false;
+    void saveProgress(progressInput(panel)).then(
+      () => finishOpening(panel),
+      () => undefined,
+    ).finally(() => { stageChangeInFlightRef.current = false; });
+  };
+
+  const saveSelection = (panel: Panel, option: JourneyOption) => {
+    if (stagePending) return;
+    const nextExpectationIds = panel === "expectations"
+      ? updateSelection(expectationIds, option, expectations)
+      : expectationIds;
+    const nextConcernIds = panel === "concerns"
+      ? updateSelection(concernIds, option, concerns)
+      : concernIds;
+    setExpectationIds(nextExpectationIds);
+    setConcernIds(nextConcernIds);
+    if (onProgress === undefined) {
+      return;
     }
+    void saveProgress(progressInput(panel, nextExpectationIds, nextConcernIds)).catch(() => undefined);
+  };
+
+  const retryProgress = () => {
+    if (failedProgress === null || stagePending) return;
+    void saveProgress(failedProgress).catch(() => undefined);
   };
 
   return (
@@ -186,7 +227,7 @@ export function OvernightPage({
           busy={stagePending}
           expanded={expanded.expectations}
           ids={expectationIds}
-          onOptionPress={(option) => setExpectationIds((current) => updateSelection(current, option, expectations))}
+          onOptionPress={(option) => saveSelection("expectations", option)}
           onToggle={() => togglePanel("expectations")}
           options={expectations}
           title="你有一点期待的是……"
@@ -195,7 +236,7 @@ export function OvernightPage({
           busy={stagePending}
           expanded={expanded.concerns}
           ids={concernIds}
-          onOptionPress={(option) => setConcernIds((current) => updateSelection(current, option, concerns))}
+          onOptionPress={(option) => saveSelection("concerns", option)}
           onToggle={() => togglePanel("concerns")}
           options={concerns}
           title="你有一点在意的是……"
@@ -203,9 +244,18 @@ export function OvernightPage({
       </View>
 
       {stageError ? (
-        <Text accessibilityRole="alert" style={styles.error}>
-          阶段暂时无法保存，请重试。
-        </Text>
+        <>
+          <Text accessibilityRole="alert" style={styles.error}>
+            暂时无法保存，请重试。
+          </Text>
+          <JourneyAction
+            disabled={stagePending}
+            errorMessage="暂时无法保存，请重试。"
+            label="重试保存当前选择"
+            loadingLabel="正在重试保存…"
+            onAction={retryProgress}
+          />
+        </>
       ) : null}
 
       <View style={styles.footer}>

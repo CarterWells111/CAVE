@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Pressable, Text } from "react-native";
 
 import { useTheme } from "../design/theme-provider";
+import { useReducedMotion } from "../design/motion-preferences";
 
 type ChoiceChipProps = {
   label: string;
@@ -23,6 +24,7 @@ export function ChoiceChip({
   testID
 }: ChoiceChipProps) {
   const theme = useTheme();
+  const reducedMotion = useReducedMotion();
   const [focused, setFocused] = useState(false);
   const marker = semantics === "checkbox" ? (selected ? "✓" : "□") : selected ? "●" : "○";
   const state =
@@ -58,7 +60,7 @@ export function ChoiceChip({
         maxWidth: "100%",
         minHeight: 56,
         minWidth: theme.size.minimumTouchTarget,
-        opacity: disabled ? 0.55 : pressed ? 0.82 : 1,
+        opacity: disabled ? 0.55 : pressed && !reducedMotion ? 0.82 : 1,
         outlineColor: theme.color.focus,
         outlineOffset: theme.border.focusOffset,
         outlineWidth: focused ? theme.border.focusWidth : 0,

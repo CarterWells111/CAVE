@@ -4,7 +4,7 @@ import type {
   JourneySource,
 } from "@cave/content";
 import { useMemo, useState } from "react";
-import { Image, type ImageSourcePropType, Text, View } from "react-native";
+import { Image, type ImageSourcePropType, ScrollView, Text, View } from "react-native";
 
 import { useTheme } from "../../../../core/design/theme-provider";
 import type { AppTheme } from "../../../../core/design/theme";
@@ -41,7 +41,7 @@ export function BodyKnowledgePage({
   onSourceAction,
   diagramSource,
   addressPreference = "你",
-  reducedMotion = false,
+  reducedMotion,
 }: BodyKnowledgePageProps) {
   const theme = useTheme();
   const styles = createStyles(theme);
@@ -57,6 +57,9 @@ export function BodyKnowledgePage({
   const [consentOpen, setConsentOpen] = useState(false);
   const [diagramOpen, setDiagramOpen] = useState(false);
   const [diagramZoom, setDiagramZoom] = useState(1);
+  const [imageAttempt, setImageAttempt] = useState(0);
+  const [imageError, setImageError] = useState(false);
+  const [imageStatus, setImageStatus] = useState("");
   const [source, setSource] = useState<JourneySource | null>(null);
 
   const complete = async () => {
@@ -67,6 +70,8 @@ export function BodyKnowledgePage({
   const revealDiagram = async () => {
     await onOpenDiagram?.();
     setDiagramZoom(1);
+    setImageError(false);
+    setImageStatus("");
     setConsentOpen(false);
     setDiagramOpen(true);
   };
@@ -91,15 +96,37 @@ export function BodyKnowledgePage({
           <View style={styles.diagram}>
             {diagramSource ? (
               <>
-                <View style={styles.imageViewport}>
-                  <Image
-                    accessibilityLabel="医学图审核稿：阴阜、大阴唇、阴蒂、小阴唇、尿道口、阴道口、肛门"
-                    accessibilityValue={{ max: 200, min: 100, now: zoomPercent, text: `${zoomPercent}%` }}
-                    resizeMode="contain"
-                    source={diagramSource}
-                    style={[styles.image, { transform: [{ scale: diagramZoom }] }]}
-                  />
-                </View>
+                {imageError ? (
+                  <View style={styles.imageError}>
+                    <Text accessibilityRole="alert" style={styles.error}>身体图加载失败，请重试。</Text>
+                    <SecondaryButton label="重试加载身体图" onPress={() => {
+                      setImageError(false);
+                      setImageStatus("");
+                      setImageAttempt((attempt) => attempt + 1);
+                    }} />
+                  </View>
+                ) : (
+                  <ScrollView
+                    contentContainerStyle={styles.imageZoomContent}
+                    maximumZoomScale={2}
+                    minimumZoomScale={1}
+                    pinchGestureEnabled
+                    style={styles.imageViewport}
+                    testID="body-diagram-viewport"
+                  >
+                    <Image
+                      accessibilityLabel="医学图审核稿：阴阜、大阴唇、阴蒂、小阴唇、尿道口、阴道口、肛门"
+                      accessibilityValue={{ max: 200, min: 100, now: zoomPercent, text: `${zoomPercent}%` }}
+                      key={imageAttempt}
+                      onError={() => setImageError(true)}
+                      onLoad={() => setImageStatus("身体图已加载")}
+                      resizeMode="contain"
+                      source={diagramSource}
+                      style={[styles.image, { transform: [{ scale: diagramZoom }] }]}
+                    />
+                  </ScrollView>
+                )}
+                {imageStatus ? <Text accessibilityLiveRegion="polite" style={styles.paperBody}>{imageStatus}</Text> : null}
                 <Text accessibilityLiveRegion="polite" selectable style={styles.paperBody}>
                   {`当前缩放：${zoomPercent}%`}
                 </Text>
@@ -245,7 +272,10 @@ function createStyles(theme: AppTheme) {
     overflow: "hidden" as const,
     width: "100%" as const,
   },
+  imageZoomContent: { flexGrow: 1 },
   image: { height: "100%" as const, width: "100%" as const },
+  imageError: { gap: theme.space.compact },
+  error: { ...theme.typography.body, color: theme.color.error, flexShrink: 1 },
   zoomControls: { gap: theme.space.compact, width: "100%" as const },
   };
 }

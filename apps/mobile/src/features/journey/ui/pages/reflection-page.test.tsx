@@ -105,6 +105,7 @@ test("keeps all comfort fields on one optional card and saves actual content", a
     comfortNeedIds: ["comfort-ask-before-change"],
     comfortNote: "先问我，再慢一点",
   })));
+  await waitFor(() => expect(screen.getByTestId("reflection-card-grid")).toBeTruthy());
 });
 
 test("asks before local journal persistence and can disable future notices", async () => {
@@ -139,7 +140,8 @@ test("skips the local journal notice when the device preference is disabled", as
   fireEvent.press(screen.getByRole("button", { name: "保存这句话并返回" }));
 
   await waitFor(() => expect(onSave).toHaveBeenCalled());
-  expect(screen.queryByText("记录会保存在哪里？")).toBeNull();
+  await waitFor(() => expect(screen.getByTestId("reflection-card-grid")).toBeTruthy());
+  await waitFor(() => expect(screen.queryByText("记录会保存在哪里？")).toBeNull());
 });
 
 test("clears one saved card after explicit confirmation and persists the empty field", async () => {
@@ -263,7 +265,7 @@ test("offers the conditional slow-down phrase without overwriting prior answers"
   );
 });
 
-test("allows continuing with no completed cards and strips unconfirmed journal text", () => {
+test("allows continuing with no completed cards and strips unconfirmed journal text", async () => {
   const onComplete = jest.fn<Promise<void>, [unknown]>().mockResolvedValue(undefined);
   renderPage({
     initialValue: { journalPromptId: "journal-hesitation", journalSaveChoice: "not-saved", journalText: "不应持久化" },
@@ -271,10 +273,12 @@ test("allows continuing with no completed cards and strips unconfirmed journal t
   });
   fireEvent.press(screen.getByRole("button", { name: "带着这些发现去练习" }));
 
-  expect(onComplete).toHaveBeenCalledWith(expect.objectContaining({
+  await waitFor(() => expect(onComplete).toHaveBeenCalledWith(expect.objectContaining({
     journalSaveChoice: "not-saved",
     journalText: "",
-  }));
+  })));
+  await waitFor(() => expect(screen.getByRole("button", { name: "带着这些发现去练习" }))
+    .toHaveProp("accessibilityState", expect.objectContaining({ busy: false })));
   expect(onComplete.mock.calls[0]?.[0]).not.toHaveProperty("journalPromptId");
 });
 

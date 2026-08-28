@@ -13,6 +13,7 @@ import {
 
 import type { AppTheme } from "../../../../core/design/theme";
 import { useTheme } from "../../../../core/design/theme-provider";
+import { useReducedMotion } from "../../../../core/design/motion-preferences";
 import { TextAction } from "../../../../core/ui/text-action";
 import type { BehaviorAttitude } from "../../domain/types";
 import { loadJourneyContentCatalog } from "../../infrastructure/journey-content-catalog";
@@ -39,6 +40,7 @@ export type BehaviorMapPageProps = {
   onComplete(input: { participated: true }): ReturnType<JourneyActionCallback>;
   createCustomBehaviorId?: () => string;
   reducedMotion?: boolean;
+  resolveFocusHandle?: typeof findNodeHandle;
 };
 
 const content = loadJourneyContentCatalog();
@@ -82,14 +84,17 @@ export function BehaviorMapPage({
   onCardVisibilityChange,
   onComplete,
   createCustomBehaviorId = () => `custom-${Date.now()}`,
-  reducedMotion = false,
+  reducedMotion,
+  resolveFocusHandle = findNodeHandle,
 }: BehaviorMapPageProps) {
   const theme = useTheme();
+  const shouldReduceMotion = reducedMotion ?? useReducedMotion();
   const styles = createStyles(theme);
   const { height } = useWindowDimensions();
   const flipRotation = useRef(new Animated.Value(0)).current;
   const mountedRef = useRef(true);
   const questionRef = useRef<Text>(null);
+  const triggerRefs = useRef<Record<string, View | null>>({});
   const [activeCard, setActiveCard] = useState<DeckCard | null>(null);
   const [cardFace, setCardFace] = useState<CardFace>("front");
   const [animating, setAnimating] = useState(false);
@@ -136,7 +141,7 @@ export function BehaviorMapPage({
 
   const animateTo = (toValue: number) => new Promise<void>((resolve) => {
     Animated.timing(flipRotation, {
-      duration: reducedMotion ? 0 : flipDuration,
+      duration: shouldReduceMotion ? 0 : flipDuration,
       easing: Easing.inOut(Easing.ease),
       toValue,
       useNativeDriver: true,
@@ -144,7 +149,7 @@ export function BehaviorMapPage({
   });
 
   const focusQuestion = () => {
-    const node = findNodeHandle(questionRef.current);
+    const node = resolveFocusHandle(questionRef.current);
     if (node !== null) AccessibilityInfo.setAccessibilityFocus(node);
   };
 
@@ -161,13 +166,13 @@ export function BehaviorMapPage({
     flipRotation.setValue(0);
     await frame();
     if (!mountedRef.current) return;
-    if (!reducedMotion) await animateTo(90);
+    if (!shouldReduceMotion) await animateTo(90);
     if (!mountedRef.current) return;
     setCardFace("back");
-    flipRotation.setValue(reducedMotion ? 0 : -90);
+    flipRotation.setValue(shouldReduceMotion ? 0 : -90);
     await frame();
     if (!mountedRef.current) return;
-    if (!reducedMotion) await animateTo(0);
+    if (!shouldReduceMotion) await animateTo(0);
     if (!mountedRef.current) return;
     setAnimating(false);
     AccessibilityInfo.announceForAccessibility(`${card.frontLabel}，已展开`);
@@ -177,18 +182,22 @@ export function BehaviorMapPage({
   const returnToGallery = async () => {
     if (animating) return;
     setAnimating(true);
-    if (!reducedMotion) await animateTo(90);
+    if (!shouldReduceMotion) await animateTo(90);
     if (!mountedRef.current) return;
     setCardFace("front");
-    flipRotation.setValue(reducedMotion ? 0 : -90);
+    flipRotation.setValue(shouldReduceMotion ? 0 : -90);
     await frame();
     if (!mountedRef.current) return;
-    if (!reducedMotion) await animateTo(0);
+    if (!shouldReduceMotion) await animateTo(0);
     if (!mountedRef.current) return;
     const label = activeCard?.frontLabel;
+    const trigger = activeCard ? triggerRefs.current[activeCard.id] : null;
     setActiveCard(null);
     setAnimating(false);
     onCardVisibilityChange?.(false);
+    await frame();
+    const triggerNode = resolveFocusHandle(trigger ?? null);
+    if (triggerNode !== null) AccessibilityInfo.setAccessibilityFocus(triggerNode);
     if (label) AccessibilityInfo.announceForAccessibility(`${label}，已返回所有卡牌`);
   };
 
@@ -260,15 +269,17 @@ export function BehaviorMapPage({
               {catalogAttitudes.map((attitude) => {
                 const domainAttitude = toDomainAttitude(attitude.value);
                 return (
-                  <JourneyChoice
-                    accessibilityLabel={`${activeCard.questionLabel}：${attitude.label}`}
-                    disabled={animating}
-                    key={attitude.id}
-                    label={attitude.label}
-                    mode="single"
-                    onSelect={() => setDraftAttitude(domainAttitude)}
-                    selected={draftAttitude === domainAttitude}
-                  />
+                  <View key={attitude.id} style={styles.attitudeOption}>
+                    <JourneyChoice
+                      accessibilityLabel={`${activeCard.questionLabel}：${attitude.label}`}
+                      disabled={animating}
+                      label={attitude.label}
+                      mode="single"
+                      onSelect={() => setDraftAttitude(domainAttitude)}
+                      selected={draftAttitude === domainAttitude}
+                    />
+                    <Text selectable style={styles.feedback}>{attitude.feedback}</Text>
+                  </View>
                 );
               })}
             </View>
@@ -357,6 +368,7 @@ export function BehaviorMapPage({
               accessibilityState={{ selected }}
               key={card.id}
               onPress={() => { void openCard(card); }}
+              ref={(node) => { triggerRefs.current[card.id] = node; }}
               style={({ pressed }) => [styles.frontCard, pressed ? styles.frontCardPressed : null]}
               testID={`behavior-card-front-${card.id}`}
             >
@@ -427,6 +439,8 @@ function createStyles(theme: AppTheme) {
   question: { ...theme.typography.title, color: theme.color.text, flexShrink: 1 },
   supporting: { ...theme.typography.body, color: theme.color.textSecondary, flexShrink: 1 },
   options: { gap: theme.space.compact, width: "100%" as const },
+  attitudeOption: { gap: theme.space.compact, width: "100%" as const },
+  feedback: { ...theme.typography.caption, color: theme.color.textSecondary, flexShrink: 1 },
   input: {
     ...theme.typography.body,
     backgroundColor: theme.color.surfaceSubtle,

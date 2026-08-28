@@ -14,7 +14,7 @@ export type SourceDrawerProps = {
   actionLabel?: string;
   onInitialFocus?: () => void;
   onRestoreFocus?: () => void;
-  reducedMotion?: boolean;
+  reducedMotion?: boolean | undefined;
 };
 
 export function SourceDrawer({

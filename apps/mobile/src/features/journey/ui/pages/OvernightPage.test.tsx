@@ -116,21 +116,45 @@ test("opens the consent source from the persistent footer link", () => {
   expect(onSourceAction).toHaveBeenCalledWith(source);
 });
 
-test("does not expand after a failed stage write and permits retry", async () => {
-  const onStageChange = jest.fn()
+test("does not advance a stage after a failed atomic snapshot write and permits retry", async () => {
+  const onProgress = jest.fn()
     .mockRejectedValueOnce(new Error("storage unavailable"))
     .mockResolvedValueOnce(undefined);
-  render(<OvernightPage onContinue={jest.fn()} onStageChange={onStageChange} options={options} />);
+  render(<OvernightPage onContinue={jest.fn()} onProgress={onProgress} options={options} />);
 
   fireEvent.press(screen.getByRole("button", { name: "你有一点期待的是……，点击展开" }));
-  await waitFor(() => expect(screen.getByText("阶段暂时无法保存，请重试。")).toBeTruthy());
+  await waitFor(() => expect(screen.getByText("暂时无法保存，请重试。")).toBeTruthy());
   expect(screen.getByText("教育原则")).toBeTruthy();
   expect(screen.queryAllByRole("checkbox")).toHaveLength(0);
 
   fireEvent.press(screen.getByRole("button", { name: "你有一点期待的是……，点击展开" }));
   expect(await screen.findByRole("checkbox", { name: "有更多时间待在一起" })).toBeTruthy();
   expect(screen.queryByText("教育原则")).toBeNull();
-  expect(onStageChange).toHaveBeenCalledTimes(2);
+  expect(onProgress).toHaveBeenNthCalledWith(1, {
+    completed: false,
+    concernIds: [],
+    customNote: "",
+    expectationIds: [],
+    stage: "expectations",
+  });
+  expect(onProgress).toHaveBeenCalledTimes(2);
+});
+
+test("persists each selection snapshot before navigation", async () => {
+  const onProgress = jest.fn(async () => undefined);
+  render(<OvernightPage initialStage="concerns" onContinue={jest.fn()} onProgress={onProgress} options={options} />);
+
+  fireEvent.press(screen.getByRole("button", { name: "你有一点期待的是……，点击展开" }));
+  await screen.findByRole("checkbox", { name: "有更多时间待在一起" });
+  fireEvent.press(screen.getByRole("checkbox", { name: "有更多时间待在一起" }));
+
+  await waitFor(() => expect(onProgress).toHaveBeenCalledWith({
+    completed: false,
+    concernIds: [],
+    customNote: "",
+    expectationIds: ["expect-time"],
+    stage: "expectations",
+  }));
 });
 
 test("failed continuation stays recoverable instead of becoming a dead end", async () => {
