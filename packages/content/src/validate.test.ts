@@ -144,6 +144,21 @@ describe("versioned content validation", () => {
     );
   });
 
+  it("validates the body-knowledge definition as reviewed Page 3 copy", () => {
+    const catalog = loadCatalog();
+    catalog.journey.uiCopy.bodyKnowledgeDefinition.sourceIds = ["missing-source"];
+
+    expect(issueCodes(() => validateCatalog(catalog, { mode: "draft" }))).toContain(
+      "MISSING_SOURCE"
+    );
+
+    const wrongPageCatalog = loadCatalog();
+    wrongPageCatalog.journey.uiCopy.bodyKnowledgeDefinition.page = 4;
+    expect(issueCodes(() => validateCatalog(wrongPageCatalog, { mode: "draft" }))).toContain(
+      "INVALID_PAGE_OWNERSHIP"
+    );
+  });
+
   it.each([
     ["practice copy assigned to the wrong page", (catalog: ReturnType<typeof loadCatalog>) => {
       catalog.journey.practice.phrases[0]!.page = 5;

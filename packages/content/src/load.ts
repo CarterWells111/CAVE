@@ -137,7 +137,7 @@ const JourneyBehaviorMapPointSchema = z.object({
 const JourneyAttitudeSchema = z.object({
   id: CopyId,
   order: z.number().int().positive(),
-  value: z.enum(["expecting", "decide-in-moment", "unsure", "not-this-time", "skip"]),
+  value: z.enum(["expecting", "familiar-enjoyed", "decide-in-moment", "unsure", "not-this-time", "skip"]),
   label: z.string().min(1),
   feedback: z.string().min(1),
   ...JourneyReviewFields
@@ -152,8 +152,18 @@ const JourneyCommunicationSectionSchema = z.object({
   ...JourneyReviewFields
 }).strict();
 
+const JourneyBodyKnowledgeDefinitionSchema = z.object({
+  id: CopyId,
+  title: z.string().min(1),
+  intro: z.string().min(1),
+  examples: z.array(z.string().min(1)).length(4),
+  conclusion: z.string().min(1),
+  ...JourneyReviewFields
+}).strict();
+
 const JourneyUiCopySchema = z.object({
   version: z.string().min(1),
+  bodyKnowledgeDefinition: JourneyBodyKnowledgeDefinitionSchema,
   behaviorMapPoints: z.array(JourneyBehaviorMapPointSchema),
   attitudes: z.array(JourneyAttitudeSchema),
   communicationSections: z.array(JourneyCommunicationSectionSchema)

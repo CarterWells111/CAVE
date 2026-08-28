@@ -9,14 +9,14 @@ test("renders exactly four long-term destinations with an explicit current state
 
   const tabs = screen.getAllByRole("tab");
   expect(tabs).toHaveLength(4);
-  expect(tabs.map((tab) => tab.props.accessibilityLabel)).toEqual(["首页", "回顾", "练习", "卡片"]);
+  expect(tabs.map((tab) => tab.props.accessibilityLabel)).toEqual(["首页", "回顾", "练习", "草稿"]);
   expect(screen.queryByRole("tab", { name: "我的" })).toBeNull();
 
   expect(screen.getByRole("tab", { name: "回顾" }).props.accessibilityState).toEqual({ selected: true });
   expect(screen.getByRole("tab", { name: "首页" }).props.accessibilityState).toEqual({ selected: false });
   expect(screen.getByText("当前")).toBeTruthy();
 
-  fireEvent.press(screen.getByRole("tab", { name: "卡片" }));
+  fireEvent.press(screen.getByRole("tab", { name: "草稿" }));
   expect(navigate).toHaveBeenCalledWith("cards");
 });
 

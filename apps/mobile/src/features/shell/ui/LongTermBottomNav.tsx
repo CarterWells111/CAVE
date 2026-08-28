@@ -13,7 +13,7 @@ const destinations: ReadonlyArray<Readonly<{ icon: string; label: string; tab: L
   { icon: "⌂", label: "首页", tab: "home" },
   { icon: "↺", label: "回顾", tab: "reviews" },
   { icon: "◇", label: "练习", tab: "practice" },
-  { icon: "▤", label: "卡片", tab: "cards" }
+  { icon: "▤", label: "草稿", tab: "cards" }
 ];
 
 export function LongTermBottomNav({ activeTab, navigate }: LongTermBottomNavProps) {

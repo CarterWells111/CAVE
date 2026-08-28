@@ -28,14 +28,18 @@ function deferred() {
 }
 
 function renderScreen(overrides: Partial<React.ComponentProps<typeof SettingsScreen>> = {}) {
-  const props = {
+  const props: React.ComponentProps<typeof SettingsScreen> = {
     appearancePreference: "system" as const,
     appearanceSaving: false,
     onAppearancePreferenceChange: jest.fn(async () => undefined),
     onBack: jest.fn(),
+    onChangeJournalSaveNotice: jest.fn(async () => undefined),
     onContinueAfterDelete: jest.fn(),
     onDeleteAllData: jest.fn(async () => undefined),
+    onRetryPrivacySettings: jest.fn(),
+    privacySettingsStatus: "ready",
     resolvedTheme: "dark" as const,
+    showLocalJournalSaveNotice: true,
     ...overrides
   };
   render(<SettingsScreen {...props} />);
@@ -48,9 +52,13 @@ async function renderThemedScreen(theme: AppTheme) {
     appearanceSaving: false,
     onAppearancePreferenceChange: jest.fn(async () => undefined),
     onBack: jest.fn(),
+    onChangeJournalSaveNotice: jest.fn(async () => undefined),
     onContinueAfterDelete: jest.fn(),
     onDeleteAllData: jest.fn(async () => undefined),
+    onRetryPrivacySettings: jest.fn(),
+    privacySettingsStatus: "ready" as const,
     resolvedTheme: theme.name,
+    showLocalJournalSaveNotice: true,
   };
   render(
     <ThemeProvider repository={{ load: async () => theme.name, save: async () => undefined }}>
@@ -178,4 +186,41 @@ test("keeps every interactive control at least 44 points and allows text to wrap
   for (const text of screen.UNSAFE_getAllByType(Text)) {
     expect(text.props.numberOfLines).toBeUndefined();
   }
+});
+
+test("persists the private-journal notice switch without optimistic changes", async () => {
+  const change = deferred();
+  const onChangeJournalSaveNotice = jest.fn(() => change.promise);
+  renderScreen({ onChangeJournalSaveNotice, showLocalJournalSaveNotice: true });
+
+  const noticeSwitch = screen.getByRole("switch", { name: "保存私人记录前显示本机提示" });
+  expect(noticeSwitch).toHaveProp("value", true);
+  fireEvent(noticeSwitch, "valueChange", false);
+  expect(onChangeJournalSaveNotice).toHaveBeenCalledWith(false);
+  expect(screen.getByText("正在保存设置…")).toBeTruthy();
+  expect(noticeSwitch).toHaveProp("value", true);
+
+  await act(async () => { change.resolve(); });
+  expect(screen.queryByText("正在保存设置…")).toBeNull();
+});
+
+test("keeps the original journal preference and shows a retryable error when saving fails", async () => {
+  const onChangeJournalSaveNotice = jest.fn(async () => { throw new Error("private path"); });
+  renderScreen({ onChangeJournalSaveNotice, showLocalJournalSaveNotice: false });
+
+  const noticeSwitch = screen.getByRole("switch", { name: "保存私人记录前显示本机提示" });
+  fireEvent(noticeSwitch, "valueChange", true);
+
+  expect(await screen.findByRole("alert")).toHaveTextContent("设置尚未保存，请重试。");
+  expect(screen.queryByText("private path")).toBeNull();
+  expect(noticeSwitch).toHaveProp("value", false);
+});
+
+test("falls back visibly when privacy settings cannot be read", () => {
+  const onRetryPrivacySettings = jest.fn();
+  renderScreen({ onRetryPrivacySettings, privacySettingsStatus: "error" });
+
+  expect(screen.getByRole("alert")).toHaveTextContent("暂时无法读取本机隐私设置；保存提示会保持开启。");
+  fireEvent.press(screen.getByRole("button", { name: "重试读取隐私设置" }));
+  expect(onRetryPrivacySettings).toHaveBeenCalledTimes(1);
 });

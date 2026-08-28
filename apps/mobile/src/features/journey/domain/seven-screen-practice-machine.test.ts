@@ -6,12 +6,13 @@ import {
   chooseOptionalBranch,
   completeMirror,
   completePractice,
+  continueToAftercare,
   editOptionalUserResponse,
   editPracticePhrase,
   selectOptionalUserResponse,
-  selectPracticeBehavior,
   selectPracticeNeed,
   skipMirror,
+  startScenario,
   showRespectfulResponse
 } from "./seven-screen-practice-machine";
 
@@ -57,23 +58,29 @@ function catalog(): JourneyPracticeCatalog {
   };
 }
 
-test("moves through mirror, behavior, need, editable phrase, respectful response and completion", () => {
+function needState(intent: Parameters<typeof selectPracticeNeed>[1]) {
+  return selectPracticeNeed(startScenario(beginPractice(catalog())), intent);
+}
+
+test("moves through need, editable phrase, mirror, respectful response, aftercare and completion", () => {
   let state = beginPractice(catalog());
   expect(state).toMatchObject({ stage: "entry", scripted: true, mirrorConfirmed: false });
   expect(JSON.stringify(state)).not.toMatch(/microphone|recording|audio|ai/iu);
 
-  state = completeMirror(state);
-  state = selectPracticeBehavior(state, "behavior-hug");
+  state = startScenario(state);
+  expect(state).toMatchObject({ stage: "need", behaviorId: null });
   state = selectPracticeNeed(state, "slow-down");
+  state = completeMirror(state);
   state = editPracticePhrase(state, "Please slow down.");
   state = showRespectfulResponse(state, catalog());
+  state = continueToAftercare(state);
   state = chooseAftercare(state, "quiet");
   state = chooseOptionalBranch(state, catalog(), "skip");
   state = completePractice(state);
 
   expect(state).toMatchObject({
     stage: "completed",
-    behaviorId: "behavior-hug",
+    behaviorId: null,
     intent: "slow-down",
     phrase: "Please slow down.",
     partnerResponse: "response slow-down",
@@ -87,19 +94,13 @@ test("offers all six deterministic need phrases without generating text", () => 
     "slow-down", "adjust-touch", "pause-and-decide", "stop-current-action",
     "choose-another-closeness", "pause-to-feel"
   ] as const) {
-    const state = selectPracticeNeed(selectPracticeBehavior(completeMirror(beginPractice(catalog())), null), intent);
+    const state = needState(intent);
     expect(state).toMatchObject({ stage: "editable-phrase", intent, phrase: `phrase ${intent}` });
   }
 });
 
-test("skips mirror practice safely from both entry and editable phrase", () => {
-  const fromEntry = skipMirror(beginPractice(catalog()));
-  expect(fromEntry.stage).toBe("behavior");
-
-  const editing = selectPracticeNeed(
-    selectPracticeBehavior(completeMirror(beginPractice(catalog())), null),
-    "pause-to-feel",
-  );
+test("skips mirror practice safely from the editable phrase", () => {
+  const editing = needState("pause-to-feel");
   expect(skipMirror(editing)).toMatchObject({
     stage: "editable-phrase",
     intent: "pause-to-feel",
@@ -108,8 +109,9 @@ test("skips mirror practice safely from both entry and editable phrase", () => {
 });
 
 test("keeps the disappointed branch optional and gives it no additional point event", () => {
-  let state = selectPracticeNeed(selectPracticeBehavior(completeMirror(beginPractice(catalog())), null), "pause-and-decide");
+  let state = needState("pause-and-decide");
   state = showRespectfulResponse(state, catalog());
+  state = continueToAftercare(state);
   state = chooseAftercare(state, "space");
   state = chooseOptionalBranch(state, catalog(), "disappointed-but-stops");
 
@@ -128,8 +130,9 @@ test("keeps the disappointed branch optional and gives it no additional point ev
 });
 
 test("requires a selected optional response before completing a non-terminal branch", () => {
-  let state = selectPracticeNeed(selectPracticeBehavior(completeMirror(beginPractice(catalog())), null), "pause-and-decide");
+  let state = needState("pause-and-decide");
   state = showRespectfulResponse(state, catalog());
+  state = continueToAftercare(state);
   state = chooseAftercare(state, "space");
   state = chooseOptionalBranch(state, catalog(), "disappointed-but-stops");
 
@@ -137,8 +140,9 @@ test("requires a selected optional response before completing a non-terminal bra
 });
 
 test("enforces disappointed then pressure before the safety terminal", () => {
-  let state = selectPracticeNeed(selectPracticeBehavior(completeMirror(beginPractice(catalog())), null), "stop-current-action");
+  let state = needState("stop-current-action");
   state = showRespectfulResponse(state, catalog());
+  state = continueToAftercare(state);
   state = chooseAftercare(state, "end-night");
 
   expect(() => chooseOptionalBranch(state, catalog(), "continues-pressure"))
@@ -160,8 +164,9 @@ test("enforces disappointed then pressure before the safety terminal", () => {
 });
 
 test("ends ordinary language practice immediately when exit is ignored or blocked", () => {
-  let state = selectPracticeNeed(selectPracticeBehavior(completeMirror(beginPractice(catalog())), null), "stop-current-action");
+  let state = needState("stop-current-action");
   state = showRespectfulResponse(state, catalog());
+  state = continueToAftercare(state);
   state = chooseAftercare(state, "end-night");
   state = chooseOptionalBranch(state, catalog(), "disappointed-but-stops");
   state = selectOptionalUserResponse(state, "one");

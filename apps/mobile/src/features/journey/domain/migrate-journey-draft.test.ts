@@ -84,11 +84,11 @@ test("purely migrates all v1 edits into one private schema v3 final page", () =>
   });
   expect(migrated.communicationCard["communication-not-this-time"]).toMatchObject({
     userText: "Please ask before continuing.",
-    visibility: "private",
+    visibility: "included",
     needsReview: true
   });
   expect(Object.values(migrated.communicationCard).some(({ visibility }) => visibility === "included"))
-    .toBe(false);
+    .toBe(true);
 });
 
 test("starts a legacy welcome draft at the expectations stage", () => {
@@ -127,7 +127,7 @@ test("migrates a legacy saved card without treating it as a seven-section record
     generatedText: "old boundary",
     userText: "Please ask first.",
     needsReview: true,
-    visibility: "private"
+    visibility: "included"
   });
 });
 

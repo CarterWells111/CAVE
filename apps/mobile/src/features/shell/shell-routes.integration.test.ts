@@ -10,7 +10,7 @@ function source(path: string) {
 test("ships exactly the four approved long-term tabs behind the completion guard", () => {
   const layout = source("(tabs)/_layout.tsx");
   expect(layout.match(/<Tabs\.Screen/gu)).toHaveLength(4);
-  for (const label of ["首页", "回顾", "练习", "卡片"]) expect(layout).toContain(`title: "${label}"`);
+  for (const label of ["首页", "回顾", "练习", "草稿"]) expect(layout).toContain(`title: "${label}"`);
   expect(layout).toContain("ShellRouteGate");
   expect(layout).not.toMatch(/我的|课程|记录/u);
 });
@@ -33,7 +33,7 @@ test("keeps settings outside tabs and available before journey completion", () =
 test("keeps the long-term navigation available during later full reviews", () => {
   expect(source("journey/_layout.tsx")).toContain("JourneyLongTermNav");
   const nav = source("../src/features/shell/ui/LongTermBottomNav.tsx");
-  for (const label of ["首页", "回顾", "练习", "卡片"]) expect(nav).toContain(`label: "${label}"`);
+  for (const label of ["首页", "回顾", "练习", "草稿"]) expect(nav).toContain(`label: "${label}"`);
   expect(nav).toContain('accessibilityRole="tab"');
 });
 

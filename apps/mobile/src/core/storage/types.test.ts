@@ -12,7 +12,8 @@ class InMemoryLocalDataRepository implements LocalDataRepository {
   private records = new Map<string, SavedPracticeRecord>();
   private privacy: PrivacySettings = {
     liveModelAcknowledged: false,
-    defaultSaveTranscript: false
+    defaultSaveTranscript: false,
+    showLocalJournalSaveNotice: true,
   };
 
   async initialize() { return undefined; }
@@ -23,10 +24,13 @@ class InMemoryLocalDataRepository implements LocalDataRepository {
   async deleteRecord(id: string) { this.records.delete(id); }
   async getPrivacySettings() { return this.privacy; }
   async setPrivacySettings(settings: PrivacySettings) { this.privacy = settings; }
+  async resetPrivacySettings() {
+    this.privacy = { liveModelAcknowledged: false, defaultSaveTranscript: false, showLocalJournalSaveNotice: true };
+  }
   async deleteAll() {
     this.progress.clear();
     this.records.clear();
-    this.privacy = { liveModelAcknowledged: false, defaultSaveTranscript: false };
+    await this.resetPrivacySettings();
   }
 }
 
@@ -64,7 +68,8 @@ describe("LocalDataRepository contract", () => {
 
     const settings: PrivacySettings = {
       liveModelAcknowledged: true,
-      defaultSaveTranscript: false
+      defaultSaveTranscript: false,
+      showLocalJournalSaveNotice: false,
     };
     await repository.setPrivacySettings(settings);
     expect(await repository.getPrivacySettings()).toEqual(settings);
@@ -74,7 +79,8 @@ describe("LocalDataRepository contract", () => {
     expect(await repository.listSavedRecords()).toEqual([]);
     expect(await repository.getPrivacySettings()).toEqual({
       liveModelAcknowledged: false,
-      defaultSaveTranscript: false
+      defaultSaveTranscript: false,
+      showLocalJournalSaveNotice: true,
     });
   });
 });

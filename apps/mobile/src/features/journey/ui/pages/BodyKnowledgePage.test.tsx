@@ -1,4 +1,4 @@
-import type { JourneyKnowledgeCard, JourneySource } from "@cave/content";
+import { loadCatalog, type JourneyKnowledgeCard, type JourneySource } from "@cave/content";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react-native";
 
 import { BodyKnowledgePage } from "./BodyKnowledgePage";
@@ -22,11 +22,12 @@ const anatomySource = {
   organization: "American College of Obstetricians and Gynecologists",
   sourceType: "MED",
 } satisfies JourneySource;
+const definition = loadCatalog().journey.uiCopy.bodyKnowledgeDefinition;
 
 test("renders exactly three expanded catalog cards and can continue without opening the optional diagram", async () => {
   const onContinue = jest.fn();
   const onRead = jest.fn();
-  render(<BodyKnowledgePage cards={cards} onContinue={onContinue} onRead={onRead} sources={[source]} />);
+  render(<BodyKnowledgePage cards={cards} definition={definition} onContinue={onContinue} onRead={onRead} sources={[source]} />);
   expect(screen.getAllByTestId(/^body-knowledge-card-/u)).toHaveLength(3);
   for (const card of cards) {
     expect(screen.getByText(card.title)).toBeTruthy();
@@ -41,7 +42,7 @@ test("renders exactly three expanded catalog cards and can continue without open
 test("announces progress toward overnight expectations while completion is being persisted", async () => {
   let resolveContinue!: () => void;
   const onContinue = jest.fn(() => new Promise<void>((resolve) => { resolveContinue = resolve; }));
-  render(<BodyKnowledgePage cards={cards} onContinue={onContinue} sources={[source]} />);
+  render(<BodyKnowledgePage cards={cards} definition={definition} onContinue={onContinue} sources={[source]} />);
 
   fireEvent.press(screen.getByRole("button", { name: "看看我对过夜的期待" }));
   expect(screen.getByRole("button", { name: "正在继续…" })).toHaveProp(
@@ -59,13 +60,14 @@ test("waits for persisted consent before showing optional explicit anatomy conte
   render(
     <BodyKnowledgePage
       cards={cards}
+      definition={definition}
       diagramSource={{ uri: "medical-review" }}
       onContinue={jest.fn()}
       onOpenDiagram={onOpenDiagram}
       sources={[source]}
     />,
   );
-  fireEvent.press(screen.getByRole("button", { name: "查看身体图" }));
+  fireEvent.press(screen.getByRole("button", { name: "查看外阴结构图" }));
   expect(screen.getByText("接下来会显示外阴结构的医学审核图。是否现在查看？")).toBeTruthy();
   expect(screen.queryByLabelText(/阴阜、大阴唇/u)).toBeNull();
   fireEvent.press(screen.getByRole("button", { name: "我愿意查看" }));
@@ -90,13 +92,14 @@ test("keeps the diagram hidden after a persistence failure and allows an announc
   render(
     <BodyKnowledgePage
       cards={cards}
+      definition={definition}
       diagramSource={{ uri: "medical-review" }}
       onContinue={jest.fn()}
       onOpenDiagram={onOpenDiagram}
       sources={[source]}
     />,
   );
-  fireEvent.press(screen.getByRole("button", { name: "查看身体图" }));
+  fireEvent.press(screen.getByRole("button", { name: "查看外阴结构图" }));
   fireEvent.press(screen.getByRole("button", { name: "我愿意查看" }));
   await waitFor(() => expect(screen.getByRole("alert")).toBeTruthy());
   expect(screen.getByText("身体图暂时无法打开，请重试。")).toBeTruthy();
@@ -110,6 +113,7 @@ test("offers labelled button-only zoom with bounded state and reset", async () =
   render(
     <BodyKnowledgePage
       cards={cards}
+      definition={definition}
       diagramSource={{ uri: "medical-review" }}
       onContinue={jest.fn()}
       onOpenDiagram={jest.fn()}
@@ -117,7 +121,7 @@ test("offers labelled button-only zoom with bounded state and reset", async () =
       sources={[source]}
     />,
   );
-  fireEvent.press(screen.getByRole("button", { name: "查看身体图" }));
+  fireEvent.press(screen.getByRole("button", { name: "查看外阴结构图" }));
   fireEvent.press(screen.getByRole("button", { name: "我愿意查看" }));
   await waitFor(() => expect(screen.getByLabelText(/阴阜、大阴唇/u)).toHaveProp(
     "accessibilityValue", expect.objectContaining({ text: "100%" }),
@@ -147,7 +151,7 @@ test("offers labelled button-only zoom with bounded state and reset", async () =
 test("SourceDrawer shows passed catalog metadata and invokes only the passed user action", () => {
   const onSourceAction = jest.fn();
   render(
-    <BodyKnowledgePage cards={cards} onContinue={jest.fn()} onSourceAction={onSourceAction} sources={[source]} />,
+    <BodyKnowledgePage cards={cards} definition={definition} onContinue={jest.fn()} onSourceAction={onSourceAction} sources={[source]} />,
   );
   expect(onSourceAction).not.toHaveBeenCalled();
   fireEvent.press(screen.getByRole("button", { name: "来源与医学说明 · 1" }));
@@ -158,7 +162,7 @@ test("SourceDrawer shows passed catalog metadata and invokes only the passed use
 });
 
 test("source count includes the optional anatomy diagram source from the catalog", () => {
-  render(<BodyKnowledgePage cards={cards} onContinue={jest.fn()} sources={[source, anatomySource]} />);
+  render(<BodyKnowledgePage cards={cards} definition={definition} onContinue={jest.fn()} sources={[source, anatomySource]} />);
   expect(screen.getByRole("button", { name: "来源与医学说明 · 2" })).toBeTruthy();
   fireEvent.press(screen.getByRole("button", {
     name: "查看来源：American College of Obstetricians and Gynecologists｜Vulvovaginal Health",
@@ -167,13 +171,13 @@ test("source count includes the optional anatomy diagram source from the catalog
 });
 
 test("reduced motion keeps consent and source sheets non-animated", () => {
-  render(<BodyKnowledgePage cards={cards} onContinue={jest.fn()} reducedMotion sources={[source]} />);
-  fireEvent.press(screen.getByRole("button", { name: "查看身体图" }));
+  render(<BodyKnowledgePage cards={cards} definition={definition} onContinue={jest.fn()} reducedMotion sources={[source]} />);
+  fireEvent.press(screen.getByRole("button", { name: "查看外阴结构图" }));
   expect(screen.getByTestId("bottom-sheet-modal")).toHaveProp("animationType", "none");
 });
 
 test("failed completion remains recoverable", async () => {
-  render(<BodyKnowledgePage cards={cards} onContinue={jest.fn().mockRejectedValue(new Error("offline"))} sources={[source]} />);
+  render(<BodyKnowledgePage cards={cards} definition={definition} onContinue={jest.fn().mockRejectedValue(new Error("offline"))} sources={[source]} />);
   fireEvent.press(screen.getByRole("button", { name: "看看我对过夜的期待" }));
   await waitFor(() => expect(screen.getByText("暂时无法继续，请重试。")).toBeTruthy());
   expect(screen.getByRole("button", { name: "看看我对过夜的期待" })).toHaveProp(

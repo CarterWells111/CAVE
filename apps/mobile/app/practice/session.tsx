@@ -8,13 +8,9 @@ import { PresetPracticePage } from "../../src/features/journey/ui/pages/PresetPr
 export default function StandalonePracticeRoute() {
   const router = useRouter();
   const catalog = loadJourneyContentCatalog();
-  const behaviors = catalog.options
-    .filter(({ group }) => group === "behavior")
-    .map(({ id, label }) => ({ id, label }));
   return (
     <Screen>
       <PresetPracticePage
-        behaviorOptions={behaviors}
         catalog={catalog.practice}
         context="standalone"
         onComplete={async () => undefined}

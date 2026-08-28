@@ -15,12 +15,12 @@ function issuesFor(input: unknown, mode: "draft" | "production" = "draft") {
 }
 
 describe("seven-screen content and source model", () => {
-  it("registers SRC-001 through SRC-013 with authoritative metadata and no placeholder URLs", () => {
+  it("registers SRC-001 through SRC-014 with authoritative metadata and no placeholder URLs", () => {
     const sources = loadCatalog().journey.sources;
 
     expect(sources).toEqual(JOURNEY_SOURCE_REGISTRY);
     expect(sources.map(({ id }) => id)).toEqual(
-      Array.from({ length: 13 }, (_, index) => `SRC-${String(index + 1).padStart(3, "0")}`)
+      Array.from({ length: 14 }, (_, index) => `SRC-${String(index + 1).padStart(3, "0")}`)
     );
     expect(sources.every(({ verificationStatus }) => verificationStatus === "source_verified")).toBe(true);
     expect(sources.every(({ organization, appliesTo, accessedAt }) => (
@@ -60,7 +60,7 @@ describe("seven-screen content and source model", () => {
     }
   });
 
-  it("contains every approved finite collection without ranking the five attitudes", () => {
+  it("contains every approved finite collection without ranking the six attitudes", () => {
     const { journey } = loadCatalog();
 
     expect(journey.uiCopy.behaviorMapPoints.map(({ id }) => id)).toEqual([
@@ -76,6 +76,7 @@ describe("seven-screen content and source model", () => {
     ]);
     expect(journey.uiCopy.attitudes.map(({ value }) => value)).toEqual([
       "expecting",
+      "familiar-enjoyed",
       "decide-in-moment",
       "unsure",
       "not-this-time",

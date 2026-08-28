@@ -5,6 +5,7 @@ import type {
   PrivacySettings,
   SavedPracticeRecord
 } from "./types";
+import { DEFAULT_PRIVACY_SETTINGS } from "./types";
 
 type ProgressRow = {
   lesson_id: string;
@@ -24,11 +25,7 @@ type SavedRow = {
 type PrivacyRow = {
   live_model_acknowledged: number;
   default_save_transcript: number;
-};
-
-const DEFAULT_PRIVACY: PrivacySettings = {
-  liveModelAcknowledged: false,
-  defaultSaveTranscript: false
+  show_local_journal_save_notice: number;
 };
 
 export class SqlLocalDataRepository implements LocalDataRepository {
@@ -99,24 +96,31 @@ export class SqlLocalDataRepository implements LocalDataRepository {
   async getPrivacySettings(): Promise<PrivacySettings> {
     const connection = await this.database.initialize();
     const row = await connection.getFirstAsync<PrivacyRow>(
-      "SELECT live_model_acknowledged, default_save_transcript FROM privacy_settings WHERE singleton_id = ?",
+      "SELECT live_model_acknowledged, default_save_transcript, show_local_journal_save_notice FROM privacy_settings WHERE singleton_id = ?",
       1
     );
-    if (row === null) return { ...DEFAULT_PRIVACY };
+    if (row === null) return { ...DEFAULT_PRIVACY_SETTINGS };
     return {
       liveModelAcknowledged: row.live_model_acknowledged === 1,
-      defaultSaveTranscript: false
+      defaultSaveTranscript: false,
+      showLocalJournalSaveNotice: row.show_local_journal_save_notice === 1,
     };
   }
 
   async setPrivacySettings(settings: PrivacySettings): Promise<void> {
     const connection = await this.database.initialize();
     await connection.runAsync(
-      "INSERT INTO privacy_settings (singleton_id, live_model_acknowledged, default_save_transcript) VALUES (?, ?, ?) ON CONFLICT(singleton_id) DO UPDATE SET live_model_acknowledged = excluded.live_model_acknowledged, default_save_transcript = excluded.default_save_transcript",
+      "INSERT INTO privacy_settings (singleton_id, live_model_acknowledged, default_save_transcript, show_local_journal_save_notice) VALUES (?, ?, ?, ?) ON CONFLICT(singleton_id) DO UPDATE SET live_model_acknowledged = excluded.live_model_acknowledged, default_save_transcript = excluded.default_save_transcript, show_local_journal_save_notice = excluded.show_local_journal_save_notice",
       1,
       settings.liveModelAcknowledged ? 1 : 0,
-      0
+      0,
+      settings.showLocalJournalSaveNotice ? 1 : 0,
     );
+  }
+
+  async resetPrivacySettings(): Promise<void> {
+    const connection = await this.database.initialize();
+    await connection.runAsync("DELETE FROM privacy_settings");
   }
 
   async deleteAll(): Promise<void> {

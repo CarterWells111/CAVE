@@ -15,7 +15,7 @@ export default function CardsRoute() {
     setLoadState("loading");
     try {
       const records = await cards.listMetadata();
-      setHistory(records.map((record) => ({ id: record.id, title: "沟通卡", dateLabel: record.savedAt.slice(0, 10), statusLabel: "仅存本机" })));
+      setHistory(records.map((record) => ({ id: record.id, title: "沟通草稿", dateLabel: record.savedAt.slice(0, 10), statusLabel: "仅存本机" })));
       setLoadState("ready");
     } catch {
       setLoadState("error");
@@ -24,7 +24,6 @@ export default function CardsRoute() {
   useEffect(() => { void load(); }, [load]);
   const open = (id: string) => router.push(`/cards/${id}`);
   const edit = (id: string) => router.push(`/cards/${id}?mode=edit`);
-  const fullscreen = (id: string) => router.push(`/cards/${id}?mode=fullscreen`);
 
   return (
     <Screen>
@@ -32,9 +31,7 @@ export default function CardsRoute() {
         currentCard={history[0] ?? null}
         history={history}
         loadState={loadState}
-        onCopy={open}
         onEdit={edit}
-        onFullscreen={fullscreen}
         onOpenHistory={open}
         onRetry={() => { void load(); }}
       />

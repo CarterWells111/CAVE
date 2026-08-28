@@ -144,18 +144,18 @@ test("the production landing opens onboarding without creating an active draft",
   view.unmount();
 });
 
-test("clipboard failure is structured and visible on the production final screen", async () => {
-  const clipboard = { setStringAsync: jest.fn(async () => { throw new Error("denied"); }) };
-  const journeyRuntime = runtime(clipboard);
+test("the production final screen saves a private draft without exposing share actions", async () => {
+  const journeyRuntime = runtime();
   await unlockAllSixPages(journeyRuntime);
   await journeyRuntime.service.navigateTo("final-preparation");
   const view = await openRoute(<FinalPreparationRoute />, journeyRuntime);
 
-  fireEvent.press(screen.getByText("复制已确认内容"));
-  expect(screen.getByText("请先查看最终预览，再次确认后复制。")).toBeTruthy();
-  expect(clipboard.setStringAsync).not.toHaveBeenCalled();
-  fireEvent.press(screen.getByText("复制已确认内容"));
-
-  expect(await screen.findByText("复制失败，请重试或手写记录。")).toBeTruthy();
+  expect(screen.getAllByText("保留在沟通草稿中")).toHaveLength(7);
+  expect(screen.queryByText(/复制|保存为图片|加入分享/u)).toBeNull();
+  fireEvent.press(screen.getByText("保存沟通草稿"));
+  await waitFor(() => expect(mockRouter.replace).toHaveBeenCalledWith("/cards/card:production-flow-journey"));
+  await expect(journeyRuntime.cards.load("card:production-flow-journey")).resolves.toMatchObject({
+    journeyId: "production-flow-journey"
+  });
   view.unmount();
 });

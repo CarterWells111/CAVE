@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { AccessibilityInfo, Pressable, Text, useWindowDimensions, View } from "react-native";
+import { AccessibilityInfo, Pressable, Text, View } from "react-native";
 
 import { useTheme } from "../design/theme-provider";
 
@@ -64,10 +64,6 @@ function HeaderAction({ label, onPress, busy = false, disabled = false }: Header
   );
 }
 
-export function progressHeaderUsesStackedLayout(width: number, fontScale: number): boolean {
-  return width <= 360 || fontScale >= 1.5;
-}
-
 export function ProgressHeader({
   currentPage,
   totalPages = 7,
@@ -81,11 +77,9 @@ export function ProgressHeader({
   testID,
 }: ProgressHeaderProps) {
   const theme = useTheme();
-  const { fontScale, width } = useWindowDimensions();
   const validTotal = Number.isInteger(totalPages) && totalPages > 0;
   const validCurrent = validTotal && Number.isInteger(currentPage) && currentPage >= 1 && currentPage <= totalPages;
   const announcement = `第 ${currentPage} 页，共 ${totalPages} 页`;
-  const useTwoLineLayout = progressHeaderUsesStackedLayout(width, fontScale);
 
   useEffect(() => {
     if (validCurrent && showProgress && process.env.EXPO_OS === "ios") {
@@ -120,17 +114,8 @@ export function ProgressHeader({
   ) : null;
 
   return (
-    <View style={{ alignItems: "center", flexDirection: useTwoLineLayout ? "column" : "row", gap: theme.space.sm, minHeight: theme.size.navigationHeight, width: "100%" }} testID={testID}>
-      {useTwoLineLayout ? (
-        <>
-          <View style={{ alignItems: "flex-start", flexDirection: "row", gap: theme.space.sm, width: "100%" }} testID="progress-actions-row">
-            {leading}{trailing}
-          </View>
-          {progress}
-        </>
-      ) : (
-        <>{leading}{progress}{trailing}</>
-      )}
+    <View style={{ alignItems: "center", flexDirection: "row", gap: theme.space.sm, minHeight: theme.size.navigationHeight, width: "100%" }} testID={testID}>
+      {leading}{progress}{trailing}
     </View>
   );
 }

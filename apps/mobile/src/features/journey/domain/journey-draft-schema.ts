@@ -25,7 +25,7 @@ function isOptionalString(value: unknown): value is string | undefined {
 
 function isBehaviorAttitudes(value: unknown): value is JourneyDraft["behaviorAttitudes"] {
   return isRecord(value) && Object.values(value).every((attitude) => isOneOf(attitude, [
-    "looking-forward", "decide-in-moment", "unsure", "not-this-time", "skip"
+    "looking-forward", "familiar-enjoyed", "decide-in-moment", "unsure", "not-this-time", "skip"
   ]));
 }
 

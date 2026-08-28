@@ -17,11 +17,12 @@ const JOURNEY_PAGE_TITLES: Record<JourneyPageId, string> = {
   "behavior-map": "行为地图与边界",
   reflection: "自我反思",
   "preset-practice": "预设沟通练习",
-  "final-preparation": "私密准备与沟通草稿"
+  "final-preparation": "我的沟通草稿"
 };
 
 type Props = PropsWithChildren<{
   pageId: JourneyPageId;
+  immersiveContent?: boolean;
   onBack?: JourneyActionCallback | undefined;
   onExit: JourneyActionCallback;
   runtimeNotice?: JourneyRuntimeNotice;
@@ -31,6 +32,7 @@ type BackState = "idle" | "loading" | "error";
 
 export function JourneyScreenShell({
   pageId,
+  immersiveContent = false,
   onBack,
   onExit,
   runtimeNotice,
@@ -105,29 +107,37 @@ export function JourneyScreenShell({
         style={{ flex: 1 }}
         testID="journey-keyboard-avoiding"
       >
-        <Screen keyboardDismissMode="interactive" testID="journey-scroll">
-          <ProgressHeader
-            backLabel={backState === "loading" ? "正在返回…" : "返回上一页"}
-            backBusy={backState === "loading"}
-            backDisabled={backState === "loading"}
-            currentPage={pageNumber}
-            showProgress
-            totalPages={6}
-            onExit={onExit}
-            exitLabel="旅程选项"
-            testID="journey-progress-header"
-            {...(pageNumber > 1 && onBack ? { onBack: handleBack } : {})}
-          />
-          <Card accessible={false} testID="journey-title-card">
-            <Text
-              accessibilityRole="header"
-              selectable
-              style={{ ...theme.typography.title, color: theme.color.text }}
-            >
-              {JOURNEY_PAGE_TITLES[pageId]}
-            </Text>
-          </Card>
-          {runtimeNotice ? (
+        <Screen
+          fixedHeader={(
+            <ProgressHeader
+              backLabel={backState === "loading" ? "正在返回…" : "返回上一页"}
+              backBusy={backState === "loading"}
+              backDisabled={backState === "loading"}
+              currentPage={pageNumber}
+              showProgress
+              totalPages={6}
+              onExit={onExit}
+              exitLabel="旅程选项"
+              testID="journey-progress-header"
+              {...(pageNumber > 1 && onBack ? { onBack: handleBack } : {})}
+            />
+          )}
+          keyboardDismissMode="interactive"
+          scrollResetKey={immersiveContent}
+          testID="journey-scroll"
+        >
+          {!immersiveContent ? (
+            <Card accessible={false} testID="journey-title-card">
+              <Text
+                accessibilityRole="header"
+                selectable
+                style={{ ...theme.typography.title, color: theme.color.text }}
+              >
+                {JOURNEY_PAGE_TITLES[pageId]}
+              </Text>
+            </Card>
+          ) : null}
+          {runtimeNotice && !immersiveContent ? (
             <StatusBanner
               accessibilityLabel={runtimeNotice.accessibilityLabel}
               message={runtimeNotice.message}

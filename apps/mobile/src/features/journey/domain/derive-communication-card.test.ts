@@ -2,6 +2,7 @@ import {
   COMMUNICATION_CARD_CONSENT_FOOTER,
   buildCommunicationCard,
   COMMUNICATION_CARD_SECTION_IDS,
+  normalizeCommunicationDraft,
   selectConfirmedCommunicationCard
 } from "./derive-communication-card";
 import { createJourneyDraft } from "./types";
@@ -18,13 +19,13 @@ function draft() {
   };
 }
 
-test("derives seven pending local sections at the current source revision", () => {
+test("derives seven default-retained local sections at the current source revision", () => {
   const card = buildCommunicationCard(draft());
 
   expect(Object.keys(card)).toEqual(COMMUNICATION_CARD_SECTION_IDS);
   expect(Object.values(card).every((field) => field.sourceRevision === 3)).toBe(true);
   expect(Object.values(card).every((field) => field.needsReview === false)).toBe(true);
-  expect(Object.values(card).every((field) => field.visibility === "pending")).toBe(true);
+  expect(Object.values(card).every((field) => field.visibility === "included")).toBe(true);
   expect(JSON.stringify(card)).not.toMatch(/score|percentage|readiness/iu);
 });
 
@@ -40,6 +41,21 @@ test("generates user-readable Chinese without leaking template keys or raw optio
 
   expect(serialized).toMatch(/[\u3400-\u9fff]/u);
   expect(serialized).not.toMatch(/draft-card|draft-expect-rest|draft-comfort-privacy|draft-kissing/u);
+});
+
+test("keeps familiar or enjoyed closeness separate from current willingness", () => {
+  const input = {
+    ...draft(),
+    behaviorAttitudes: {
+      "behavior-hug": "looking-forward" as const,
+      "draft-kissing": "familiar-enjoyed" as const,
+    },
+  };
+
+  const text = buildCommunicationCard(input)["communication-possible-closeness"].generatedText;
+
+  expect(text).toContain("我可能愿意的靠近包括：拥抱或依偎。");
+  expect(text).toContain("我熟悉或享受过、但仍会在当下重新确认的靠近包括：接吻。");
 });
 
 test("uses the canonical Page 6 phrase before legacy phrase fields", () => {
@@ -84,6 +100,20 @@ test("refreshes untouched fields but preserves user text and flags it for review
   expect(changed["communication-night-expectations"].needsReview).toBe(false);
 });
 
+test("preserves deletion across regeneration and normalizes old non-deleted states", () => {
+  const input = buildCommunicationCard(draft());
+  input["communication-comfort"].visibility = "deleted";
+  input["communication-night-expectations"].visibility = "private";
+
+  const rebuilt = buildCommunicationCard({ ...draft(), communicationCard: input, sourceRevision: 4 });
+  expect(rebuilt["communication-comfort"].visibility).toBe("deleted");
+  expect(rebuilt["communication-night-expectations"].visibility).toBe("included");
+  expect(Object.values(normalizeCommunicationDraft(input)).map(({ visibility }) => visibility))
+    .toContain("deleted");
+  expect(Object.values(normalizeCommunicationDraft(input)).some(({ visibility }) => visibility === "private"))
+    .toBe(false);
+});
+
 test("produces the same generated text for semantically identical unordered selections", () => {
   const first = createJourneyDraft({ id: "journey-1", now: "now" });
   first.expectationIds = ["draft-rest", "draft-connection"];
@@ -101,6 +131,7 @@ test("produces the same generated text for semantically identical unordered sele
 
 test("selects only explicitly included sections plus the fixed consent footer", () => {
   const card = buildCommunicationCard(draft());
+  for (const field of Object.values(card)) field.visibility = "deleted";
   card["communication-night-expectations"] = {
     ...card["communication-night-expectations"],
     userText: "I hope we can rest together.",

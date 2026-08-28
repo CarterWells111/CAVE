@@ -4,7 +4,7 @@ import { JOURNEY_SOURCE_REGISTRY } from "./index";
 
 describe("@cave/content public surface", () => {
   it("exports the complete source-verified journey registry", () => {
-    expect(JOURNEY_SOURCE_REGISTRY).toHaveLength(13);
+    expect(JOURNEY_SOURCE_REGISTRY).toHaveLength(14);
 
     const ids = JOURNEY_SOURCE_REGISTRY.map((source) => source.id);
     expect(new Set(ids).size).toBe(ids.length);

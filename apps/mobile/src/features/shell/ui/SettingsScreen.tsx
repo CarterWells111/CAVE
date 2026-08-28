@@ -1,6 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { type ComponentProps, useRef, useState } from "react";
-import { Pressable, ScrollView, Text, View } from "react-native";
+import { Pressable, ScrollView, Switch, Text, View } from "react-native";
 
 import { useTheme } from "../../../core/design/theme-provider";
 import type { ResolvedTheme, ThemePreference } from "../../../core/design/theme";
@@ -16,8 +16,12 @@ export type SettingsScreenProps = {
   resolvedTheme: ResolvedTheme;
   onAppearancePreferenceChange(preference: ThemePreference): Promise<void>;
   onBack(): void;
+  onChangeJournalSaveNotice(enabled: boolean): Promise<void>;
   onDeleteAllData(): Promise<void>;
   onContinueAfterDelete(): void;
+  onRetryPrivacySettings(): void;
+  privacySettingsStatus: "loading" | "ready" | "error";
+  showLocalJournalSaveNotice: boolean;
 };
 
 type DeleteState = "idle" | "confirming" | "deleting" | "error" | "success";
@@ -135,13 +139,18 @@ export function SettingsScreen({
   appearanceSaving,
   onAppearancePreferenceChange,
   onBack,
+  resolvedTheme,
+  onChangeJournalSaveNotice,
   onContinueAfterDelete,
   onDeleteAllData,
-  resolvedTheme,
+  onRetryPrivacySettings,
+  privacySettingsStatus,
+  showLocalJournalSaveNotice,
 }: SettingsScreenProps) {
   const theme = useTheme();
   const [deleteState, setDeleteState] = useState<DeleteState>("idle");
   const [appearanceError, setAppearanceError] = useState(false);
+  const [privacySaveState, setPrivacySaveState] = useState<"idle" | "saving" | "error">("idle");
   const deletionInFlight = useRef(false);
 
   const deleteAll = async () => {
@@ -165,6 +174,17 @@ export function SettingsScreen({
       await onAppearancePreferenceChange(preference);
     } catch {
       setAppearanceError(true);
+    }
+  };
+
+  const changeJournalSaveNotice = async (enabled: boolean) => {
+    if (privacySaveState === "saving") return;
+    setPrivacySaveState("saving");
+    try {
+      await onChangeJournalSaveNotice(enabled);
+      setPrivacySaveState("idle");
+    } catch {
+      setPrivacySaveState("error");
     }
   };
 
@@ -235,8 +255,43 @@ export function SettingsScreen({
 
       <InfoCard title="隐私与本机数据">
         <Text selectable style={{ ...theme.typography.body, color: theme.color.textSecondary }}>
-          旅程、练习和沟通卡保存在本机。能解锁这台设备的人仍可能看到这些内容，请按自己的情况决定是否保留。
+          旅程、练习和沟通草稿保存在本机。能解锁这台设备的人仍可能看到这些内容，请按自己的情况决定是否保留。
         </Text>
+        <View style={{ alignItems: "center", flexDirection: "row", gap: theme.space.md, justifyContent: "space-between" }}>
+          <Text selectable style={{ ...theme.typography.body, color: theme.color.text, flex: 1 }}>
+            保存私人记录前显示本机提示
+          </Text>
+          <Switch
+            accessibilityLabel="保存私人记录前显示本机提示"
+            disabled={privacySettingsStatus !== "ready" || privacySaveState === "saving"}
+            onValueChange={(enabled) => { void changeJournalSaveNotice(enabled); }}
+            trackColor={{ false: theme.color.disabled, true: theme.color.brandSoft }}
+            value={showLocalJournalSaveNotice}
+          />
+        </View>
+        {privacySettingsStatus === "loading" ? (
+          <Text accessibilityLiveRegion="polite" selectable style={{ ...theme.typography.caption, color: theme.color.textSecondary }}>
+            正在读取本机隐私设置…
+          </Text>
+        ) : null}
+        {privacySaveState === "saving" ? (
+          <Text accessibilityLiveRegion="polite" selectable style={{ ...theme.typography.caption, color: theme.color.textSecondary }}>
+            正在保存设置…
+          </Text>
+        ) : null}
+        {privacySettingsStatus === "error" ? (
+          <View style={{ gap: theme.space.sm }}>
+            <Text accessibilityRole="alert" selectable style={{ ...theme.typography.caption, color: theme.color.error }}>
+              暂时无法读取本机隐私设置；保存提示会保持开启。
+            </Text>
+            <SecondaryButton label="重试读取隐私设置" onPress={onRetryPrivacySettings} />
+          </View>
+        ) : null}
+        {privacySaveState === "error" ? (
+          <Text accessibilityRole="alert" selectable style={{ ...theme.typography.caption, color: theme.color.error }}>
+            设置尚未保存，请重试。
+          </Text>
+        ) : null}
       </InfoCard>
 
       <Card accessible={false} style={{ borderColor: theme.color.danger }}>

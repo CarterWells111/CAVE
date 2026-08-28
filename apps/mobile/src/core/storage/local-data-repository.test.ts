@@ -63,7 +63,24 @@ describe("SqlLocalDataRepository", () => {
     const repository = new SqlLocalDataRepository(harness.manager);
     await expect(repository.getPrivacySettings()).resolves.toEqual({
       liveModelAcknowledged: false,
-      defaultSaveTranscript: false
+      defaultSaveTranscript: false,
+      showLocalJournalSaveNotice: true,
     });
+  });
+
+  test("persists and resets the local journal save notice preference", async () => {
+    const harness = connectionWithRows();
+    const repository = new SqlLocalDataRepository(harness.manager);
+
+    await repository.setPrivacySettings({
+      liveModelAcknowledged: false,
+      defaultSaveTranscript: false,
+      showLocalJournalSaveNotice: false,
+    });
+    await repository.resetPrivacySettings();
+
+    expect(harness.calls[0]?.sql).toContain("show_local_journal_save_notice");
+    expect(harness.calls[0]?.params.at(-1)).toBe(0);
+    expect(harness.calls[1]).toEqual({ sql: "DELETE FROM privacy_settings", params: [] });
   });
 });

@@ -102,7 +102,7 @@ test("completes the six-page journey offline, explicitly saves/copies, and resum
     await controller.copyCommunicationCard();
 
     expect(await storage.cards.list()).toHaveLength(1);
-    expect(clipboard.setStringAsync).toHaveBeenCalledWith(COMMUNICATION_CARD_CONSENT_FOOTER);
+    expect(clipboard.setStringAsync).toHaveBeenCalledWith(expect.stringContaining(COMMUNICATION_CARD_CONSENT_FOOTER));
     expect(getPointSummary(app.getSnapshot()!.pointEventKeys)).toMatchObject({ total: 80 });
     expect(offline).not.toHaveBeenCalled();
 

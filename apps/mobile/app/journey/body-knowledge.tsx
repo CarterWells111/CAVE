@@ -16,6 +16,7 @@ export default function BodyKnowledgeRoute() {
         <BodyKnowledgePage
           addressPreference={snapshot?.addressPreference ?? "你"}
           cards={catalog.knowledge}
+          definition={catalog.uiCopy.bodyKnowledgeDefinition}
           diagramSource={medicalDiagram}
           onContinue={() => goTo("overnight")}
           onOpenDiagram={() => runAndRefresh(() => controller.openMedicalDiagram())}

@@ -1,5 +1,4 @@
 import type { ClipboardAdapter } from "../application/page-controllers";
-import { selectConfirmedCommunicationCard } from "../domain/derive-communication-card";
 import { createJourneyDraft } from "../domain/types";
 import { InMemoryCommunicationCardRepository, InMemoryJourneyDraftRepository } from "../infrastructure/in-memory-journey-repositories";
 import {
@@ -61,7 +60,7 @@ test("uses the secure runtime factory for Development and Preview without a memo
   expect(createNativeRuntime).toHaveBeenCalledTimes(1);
 });
 
-test("deletes the Expo Go draft, cards, and completion marker together", async () => {
+test("deletes the Expo Go draft, cards, completion marker, and device privacy preference together", async () => {
   const runtime = await createJourneyRuntime({
     executionEnvironment: "storeClient",
     clipboard,
@@ -75,6 +74,11 @@ test("deletes the Expo Go draft, cards, and completion marker together", async (
   await runtime.cards.save({ id: "card-1", journeyId: draft.id, card: draft.communicationCard, savedAt: draft.updatedAt });
   await runtime.shellState.completeInitialJourney({ initialJourneyId: draft.id, initialJourneyCompletedAt: draft.updatedAt });
   await runtime.appearancePreferences.save("dark");
+  await runtime.privacySettings.setPrivacySettings({
+    defaultSaveTranscript: false,
+    liveModelAcknowledged: false,
+    showLocalJournalSaveNotice: false,
+  });
 
   await runtime.deleteAllData();
 
@@ -82,6 +86,11 @@ test("deletes the Expo Go draft, cards, and completion marker together", async (
   await expect(runtime.cards.listMetadata()).resolves.toEqual([]);
   await expect(runtime.shellState.load()).resolves.toBeNull();
   await expect(runtime.appearancePreferences.load()).resolves.toBe("system");
+  await expect(runtime.privacySettings.getPrivacySettings()).resolves.toEqual({
+    defaultSaveTranscript: false,
+    liveModelAcknowledged: false,
+    showLocalJournalSaveNotice: true,
+  });
 });
 
 test("archives a completed review version and clears the active draft", async () => {
@@ -94,7 +103,7 @@ test("archives a completed review version and clears the active draft", async ()
   const draft = runtime.service.getSnapshot();
   if (draft === null) throw new Error("missing draft");
 
-  await runtime.controller.completeInitialJourney(selectConfirmedCommunicationCard(draft));
+  await runtime.controller.completeInitialJourney();
 
   expect(runtime.service.getSnapshot()).toBeNull();
   await expect(runtime.reviewHistory.listMetadata()).resolves.toEqual([

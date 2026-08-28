@@ -86,11 +86,11 @@ export function HomeScreen({
             </View>
           </Card>
           <View style={{ gap: theme.space.md }}>
-            <SectionHeading>当前沟通卡</SectionHeading>
+            <SectionHeading>当前沟通草稿</SectionHeading>
             {currentCard ? (
-              <MetadataCard actionLabel="打开当前沟通卡" item={currentCard} onAction={onOpenCurrentCard} />
+              <MetadataCard actionLabel="打开当前沟通草稿" item={currentCard} onAction={onOpenCurrentCard} />
             ) : (
-              <EmptyState message="完成并保存沟通卡后，会在这里显示中性状态信息。" title="还没有当前沟通卡" />
+              <EmptyState message="完成并保存沟通草稿后，可以在这里继续回顾。" title="还没有当前沟通草稿" />
             )}
           </View>
           <View style={{ gap: theme.space.md }}>

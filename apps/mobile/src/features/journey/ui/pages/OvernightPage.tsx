@@ -1,18 +1,18 @@
 import type { JourneyOption, JourneySource } from "@cave/content";
-import { type ComponentRef, useEffect, useRef, useState } from "react";
-import { AccessibilityInfo, findNodeHandle, Text, TextInput, View } from "react-native";
+import { useRef, useState } from "react";
+import { Pressable, Text, View } from "react-native";
 
-import { useTheme } from "../../../../core/design/theme-provider";
 import type { AppTheme } from "../../../../core/design/theme";
+import { useTheme } from "../../../../core/design/theme-provider";
 import { Card } from "../../../../core/ui/Card";
 import { ChoiceChip } from "../../../../core/ui/ChoiceChip";
 import { InfoCard } from "../../../../core/ui/info-card";
 import { SourceDrawer } from "../../../../core/ui/source-drawer";
-import { TextAction } from "../../../../core/ui/text-action";
 import { JourneyAction } from "../components/JourneyAction";
 
 type ActionResult = void | Promise<void>;
 type Stage = "expectations" | "concerns";
+type Panel = "expectations" | "concerns";
 
 export type OvernightPageProps = {
   options: JourneyOption[];
@@ -35,13 +35,67 @@ function updateSelection(current: string[], option: JourneyOption, group: Journe
     : [...withoutExclusive, option.id];
 }
 
-function Summary({ title, ids, options }: { title: string; ids: string[]; options: JourneyOption[] }) {
+function selectionSummary(count: number): string {
+  return count === 0 ? "点击展开" : `已选 ${count} 个 · 点开修改`;
+}
+
+function AccordionPanel({
+  busy,
+  expanded,
+  ids,
+  onOptionPress,
+  onToggle,
+  options,
+  title,
+}: {
+  busy: boolean;
+  expanded: boolean;
+  ids: string[];
+  onOptionPress: (option: JourneyOption) => void;
+  onToggle: () => void;
+  options: JourneyOption[];
+  title: string;
+}) {
   const theme = useTheme();
   const styles = createStyles(theme);
+  const summary = selectionSummary(ids.length);
+
   return (
-    <Card accessibilityLabel={`${title}摘要`} variant="muted">
-      <Text style={styles.cardTitle}>{title}</Text>
-      <Text style={styles.body}>{ids.length === 0 ? "暂时留白" : ids.map((id) => options.find((item) => item.id === id)?.label).filter(Boolean).join("；")}</Text>
+    <Card accessible={false} style={styles.accordionCard}>
+      <Pressable
+        accessibilityLabel={`${title}，${summary}`}
+        accessibilityRole="button"
+        accessibilityState={{ busy, disabled: busy, expanded }}
+        disabled={busy}
+        onPress={onToggle}
+        style={({ pressed }) => ({
+          borderRadius: theme.radius.control,
+          minHeight: theme.size.minimumTouchTarget,
+          opacity: pressed ? 0.72 : 1,
+        })}
+      >
+        <View style={styles.accordionHeadingRow}>
+          <Text style={styles.heading}>{title}</Text>
+          <Text accessibilityElementsHidden style={styles.disclosure}>
+            {expanded ? "−" : "+"}
+          </Text>
+        </View>
+        <Text style={styles.secondary}>{busy ? "正在展开…" : summary}</Text>
+      </Pressable>
+
+      {expanded ? (
+        <View style={styles.choices}>
+          {options.map((option) => (
+            <ChoiceChip
+              key={option.id}
+              label={option.label}
+              onPress={() => onOptionPress(option)}
+              selected={ids.includes(option.id)}
+              semantics="checkbox"
+            />
+          ))}
+        </View>
+      ) : null}
     </Card>
   );
 }
@@ -65,103 +119,124 @@ export function OvernightPage({
   const [stage, setStage] = useState<Stage>(initialStage);
   const [expectationIds, setExpectationIds] = useState([...initialExpectationIds]);
   const [concernIds, setConcernIds] = useState([...initialConcernIds]);
-  const [customNote, setCustomNote] = useState(initialCustomNote);
+  const [expanded, setExpanded] = useState<Record<Panel, boolean>>({
+    expectations: false,
+    concerns: false,
+  });
+  const [stagePending, setStagePending] = useState(false);
+  const [stageError, setStageError] = useState(false);
   const [sourceOpen, setSourceOpen] = useState(false);
-  const concernHeadingRef = useRef<ComponentRef<typeof Text>>(null);
+  const stageChangeInFlightRef = useRef(false);
+  const bothCollapsed = !expanded.expectations && !expanded.concerns;
 
-  useEffect(() => {
-    if (stage !== "concerns") return;
-    const tag = findNodeHandle(concernHeadingRef.current);
-    if (tag !== null) AccessibilityInfo.setAccessibilityFocus(tag);
-  }, [stage]);
+  const finishOpening = (panel: Panel) => {
+    setStage("concerns");
+    setExpanded((current) => ({ ...current, [panel]: true }));
+    setStagePending(false);
+    stageChangeInFlightRef.current = false;
+  };
 
-  const moveTo = (next: Stage): ActionResult => {
-    const result = onStageChange?.(next);
-    if (result && typeof result.then === "function") {
-      return result.then(() => setStage(next));
+  const togglePanel = (panel: Panel) => {
+    if (expanded[panel]) {
+      setExpanded((current) => ({ ...current, [panel]: false }));
+      return;
     }
-    setStage(next);
+    if (stage === "concerns") {
+      setExpanded((current) => ({ ...current, [panel]: true }));
+      return;
+    }
+    if (stageChangeInFlightRef.current) return;
+
+    stageChangeInFlightRef.current = true;
+    setStageError(false);
+    setStagePending(true);
+    try {
+      const result = onStageChange?.("concerns");
+      if (result && typeof result.then === "function") {
+        void Promise.resolve(result).then(
+          () => finishOpening(panel),
+          () => {
+            setStageError(true);
+            setStagePending(false);
+            stageChangeInFlightRef.current = false;
+          },
+        );
+        return;
+      }
+      finishOpening(panel);
+    } catch {
+      setStageError(true);
+      setStagePending(false);
+      stageChangeInFlightRef.current = false;
+    }
   };
 
   return (
     <View style={styles.page} testID="page-2-content">
-      <Text accessibilityRole="header" style={styles.title}>这个夜晚，我们会一起待到明天</Text>
-      <InfoCard title="一起过夜，不代表任何事情必须发生。" variant="education">
-        <Text style={styles.body}>想象一个可能的晚上：你和正在靠近的人商量好，会在同一个空间待到明天。也许是聊天、看电影、拥抱，或者只是各自睡去。</Text>
-        {consentSource ? <TextAction label="同意原则与来源" onPress={() => setSourceOpen(true)} underlined /> : null}
-      </InfoCard>
+      {bothCollapsed ? (
+        <InfoCard title="一起过夜，不代表任何事情必须发生。" variant="education">
+          <Text style={styles.body}>
+            想象一个可能的晚上：你和正在靠近的人商量好，会在同一个空间待到明天。
+          </Text>
+        </InfoCard>
+      ) : null}
 
-      {stage === "expectations" ? (
-        <Card accessible={false}>
-          <Text accessibilityRole="header" style={styles.heading}>想到这次过夜，你有一点期待的是……</Text>
-          <View style={styles.choices}>
-            {expectations.map((option) => (
-              <ChoiceChip
-                key={option.id}
-                label={option.label}
-                onPress={() => setExpectationIds((current) => updateSelection(current, option, expectations))}
-                selected={expectationIds.includes(option.id)}
-                semantics="checkbox"
-              />
-            ))}
-          </View>
-          <Text style={styles.secondary}>暂时不选也可以</Text>
-          <JourneyAction
-            errorMessage="阶段暂时无法保存，请重试。"
-            label="继续看看我的在意"
-            loadingLabel="正在保存期待…"
-            onAction={() => moveTo("concerns")}
-          />
-        </Card>
-      ) : (
-        <>
-          <View style={styles.summaryRow}>
-            <Summary ids={expectationIds} options={expectations} title="我的期待" />
-            <Summary ids={concernIds} options={concerns} title="我的在意" />
-          </View>
-          <JourneyAction
-            errorMessage="阶段暂时无法保存，请重试。"
-            label="修改期待"
-            loadingLabel="正在返回…"
-            onAction={() => moveTo("expectations")}
-          />
-          <Card accessible={false}>
-            <Text accessibilityRole="header" ref={concernHeadingRef} style={styles.heading}>同时，你也有一些在意的是……</Text>
-            <View style={styles.choices}>
-              {concerns.map((option) => (
-                <ChoiceChip
-                  key={option.id}
-                  label={option.label}
-                  onPress={() => setConcernIds((current) => updateSelection(current, option, concerns))}
-                  selected={concernIds.includes(option.id)}
-                  semantics="checkbox"
-                />
-              ))}
-            </View>
-          </Card>
-          <Card accessible={false} variant="muted">
-            <Text style={styles.cardTitle}>可选补充</Text>
-            <TextInput
-              accessibilityLabel="这个夜晚的可选补充"
-              maxLength={240}
-              multiline
-              onChangeText={setCustomNote}
-              placeholder="想补充的话，可以写在这里"
-              placeholderTextColor={theme.color.textTertiary}
-              selectionColor={theme.color.primary}
-              style={styles.input}
-              value={customNote}
-            />
-          </Card>
-          <InfoCard title="这些感受可以同时被留下，不需要现在整理成一个确定答案。" />
-          <JourneyAction
-            errorMessage="保存失败，请重试。"
-            label="带着这些感受继续"
-            loadingLabel="正在继续…"
-            onAction={() => onContinue({ expectationIds, concernIds, customNote })}
-          />
-        </>
-      )}
+      <View style={styles.accordions}>
+        <AccordionPanel
+          busy={stagePending}
+          expanded={expanded.expectations}
+          ids={expectationIds}
+          onOptionPress={(option) => setExpectationIds((current) => updateSelection(current, option, expectations))}
+          onToggle={() => togglePanel("expectations")}
+          options={expectations}
+          title="你有一点期待的是……"
+        />
+        <AccordionPanel
+          busy={stagePending}
+          expanded={expanded.concerns}
+          ids={concernIds}
+          onOptionPress={(option) => setConcernIds((current) => updateSelection(current, option, concerns))}
+          onToggle={() => togglePanel("concerns")}
+          options={concerns}
+          title="你有一点在意的是……"
+        />
+      </View>
+
+      {stageError ? (
+        <Text accessibilityRole="alert" style={styles.error}>
+          阶段暂时无法保存，请重试。
+        </Text>
+      ) : null}
+
+      <View style={styles.footer}>
+        {consentSource ? (
+          <Pressable
+            accessibilityLabel="同意原则与来源"
+            accessibilityRole="link"
+            onPress={() => setSourceOpen(true)}
+            style={({ pressed }) => ({
+              justifyContent: "center",
+              minHeight: theme.size.minimumTouchTarget,
+              opacity: pressed ? 0.72 : 1,
+            })}
+          >
+            <Text style={styles.footerNote}>
+              这些感受可以同时被留下，不需要现在整理成一个确定答案。{" "}
+              <Text style={styles.sourceLink}>同意原则与来源</Text>
+            </Text>
+          </Pressable>
+        ) : (
+          <Text style={styles.footerNote}>
+            这些感受可以同时被留下，不需要现在整理成一个确定答案。
+          </Text>
+        )}
+        <JourneyAction
+          errorMessage="保存失败，请重试。"
+          label="带着这些感受继续"
+          loadingLabel="正在继续…"
+          onAction={() => onContinue({ expectationIds, concernIds, customNote: initialCustomNote })}
+        />
+      </View>
 
       {consentSource ? (
         <SourceDrawer
@@ -180,24 +255,63 @@ export function OvernightPage({
 
 function createStyles(theme: AppTheme) {
   return {
-  page: { flexGrow: 1, gap: theme.space.xl, minWidth: 0 },
-  title: { ...theme.typography.title, color: theme.color.text, flexShrink: 1 },
-  heading: { ...theme.typography.heading, color: theme.color.text, flexShrink: 1 },
-  cardTitle: { ...theme.typography.cardTitle, color: theme.color.text, flexShrink: 1 },
-  body: { ...theme.typography.body, color: theme.color.text, flexShrink: 1 },
-  secondary: { ...theme.typography.caption, color: theme.color.textSecondary, flexShrink: 1 },
-  choices: { gap: theme.space.compact },
-  summaryRow: { gap: theme.space.compact, width: "100%" as const },
-  input: {
-    ...theme.typography.body,
-    backgroundColor: theme.color.surface,
-    borderColor: theme.color.interactiveBorder,
-    borderRadius: theme.radius.control,
-    borderWidth: theme.border.width,
-    color: theme.color.text,
-    minHeight: 120,
+  page: {
+    flexGrow: 1,
+    gap: theme.space.md,
+    minWidth: 0,
+  },
+  accordionCard: {
+    gap: theme.space.compact,
     padding: theme.space.md,
-    textAlignVertical: "top" as const,
+  },
+  accordionHeadingRow: {
+    alignItems: "center" as const,
+    flexDirection: "row" as const,
+    gap: theme.space.sm,
+    justifyContent: "space-between" as const,
+  },
+  accordions: {
+    gap: theme.space.compact,
+  },
+  heading: {
+    ...theme.typography.heading,
+    color: theme.color.text,
+    flexShrink: 1,
+  },
+  disclosure: {
+    ...theme.typography.heading,
+    color: theme.color.textSecondary,
+    flexShrink: 0,
+  },
+  body: {
+    ...theme.typography.body,
+    color: theme.color.text,
+    flexShrink: 1,
+  },
+  secondary: {
+    ...theme.typography.caption,
+    color: theme.color.textSecondary,
+    flexShrink: 1,
+  },
+  choices: {
+    gap: theme.space.compact,
+  },
+  error: {
+    ...theme.typography.caption,
+    color: theme.color.error,
+  },
+  footer: {
+    gap: theme.space.sm,
+    marginTop: "auto" as const,
+  },
+  footerNote: {
+    ...theme.typography.caption,
+    color: theme.color.textSecondary,
+    flexShrink: 1,
+  },
+  sourceLink: {
+    color: theme.color.text,
+    textDecorationLine: "underline" as const,
   },
   };
 }

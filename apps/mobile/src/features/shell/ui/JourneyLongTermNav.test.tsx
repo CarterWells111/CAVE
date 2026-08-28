@@ -60,7 +60,7 @@ test("reveals the four tabs only after a completion marker and routes each desti
   fireEvent.press(screen.getByRole("tab", { name: "首页" }));
   fireEvent.press(screen.getByRole("tab", { name: "回顾" }));
   fireEvent.press(screen.getByRole("tab", { name: "练习" }));
-  fireEvent.press(screen.getByRole("tab", { name: "卡片" }));
+  fireEvent.press(screen.getByRole("tab", { name: "草稿" }));
 
   expect(mockReplace.mock.calls).toEqual([
     ["/(tabs)"],

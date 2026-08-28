@@ -1,4 +1,8 @@
-import type { JourneyKnowledgeCard, JourneySource } from "@cave/content";
+import type {
+  JourneyBodyKnowledgeDefinition,
+  JourneyKnowledgeCard,
+  JourneySource,
+} from "@cave/content";
 import { useMemo, useState } from "react";
 import { Image, type ImageSourcePropType, Text, View } from "react-native";
 
@@ -16,6 +20,7 @@ type ActionResult = void | Promise<void>;
 
 export type BodyKnowledgePageProps = {
   cards: JourneyKnowledgeCard[];
+  definition: JourneyBodyKnowledgeDefinition;
   sources: JourneySource[];
   onContinue: () => ActionResult;
   onRead?: (id: string) => ActionResult;
@@ -28,6 +33,7 @@ export type BodyKnowledgePageProps = {
 
 export function BodyKnowledgePage({
   cards,
+  definition,
   sources,
   onContinue,
   onRead,
@@ -41,10 +47,13 @@ export function BodyKnowledgePage({
   const styles = createStyles(theme);
   const sortedCards = [...cards].sort((a, b) => a.order - b.order).slice(0, 3);
   const relevantSources = useMemo(() => {
-    const ids = new Set(sortedCards.flatMap((card) => card.sourceIds));
+    const ids = new Set([
+      ...sortedCards.flatMap((card) => card.sourceIds),
+      ...definition.sourceIds,
+    ]);
     ids.add("SRC-004");
     return sources.filter((source) => ids.has(source.id));
-  }, [sortedCards, sources]);
+  }, [definition.sourceIds, sortedCards, sources]);
   const [consentOpen, setConsentOpen] = useState(false);
   const [diagramOpen, setDiagramOpen] = useState(false);
   const [diagramZoom, setDiagramZoom] = useState(1);
@@ -69,18 +78,17 @@ export function BodyKnowledgePage({
       <Text accessibilityRole="header" style={styles.title}>身体会回应，决定仍属于{addressPreference}</Text>
       <Text style={styles.body}>认识身体，不是为了找到一条必须走完的路线。它帮助{addressPreference}分清身体正在发生什么，以及自己是否愿意。</Text>
 
-      {sortedCards.map((card) => (
-        <InfoCard key={card.id} testID={`body-knowledge-card-${card.id}`} title={card.title} variant="medical">
-          <Text selectable style={styles.body}>{card.body}</Text>
-        </InfoCard>
-      ))}
+      <InfoCard testID="body-anatomy-education" title="先认识外阴、阴道与阴蒂" variant="medical">
+        <Text selectable style={styles.body}>外阴是身体外部可见的区域；阴道是通向身体内部的管道；阴蒂的大部分结构延伸在身体内部。</Text>
+        <Text selectable style={styles.body}>阴唇长度、左右不对称和颜色差异可能属于常见个体差异。</Text>
+        <Text selectable style={styles.body}>持续疼痛、瘙痒、灼热、破损、肿块、异常分泌物或明显新变化时可咨询医疗专业人员。</Text>
+      </InfoCard>
 
-      <Card accessible={false} variant="muted">
-        <SecondaryButton label="查看身体图" onPress={() => setConsentOpen(true)} />
+      <Card accessible={false} testID="body-diagram-card" variant="muted">
+        <SecondaryButton label="查看外阴结构图" onPress={() => setConsentOpen(true)} />
         <Text style={styles.secondary}>可选，不查看也可以继续</Text>
         {diagramOpen ? (
           <View style={styles.diagram}>
-            <Text style={styles.paperBody}>外阴是身体外部可见的区域；阴道是通向身体内部的管道。阴蒂也不只是外部可见的小点，它的大部分结构延伸在身体内部。</Text>
             {diagramSource ? (
               <>
                 <View style={styles.imageViewport}>
@@ -124,6 +132,29 @@ export function BodyKnowledgePage({
         ) : null}
       </Card>
 
+      <InfoCard
+        testID="body-sexual-activity-definition"
+        title={definition.title}
+        variant="education"
+      >
+        <Text selectable style={styles.body}>{definition.intro}</Text>
+        <View accessibilityRole="list" style={styles.exampleList}>
+          {definition.examples.map((example) => (
+            <View key={example} style={styles.exampleRow}>
+              <Text aria-hidden style={styles.bullet}>•</Text>
+              <Text selectable style={styles.exampleText}>{example}</Text>
+            </View>
+          ))}
+        </View>
+        <Text selectable style={styles.conclusion}>{definition.conclusion}</Text>
+      </InfoCard>
+
+      {sortedCards.map((card) => (
+        <InfoCard key={card.id} testID={`body-knowledge-card-${card.id}`} title={card.title} variant="medical">
+          <Text selectable style={styles.body}>{card.body}</Text>
+        </InfoCard>
+      ))}
+
       <InfoCard title={`身体提供感受，决定仍然属于${addressPreference}。`} variant="pause" />
       {relevantSources.length > 0 ? (
         <View style={styles.sources}>
@@ -151,7 +182,7 @@ export function BodyKnowledgePage({
       <BottomSheet
         onClose={() => setConsentOpen(false)}
         reducedMotion={reducedMotion}
-        title="查看身体图前"
+        title="查看外阴结构图前"
         visible={consentOpen}
       >
         <Text style={styles.body}>接下来会显示外阴结构的医学审核图。是否现在查看？</Text>
@@ -186,6 +217,11 @@ function createStyles(theme: AppTheme) {
   body: { ...theme.typography.body, color: theme.color.text, flexShrink: 1 },
   secondary: { ...theme.typography.caption, color: theme.color.textSecondary, flexShrink: 1 },
   sources: { alignItems: "flex-start" as const, gap: theme.space.sm },
+  exampleList: { gap: theme.space.compact },
+  exampleRow: { alignItems: "flex-start" as const, flexDirection: "row" as const, gap: theme.space.sm },
+  bullet: { ...theme.typography.body, color: theme.color.infoMuted },
+  exampleText: { ...theme.typography.body, color: theme.color.text, flex: 1, flexShrink: 1 },
+  conclusion: { ...theme.typography.body, color: theme.color.text, flexShrink: 1 },
   diagram: {
     backgroundColor: theme.color.paperCanvas,
     borderRadius: theme.radius.feature,

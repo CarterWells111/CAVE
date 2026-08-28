@@ -11,6 +11,7 @@ export type JourneyPageId = (typeof JOURNEY_PAGE_IDS)[number];
 
 export type BehaviorAttitude =
   | "looking-forward"
+  | "familiar-enjoyed"
   | "decide-in-moment"
   | "unsure"
   | "not-this-time"
@@ -184,7 +185,7 @@ export function createJourneyDraft({ id, now }: { id: string; now: string }): Jo
       generatedText: "",
       sourceRevision: 0,
       needsReview: false,
-      visibility: "pending" as const
+      visibility: "included" as const
     }])) as JourneyDraft["communicationCard"],
     pointEventKeys: [],
     sourceRevision: 0,

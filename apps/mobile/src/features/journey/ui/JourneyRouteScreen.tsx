@@ -20,9 +20,11 @@ type JourneyRouteRenderProps = {
 
 export function JourneyRouteScreen({
   pageId,
+  immersiveContent = false,
   children
 }: {
   pageId: JourneyPageId;
+  immersiveContent?: boolean;
   children(props: JourneyRouteRenderProps): ReactNode;
 }) {
   const theme = useTheme();
@@ -108,6 +110,7 @@ export function JourneyRouteScreen({
   return (
     <>
       <JourneyScreenShell
+        immersiveContent={immersiveContent}
         pageId={pageId}
         onExit={() => setOptionsOpen(true)}
         {...(onBack === undefined ? {} : { onBack })}

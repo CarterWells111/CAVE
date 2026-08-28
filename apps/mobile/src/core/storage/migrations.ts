@@ -1,4 +1,4 @@
-export const CURRENT_SCHEMA_VERSION = 7;
+export const CURRENT_SCHEMA_VERSION = 8;
 
 export const SCHEMA_V1 = `
 CREATE TABLE IF NOT EXISTS course_progress (
@@ -102,6 +102,11 @@ CREATE TABLE IF NOT EXISTS journey_drafts_v3 (
   updated_at TEXT NOT NULL
 );`;
 
+export const SCHEMA_V8 = `
+ALTER TABLE privacy_settings
+ADD COLUMN show_local_journal_save_notice INTEGER NOT NULL DEFAULT 1
+CHECK (show_local_journal_save_notice IN (0, 1));`;
+
 export const DATABASE_MIGRATIONS = [
   { version: 1, schema: SCHEMA_V1 },
   { version: 2, schema: SCHEMA_V2 },
@@ -109,5 +114,6 @@ export const DATABASE_MIGRATIONS = [
   { version: 4, schema: SCHEMA_V4 },
   { version: 5, schema: SCHEMA_V5 },
   { version: 6, schema: SCHEMA_V6 },
-  { version: 7, schema: SCHEMA_V7 }
+  { version: 7, schema: SCHEMA_V7 },
+  { version: 8, schema: SCHEMA_V8 }
 ] as const;

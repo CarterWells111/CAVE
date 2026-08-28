@@ -21,6 +21,7 @@ export default function StandaloneReviewTopicRoute() {
       </Text>
       <ReflectionPage
         onComplete={async () => { router.replace("/(tabs)/reviews"); }}
+        onSave={async () => undefined}
       />
     </Screen>
   );

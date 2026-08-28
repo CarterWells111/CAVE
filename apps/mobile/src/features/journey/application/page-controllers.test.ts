@@ -1,4 +1,4 @@
-import { buildCommunicationCard, COMMUNICATION_CARD_CONSENT_FOOTER, selectConfirmedCommunicationCard, type ConfirmedCommunicationCard } from "../domain/derive-communication-card";
+import { buildCommunicationCard, COMMUNICATION_CARD_CONSENT_FOOTER, type ConfirmedCommunicationCard } from "../domain/derive-communication-card";
 import type { PresetPracticeEngine, PresetPracticeState } from "../domain/practice-types";
 import { createJourneyDraft, type JourneyDraft } from "../domain/types";
 import type { CommunicationCardRepository } from "../infrastructure/journey-draft-repository";
@@ -90,7 +90,7 @@ test("uses one atomic native completion and only then clears the in-memory snaps
   const completeAtomically = jest.fn(async () => undefined);
   const { cards, controller, service, shellState } = harness(completeAtomically);
 
-  await controller.completeInitialJourney(selectConfirmedCommunicationCard(activeDraft()));
+  await expect(controller.completeInitialJourney()).resolves.toBe("card:journey-1");
 
   expect(completeAtomically).toHaveBeenCalledWith(expect.objectContaining({
     draft: expect.objectContaining({ id: "journey-1" }),
@@ -108,7 +108,7 @@ test("keeps the active snapshot when atomic native completion fails", async () =
   const completeAtomically = jest.fn(async () => { throw new Error("transaction-failed"); });
   const { controller, service } = harness(completeAtomically);
 
-  await expect(controller.completeInitialJourney(selectConfirmedCommunicationCard(activeDraft())))
+  await expect(controller.completeInitialJourney())
     .rejects.toThrow("transaction-failed");
   expect(service.adoptCompletedJourney).not.toHaveBeenCalled();
   expect(service.getSnapshot()).not.toBeNull();
@@ -223,20 +223,22 @@ test("rejects practice for a behavior that is not selected in the active draft",
   expect(service.dispatch).not.toHaveBeenCalled();
 });
 
-test("updates private preparation and copies only explicitly included final-page sections", async () => {
+test("saves all seven draft sections while preserving deletion-ready text", async () => {
   const { cards, clipboard, controller, service } = harness();
   await controller.updateChecklist("checklist:expression", "considered", "Pause first");
   await controller.finishChecklistReview();
   expect(cards.save).not.toHaveBeenCalled();
 
-  await controller.saveCommunicationCard(selectConfirmedCommunicationCard(activeDraft()));
+  await expect(controller.saveCommunicationCard()).resolves.toBe("card:journey-1");
   await expect(controller.copyCommunicationCard()).resolves.toEqual({ status: "success" });
 
   expect(service.dispatch).toHaveBeenCalledWith(expect.objectContaining({ type: "update-checklist-item" }));
   expect(service.dispatch).toHaveBeenCalledWith({ type: "record-point-event", key: "review:checklist:v1" });
   expect(cards.save).toHaveBeenCalledWith(expect.objectContaining({ id: "card:journey-1", journeyId: "journey-1" }));
   const saveCard = cards.save as jest.MockedFunction<CommunicationCardRepository["save"]>;
-  expect(JSON.stringify(saveCard.mock.calls[0]?.[0].card)).not.toContain("private marker");
+  expect(JSON.stringify(saveCard.mock.calls[0]?.[0].card)).toContain("private marker");
+  expect(Object.values(saveCard.mock.calls[0]![0].card).every(({ visibility }) => visibility === "included"))
+    .toBe(true);
   const copied = clipboard.setStringAsync.mock.calls[0]?.[0] ?? "";
   expect(copied).toContain("我对这个夜晚暂时没有具体想象。");
   expect(copied).not.toMatch(/draft-card|draft-/u);
@@ -244,11 +246,10 @@ test("updates private preparation and copies only explicitly included final-page
   expect(copied).not.toContain("private marker");
 });
 
-test("persists the confirmed card before recording first-run completion", async () => {
+test("persists the complete communication draft before recording first-run completion", async () => {
   const { cards, controller, shellState } = harness();
-  const confirmed = selectConfirmedCommunicationCard(activeDraft());
 
-  await controller.completeInitialJourney(confirmed);
+  await expect(controller.completeInitialJourney()).resolves.toBe("card:journey-1");
 
   expect(cards.save).toHaveBeenCalledTimes(1);
   expect(shellState.completeInitialJourney).toHaveBeenCalledWith({
@@ -260,12 +261,12 @@ test("persists the confirmed card before recording first-run completion", async 
   expect(saveCard.mock.invocationCallOrder[0]).toBeLessThan(complete.mock.invocationCallOrder[0] ?? 0);
 });
 
-test("does not write a completion marker when confirmed-card persistence fails", async () => {
+test("does not write a completion marker when communication-draft persistence fails", async () => {
   const { cards, controller, shellState } = harness();
   (cards.save as jest.MockedFunction<CommunicationCardRepository["save"]>)
     .mockRejectedValueOnce(new Error("card-write-failed"));
 
-  await expect(controller.completeInitialJourney(selectConfirmedCommunicationCard(activeDraft())))
+  await expect(controller.completeInitialJourney())
     .rejects.toThrow("card-write-failed");
 
   expect(shellState.completeInitialJourney).not.toHaveBeenCalled();

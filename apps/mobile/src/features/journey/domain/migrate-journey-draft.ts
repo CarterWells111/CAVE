@@ -133,6 +133,9 @@ export function migrateLegacyCommunicationCard(
   input: Record<string, LegacyEditableField>
 ): JourneyDraft["communicationCard"] {
   const communicationCard = createJourneyDraft({ id: "legacy-card", now: "legacy" }).communicationCard;
+  for (const sectionId of Object.keys(communicationCard) as Array<keyof typeof communicationCard>) {
+    communicationCard[sectionId] = { ...communicationCard[sectionId], visibility: "deleted" };
+  }
   for (const [legacyId, legacyField] of Object.entries(input)) {
     const sectionId = LEGACY_SECTION_MAP[legacyId];
     if (sectionId === undefined) continue;
@@ -142,7 +145,7 @@ export function migrateLegacyCommunicationCard(
       ...(hasUserText ? { userText: legacyField.userText } : {}),
       sourceRevision: legacyField.sourceRevision,
       needsReview: hasUserText || legacyField.needsReview,
-      visibility: hasUserText ? "private" : "pending"
+      visibility: "included"
     };
   }
   return communicationCard;

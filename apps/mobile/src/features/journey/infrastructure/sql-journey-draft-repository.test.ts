@@ -310,7 +310,7 @@ describe("SqlJourneyDraftRepository", () => {
     });
     expect(migrated?.communicationCard["communication-not-this-time"]).toMatchObject({
       userText: "Please ask.",
-      visibility: "private",
+      visibility: "included",
       needsReview: true
     });
     expect(fake.sqlCalls).toContain("BEGIN IMMEDIATE");
@@ -466,7 +466,7 @@ describe("SqlCommunicationCardRepository", () => {
     expect(record.card["communication-not-this-time"]).toMatchObject({
       userText: "Please ask first.",
       needsReview: true,
-      visibility: "private"
+      visibility: "included"
     });
   });
 

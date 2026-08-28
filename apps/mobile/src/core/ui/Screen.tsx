@@ -1,4 +1,14 @@
-import { ScrollView, StyleSheet, type ScrollViewProps, useWindowDimensions } from "react-native";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  type PropsWithChildren,
+  type ReactNode,
+} from "react";
+import { ScrollView, StyleSheet, type ScrollViewProps, useWindowDimensions, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { useTheme } from "../design/theme-provider";
@@ -6,16 +16,45 @@ import { space } from "../design/tokens";
 
 type LockedScrollProp = "horizontal" | "contentInsetAdjustmentBehavior" | "keyboardShouldPersistTaps";
 
-export type ScreenProps = Omit<ScrollViewProps, LockedScrollProp>;
+export type ScreenProps = Omit<ScrollViewProps, LockedScrollProp> & {
+  fixedHeader?: ReactNode;
+  scrollResetKey?: string | number | boolean;
+};
+
+export type ScreenScrollController = Readonly<{
+  scrollToTop(): void;
+}>;
+
+const fallbackScrollController: ScreenScrollController = Object.freeze({
+  scrollToTop: () => undefined,
+});
+
+const ScreenScrollContext = createContext<ScreenScrollController>(fallbackScrollController);
+
+export function useScreenScroll(): ScreenScrollController {
+  return useContext(ScreenScrollContext);
+}
+
+function ScreenScrollProvider({
+  children,
+  controller,
+}: PropsWithChildren<{ controller: ScreenScrollController }>) {
+  return <ScreenScrollContext.Provider value={controller}>{children}</ScreenScrollContext.Provider>;
+}
 
 export function contentHorizontalPadding(width: number): number {
   return width < 375 ? space.md : space.card;
 }
 
-export function Screen({ children, contentContainerStyle, style, ...props }: ScreenProps) {
+export function Screen({ children, contentContainerStyle, fixedHeader, scrollResetKey, style, ...props }: ScreenProps) {
   const theme = useTheme();
   const { width } = useWindowDimensions();
+  const scrollRef = useRef<ScrollView>(null);
   const horizontalPadding = contentHorizontalPadding(width);
+  const scrollToTop = useCallback(() => {
+    scrollRef.current?.scrollTo({ animated: false, y: 0 });
+  }, []);
+  const scrollController = useMemo<ScreenScrollController>(() => ({ scrollToTop }), [scrollToTop]);
   const callerPresentation = { ...(StyleSheet.flatten(contentContainerStyle) ?? {}) };
   for (const lockedKey of [
     "maxWidth", "minWidth", "width", "paddingHorizontal", "paddingLeft", "paddingRight", "paddingStart", "paddingEnd",
@@ -23,14 +62,36 @@ export function Screen({ children, contentContainerStyle, style, ...props }: Scr
     delete callerPresentation[lockedKey];
   }
 
+  useEffect(() => {
+    if (scrollResetKey !== undefined) scrollRef.current?.scrollTo({ animated: false, y: 0 });
+  }, [scrollResetKey]);
+
   return (
     <SafeAreaView
       edges={["top", "bottom"]}
       style={{ backgroundColor: theme.color.background, flex: 1 }}
       testID="screen-safe-area"
     >
+      {fixedHeader ? (
+        <View
+          style={{
+            alignSelf: "center",
+            backgroundColor: theme.color.background,
+            maxWidth: theme.size.readableContentMax,
+            paddingBottom: theme.space.sm,
+            paddingHorizontal: horizontalPadding,
+            paddingTop: theme.space.compact,
+            width: "100%",
+            zIndex: 1,
+          }}
+          testID="screen-fixed-header"
+        >
+          {fixedHeader}
+        </View>
+      ) : null}
       <ScrollView
       {...props}
+      ref={scrollRef}
       automaticallyAdjustKeyboardInsets
       horizontal={false}
       contentInsetAdjustmentBehavior="automatic"
@@ -51,7 +112,7 @@ export function Screen({ children, contentContainerStyle, style, ...props }: Scr
         },
       ]}
     >
-      {children}
+      <ScreenScrollProvider controller={scrollController}>{children}</ScreenScrollProvider>
       </ScrollView>
     </SafeAreaView>
   );

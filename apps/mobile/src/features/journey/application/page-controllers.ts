@@ -6,7 +6,7 @@ import type {
   JourneyDraft,
   JourneyPracticeSubmission,
 } from "../domain/types";
-import { selectConfirmedCommunicationCard } from "../domain/derive-communication-card";
+import { normalizeCommunicationDraft, selectConfirmedCommunicationCard } from "../domain/derive-communication-card";
 import type { ConfirmedCommunicationCard } from "../domain/derive-communication-card";
 import type {
   PartnerResponseBranch,
@@ -234,38 +234,21 @@ export class JourneyPageController {
     return this.dependencies.service.dispatch({ type: "edit-communication-card-field", sectionId, userText });
   }
 
-  async saveCommunicationCard(confirmedCard?: ConfirmedCommunicationCard) {
+  async saveCommunicationCard() {
     const draft = this.requireDraft();
-    const confirmed = confirmedCard ?? selectConfirmedCommunicationCard(draft);
-    const included = new Map(confirmed.sections.map((section) => [section.id, section.text]));
-    const card = Object.fromEntries(Object.entries(draft.communicationCard).map(([sectionId, field]) => {
-      const text = included.get(sectionId as keyof JourneyDraft["communicationCard"]);
-      return [sectionId, text === undefined
-        ? {
-            generatedText: "",
-            sourceRevision: field.sourceRevision,
-            needsReview: false,
-            visibility: "deleted" as const
-          }
-        : {
-            generatedText: text,
-            sourceRevision: field.sourceRevision,
-            needsReview: false,
-            visibility: "included" as const
-          }];
-    })) as JourneyDraft["communicationCard"];
-    await this.dependencies.cards.save({
-      id: `card:${draft.id}`,
-      journeyId: draft.id,
-      card,
-      savedAt: this.dependencies.now()
-    });
+    const record = this.buildSavedCommunicationDraft(draft, this.dependencies.now());
+    await this.dependencies.cards.save(record);
+    return record.id;
   }
 
-  async completeInitialJourney(confirmedCard: ConfirmedCommunicationCard) {
+  async completeInitialJourney() {
     const draft = this.requireDraft();
     const completedAt = this.dependencies.now();
-    const card = this.buildSavedCommunicationCard(draft, confirmedCard, completedAt);
+    const completedDraft = {
+      ...draft,
+      communicationCard: normalizeCommunicationDraft(draft.communicationCard)
+    };
+    const card = this.buildSavedCommunicationDraft(completedDraft, completedAt);
     const versionId = `review:${draft.id}:completed`;
     const active = await this.dependencies.reviewHistory?.loadActive();
     const version = {
@@ -275,13 +258,13 @@ export class JourneyPageController {
       title: active?.title ?? `回顾 ${draft.updatedAt.slice(0, 10)}`,
       createdAt: completedAt,
       status: "completed" as const,
-      payload: draft,
+      payload: completedDraft,
     };
     const shell = { initialJourneyId: draft.id, initialJourneyCompletedAt: completedAt };
     if (this.dependencies.completeAtomically !== undefined) {
-      await this.dependencies.completeAtomically({ draft, card, version, shell });
+      await this.dependencies.completeAtomically({ draft: completedDraft, card, version, shell });
       this.dependencies.service.adoptCompletedJourney?.();
-      return;
+      return card.id;
     }
     await this.dependencies.cards.save(card);
     if (this.dependencies.reviewHistory !== undefined
@@ -290,17 +273,17 @@ export class JourneyPageController {
     }
     await this.dependencies.shellState.completeInitialJourney(shell);
     await this.dependencies.service.resetJourney();
+    return card.id;
   }
 
-  private buildSavedCommunicationCard(draft: JourneyDraft, confirmed: ConfirmedCommunicationCard, savedAt: string) {
-    const included = new Map(confirmed.sections.map((section) => [section.id, section.text]));
-    const card = Object.fromEntries(Object.entries(draft.communicationCard).map(([sectionId, field]) => {
-      const text = included.get(sectionId as keyof JourneyDraft["communicationCard"]);
-      return [sectionId, text === undefined
-        ? { generatedText: "", sourceRevision: field.sourceRevision, needsReview: false, visibility: "deleted" as const }
-        : { generatedText: text, sourceRevision: field.sourceRevision, needsReview: false, visibility: "included" as const }];
-    })) as JourneyDraft["communicationCard"];
-    return { id: `card:${draft.id}`, journeyId: draft.id, card, savedAt };
+  private buildSavedCommunicationDraft(draft: JourneyDraft, savedAt: string) {
+    const card = normalizeCommunicationDraft(draft.communicationCard);
+    return {
+      id: `card:${draft.id}`,
+      journeyId: draft.id,
+      card,
+      savedAt
+    };
   }
 
   async copyCommunicationCard(): Promise<ClipboardCopyResult> {

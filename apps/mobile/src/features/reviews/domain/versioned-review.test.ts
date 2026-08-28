@@ -43,7 +43,7 @@ test("creates an immutable completed or incomplete snapshot and projects neutral
   expect(JSON.stringify(projectReviewVersionMetadata(version))).not.toContain("private journal value");
 });
 
-test("deterministically recomputes derived fields while preserving edits and reopening changed sharing", () => {
+test("deterministically recomputes derived fields while preserving edits for review", () => {
   const original = draft();
   const section = "communication-night-expectations" as const;
   original.communicationCard[section] = {
@@ -65,7 +65,7 @@ test("deterministically recomputes derived fields while preserving edits and reo
   expect(first.communicationCard[section]).toMatchObject({
     userText: "my own wording",
     needsReview: true,
-    visibility: "pending",
+    visibility: "included",
   });
   expect(first.privatePreparation.items).toEqual(second.privatePreparation.items);
 });

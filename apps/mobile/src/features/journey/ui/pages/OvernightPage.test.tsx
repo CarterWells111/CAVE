@@ -1,14 +1,14 @@
 import type { JourneyOption, JourneySource } from "@cave/content";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react-native";
-import { AccessibilityInfo } from "react-native";
+import { StyleSheet } from "react-native";
 
 import { OvernightPage } from "./OvernightPage";
 
 const options = [
-  { id: "expect-time", group: "expectation", label: "有更多时间待在一起", exclusive: false },
-  { id: "expect-none", group: "expectation", label: "我还没有具体想象", exclusive: true },
-  { id: "concern-space", group: "concern", label: "想保留一点自己的空间", exclusive: false },
-  { id: "concern-none", group: "concern", label: "现在没有特别在意的", exclusive: true },
+  { id: "expect-time", group: "expectation", label: "有更多时间待在一起", exclusive: false, order: 1 },
+  { id: "expect-none", group: "expectation", label: "我还没有具体想象", exclusive: true, order: 2 },
+  { id: "concern-space", group: "concern", label: "想保留一点自己的空间", exclusive: false, order: 3 },
+  { id: "concern-none", group: "concern", label: "现在没有特别在意的", exclusive: true, order: 4 },
 ] as JourneyOption[];
 
 const source = {
@@ -23,90 +23,122 @@ const source = {
   verificationStatus: "source_verified",
 } satisfies JourneySource;
 
-test("moves from expectations to concerns, preserves edits, and enforces exclusive choices", () => {
+test("fills the collapsed view with education, two summaries, footer guidance, and continuation", () => {
+  render(<OvernightPage consentSource={source} onContinue={jest.fn()} options={options} />);
+
+  expect(screen.queryByText("这个夜晚，我们会一起待到明天")).toBeNull();
+  expect(screen.getByText("教育原则")).toBeTruthy();
+  expect(screen.getByText("一起过夜，不代表任何事情必须发生。")).toBeTruthy();
+  expect(screen.getByText("想象一个可能的晚上：你和正在靠近的人商量好，会在同一个空间待到明天。")).toBeTruthy();
+  expect(screen.queryByText(/也许是聊天、看电影/u)).toBeNull();
+
+  const expectation = screen.getByRole("button", { name: "你有一点期待的是……，点击展开" });
+  const concern = screen.getByRole("button", { name: "你有一点在意的是……，点击展开" });
+  expect(expectation.props.accessibilityState).toEqual(expect.objectContaining({ expanded: false }));
+  expect(concern.props.accessibilityState).toEqual(expect.objectContaining({ expanded: false }));
+  expect(screen.queryAllByRole("checkbox")).toHaveLength(0);
+  expect(screen.getByText("这些感受可以同时被留下，不需要现在整理成一个确定答案。", { exact: false })).toBeTruthy();
+  expect(screen.getByRole("link", { name: "同意原则与来源" })).toHaveStyle({ minHeight: 44 });
+  expect(screen.getByRole("button", { name: "带着这些感受继续" })).toHaveStyle({ minHeight: 52, minWidth: 44 });
+  expect(StyleSheet.flatten(screen.getByTestId("page-2-content").props.style)).toEqual(
+    expect.objectContaining({ flexGrow: 1 }),
+  );
+});
+
+test("allows both panels to expand, summarizes selections, and restores education when both collapse", () => {
   const onContinue = jest.fn();
-  render(<OvernightPage consentSource={source} onContinue={onContinue} options={options} />);
+  render(
+    <OvernightPage
+      consentSource={source}
+      initialCustomNote="保留旧补充"
+      onContinue={onContinue}
+      options={options}
+    />,
+  );
 
-  expect(screen.getByText("想到这次过夜，你有一点期待的是……")).toBeTruthy();
-  expect(screen.queryByText("同时，你也有一些在意的是……")).toBeNull();
+  fireEvent.press(screen.getByRole("button", { name: "你有一点期待的是……，点击展开" }));
+  expect(screen.queryByText("教育原则")).toBeNull();
   fireEvent.press(screen.getByRole("checkbox", { name: "有更多时间待在一起" }));
-  fireEvent.press(screen.getByRole("checkbox", { name: "我还没有具体想象" }));
-  expect(screen.getByRole("checkbox", { name: "有更多时间待在一起" })).toHaveProp(
-    "accessibilityState", expect.objectContaining({ checked: false }),
-  );
-  fireEvent.press(screen.getByRole("button", { name: "继续看看我的在意" }));
 
-  expect(screen.getByText("同时，你也有一些在意的是……")).toBeTruthy();
-  expect(screen.getByText("我还没有具体想象")).toBeTruthy();
+  fireEvent.press(screen.getByRole("button", { name: "你有一点在意的是……，点击展开" }));
+  expect(screen.getByRole("checkbox", { name: "有更多时间待在一起" })).toBeTruthy();
+  expect(screen.getByRole("checkbox", { name: "想保留一点自己的空间" })).toBeTruthy();
   fireEvent.press(screen.getByRole("checkbox", { name: "想保留一点自己的空间" }));
-  fireEvent.press(screen.getByRole("button", { name: "修改期待" }));
-  expect(screen.getByRole("checkbox", { name: "我还没有具体想象" })).toHaveProp(
-    "accessibilityState", expect.objectContaining({ checked: true }),
-  );
-  fireEvent.press(screen.getByRole("button", { name: "继续看看我的在意" }));
+
+  fireEvent.press(screen.getByRole("button", { name: "你有一点期待的是……，已选 1 个 · 点开修改" }));
+  expect(screen.queryByText("教育原则")).toBeNull();
+  expect(screen.getByRole("button", { name: "你有一点期待的是……，已选 1 个 · 点开修改" }).props.accessibilityState)
+    .toEqual(expect.objectContaining({ expanded: false }));
+
+  fireEvent.press(screen.getByRole("button", { name: "你有一点在意的是……，已选 1 个 · 点开修改" }));
+  expect(screen.getByText("教育原则")).toBeTruthy();
+  expect(screen.queryAllByRole("checkbox")).toHaveLength(0);
+
   fireEvent.press(screen.getByRole("button", { name: "带着这些感受继续" }));
   expect(onContinue).toHaveBeenCalledWith({
-    concernIds: ["concern-space"], expectationIds: ["expect-none"], customNote: "",
+    concernIds: ["concern-space"],
+    expectationIds: ["expect-time"],
+    customNote: "保留旧补充",
   });
 });
 
-test("moves accessibility focus to the concern question when the stage changes", async () => {
-  const focusSpy = jest.spyOn(AccessibilityInfo, "setAccessibilityFocus");
-  render(<OvernightPage onContinue={jest.fn()} options={options} />);
-  fireEvent.press(screen.getByRole("button", { name: "继续看看我的在意" }));
-  await waitFor(() => expect(focusSpy).toHaveBeenCalled());
-  focusSpy.mockRestore();
+test("preserves exclusive choices inside each accordion", () => {
+  render(<OvernightPage initialStage="concerns" onContinue={jest.fn()} options={options} />);
+  fireEvent.press(screen.getByRole("button", { name: "你有一点期待的是……，点击展开" }));
+  fireEvent.press(screen.getByRole("checkbox", { name: "有更多时间待在一起" }));
+  fireEvent.press(screen.getByRole("checkbox", { name: "我还没有具体想象" }));
+
+  expect(screen.getByRole("checkbox", { name: "有更多时间待在一起" })).toHaveProp(
+    "accessibilityState",
+    expect.objectContaining({ checked: false }),
+  );
+  expect(screen.getByRole("checkbox", { name: "我还没有具体想象" })).toHaveProp(
+    "accessibilityState",
+    expect.objectContaining({ checked: true }),
+  );
 });
 
-test("resumes directly into concerns and exposes consent source metadata without opening automatically", () => {
+test("opens the consent source from the persistent footer link", () => {
   const onSourceAction = jest.fn();
   render(
     <OvernightPage
       consentSource={source}
-      initialConcernIds={["concern-space"]}
-      initialExpectationIds={["expect-time"]}
-      initialStage="concerns"
       onContinue={jest.fn()}
       onSourceAction={onSourceAction}
       options={options}
     />,
   );
-  expect(screen.getByText("同时，你也有一些在意的是……")).toBeTruthy();
-  expect(screen.getByText("有更多时间待在一起")).toBeTruthy();
-  expect(onSourceAction).not.toHaveBeenCalled();
-  fireEvent.press(screen.getByRole("button", { name: "同意原则与来源" }));
+
+  fireEvent.press(screen.getByRole("link", { name: "同意原则与来源" }));
   expect(screen.getByText("RAINN")).toBeTruthy();
   expect(screen.getByText("2026-05-31 更新 · 访问于 2026-08-27")).toBeTruthy();
   fireEvent.press(screen.getByRole("button", { name: "在浏览器中打开" }));
   expect(onSourceAction).toHaveBeenCalledWith(source);
 });
 
-test("optional note remains keyboard-scroll friendly and all controls meet touch minimums", () => {
-  render(<OvernightPage onContinue={jest.fn()} options={options} />);
-  fireEvent.press(screen.getByRole("button", { name: "继续看看我的在意" }));
-  expect(screen.getByLabelText("这个夜晚的可选补充")).toHaveStyle({ minHeight: 120 });
-  expect(screen.getByRole("button", { name: "带着这些感受继续" })).toHaveStyle({ minHeight: 52, minWidth: 44 });
-});
-
-test("failed continuation stays recoverable instead of becoming a dead end", async () => {
-  render(<OvernightPage initialStage="concerns" onContinue={jest.fn().mockRejectedValue(new Error("offline"))} options={options} />);
-  fireEvent.press(screen.getByRole("button", { name: "带着这些感受继续" }));
-  await waitFor(() => expect(screen.getByText("保存失败，请重试。")).toBeTruthy());
-  expect(screen.getByRole("button", { name: "带着这些感受继续" })).toHaveProp(
-    "accessibilityState", expect.objectContaining({ disabled: false }),
-  );
-});
-
-test("does not advance or hide a failed stage write and permits retry", async () => {
+test("does not expand after a failed stage write and permits retry", async () => {
   const onStageChange = jest.fn()
     .mockRejectedValueOnce(new Error("storage unavailable"))
     .mockResolvedValueOnce(undefined);
   render(<OvernightPage onContinue={jest.fn()} onStageChange={onStageChange} options={options} />);
 
-  fireEvent.press(screen.getByRole("button", { name: "继续看看我的在意" }));
+  fireEvent.press(screen.getByRole("button", { name: "你有一点期待的是……，点击展开" }));
   await waitFor(() => expect(screen.getByText("阶段暂时无法保存，请重试。")).toBeTruthy());
-  expect(screen.getByText("想到这次过夜，你有一点期待的是……")).toBeTruthy();
+  expect(screen.getByText("教育原则")).toBeTruthy();
+  expect(screen.queryAllByRole("checkbox")).toHaveLength(0);
 
-  fireEvent.press(screen.getByRole("button", { name: "继续看看我的在意" }));
-  expect(await screen.findByText("同时，你也有一些在意的是……")).toBeTruthy();
+  fireEvent.press(screen.getByRole("button", { name: "你有一点期待的是……，点击展开" }));
+  expect(await screen.findByRole("checkbox", { name: "有更多时间待在一起" })).toBeTruthy();
+  expect(screen.queryByText("教育原则")).toBeNull();
+  expect(onStageChange).toHaveBeenCalledTimes(2);
+});
+
+test("failed continuation stays recoverable instead of becoming a dead end", async () => {
+  render(<OvernightPage onContinue={jest.fn().mockRejectedValue(new Error("offline"))} options={options} />);
+  fireEvent.press(screen.getByRole("button", { name: "带着这些感受继续" }));
+  await waitFor(() => expect(screen.getByText("保存失败，请重试。")).toBeTruthy());
+  expect(screen.getByRole("button", { name: "带着这些感受继续" })).toHaveProp(
+    "accessibilityState",
+    expect.objectContaining({ disabled: false }),
+  );
 });

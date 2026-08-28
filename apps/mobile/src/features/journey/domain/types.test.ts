@@ -39,7 +39,7 @@ test("creates a private schema v3 draft with page-local and final-screen default
     "communication-changed-feelings",
     "communication-mutual-boundaries"
   ]);
-  expect(Object.values(draft.communicationCard).every(({ visibility }) => visibility === "pending"))
+  expect(Object.values(draft.communicationCard).every(({ visibility }) => visibility === "included"))
     .toBe(true);
 });
 

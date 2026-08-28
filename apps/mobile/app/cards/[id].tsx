@@ -1,24 +1,17 @@
+import { loadCatalog } from "@cave/content";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
 
 import { ErrorState } from "../../src/core/ui/ErrorState";
 import { Screen } from "../../src/core/ui/Screen";
-import { selectConfirmedCommunicationCard } from "../../src/features/journey/domain/derive-communication-card";
-import type { SavedCommunicationCardRecord } from "../../src/features/journey/domain/types";
+import type { CommunicationSectionId, SavedCommunicationCardRecord } from "../../src/features/journey/domain/types";
 import { useJourneyRuntime } from "../../src/features/journey/runtime/JourneyRuntimeProvider";
 import { CardDetailScreen } from "../../src/features/shell/ui/CardDetailScreen";
 import { SavedCardEditScreen } from "../../src/features/shell/ui/SavedCardEditScreen";
 import { ShellLoading } from "../../src/features/shell/ui/shell-ui-components";
 
-const sectionTitles: Record<string, string> = {
-  "communication-night-expectations": "对这次相处的期待",
-  "communication-possible-closeness": "可能愿意的靠近",
-  "communication-decide-in-moment": "希望当下再决定",
-  "communication-not-this-time": "这次不想做的事",
-  "communication-comfort": "让我更安心的方式",
-  "communication-changed-feelings": "感受变化时怎么说",
-  "communication-mutual-boundaries": "共同边界",
-};
+const sectionCatalog = [...loadCatalog().journey.uiCopy.communicationSections]
+  .sort((left, right) => left.order - right.order);
 
 export default function SavedCardRoute() {
   const { id, mode } = useLocalSearchParams<{ id: string; mode?: string }>();
@@ -50,62 +43,63 @@ export default function SavedCardRoute() {
       <Screen>
         <ErrorState
           actionLabel="重试"
-          message="暂时无法读取这张本机沟通卡。"
+          message="暂时无法读取这份本机沟通草稿。"
           onAction={() => { void load(); }}
-          title="无法打开沟通卡"
+          title="无法打开沟通草稿"
         />
       </Screen>
     );
   }
 
-  const confirmed = selectConfirmedCommunicationCard({ communicationCard: record.card });
-  const sections = confirmed.sections.map((section) => ({
-    ...section,
-    title: sectionTitles[section.id] ?? "确认内容",
-  }));
+  const sections = sectionCatalog.map((section) => {
+    const sectionId = section.id as CommunicationSectionId;
+    const field = record.card[sectionId];
+    return {
+      id: sectionId,
+      title: section.title,
+      text: field.userText ?? field.generatedText,
+      deleted: field.visibility === "deleted",
+      needsReview: field.needsReview
+    };
+  });
   const metadata = {
     id: record.id,
-    title: "沟通卡",
+    title: "沟通草稿",
     dateLabel: record.savedAt.slice(0, 10),
     statusLabel: "仅存本机",
   };
   if (mode === "edit") {
     return (
       <SavedCardEditScreen
-        confirmedSections={sections}
         metadata={metadata}
+        sections={sections}
         onCancel={() => router.replace(`/cards/${record.id}`)}
         onSave={async (updatedSections) => {
-          const textById = new Map(updatedSections.map(({ id: sectionId, text }) => [sectionId, text]));
-          await runtime.cards.save({
+          const updatedById = new Map(updatedSections.map((section) => [section.id, section]));
+          const updatedRecord: SavedCommunicationCardRecord = {
             ...record,
             card: Object.fromEntries(Object.entries(record.card).map(([sectionId, field]) => {
-              const text = textById.get(sectionId);
-              return [sectionId, text === undefined ? field : {
+              const updated = updatedById.get(sectionId as CommunicationSectionId);
+              return [sectionId, updated === undefined ? field : {
                 ...field,
-                generatedText: text,
-                userText: undefined,
+                userText: updated.text,
                 needsReview: false,
+                visibility: updated.deleted ? "deleted" as const : "included" as const
               }];
             })) as SavedCommunicationCardRecord["card"],
-          });
-          await load();
+          };
+          await runtime.cards.save(updatedRecord);
+          setRecord(updatedRecord);
         }}
       />
     );
   }
   return (
     <CardDetailScreen
-      confirmedSections={sections}
       metadata={metadata}
-      mode={mode === "fullscreen" ? "fullscreen" : "normal"}
+      sections={sections.filter((section) => !section.deleted && section.text.trim().length > 0)}
       onBack={() => router.replace("/(tabs)/cards")}
-      onCopy={async () => {
-        const result = await runtime.controller.copyConfirmedCommunicationCard(confirmed);
-        if (result.status === "error") throw new Error(result.code);
-      }}
       onEdit={async () => { router.replace(`/cards/${record.id}?mode=edit`); }}
-      onFullscreen={() => router.replace(`/cards/${record.id}${mode === "fullscreen" ? "" : "?mode=fullscreen"}`)}
     />
   );
 }
