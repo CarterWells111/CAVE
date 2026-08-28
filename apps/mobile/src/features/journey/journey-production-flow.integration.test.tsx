@@ -144,14 +144,16 @@ test("the production landing opens onboarding without creating an active draft",
   view.unmount();
 });
 
-test("the production final screen saves a private draft without exposing share actions", async () => {
+test("the production final screen keeps exports behind explicit confirmation", async () => {
   const journeyRuntime = runtime();
   await unlockAllSixPages(journeyRuntime);
   await journeyRuntime.service.navigateTo("final-preparation");
   const view = await openRoute(<FinalPreparationRoute />, journeyRuntime);
 
-  expect(screen.getAllByText("保留在沟通草稿中")).toHaveLength(7);
-  expect(screen.queryByText(/复制|保存为图片|加入分享/u)).toBeNull();
+  expect(screen.getAllByText("待确认")).toHaveLength(7);
+  expect(screen.getAllByText("加入分享")).toHaveLength(7);
+  expect(screen.getByRole("button", { name: "复制已确认内容" })).toBeTruthy();
+  expect(screen.getByRole("button", { name: "保存为图片" })).toBeTruthy();
   fireEvent.press(screen.getByText("保存沟通草稿"));
   await waitFor(() => expect(mockRouter.replace).toHaveBeenCalledWith("/cards/card:production-flow-journey"));
   await expect(journeyRuntime.cards.load("card:production-flow-journey")).resolves.toMatchObject({

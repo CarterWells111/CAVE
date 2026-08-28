@@ -25,6 +25,8 @@ test("BottomSheet exposes verifiable initial-focus and focus-restore callbacks",
   );
   fireEvent(screen.getByTestId("bottom-sheet-modal"), "show");
   expect(onInitialFocus).toHaveBeenCalledTimes(1);
+  const modal = screen.getByTestId("bottom-sheet-modal");
+  fireEvent(modal, "dismiss");
   rerender(<BottomSheet onClose={jest.fn()} onInitialFocus={onInitialFocus} onRestoreFocus={onRestoreFocus} title="来源" visible={false} />);
   expect(onRestoreFocus).toHaveBeenCalledTimes(1);
 });
@@ -54,6 +56,8 @@ test("BottomSheet restores focus through the returnFocusRef contract while retai
     />,
   );
 
+  const modal = screen.getByTestId("bottom-sheet-modal");
+  fireEvent(modal, "dismiss");
   rerender(
     <BottomSheet
       onClose={jest.fn()}

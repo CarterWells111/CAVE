@@ -35,7 +35,7 @@ test("renders retained sections as one continuous private paper draft", () => {
   expect(screen.getByTestId("communication-draft-paper")).toBeTruthy();
   expect(screen.getByText("什么会让我更安心")).toBeTruthy();
   expect(screen.getByText("请先问我，再慢一点。")).toBeTruthy();
-  expect(screen.queryByText(/同意|复制|分享|全屏/u)).toBeNull();
+  expect(screen.queryByRole("button", { name: /复制文字|保存图片/u })).toBeNull();
   fireEvent.press(screen.getByRole("button", { name: "返回我的卡片" }));
   expect(props.onBack).toHaveBeenCalledTimes(1);
   expect(screen.getByTestId("card-detail-content")).toHaveStyle({ maxWidth: 600 });
@@ -44,6 +44,24 @@ test("renders retained sections as one continuous private paper draft", () => {
 test("renders an explicit empty paper draft", () => {
   renderScreen({ sections: [] });
   expect(screen.getByText("这次没有保留沟通草稿。")).toBeTruthy();
+});
+
+test("requires an explicit persisted re-confirmation before legacy cards expose export", async () => {
+  const onReconfirm = jest.fn(async () => undefined);
+  renderScreen({ exportEligible: false, onReconfirm });
+
+  expect(screen.getByText("旧版本沟通草稿需要先重新确认，才可以复制或保存图片。")).toBeTruthy();
+  fireEvent.press(screen.getByRole("button", { name: "重新确认分享内容" }));
+  await screen.findByRole("button", { name: "重新确认分享内容" });
+  expect(onReconfirm).toHaveBeenCalledTimes(1);
+  expect(screen.queryByRole("button", { name: /复制|保存为图片/u })).toBeNull();
+});
+
+test("shows copy and image actions only after a saved card is export eligible", () => {
+  renderScreen({ exportEligible: true });
+
+  expect(screen.getByRole("button", { name: "复制文字" })).toBeTruthy();
+  expect(screen.getByRole("button", { name: "保存图片" })).toBeTruthy();
 });
 
 test("shows a safe edit error and retry state", async () => {

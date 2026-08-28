@@ -1,4 +1,4 @@
-import { useEffect, useRef, type PropsWithChildren, type RefObject } from "react";
+import { useRef, type PropsWithChildren, type RefObject } from "react";
 import {
   AccessibilityInfo,
   findNodeHandle,
@@ -19,6 +19,7 @@ export type BottomSheetProps = PropsWithChildren<{
   title: string;
   onClose: () => void;
   onInitialFocus?: () => void;
+  onDismiss?: () => void;
   onRestoreFocus?: () => void;
   returnFocusRef?: RefObject<View | null> | undefined;
   closeLabel?: string;
@@ -32,6 +33,7 @@ export function BottomSheet({
   title,
   onClose,
   onInitialFocus,
+  onDismiss,
   onRestoreFocus,
   returnFocusRef,
   closeLabel = `关闭${title}`,
@@ -41,27 +43,24 @@ export function BottomSheet({
   const theme = useTheme();
   const systemReducedMotion = useReducedMotion();
   const shouldReduceMotion = reducedMotion ?? systemReducedMotion;
-  const wasVisible = useRef(false);
   const closeRef = useRef<View>(null);
-
-  useEffect(() => {
-    if (wasVisible.current && !visible) {
-      const returnNode = resolveFocusHandle(returnFocusRef?.current ?? null);
-      if (returnNode !== null) AccessibilityInfo.setAccessibilityFocus(returnNode);
-      onRestoreFocus?.();
-    }
-    wasVisible.current = visible;
-  }, [onRestoreFocus, resolveFocusHandle, returnFocusRef, visible]);
 
   const handleShow = () => {
     const closeNode = resolveFocusHandle(closeRef.current);
     if (closeNode !== null) AccessibilityInfo.setAccessibilityFocus(closeNode);
     onInitialFocus?.();
   };
+  const handleDismiss = () => {
+    const returnNode = resolveFocusHandle(returnFocusRef?.current ?? null);
+    if (returnNode !== null) AccessibilityInfo.setAccessibilityFocus(returnNode);
+    onRestoreFocus?.();
+    onDismiss?.();
+  };
 
   return (
     <Modal
       animationType={shouldReduceMotion ? "none" : "slide"}
+      onDismiss={handleDismiss}
       onRequestClose={onClose}
       onShow={handleShow}
       testID="bottom-sheet-modal"

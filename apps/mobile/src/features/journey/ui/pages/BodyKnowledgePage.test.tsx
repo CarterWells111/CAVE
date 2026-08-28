@@ -191,6 +191,17 @@ test("SourceDrawer shows passed catalog metadata and invokes only the passed use
   expect(onSourceAction).toHaveBeenCalledWith(source);
 });
 
+test("keeps the body source drawer mounted until dismissal so focus can return to the source trigger", () => {
+  render(<BodyKnowledgePage cards={cards} definition={definition} onContinue={jest.fn()} sources={[source]} />);
+
+  fireEvent.press(screen.getByRole("button", { name: "来源与医学说明 · 1" }));
+  const modal = screen.getByTestId("bottom-sheet-modal");
+  fireEvent.press(screen.getByRole("button", { name: "关闭Consent 101" }));
+  expect(screen.queryByTestId("bottom-sheet-modal")).toBeNull();
+  fireEvent(modal, "dismiss");
+  expect(screen.queryByTestId("bottom-sheet-modal")).toBeNull();
+});
+
 test("source count includes the optional anatomy diagram source from the catalog", () => {
   render(<BodyKnowledgePage cards={cards} definition={definition} onContinue={jest.fn()} sources={[source, anatomySource]} />);
   expect(screen.getByRole("button", { name: "来源与医学说明 · 2" })).toBeTruthy();

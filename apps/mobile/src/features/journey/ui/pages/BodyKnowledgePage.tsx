@@ -62,6 +62,7 @@ export function BodyKnowledgePage({
   const [imageError, setImageError] = useState(false);
   const [imageStatus, setImageStatus] = useState("");
   const [source, setSource] = useState<JourneySource | null>(null);
+  const [sourceOpen, setSourceOpen] = useState(false);
   const sourceReturnFocusRef = useRef<View>(null);
   const sourceTriggerRefs = useRef(new Map<string, View | null>());
 
@@ -78,9 +79,10 @@ export function BodyKnowledgePage({
     setConsentOpen(false);
     setDiagramOpen(true);
   };
-  const openSource = (item: JourneySource) => {
-    sourceReturnFocusRef.current = sourceTriggerRefs.current.get(item.id) ?? null;
+  const openSource = (item: JourneySource, triggerId: string) => {
+    sourceReturnFocusRef.current = sourceTriggerRefs.current.get(triggerId) ?? null;
     setSource(item);
+    setSourceOpen(true);
   };
 
   const zoomPercent = Math.round(diagramZoom * 100);
@@ -197,17 +199,17 @@ export function BodyKnowledgePage({
       {relevantSources.length > 0 ? (
         <View style={styles.sources}>
           <TextAction
-            ref={(node) => { sourceTriggerRefs.current.set(relevantSources[0]!.id, node); }}
+            ref={(node) => { sourceTriggerRefs.current.set(`summary:${relevantSources[0]!.id}`, node); }}
             label={`来源与医学说明 · ${relevantSources.length}`}
-            onPress={() => openSource(relevantSources[0]!)}
+            onPress={() => openSource(relevantSources[0]!, `summary:${relevantSources[0]!.id}`)}
             underlined
           />
           {relevantSources.map((item) => (
             <TextAction
               key={item.id}
-              ref={(node) => { sourceTriggerRefs.current.set(item.id, node); }}
+              ref={(node) => { sourceTriggerRefs.current.set(`detail:${item.id}`, node); }}
               label={`查看来源：${item.organization}｜${item.title}`}
-              onPress={() => openSource(item)}
+              onPress={() => openSource(item, `detail:${item.id}`)}
             />
           ))}
         </View>
@@ -240,12 +242,13 @@ export function BodyKnowledgePage({
         <SourceDrawer
           institution={source.organization}
           onAction={() => { void onSourceAction?.(source); }}
-          onClose={() => setSource(null)}
+          onClose={() => setSourceOpen(false)}
+          onDismiss={() => setSource(null)}
           reducedMotion={reducedMotion}
           returnFocusRef={sourceReturnFocusRef}
           title={source.title}
           updatedAt={`${source.publicationOrReviewDate} · 访问于 ${source.accessedAt}`}
-          visible
+          visible={sourceOpen}
         />
       ) : null}
     </View>

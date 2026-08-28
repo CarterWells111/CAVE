@@ -4,10 +4,13 @@ import { useCallback, useEffect, useState } from "react";
 import { ErrorState } from "../../src/core/ui/ErrorState";
 import { Screen } from "../../src/core/ui/Screen";
 import type { SavedCommunicationCardRecord } from "../../src/features/journey/domain/types";
+import { selectConfirmedSavedCommunicationCard } from "../../src/features/journey/domain/derive-communication-card";
+import { saveCardImageToLibrary } from "../../src/features/journey/infrastructure/expo-card-image-adapter";
 import { useJourneyRuntime } from "../../src/features/journey/runtime/JourneyRuntimeProvider";
 import {
   applySavedCardSectionUpdates,
   buildEditableSavedCardSections,
+  confirmSavedCardSharingPolicy,
 } from "../../src/features/shell/application/saved-card-edit";
 import { CardDetailScreen } from "../../src/features/shell/ui/CardDetailScreen";
 import { SavedCardEditScreen } from "../../src/features/shell/ui/SavedCardEditScreen";
@@ -77,12 +80,27 @@ export default function SavedCardRoute() {
     );
   }
 
+  const confirmedCard = selectConfirmedSavedCommunicationCard(record);
+
   return (
     <CardDetailScreen
       metadata={metadata}
+      exportEligible={confirmedCard !== null}
       sections={retainedSections}
       onBack={() => router.replace("/(tabs)/profile")}
       onEdit={async () => { router.replace(`/cards/${record.id}?mode=edit`); }}
+      onReconfirm={async () => {
+        const confirmedRecord = confirmSavedCardSharingPolicy(record);
+        await runtime.cards.save(confirmedRecord);
+        setRecord(confirmedRecord);
+      }}
+      {...(confirmedCard === null ? {} : {
+        onCopy: async () => {
+          const result = await runtime.controller.copyConfirmedCommunicationCard(confirmedCard);
+          if (result.status !== "success") throw new Error(result.code);
+        },
+        onSaveImage: (imageUri: string) => saveCardImageToLibrary(imageUri),
+      })}
     />
   );
 }

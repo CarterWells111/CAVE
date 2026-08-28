@@ -3,7 +3,6 @@ import { Linking } from "react-native";
 
 export type CardImageSaveErrorCode =
   | "permission-denied"
-  | "limited-access"
   | "permission-failed"
   | "write-failed";
 export type CardImageSaveRecovery = "open-settings" | null;
@@ -30,9 +29,6 @@ export async function saveCardImageToLibrary(fileUri: string): Promise<void> {
     throw new CardImageSaveError("permission-failed");
   }
 
-  if (permission.accessPrivileges === "limited") {
-    throw new CardImageSaveError("limited-access");
-  }
   if (permission.status !== "granted") {
     throw new CardImageSaveError(
       "permission-denied",
@@ -41,7 +37,9 @@ export async function saveCardImageToLibrary(fileUri: string): Promise<void> {
   }
 
   try {
-    await MediaLibrary.createAssetAsync(fileUri);
+    // Add-only access is sufficient. Deliberately never enumerate or read the
+    // user's library: this operation is only an explicit one-way save.
+    await MediaLibrary.saveToLibraryAsync(fileUri);
   } catch {
     throw new CardImageSaveError("write-failed");
   }

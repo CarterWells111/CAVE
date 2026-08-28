@@ -101,8 +101,8 @@ test("practice and final routes use real user-triggered local persistence", () =
   expect(final).toContain('type: "set-communication-card-visibility"');
   expect(final).toContain("await runAndRefresh(() => controller.completeInitialJourney())");
   expect(final).toContain("router.replace(`/cards/${cardId}`)");
-  expect(final).not.toContain("saveCardImageToLibrary");
+  expect(final).toContain("saveCardImageToLibrary");
   expect(final).not.toContain("cardImagePermissionRecovery");
-  expect(final).not.toContain("copyCommunicationCard");
-  expect(final).not.toContain("onUpdatePreparation");
+  expect(final).toContain("copyConfirmedCommunicationCard");
+  expect(final).toContain("onUpdatePreparation");
 });

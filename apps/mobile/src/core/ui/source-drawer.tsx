@@ -14,6 +14,7 @@ export type SourceDrawerProps = {
   onAction: () => void;
   actionLabel?: string;
   onInitialFocus?: () => void;
+  onDismiss?: () => void;
   onRestoreFocus?: () => void;
   returnFocusRef?: RefObject<View | null> | undefined;
   reducedMotion?: boolean | undefined;
@@ -28,6 +29,7 @@ export function SourceDrawer({
   onAction,
   actionLabel = "在浏览器中打开",
   onInitialFocus,
+  onDismiss,
   onRestoreFocus,
   returnFocusRef,
   reducedMotion,
@@ -36,6 +38,7 @@ export function SourceDrawer({
   return (
     <BottomSheet
       {...(onInitialFocus ? { onInitialFocus } : {})}
+      {...(onDismiss ? { onDismiss } : {})}
       {...(onRestoreFocus ? { onRestoreFocus } : {})}
       {...(returnFocusRef ? { returnFocusRef } : {})}
       {...(reducedMotion === undefined ? {} : { reducedMotion })}
