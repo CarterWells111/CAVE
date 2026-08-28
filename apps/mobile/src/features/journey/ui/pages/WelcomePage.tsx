@@ -1,17 +1,19 @@
 import { useState } from "react";
 import { Text, View } from "react-native";
 
-import { theme } from "../../../../core/design/theme";
+import { useTheme } from "../../../../core/design/theme-provider";
+import type { AppTheme } from "../../../../core/design/theme";
 import { BottomSheet } from "../../../../core/ui/bottom-sheet";
 import { Button } from "../../../../core/ui/Button";
 import { Card } from "../../../../core/ui/Card";
 import { EchoBackground } from "../../../../core/ui/echo-background";
-import { TextAction } from "../../../../core/ui/text-action";
+import { IconTextAction } from "../../../../core/ui/icon-text-action";
 
 type ActionResult = void | Promise<void>;
 
 export type WelcomePageProps = {
   onStart: () => ActionResult;
+  onOpenSettings?: (() => ActionResult) | undefined;
   resumeAvailable: boolean;
   onResume?: () => ActionResult;
   reducedMotion?: boolean;
@@ -19,18 +21,24 @@ export type WelcomePageProps = {
 
 export function WelcomePage({
   onStart,
+  onOpenSettings,
   resumeAvailable,
   onResume,
   reducedMotion = false,
 }: WelcomePageProps) {
+  const theme = useTheme();
+  const styles = createStyles(theme);
   const [helpOpen, setHelpOpen] = useState(false);
   const primaryAction = resumeAvailable && onResume ? onResume : onStart;
 
   return (
     <View style={styles.page} testID="welcome-landing">
       <EchoBackground reducedMotion={reducedMotion} />
-      <View style={styles.helpRow}>
-        <TextAction label="帮助" onPress={() => setHelpOpen(true)} />
+      <View style={styles.headerActions}>
+        {onOpenSettings ? (
+          <IconTextAction icon="settings-outline" label="设置" onPress={() => { void onOpenSettings(); }} />
+        ) : null}
+        <IconTextAction icon="help-circle-outline" label="帮助" onPress={() => setHelpOpen(true)} />
       </View>
       <View style={styles.brand}>
         <Text style={styles.eyebrow}>Consent · Awareness · Voice · Exploration</Text>
@@ -65,9 +73,16 @@ export function WelcomePage({
   );
 }
 
-const styles = {
+function createStyles(theme: AppTheme) {
+  return {
   page: { flexGrow: 1, gap: theme.space.lg, minWidth: 0, position: "relative" as const },
-  helpRow: { alignItems: "flex-end" as const },
+  headerActions: {
+    alignItems: "center" as const,
+    alignSelf: "stretch" as const,
+    flexDirection: "row" as const,
+    gap: theme.space.xs,
+    justifyContent: "flex-end" as const,
+  },
   brand: { alignItems: "center" as const, gap: theme.space.xs, paddingTop: theme.space.card },
   eyebrow: { ...theme.typography.numericLabel, color: theme.color.textSecondary, flexShrink: 1, textAlign: "center" as const },
   cave: { ...theme.typography.brandEnglish, color: theme.color.text, letterSpacing: 5.28 },
@@ -76,4 +91,5 @@ const styles = {
   body: { ...theme.typography.body, color: theme.color.text, flexShrink: 1 },
   reassurance: { ...theme.typography.cardTitle, color: theme.color.lightWarm, flexShrink: 1 },
   actions: { gap: theme.space.compact, marginTop: "auto" as const },
-};
+  };
+}

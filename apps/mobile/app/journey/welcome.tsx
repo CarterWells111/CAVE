@@ -7,7 +7,8 @@ import { WelcomePage } from "../../src/features/journey/ui/pages/WelcomePage";
 
 export default function WelcomeRoute() {
   const router = useRouter();
-  const snapshot = useOptionalJourneyRuntime()?.snapshot ?? null;
+  const runtime = useOptionalJourneyRuntime();
+  const snapshot = runtime?.snapshot ?? null;
   const resumeAvailable = snapshot?.ageConfirmed === true;
   const resume = () => {
     if (snapshot === null || snapshot.addressPreference === null || !snapshot.prefaceRead) {
@@ -19,6 +20,7 @@ export default function WelcomeRoute() {
   return (
     <Screen>
       <WelcomePage
+        onOpenSettings={runtime ? () => router.push("/settings") : undefined}
         onResume={resume}
         onStart={() => router.push("/journey/adult-gate")}
         resumeAvailable={resumeAvailable}

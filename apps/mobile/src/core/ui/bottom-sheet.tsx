@@ -10,7 +10,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import { theme } from "../design/theme";
+import { useTheme } from "../design/theme-provider";
 import { TextAction } from "./text-action";
 
 export type BottomSheetProps = PropsWithChildren<{
@@ -35,6 +35,7 @@ export function BottomSheet({
   reducedMotion = false,
   resolveFocusHandle = findNodeHandle,
 }: BottomSheetProps) {
+  const theme = useTheme();
   const wasVisible = useRef(false);
   const closeRef = useRef<View>(null);
 

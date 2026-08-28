@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type PropsWithChildren } from "react";
 import { KeyboardAvoidingView, Text, View } from "react-native";
 
-import { theme } from "../../../core/design/theme";
+import { useTheme } from "../../../core/design/theme-provider";
 import { Card } from "../../../core/ui/Card";
 import { ProgressHeader } from "../../../core/ui/ProgressHeader";
 import { Screen } from "../../../core/ui/Screen";
@@ -36,6 +36,7 @@ export function JourneyScreenShell({
   runtimeNotice,
   children
 }: Props) {
+  const theme = useTheme();
   const pageNumber = JOURNEY_PAGE_IDS.indexOf(pageId) + 1;
   const mountedRef = useRef(false);
   const pageGenerationRef = useRef(0);

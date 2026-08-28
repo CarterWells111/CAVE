@@ -2,7 +2,8 @@ import type { JourneyOption, JourneySource } from "@cave/content";
 import { type ComponentRef, useEffect, useRef, useState } from "react";
 import { AccessibilityInfo, findNodeHandle, Text, TextInput, View } from "react-native";
 
-import { theme } from "../../../../core/design/theme";
+import { useTheme } from "../../../../core/design/theme-provider";
+import type { AppTheme } from "../../../../core/design/theme";
 import { Card } from "../../../../core/ui/Card";
 import { ChoiceChip } from "../../../../core/ui/ChoiceChip";
 import { InfoCard } from "../../../../core/ui/info-card";
@@ -35,6 +36,8 @@ function updateSelection(current: string[], option: JourneyOption, group: Journe
 }
 
 function Summary({ title, ids, options }: { title: string; ids: string[]; options: JourneyOption[] }) {
+  const theme = useTheme();
+  const styles = createStyles(theme);
   return (
     <Card accessibilityLabel={`${title}摘要`} variant="muted">
       <Text style={styles.cardTitle}>{title}</Text>
@@ -55,6 +58,8 @@ export function OvernightPage({
   onSourceAction,
   reducedMotion = false,
 }: OvernightPageProps) {
+  const theme = useTheme();
+  const styles = createStyles(theme);
   const expectations = options.filter((item) => item.group === "expectation").sort((a, b) => a.order - b.order);
   const concerns = options.filter((item) => item.group === "concern").sort((a, b) => a.order - b.order);
   const [stage, setStage] = useState<Stage>(initialStage);
@@ -173,7 +178,8 @@ export function OvernightPage({
   );
 }
 
-const styles = {
+function createStyles(theme: AppTheme) {
+  return {
   page: { flexGrow: 1, gap: theme.space.xl, minWidth: 0 },
   title: { ...theme.typography.title, color: theme.color.text, flexShrink: 1 },
   heading: { ...theme.typography.heading, color: theme.color.text, flexShrink: 1 },
@@ -193,4 +199,5 @@ const styles = {
     padding: theme.space.md,
     textAlignVertical: "top" as const,
   },
-};
+  };
+}

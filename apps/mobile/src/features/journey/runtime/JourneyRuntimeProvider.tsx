@@ -10,6 +10,9 @@ import {
 } from "react";
 import { Text, View } from "react-native";
 
+import { InMemoryAppearancePreferencesRepository } from "../../../core/design/appearance-preferences";
+import { ThemeProvider } from "../../../core/design/theme-provider";
+
 import { JourneyProvider, useJourney } from "../ui/JourneyProvider";
 import type { JourneyDraft } from "../domain/types";
 import type { JourneyRuntime, JourneyRuntimeMode } from "./journey-runtime";
@@ -47,6 +50,7 @@ type RuntimeState =
 
 const JourneyRuntimeContext = createContext<JourneyRuntimeContextValue | null>(null);
 const AdultDeclarationContext = createContext<AdultDeclarationContextValue | null>(null);
+const publicAppearancePreferences = new InMemoryAppearancePreferencesRepository();
 
 function RuntimeContextProvider({
   children,
@@ -175,26 +179,30 @@ export function JourneyRuntimeProvider({
   const adultDeclaration = { status: state.status, confirmAdult } satisfies AdultDeclarationContextValue;
   if (state.status === "public") {
     return (
-      <AdultDeclarationContext.Provider value={adultDeclaration}>
-        {state.runtime.mode === "expo-go-demo"
-          ? <Text>Expo Go 演示模式，数据仅在本次打开期间暂存</Text>
-          : null}
-        {children}
-      </AdultDeclarationContext.Provider>
+      <ThemeProvider repository={publicAppearancePreferences}>
+        <AdultDeclarationContext.Provider value={adultDeclaration}>
+          {state.runtime.mode === "expo-go-demo"
+            ? <Text>Expo Go 演示模式，数据仅在本次打开期间暂存</Text>
+            : null}
+          {children}
+        </AdultDeclarationContext.Provider>
+      </ThemeProvider>
     );
   }
 
   return (
-    <AdultDeclarationContext.Provider value={adultDeclaration}>
-      <JourneyProvider service={state.runtime.service}>
-        <RuntimeContextProvider
-          refreshAuthorization={() => setAuthorizationFromMarker(state.runtime)}
-          runtime={state.runtime}
-        >
-          {children}
-        </RuntimeContextProvider>
-      </JourneyProvider>
-    </AdultDeclarationContext.Provider>
+    <ThemeProvider repository={state.runtime.appearancePreferences}>
+      <AdultDeclarationContext.Provider value={adultDeclaration}>
+        <JourneyProvider service={state.runtime.service}>
+          <RuntimeContextProvider
+            refreshAuthorization={() => setAuthorizationFromMarker(state.runtime)}
+            runtime={state.runtime}
+          >
+            {children}
+          </RuntimeContextProvider>
+        </JourneyProvider>
+      </AdultDeclarationContext.Provider>
+    </ThemeProvider>
   );
 }
 

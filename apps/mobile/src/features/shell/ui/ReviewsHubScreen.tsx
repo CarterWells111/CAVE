@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { View } from "react-native";
 
-import { theme } from "../../../core/design/theme";
+import { useTheme } from "../../../core/design/theme-provider";
 import { Button } from "../../../core/ui/Button";
 import { Card } from "../../../core/ui/Card";
 import { EmptyState } from "../../../core/ui/EmptyState";
@@ -41,6 +41,7 @@ export function ReviewsHubScreen({
   reviews,
   topics,
 }: Props) {
+  const theme = useTheme();
   const [confirmingReplacement, setConfirmingReplacement] = useState(false);
   const requestFullReview = () => {
     if (activeReview) setConfirmingReplacement(true);

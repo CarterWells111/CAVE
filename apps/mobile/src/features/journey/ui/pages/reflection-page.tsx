@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Text, TextInput, View } from "react-native";
 
-import { theme } from "../../../../core/design/theme";
+import { useTheme } from "../../../../core/design/theme-provider";
 import { BottomSheet } from "../../../../core/ui/bottom-sheet";
 import { Card } from "../../../../core/ui/Card";
 import { InfoCard } from "../../../../core/ui/info-card";
@@ -99,6 +99,7 @@ const journalPrompts = [
 ] as const;
 
 function SectionTitle({ children }: { children: string }) {
+  const theme = useTheme();
   return (
     <Text accessibilityRole="header" selectable style={{ ...theme.typography.heading, color: theme.color.text }}>
       {children}
@@ -107,6 +108,7 @@ function SectionTitle({ children }: { children: string }) {
 }
 
 function SupportingCopy({ children }: { children: string }) {
+  const theme = useTheme();
   return <Text selectable style={{ ...theme.typography.body, color: theme.color.textSecondary }}>{children}</Text>;
 }
 
@@ -119,6 +121,7 @@ export function ReflectionPage({
   onUsePracticePhrase,
   onComplete,
 }: ReflectionPageProps) {
+  const theme = useTheme();
   const [motivationIds, setMotivationIds] = useState(() => [...(initialValue.motivationIds ?? [])]);
   const [pressureWithoutDisappointment, setPressureWithoutDisappointment] = useState<PressureAnswer | null>(
     initialValue.pressureWithoutDisappointment ?? null,

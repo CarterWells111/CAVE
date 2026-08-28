@@ -2,10 +2,11 @@ import { useRouter } from "expo-router";
 import { useEffect } from "react";
 import { Text } from "react-native";
 
-import { theme } from "../src/core/design/theme";
+import { useTheme } from "../src/core/design/theme-provider";
 import { Screen } from "../src/core/ui/Screen";
 
 export default function IndexRoute() {
+  const theme = useTheme();
   const router = useRouter();
 
   useEffect(() => {

@@ -22,6 +22,10 @@ import type { ActiveReview } from "../../reviews/infrastructure/review-history-r
 import type { JourneyBranchTransaction, JourneyCompletionTransaction } from "../infrastructure/journey-write-coordinator";
 import type { JourneyDraft } from "../domain/types";
 import type { DatabaseSecretRepository } from "../../../core/storage/key-store";
+import {
+  InMemoryAppearancePreferencesRepository,
+  type AppearancePreferencesRepository,
+} from "../../../core/design/appearance-preferences";
 
 export type JourneyRuntimeMode = "expo-go-demo" | "native-secure";
 export type JourneyRuntimePersistence = "memory-only" | "sqlcipher-secure-store";
@@ -40,6 +44,7 @@ export type JourneyRuntime = {
   shellState: AppShellStateRepository;
   reviewHistory: ReviewHistoryRepository<JourneyDraft>;
   adultDeclaration: AdultDeclarationRepository;
+  appearancePreferences: AppearancePreferencesRepository;
   deleteAllData(): Promise<void>;
   replaceActiveReview(): Promise<void>;
   branchFromReview(draft: JourneyDraft, lineage: { rootId: string; sourceVersionId: string; title: string }): Promise<void>;
@@ -58,6 +63,7 @@ type ComposeDependencies = RuntimeDependencies & {
   cards: CommunicationCardRepository;
   shellState?: AppShellStateRepository;
   reviewHistory?: ReviewHistoryRepository<JourneyDraft>;
+  appearancePreferences?: AppearancePreferencesRepository;
   deleteStorage?: () => Promise<void>;
   saveVersionedDraft?: (draft: JourneyDraft, active: ActiveReview<JourneyDraft>) => Promise<void>;
   completeJourney?: (transaction: JourneyCompletionTransaction) => Promise<void>;
@@ -81,6 +87,7 @@ export function composeJourneyRuntime({
   cards,
   shellState = new InMemoryAppShellStateRepository(),
   reviewHistory = new InMemoryPayloadReviewHistoryRepository<JourneyDraft>(),
+  appearancePreferences = new InMemoryAppearancePreferencesRepository(),
   saveVersionedDraft,
   completeJourney,
   branchReview,
@@ -116,6 +123,7 @@ export function composeJourneyRuntime({
     await Promise.all(savedCards.map(({ id }) => cards.delete(id)));
     await shellState.clear();
     await reviewHistory.clearAll();
+    await appearancePreferences.save("system");
     await service.resetJourney();
   };
   const replaceActiveReview = async () => {
@@ -152,7 +160,7 @@ export function composeJourneyRuntime({
     }
     service.adoptPersistedJourney(draft);
   };
-  return { mode, persistence, service, controller, drafts: versionedDrafts, cards, shellState, reviewHistory, adultDeclaration, deleteAllData, replaceActiveReview, branchFromReview };
+  return { mode, persistence, service, controller, drafts: versionedDrafts, cards, shellState, reviewHistory, adultDeclaration, appearancePreferences, deleteAllData, replaceActiveReview, branchFromReview };
 }
 
 export async function createJourneyRuntime({

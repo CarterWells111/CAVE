@@ -1,6 +1,7 @@
 import { View, type ViewProps, type ViewStyle } from "react-native";
 
-import { theme } from "../design/theme";
+import { useTheme } from "../design/theme-provider";
+import type { AppTheme } from "../design/theme";
 
 export type CardVariant = "default" | "muted" | "accent";
 
@@ -8,7 +9,8 @@ export type CardProps = ViewProps & {
   variant?: CardVariant;
 };
 
-const variantStyles: Record<CardVariant, ViewStyle> = {
+function getVariantStyles(theme: AppTheme): Record<CardVariant, ViewStyle> {
+  return {
   default: {
     backgroundColor: theme.color.surface,
     borderColor: theme.color.border,
@@ -25,7 +27,8 @@ const variantStyles: Record<CardVariant, ViewStyle> = {
     borderStyle: "solid",
     borderWidth: theme.border.focusWidth,
   },
-};
+  };
+}
 
 export function Card({
   accessible = true,
@@ -35,6 +38,8 @@ export function Card({
   variant = "default",
   ...props
 }: CardProps) {
+  const theme = useTheme();
+  const variantStyles = getVariantStyles(theme);
   return (
     <View
       {...props}

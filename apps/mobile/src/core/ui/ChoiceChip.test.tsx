@@ -1,6 +1,6 @@
 import { fireEvent, render, screen } from "@testing-library/react-native";
 
-import { theme } from "../design/theme";
+import { darkTheme as theme } from "../design/theme";
 import { ChoiceChip } from "./ChoiceChip";
 
 test("exposes checkbox semantics and a visible checked marker", () => {

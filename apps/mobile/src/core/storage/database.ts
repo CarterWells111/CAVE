@@ -6,7 +6,8 @@ import {
   SCHEMA_V3,
   SCHEMA_V4,
   SCHEMA_V5,
-  SCHEMA_V6
+  SCHEMA_V6,
+  SCHEMA_V7
 } from "./migrations";
 
 export interface DatabaseConnection {
@@ -107,6 +108,9 @@ export function createEncryptedDatabaseManager({
       }
       if (currentVersion < 6) {
         await applyMigration(opened, SCHEMA_V6, 6);
+      }
+      if (currentVersion < 7) {
+        await applyMigration(opened, SCHEMA_V7, 7);
       }
       return opened;
     } catch (error) {

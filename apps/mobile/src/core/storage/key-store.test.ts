@@ -87,6 +87,29 @@ describe("SecretRepository", () => {
     expect(secureStore.deleteItemAsync).toHaveBeenCalledWith(SECRET_NAMES.adultDeclaration);
   });
 
+  test("fails closed by clearing the adult marker before later secret deletion can fail", async () => {
+    const secureStore = makeSecureStore();
+    secureStore.values.set(SECRET_NAMES.adultDeclaration, "confirmed");
+    secureStore.values.set(SECRET_NAMES.databaseKey, "database-key");
+    secureStore.values.set(SECRET_NAMES.installationToken, "installation-token");
+    secureStore.deleteItemAsync.mockImplementation(async (key: string) => {
+      if (key === SECRET_NAMES.databaseKey) throw new Error("secure-store-delete-failed");
+      secureStore.values.delete(key);
+    });
+    const repository = createSecretRepository({
+      secureStore,
+      randomBytes: (length) => new Uint8Array(length)
+    });
+
+    await expect(repository.deleteAllSecrets()).rejects.toThrow("secure-store-delete-failed");
+
+    expect(secureStore.values.has(SECRET_NAMES.adultDeclaration)).toBe(false);
+    expect(secureStore.deleteItemAsync.mock.calls).toEqual([
+      [SECRET_NAMES.adultDeclaration],
+      [SECRET_NAMES.databaseKey]
+    ]);
+  });
+
   test("maps device-only accessibility to the native SecureStore constant", async () => {
     const module = {
       AFTER_FIRST_UNLOCK_THIS_DEVICE_ONLY: 123,

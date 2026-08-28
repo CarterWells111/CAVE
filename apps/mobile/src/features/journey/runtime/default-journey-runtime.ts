@@ -2,6 +2,7 @@ import * as ExpoClipboard from "expo-clipboard";
 import Constants from "expo-constants";
 
 import { createEncryptedDatabaseManager } from "../../../core/storage/database";
+import { SqlAppearancePreferencesRepository } from "../../../core/design/appearance-preferences";
 import { deleteAllData as deleteAllLocalData } from "../../../core/privacy/delete-all-data";
 import type { ClipboardAdapter } from "../application/page-controllers";
 import type { ExpoJourneyAdapters } from "../infrastructure/expo-journey-adapters";
@@ -63,6 +64,7 @@ export function createComposedJourneyRuntime({
           journeyDraftReviewPayloadCodec
         ),
         adultDeclaration: adapters.secrets,
+        appearancePreferences: new SqlAppearancePreferencesRepository(database),
         saveVersionedDraft: (draft, active) => transactions.saveActive(draft, active),
         completeJourney: (transaction) => transactions.complete(transaction),
         branchReview: (transaction) => transactions.branch(transaction),

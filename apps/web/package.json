@@ -1,0 +1,24 @@
+{
+  "name": "@cave/web",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "typecheck": "astro check",
+    "lint": "eslint \"src/**/*.{ts,astro}\" \"tests/**/*.{ts,astro}\" --max-warnings 0",
+    "test": "astro build && vitest run"
+  },
+  "dependencies": {
+    "@cave/content": "workspace:*",
+    "astro": "^7.2.0"
+  },
+  "devDependencies": {
+    "@astrojs/check": "^0.9.6",
+    "eslint-plugin-astro": "^1.7.0",
+    "typescript": "~5.9.3",
+    "vitest": "^4.0.18"
+  }
+}

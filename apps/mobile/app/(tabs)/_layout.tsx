@@ -1,9 +1,10 @@
 import { Tabs } from "expo-router";
 
-import { theme } from "../../src/core/design/theme";
+import { useTheme } from "../../src/core/design/theme-provider";
 import { ShellRouteGate } from "../../src/features/shell/ui/ShellRouteGate";
 
 export default function LongTermTabsLayout() {
+  const theme = useTheme();
   return (
     <ShellRouteGate>
       <Tabs

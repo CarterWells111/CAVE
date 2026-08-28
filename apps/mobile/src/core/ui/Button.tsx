@@ -2,7 +2,7 @@ import { useState } from "react";
 import type { AccessibilityRole, AccessibilityState } from "react-native";
 import { Pressable, Text } from "react-native";
 
-import { theme } from "../design/theme";
+import { useTheme } from "../design/theme-provider";
 
 type ButtonProps = {
   label: string;
@@ -27,6 +27,7 @@ export function Button({
   state,
   testID
 }: ButtonProps) {
+  const theme = useTheme();
   const [focused, setFocused] = useState(false);
   const unavailable = disabled || loading;
   const accessibilityState: AccessibilityState = {

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Text, View } from "react-native";
 
-import { theme } from "../../../../core/design/theme";
+import { useTheme } from "../../../../core/design/theme-provider";
 import { Card } from "../../../../core/ui/Card";
 import { JourneyAction } from "../components/JourneyAction";
 
@@ -11,6 +11,7 @@ type AdultGatePageProps = {
 };
 
 export function AdultGatePage({ onConfirmAdult, onUnderage }: AdultGatePageProps) {
+  const theme = useTheme();
   const mountedRef = useRef(true);
   const decisionInFlightRef = useRef(false);
   const [pendingDecision, setPendingDecision] = useState<"adult" | "underage" | null>(null);

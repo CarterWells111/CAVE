@@ -55,6 +55,7 @@ export function guardLongTermPath<Path extends ShellLongTermPath>(
   snapshot: Pick<AppShellSnapshot, "completion">,
   requestedPath: Path,
 ): Path | "/journey/welcome" {
+  if (requestedPath.startsWith("/settings")) return requestedPath;
   return snapshot.completion === null ? "/journey/welcome" : requestedPath;
 }
 

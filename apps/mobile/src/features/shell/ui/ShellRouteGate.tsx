@@ -2,7 +2,7 @@ import { Redirect, useRouter } from "expo-router";
 import { type PropsWithChildren, useCallback, useEffect, useRef, useState } from "react";
 import { Text } from "react-native";
 
-import { theme } from "../../../core/design/theme";
+import { useTheme } from "../../../core/design/theme-provider";
 import { ErrorState } from "../../../core/ui/ErrorState";
 import { Screen } from "../../../core/ui/Screen";
 import {
@@ -23,6 +23,7 @@ function AuthorizedShellRouteGate({
   children,
   shellState
 }: PropsWithChildren<Pick<JourneyRuntimeContextValue, "shellState">>) {
+  const theme = useTheme();
   const router = useRouter();
   const mountedRef = useRef(true);
   const requestRef = useRef(0);

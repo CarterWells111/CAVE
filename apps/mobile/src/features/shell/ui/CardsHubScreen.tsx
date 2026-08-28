@@ -1,6 +1,6 @@
 import { View } from "react-native";
 
-import { theme } from "../../../core/design/theme";
+import { useTheme } from "../../../core/design/theme-provider";
 import { Button } from "../../../core/ui/Button";
 import { Card } from "../../../core/ui/Card";
 import { EmptyState } from "../../../core/ui/EmptyState";
@@ -37,6 +37,7 @@ export function CardsHubScreen({
   onOpenHistory,
   onRetry,
 }: Props) {
+  const theme = useTheme();
   return (
     <ShellFrame title="卡片">
       {loadState === "loading" ? <ShellLoading /> : null}

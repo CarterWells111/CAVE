@@ -20,6 +20,7 @@ apps/mobile/android/
 .dev.vars
 
 # Builds, tests, and logs
+.astro/
 coverage/
 dist/
 build/
@@ -35,3 +36,6 @@ build/
 Thumbs.db
 .idea/
 .vscode/
+
+# Local isolated worktrees
+.worktrees/

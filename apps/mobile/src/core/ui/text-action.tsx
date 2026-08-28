@@ -1,7 +1,7 @@
 import { forwardRef, useState } from "react";
 import { Pressable, Text, type View } from "react-native";
 
-import { theme } from "../design/theme";
+import { useTheme } from "../design/theme-provider";
 
 export type TextActionProps = {
   label: string;
@@ -16,6 +16,7 @@ export const TextAction = forwardRef<View, TextActionProps>(function TextAction(
   { label, onPress, disabled = false, loading = false, underlined = false, testID },
   ref,
 ) {
+  const theme = useTheme();
   const [focused, setFocused] = useState(false);
   const unavailable = disabled || loading;
   return (

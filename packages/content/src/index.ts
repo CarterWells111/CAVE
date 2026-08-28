@@ -21,6 +21,7 @@ export type {
   JourneyUiCopyCatalog
 } from "./catalog";
 export { ContentCatalogSchema, loadCatalog } from "./load";
+export { JOURNEY_SOURCE_REGISTRY } from "./source-registry";
 export {
   ContentValidationError,
   validateCatalog,

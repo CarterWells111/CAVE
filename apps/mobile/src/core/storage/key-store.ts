@@ -110,9 +110,9 @@ export function createSecretRepository({
     ),
     deleteAdultDeclaration: () => secureStore.deleteItemAsync(SECRET_NAMES.adultDeclaration),
     async deleteAllSecrets() {
+      await secureStore.deleteItemAsync(SECRET_NAMES.adultDeclaration);
       await secureStore.deleteItemAsync(SECRET_NAMES.databaseKey);
       await secureStore.deleteItemAsync(SECRET_NAMES.installationToken);
-      await secureStore.deleteItemAsync(SECRET_NAMES.adultDeclaration);
     }
   };
 }

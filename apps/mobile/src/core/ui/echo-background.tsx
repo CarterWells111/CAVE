@@ -1,10 +1,11 @@
 import { View } from "react-native";
 
-import { theme } from "../design/theme";
+import { useTheme } from "../design/theme-provider";
 
 export type EchoBackgroundProps = { reducedMotion?: boolean; testID?: string };
 
 export function EchoBackground({ reducedMotion = false, testID }: EchoBackgroundProps) {
+  const theme = useTheme();
   return (
     <View
       accessible={false}

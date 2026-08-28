@@ -2,7 +2,8 @@ import type { JourneyKnowledgeCard, JourneySource } from "@cave/content";
 import { useMemo, useState } from "react";
 import { Image, type ImageSourcePropType, Text, View } from "react-native";
 
-import { theme } from "../../../../core/design/theme";
+import { useTheme } from "../../../../core/design/theme-provider";
+import type { AppTheme } from "../../../../core/design/theme";
 import { BottomSheet } from "../../../../core/ui/bottom-sheet";
 import { Card } from "../../../../core/ui/Card";
 import { InfoCard } from "../../../../core/ui/info-card";
@@ -36,6 +37,8 @@ export function BodyKnowledgePage({
   addressPreference = "你",
   reducedMotion = false,
 }: BodyKnowledgePageProps) {
+  const theme = useTheme();
+  const styles = createStyles(theme);
   const sortedCards = [...cards].sort((a, b) => a.order - b.order).slice(0, 3);
   const relevantSources = useMemo(() => {
     const ids = new Set(sortedCards.flatMap((card) => card.sourceIds));
@@ -176,7 +179,8 @@ export function BodyKnowledgePage({
   );
 }
 
-const styles = {
+function createStyles(theme: AppTheme) {
+  return {
   page: { flexGrow: 1, gap: theme.space.xl, minWidth: 0 },
   title: { ...theme.typography.title, color: theme.color.text, flexShrink: 1 },
   body: { ...theme.typography.body, color: theme.color.text, flexShrink: 1 },
@@ -207,4 +211,5 @@ const styles = {
   },
   image: { height: "100%" as const, width: "100%" as const },
   zoomControls: { gap: theme.space.compact, width: "100%" as const },
-};
+  };
+}

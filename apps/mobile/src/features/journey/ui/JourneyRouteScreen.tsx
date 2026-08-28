@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useRouter } from "expo-router";
 import { Alert, Text } from "react-native";
 
-import { theme } from "../../../core/design/theme";
+import { useTheme } from "../../../core/design/theme-provider";
 import { BottomSheet } from "../../../core/ui/bottom-sheet";
 import { Button } from "../../../core/ui/Button";
 import { TextAction } from "../../../core/ui/text-action";
@@ -25,6 +25,7 @@ export function JourneyRouteScreen({
   pageId: JourneyPageId;
   children(props: JourneyRouteRenderProps): ReactNode;
 }) {
+  const theme = useTheme();
   const router = useRouter();
   const runtime = useJourneyRuntime();
   const [optionsOpen, setOptionsOpen] = useState(false);

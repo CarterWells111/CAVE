@@ -27,8 +27,10 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     version: "0.1.0",
     scheme: "cave",
     orientation: "portrait",
+    userInterfaceStyle: "automatic",
     plugins: [
       "expo-router",
+      "expo-system-ui",
       ["expo-sqlite", { useSQLCipher: true }],
       [
         "expo-secure-store",

@@ -8,9 +8,18 @@ test("shows one journey action and a top-right help action without age or login 
 
   expect(screen.getByRole("button", { name: "开启旅程" })).toBeTruthy();
   expect(screen.getByRole("button", { name: "帮助" })).toBeTruthy();
+  expect(screen.queryByRole("button", { name: "设置" })).toBeNull();
   expect(screen.queryByText(/18|成年|登录|邮箱|验证码/u)).toBeNull();
   fireEvent.press(screen.getByRole("button", { name: "开启旅程" }));
   expect(onStart).toHaveBeenCalledTimes(1);
+});
+
+test("shows settings only when an authorized route supplies the action", () => {
+  const onOpenSettings = jest.fn();
+  render(<WelcomePage onOpenSettings={onOpenSettings} onStart={jest.fn()} resumeAvailable />);
+
+  fireEvent.press(screen.getByRole("button", { name: "设置" }));
+  expect(onOpenSettings).toHaveBeenCalledTimes(1);
 });
 
 test("help explains product scope, 18+ gate, non-diagnosis and local-first privacy", () => {
@@ -31,7 +40,7 @@ test("help explains product scope, 18+ gate, non-diagnosis and local-first priva
 
 test("uses a continue label when an unfinished local journey exists", () => {
   const onResume = jest.fn();
-  render(<WelcomePage onStart={jest.fn()} onResume={onResume} resumeAvailable />);
+  render(<WelcomePage onOpenSettings={jest.fn()} onStart={jest.fn()} onResume={onResume} resumeAvailable />);
 
   expect(screen.queryByRole("button", { name: "开启旅程" })).toBeNull();
   fireEvent.press(screen.getByRole("button", { name: "继续旅程" }));

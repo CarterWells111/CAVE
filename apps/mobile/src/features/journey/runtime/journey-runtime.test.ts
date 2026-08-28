@@ -36,6 +36,10 @@ test("composes Expo Go without touching the native secure runtime factory", asyn
   });
   expect(createNativeRuntime).not.toHaveBeenCalled();
 
+  await expect(runtime.appearancePreferences.load()).resolves.toBe("system");
+  await runtime.appearancePreferences.save("light");
+  await expect(runtime.appearancePreferences.load()).resolves.toBe("light");
+
   await runtime.service.confirmAdult();
   expect(runtime.service.getSnapshot()).toMatchObject({ id: "journey-demo-1", ageConfirmed: true });
 });
@@ -70,12 +74,14 @@ test("deletes the Expo Go draft, cards, and completion marker together", async (
   if (draft === null) throw new Error("missing draft");
   await runtime.cards.save({ id: "card-1", journeyId: draft.id, card: draft.communicationCard, savedAt: draft.updatedAt });
   await runtime.shellState.completeInitialJourney({ initialJourneyId: draft.id, initialJourneyCompletedAt: draft.updatedAt });
+  await runtime.appearancePreferences.save("dark");
 
   await runtime.deleteAllData();
 
   expect(runtime.service.getSnapshot()).toBeNull();
   await expect(runtime.cards.listMetadata()).resolves.toEqual([]);
   await expect(runtime.shellState.load()).resolves.toBeNull();
+  await expect(runtime.appearancePreferences.load()).resolves.toBe("system");
 });
 
 test("archives a completed review version and clears the active draft", async () => {

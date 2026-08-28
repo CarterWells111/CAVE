@@ -1,7 +1,7 @@
 import { fireEvent, render, screen } from "@testing-library/react-native";
 import { Text } from "react-native";
 
-import { theme } from "../design/theme";
+import { darkTheme as theme } from "../design/theme";
 import { SecondaryButton } from "./secondary-button";
 import { StickyActionBar, StickyActionSpacer, STICKY_ACTION_BAR_CONTENT_INSET } from "./sticky-action-bar";
 import { TextAction } from "./text-action";

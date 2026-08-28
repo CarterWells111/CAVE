@@ -1,12 +1,14 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react-native";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react-native";
 import { StrictMode, type ReactNode } from "react";
 import { Pressable, Text, View } from "react-native";
+import { useTheme } from "../../../core/design/theme-provider";
 
 import JourneyLayout from "../../../../app/journey/_layout";
 import AdultGateRoute from "../../../../app/journey/adult-gate";
 import BehaviorMapRoute from "../../../../app/journey/behavior-map";
 import PrefaceRoute from "../../../../app/journey/preface";
 import WelcomeRoute from "../../../../app/journey/welcome";
+import SettingsRoute from "../../../../app/settings";
 import type { DatabaseConnection } from "../../../core/storage/database";
 import {
   InMemoryCommunicationCardRepository,
@@ -42,8 +44,9 @@ beforeEach(() => {
   mockStackContent = null;
 });
 
-function nativePersistenceHarness() {
+function nativePersistenceHarness({ adultDeclared = false } = {}) {
   let databaseExists = false;
+  let hasAdultDeclaration = adultDeclared;
   const sqlCalls: string[] = [];
   const database = {
     execAsync: jest.fn(async (sql: string) => { sqlCalls.push(sql); }),
@@ -71,10 +74,10 @@ function nativePersistenceHarness() {
       getOrCreateDatabaseKey: jest.fn(async () => "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="),
       getOrCreateInstallationToken: jest.fn(async () => "token"),
       deleteDatabaseKey: jest.fn(async () => undefined),
-      deleteAllSecrets: jest.fn(async () => undefined),
-      hasAdultDeclaration: jest.fn(async () => false),
-      recordAdultDeclaration: jest.fn(async () => undefined),
-      deleteAdultDeclaration: jest.fn(async () => undefined)
+      deleteAllSecrets: jest.fn(async () => { hasAdultDeclaration = false; }),
+      hasAdultDeclaration: jest.fn(async () => hasAdultDeclaration),
+      recordAdultDeclaration: jest.fn(async () => { hasAdultDeclaration = true; }),
+      deleteAdultDeclaration: jest.fn(async () => { hasAdultDeclaration = false; })
     },
     clipboard: { setStringAsync: jest.fn(async () => undefined) }
   } as unknown as ExpoJourneyAdapters;
@@ -101,11 +104,13 @@ function runtime(mode: JourneyRuntimeMode = "expo-go-demo") {
 }
 
 function RuntimeConsumer() {
+  const theme = useTheme();
   const { controller, deleteAllData, mode, restart, runAndRefresh, service, shellState, snapshot } = useJourneyRuntime();
 
   return (
     <View>
       <Text>{mode}</Text>
+      <Text>{`theme-${theme.name}`}</Text>
       <Text>{controller === undefined ? "missing-controller" : "controller-ready"}</Text>
       <Text>{shellState === undefined ? "missing-shell-state" : "shell-state-ready"}</Text>
       <Text>{snapshot?.id ?? "no-runtime-snapshot"}</Text>
@@ -138,6 +143,7 @@ test("creates one runtime across rerenders and keeps the Expo Go notice visible"
   expect(screen.getByText("正在启动旅程运行时…")).toHaveProp("accessibilityLiveRegion", "polite");
   expect(await screen.findByText("Expo Go 演示模式，数据仅在本次打开期间暂存")).toBeTruthy();
   expect(screen.getByText("controller-ready")).toBeTruthy();
+  expect(screen.getByText("theme-light")).toBeTruthy();
   expect(screen.getByText("shell-state-ready")).toBeTruthy();
 
   rerender(
@@ -262,6 +268,51 @@ test("renders the real public journey layout without loading private navigation 
   expect(harness.adapters.secrets.getOrCreateDatabaseKey).not.toHaveBeenCalled();
   expect(harness.adapters.native.openDatabaseAsync).not.toHaveBeenCalled();
   expect(harness.sqlCalls).toEqual([]);
+});
+
+test("redirects public settings deep links without initializing private storage", async () => {
+  const harness = nativePersistenceHarness();
+
+  render(
+    <JourneyRuntimeProvider createRuntime={harness.createRuntime}>
+      <SettingsRoute />
+    </JourneyRuntimeProvider>
+  );
+
+  await waitFor(() => expect(mockRedirect).toHaveBeenCalledWith({ href: "/journey/welcome" }));
+  expect(harness.adapters.secrets.getDatabaseKey).not.toHaveBeenCalled();
+  expect(harness.adapters.secrets.getOrCreateDatabaseKey).not.toHaveBeenCalled();
+  expect(harness.adapters.native.openDatabaseAsync).not.toHaveBeenCalled();
+  expect(harness.sqlCalls).toEqual([]);
+});
+
+test("does not recreate native storage while returning to the public theme after deletion", async () => {
+  const harness = nativePersistenceHarness({ adultDeclared: true });
+
+  render(
+    <JourneyRuntimeProvider createRuntime={harness.createRuntime}>
+      <SettingsRoute />
+    </JourneyRuntimeProvider>
+  );
+
+  expect(await screen.findByText("设置")).toBeTruthy();
+  const keyCallsBeforeDelete = jest.mocked(
+    harness.adapters.secrets.getOrCreateDatabaseKey
+  ).mock.calls.length;
+  const openCallsBeforeDelete = jest.mocked(
+    harness.adapters.native.openDatabaseAsync
+  ).mock.calls.length;
+  expect(keyCallsBeforeDelete).toBe(1);
+  expect(openCallsBeforeDelete).toBe(1);
+
+  fireEvent.press(screen.getByRole("button", { name: "删除全部本机数据" }));
+  fireEvent.press(screen.getByRole("button", { name: "确认删除全部本机数据" }));
+
+  await waitFor(() => expect(harness.adapters.secrets.deleteAllSecrets).toHaveBeenCalledTimes(1));
+  await waitFor(() => expect(mockRedirect).toHaveBeenCalledWith({ href: "/journey/welcome" }));
+  await act(async () => undefined);
+  expect(harness.adapters.secrets.getOrCreateDatabaseKey).toHaveBeenCalledTimes(keyCallsBeforeDelete);
+  expect(harness.adapters.native.openDatabaseAsync).toHaveBeenCalledTimes(openCallsBeforeDelete);
 });
 
 test.each([

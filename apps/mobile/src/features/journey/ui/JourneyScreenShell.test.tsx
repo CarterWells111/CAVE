@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { StyleSheet, Text } from "react-native";
 
-import { theme } from "../../../core/design/theme";
+import { darkTheme as theme } from "../../../core/design/theme";
 import { JourneyScreenShell } from "./JourneyScreenShell";
 
 const onExit = jest.fn();
@@ -62,7 +62,8 @@ test("composes the shared 06A screen, card, progress and status primitives", () 
   expect(source).toContain('from "../../../core/ui/Card"');
   expect(source).toContain('from "../../../core/ui/ProgressHeader"');
   expect(source).toContain('from "../../../core/ui/StatusBanner"');
-  expect(source).toContain('from "../../../core/design/theme"');
+  expect(source).toContain('from "../../../core/design/theme-provider"');
+  expect(source).toContain("useTheme()");
   expect(source).not.toContain("journey-ui-tokens");
   expect(source).not.toContain("SafeAreaView");
   expect(source).not.toContain("Platform.OS");
