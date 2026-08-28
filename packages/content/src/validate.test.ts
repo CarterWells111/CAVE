@@ -46,6 +46,30 @@ function allJourneyReviewables(catalog: ReturnType<typeof loadCatalog>) {
   ];
 }
 
+function completeInternalReviewForTest(catalog: ReturnType<typeof loadCatalog>) {
+  for (const item of allJourneyReviewables(catalog)) {
+    if (item.reviewStatus === "draft") {
+      Object.assign(item, {
+        reviewStatus: "reviewed",
+        reviewer: "annie",
+        reviewerRole: "产品与编辑审核人",
+        reviewedAt: "2026-08-28T09:56:30Z",
+        reviewedVersion: "2026-08-28-review-1",
+        reviewConclusion: "产品与编辑审核通过"
+      });
+    } else if (item.reviewStatus === "expert_review_pending") {
+      Object.assign(item, {
+        reviewStatus: "internal_test_approved",
+        reviewer: "annie",
+        reviewerRole: "内部测试审核人",
+        reviewedAt: "2026-08-28T09:56:30Z",
+        reviewedVersion: "2026-08-28-review-1",
+        reviewConclusion: "仅内测通过；发布前仍需合格专家完成医疗、安全或性教育审核"
+      });
+    }
+  }
+}
+
 describe("versioned content validation", () => {
   it.each([
     ["missing", []],
@@ -81,20 +105,15 @@ describe("versioned content validation", () => {
 
   it("accepts complete internal approval internally but rejects it in production", () => {
     const catalog = loadCatalog();
-    for (const item of allJourneyReviewables(catalog)) {
-      const requiresExpertReview = item.reviewStatus === "expert_review_pending";
-      Object.assign(item, {
-        reviewStatus: requiresExpertReview ? "internal_test_approved" : "reviewed",
-        reviewer: "annie",
-        reviewerRole: requiresExpertReview ? "内部测试审核人" : "产品与编辑审核人",
-        reviewedAt: "2026-08-28T09:56:30Z",
-        reviewedVersion: "2026-08-28-review-1",
-        reviewConclusion: requiresExpertReview
-          ? "仅内测通过；发布前仍需合格专家完成医疗、安全或性教育审核"
-          : "产品与编辑审核通过"
-      });
-    }
+    completeInternalReviewForTest(catalog);
+    const approvalStatuses = allJourneyReviewables(catalog).map(
+      ({ reviewStatus }) => reviewStatus
+    );
+    completeInternalReviewForTest(catalog);
 
+    expect(allJourneyReviewables(catalog).map(({ reviewStatus }) => reviewStatus)).toEqual(
+      approvalStatuses
+    );
     expect(() => validateCatalog(catalog, { mode: "internal" })).not.toThrow();
     expect(new Set(issueCodes(() => validateCatalog(catalog, { mode: "production" })))).toEqual(
       new Set(["INTERNAL_TEST_APPROVAL_ONLY"])
@@ -113,6 +132,7 @@ describe("versioned content validation", () => {
       reviewedAt: "2026-08-28T09:56:30Z",
       reviewedVersion: "2026-08-28-review-1"
     });
+    delete catalog.journey.knowledge[0]!.reviewConclusion;
 
     expect(issueCodes(() => validateCatalog(catalog, { mode: "draft" }))).toContain(
       "REVIEW_EVIDENCE_REQUIRED"
