@@ -1,3 +1,4 @@
+import { Ionicons } from "@expo/vector-icons";
 import { Pressable, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -21,6 +22,7 @@ export function LongTermBottomNav({ activeTab, navigate }: LongTermBottomNavProp
     >
       <View
         accessibilityLabel="长期使用导航"
+        testID="long-term-bottom-nav-content"
         style={{
           alignItems: "stretch",
           backgroundColor: theme.color.surface,
@@ -28,8 +30,9 @@ export function LongTermBottomNav({ activeTab, navigate }: LongTermBottomNavProp
           borderTopWidth: theme.border.width,
           flexDirection: "row",
           gap: theme.space.xs,
+          height: theme.size.navigationHeight,
           paddingHorizontal: theme.space.sm,
-          paddingVertical: theme.space.xs
+          paddingVertical: theme.space.none
         }}
       >
         {LONG_TERM_DESTINATIONS.map(({ icon, label, tab }) => {
@@ -44,28 +47,26 @@ export function LongTermBottomNav({ activeTab, navigate }: LongTermBottomNavProp
               onPress={() => navigate(tab)}
               style={{
                 alignItems: "center",
-                backgroundColor: selected ? theme.color.surfaceAccent : theme.color.surface,
-                borderColor: selected ? theme.color.focus : "transparent",
-                borderRadius: theme.radius.control,
-                borderWidth: selected ? theme.border.selectedWidth : theme.border.width,
+                backgroundColor: theme.color.surface,
+                borderWidth: 0,
                 flex: 1,
-                gap: theme.space.xs,
+                gap: theme.space.none,
                 justifyContent: "center",
                 minHeight: theme.size.minimumTouchTarget,
                 minWidth: theme.size.minimumTouchTarget,
                 paddingHorizontal: theme.space.xs,
-                paddingVertical: theme.space.xs
+                paddingVertical: theme.space.none
               }}
             >
-              <Text style={{ ...theme.typography.heading, color: selected ? theme.color.focus : theme.color.textSecondary }}>
-                {icon}
-              </Text>
-              <Text style={{ ...theme.typography.label, color: selected ? theme.color.text : theme.color.textSecondary, textAlign: "center" }}>
+              <Ionicons
+                accessible={false}
+                color={selected ? theme.color.primary : theme.color.textSecondary}
+                name={icon}
+                size={selected ? theme.size.iconLarge : theme.size.icon}
+              />
+              <Text style={{ ...theme.typography.label, color: selected ? theme.color.primary : theme.color.textSecondary, textAlign: "center" }}>
                 {label}
               </Text>
-              {selected ? (
-                <Text style={{ ...theme.typography.numericLabel, color: theme.color.focus }}>当前</Text>
-              ) : null}
             </Pressable>
           );
         })}

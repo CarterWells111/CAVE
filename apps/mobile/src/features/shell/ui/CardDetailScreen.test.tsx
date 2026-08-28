@@ -48,7 +48,7 @@ test("renders only explicitly supplied confirmed section fields in normal mode",
   expect(screen.getByRole("summary", { name: "什么会让我更安心。请先问我，再慢一点。" })).toBeTruthy();
   expect(screen.getByText("请先问我，再慢一点。")).toBeTruthy();
   expect(screen.queryByText(/PRIVATE|DELETED/u)).toBeNull();
-  fireEvent.press(screen.getByRole("button", { name: "返回卡片列表" }));
+  fireEvent.press(screen.getByRole("button", { name: "返回我的卡片" }));
   expect(props.onBack).toHaveBeenCalledTimes(1);
   expect(screen.getByTestId("card-detail-content")).toHaveStyle({ maxWidth: 600 });
 });
