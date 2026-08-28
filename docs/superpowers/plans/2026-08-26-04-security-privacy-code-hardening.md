@@ -175,3 +175,40 @@ interface SecretRepository {
 - 唯一已知本地 Important blocker：`createTurnSafetyEvaluator` 对 Golden 明确边界“我今天不能继续，我需要在这里停下来。”返回 `uncertain → safety_stop`，而 Golden outcome 要求 `safe → resolution`；同一根因已执行两轮修复，依纪律停止第三轮并准确保留 blocker。
 - `external_pending`：Apple/iPhone Development Build；真机 SQLCipher 无 key/有 key 查询；delete-all 后冷启动；部署 Worker canary log；GitHub Code Scanning/Secret Scanning 仓库设置。CodeQL 已提取并扫描 95/95 TypeScript、2/2 Actions、2/2 JavaScript files，但 GitHub 因仓库未启用 Code Scanning 而拒绝 SARIF upload。
 - dependency audit：沙箱命令因网络 EACCES 失败；提升权限因会向 npm 公共 advisory endpoint 发送 package/version metadata 而被安全策略拒绝，等待用户显式授权，不绕过。
+
+## 2026-08-28 Golden evaluator 修复证据
+
+- 总体状态仍为 `blocked`；不得声称 Plan 04 完整完成。Golden evaluator 本地 blocker 已解决，依据是新的真实 `createTurnSafetyEvaluator()` Golden 对话测试与 production `TurnService` 接线测试均通过，并证明明确边界从 `safe/none` 到达 `resolution`，而不是 `uncertain` 到达 `safety_stop`。
+- 基线与分支：先执行 `git fetch origin`（exit 0），从 freshly fetched `origin/main@9f244ce3d4b9eedec826a9bf918e81000b83fce4` 创建 `codex/fix-plan-04-golden-evaluator`；实现 commit 为 `cddcf12`（`fix(gateway): classify clear boundaries safely`）。
+- 实现范围：只修改 gateway safety classifier 与直接对应的 evaluator/TurnService tests；Golden fixtures、公共 contracts、mobile、master roadmap、Plan 07/07A、内容审核状态、`reviewedAt` 和医疗/内容 assets 均未修改。
+- RED 证据：`corepack pnpm --filter @cave/gateway test test/safety-policy.test.ts test/turn-service.test.ts` 首轮 exit 1，真实 evaluator 得到 `stop/uncertain` 且 TurnService 得到 `safety_stop`（2 failures / 31 passes）；独立 review 后的两轮 RED 分别证明 broad substring 与 contradictory suffix 会错误返回 `safe/none` 并调用 provider。
+- 修复行为：deterministic classifier 只检查最新 user turn；明确第一人称停止边界的每个完整 clause 都必须匹配，或沿用既有 explicit practice cue，才可返回 `safe`。`STOP_PATTERNS`、danger、violence、self-harm、medical emergency、minor 与 boundary 后 pressure 仍先于 safe/uncertain resolution；历史 boundary、未知文本、问题、引用/meta 文本、无关“停止/不能继续”文本与矛盾后缀继续 fail closed。
+- 独立 code review：首轮发现 broad boundary substring fail-open，复审发现 contradictory suffix fail-open；两项均以 RED/GREEN regressions 修复。最终复审结论为无剩余 Critical 或 Important finding。
+
+Fresh verification（均为 2026-08-28 本次修复后的新证据）：
+
+| Command | Exit | Observed result |
+|---|---:|---|
+| `corepack pnpm --filter @cave/gateway test test/safety-policy.test.ts test/turn-service.test.ts` | 0 | 2 files / 41 tests passed；真实 Golden evaluator 与 TurnService `resolution` integration 包含在内 |
+| `corepack pnpm test:safety` | 0 | 4 files / 66 tests passed |
+| `corepack pnpm --filter @cave/gateway test` | 0 | 16 files / 175 tests passed |
+| `corepack pnpm --filter @cave/scenario-engine test` | 0 | 2 files / 18 tests passed |
+| `corepack pnpm --filter @cave/test-fixtures test` | 0 | 2 files / 11 tests passed；Golden fixtures 未改 |
+| `corepack pnpm --filter @cave/gateway typecheck` | 0 | TypeScript no-emit check passed |
+| `corepack pnpm --filter @cave/gateway lint` | 0 | ESLint passed with zero warnings |
+| `corepack pnpm --filter @cave/gateway build` | 0 | authorized exact rerun；Wrangler 4.126.0 dry-run，727.47 KiB / gzip 121.61 KiB；未部署。首次 sandbox-only run exit 1，原因仅为 AppData log 与 linked-worktree parent-path permission |
+| `corepack pnpm typecheck` | 0 | 6 of 7 workspace projects passed |
+| `corepack pnpm lint` | 0 | 6 of 7 workspace projects passed with zero warnings |
+| `corepack pnpm test` | 0 | contracts 4 files / 19 tests；content 4 / 39；scenario-engine 2 / 18；gateway 16 / 175；test-fixtures 2 / 11；mobile 90 suites / 574 tests；合计 118 suites/files / 836 tests passed |
+| from `apps/mobile`: `.\\node_modules\\.bin\\expo.CMD export --platform ios --output-dir dist` | 0 | 1202 modules；24 assets；1 iOS bundle 3.65 MB；1 metadata file；仅本地 export，未部署 |
+| `corepack pnpm security:scan-bundle` | 0 | exported mobile bundle secret scan passed，26 files；首次在 export 前 fail closed（exit 1：no exported bundle files），生成真实 export 后 exact rerun 通过 |
+| `git diff --check` | 0 | implementation 与 docs evidence diff 无 whitespace error |
+
+仍为 `external_pending` / 未在本修复中执行：
+
+- Apple membership/signing、iPhone Development Build、安装与 Metro-disconnected launch 证据；
+- 真实 iPhone 上 SQLCipher 无 key/有 key 查询、SecureStore key lifecycle、delete-all 后 cold start；
+- Worker deployment 与 canary log allowlist inspection；本修复明确未部署 Worker；
+- GitHub Code Scanning / Secret Scanning repository settings 与 npm production audit 的既有外部/授权待办。
+
+因此 Golden evaluator 本地 blocker 不再阻塞，但 Plan 04 总体仍为 `blocked`，上述 native/external evidence 继续在 Plan 07/release 前保持未完成。
