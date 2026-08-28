@@ -12,9 +12,9 @@ export default function AdultGateRoute() {
   const router = useRouter();
   const adultDeclaration = useAdultDeclaration();
   const runtime = useOptionalJourneyRuntime();
-  const alreadyConfirmed = runtime?.snapshot?.ageConfirmed === true;
+  const authorizationReady = adultDeclaration.status === "authorized"
+    && runtime?.snapshot?.ageConfirmed === true;
   const activeRef = useRef(false);
-  const confirmationStartedRef = useRef(false);
   const decisionRef = useRef<object | null>(null);
   const navigatedRef = useRef(false);
 
@@ -34,21 +34,17 @@ export default function AdultGateRoute() {
   }, [router]);
 
   useEffect(() => {
-    if (alreadyConfirmed && !confirmationStartedRef.current) openPreface();
-  }, [alreadyConfirmed, openPreface]);
+    if (authorizationReady) openPreface();
+  }, [authorizationReady, openPreface]);
 
   const confirmAdult = () => {
     if (!activeRef.current || decisionRef.current !== null || navigatedRef.current) return;
     const decision = {};
-    confirmationStartedRef.current = true;
     decisionRef.current = decision;
     const confirmation = runtime === null
       ? adultDeclaration.confirmAdult()
       : runtime.runAndRefresh(() => adultDeclaration.confirmAdult());
     return confirmation
-      .then(() => {
-        if (activeRef.current && decisionRef.current === decision) openPreface();
-      })
       .catch((error: unknown) => {
         if (activeRef.current && decisionRef.current === decision) decisionRef.current = null;
         throw error;
@@ -62,7 +58,7 @@ export default function AdultGateRoute() {
     router.replace("/underage-exit");
   };
 
-  if (alreadyConfirmed && !confirmationStartedRef.current) return null;
+  if (authorizationReady) return null;
   return (
     <Screen>
       <AdultGatePage
