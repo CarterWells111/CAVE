@@ -36,18 +36,17 @@ test("the root entry routes first-run and completed users from persisted shell s
   expect(indexSource).not.toContain("<Redirect");
 });
 
-test("exactly seven canonical routes compose their matching page components", () => {
+test("exactly six canonical content routes compose their matching page components", () => {
   const routeDirectory = resolve(__dirname, "../../../../app/journey");
   const expected = {
-    welcome: "WelcomePage",
-    overnight: "OvernightPage",
     "body-knowledge": "BodyKnowledgePage",
+    overnight: "OvernightPage",
     "behavior-map": "BehaviorMapPage",
     reflection: "ReflectionPage",
     "preset-practice": "PresetPracticePage",
     "final-preparation": "FinalPreparationPage"
   };
-  expect(Object.keys(expected)).toHaveLength(7);
+  expect(Object.keys(expected)).toHaveLength(6);
   for (const [route, component] of Object.entries(expected)) {
     expect(readFileSync(resolve(routeDirectory, `${route}.tsx`), "utf8")).toContain(`<${component}`);
   }
@@ -79,9 +78,9 @@ test("exactly three legacy aliases redirect to canonical routes", () => {
   }
 });
 
-test("the production route inventory contains only seven canonical routes and three legacy aliases", () => {
+test("the production route inventory contains only six content routes and three legacy aliases", () => {
   const routeDirectory = resolve(__dirname, "../../../../app/journey");
-  const auxiliaryModules = ["_layout.tsx", "preface.tsx", "underage-exit.tsx"];
+  const auxiliaryModules = ["_layout.tsx", "welcome.tsx", "preface.tsx", "adult-gate.tsx"];
   const productionRoutes = readdirSync(routeDirectory)
     .filter((name) => name.endsWith(".tsx"))
     .filter((name) => !auxiliaryModules.includes(name))
@@ -97,6 +96,5 @@ test("the production route inventory contains only seven canonical routes and th
     "overnight.tsx",
     "preset-practice.tsx",
     "reflection.tsx",
-    "welcome.tsx"
   ]);
 });

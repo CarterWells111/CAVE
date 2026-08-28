@@ -12,7 +12,6 @@ export type JourneyCapabilities = {
   canPersistLocally?: boolean;
   canCopy?: boolean;
   canShowFullscreen?: boolean;
-  cloudSaveAvailable?: false;
 };
 
 export type JourneyAction = () => void | Promise<void>;

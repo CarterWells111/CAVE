@@ -33,9 +33,24 @@ test("renders exactly three expanded catalog cards and can continue without open
     expect(screen.getByText(card.body)).toBeTruthy();
   }
   expect(screen.queryByLabelText(/医学图审核稿/u)).toBeNull();
-  fireEvent.press(screen.getByRole("button", { name: "看看我对不同靠近的感觉" }));
+  fireEvent.press(screen.getByRole("button", { name: "看看我对过夜的期待" }));
   await waitFor(() => expect(onRead).toHaveBeenCalledTimes(3));
   expect(onContinue).toHaveBeenCalledTimes(1);
+});
+
+test("announces progress toward overnight expectations while completion is being persisted", async () => {
+  let resolveContinue!: () => void;
+  const onContinue = jest.fn(() => new Promise<void>((resolve) => { resolveContinue = resolve; }));
+  render(<BodyKnowledgePage cards={cards} onContinue={onContinue} sources={[source]} />);
+
+  fireEvent.press(screen.getByRole("button", { name: "看看我对过夜的期待" }));
+  expect(screen.getByRole("button", { name: "正在继续…" })).toHaveProp(
+    "accessibilityState", expect.objectContaining({ busy: true, disabled: true }),
+  );
+
+  await waitFor(() => expect(onContinue).toHaveBeenCalledTimes(1));
+  resolveContinue();
+  await waitFor(() => expect(screen.getByRole("button", { name: "看看我对过夜的期待" })).toBeTruthy());
 });
 
 test("waits for persisted consent before showing optional explicit anatomy content", async () => {
@@ -159,9 +174,9 @@ test("reduced motion keeps consent and source sheets non-animated", () => {
 
 test("failed completion remains recoverable", async () => {
   render(<BodyKnowledgePage cards={cards} onContinue={jest.fn().mockRejectedValue(new Error("offline"))} sources={[source]} />);
-  fireEvent.press(screen.getByRole("button", { name: "看看我对不同靠近的感觉" }));
+  fireEvent.press(screen.getByRole("button", { name: "看看我对过夜的期待" }));
   await waitFor(() => expect(screen.getByText("暂时无法继续，请重试。")).toBeTruthy());
-  expect(screen.getByRole("button", { name: "看看我对不同靠近的感觉" })).toHaveProp(
+  expect(screen.getByRole("button", { name: "看看我对过夜的期待" })).toHaveProp(
     "accessibilityState", expect.objectContaining({ disabled: false }),
   );
 });

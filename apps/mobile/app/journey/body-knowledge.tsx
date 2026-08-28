@@ -17,7 +17,7 @@ export default function BodyKnowledgeRoute() {
           addressPreference={snapshot?.addressPreference ?? "你"}
           cards={catalog.knowledge}
           diagramSource={medicalDiagram}
-          onContinue={() => goTo("behavior-map")}
+          onContinue={() => goTo("overnight")}
           onOpenDiagram={() => runAndRefresh(() => controller.openMedicalDiagram())}
           onRead={(cardId) => runAndRefresh(() => controller.readKnowledge(cardId))}
           onSourceAction={(source) => Linking.openURL(source.url)}

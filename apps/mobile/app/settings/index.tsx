@@ -8,7 +8,6 @@ export default function SettingsRoute() {
   const runtime = useJourneyRuntime();
   return (
     <SettingsScreen
-      onChangeAddressPreference={() => router.push("/journey/welcome")}
       onContinueAfterDelete={() => router.replace("/journey/welcome")}
       onDeleteAllData={() => runtime.deleteAllData()}
     />

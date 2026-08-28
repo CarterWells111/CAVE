@@ -68,11 +68,6 @@ export function CardsHubScreen({
               <MetadataCard actionLabel={`打开${card.title}`} item={card} key={card.id} onAction={onOpenHistory} />
             )) : <EmptyState message="历史列表只显示标题、日期和状态。" title="还没有历史版本" />}
           </View>
-          <Card accessible={false} variant="muted">
-            <SectionHeading>云端保存</SectionHeading>
-            <SupportingText>后续版本；当前只使用本机保存。</SupportingText>
-            <SecondaryButton disabled label="保存到云端｜后续版本" onPress={() => undefined} />
-          </Card>
         </>
       ) : null}
     </ShellFrame>

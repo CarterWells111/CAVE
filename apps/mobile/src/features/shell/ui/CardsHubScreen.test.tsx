@@ -26,8 +26,7 @@ test("offers current and historical card actions without previewing sensitive bo
   expect(onCopy).toHaveBeenCalledWith("current");
   expect(onFullscreen).toHaveBeenCalledWith("current");
   expect(onOpenHistory).toHaveBeenCalledWith("old");
-  expect(screen.getByRole("button", { name: "保存到云端｜后续版本" }))
-    .toHaveProp("accessibilityState", expect.objectContaining({ disabled: true }));
+  expect(screen.queryByText(/云端|后续版本/u)).toBeNull();
 });
 
 test("has loading, empty, and retryable error destinations", () => {

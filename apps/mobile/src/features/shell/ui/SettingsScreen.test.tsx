@@ -15,7 +15,6 @@ function deferred() {
 
 function renderScreen(overrides: Partial<React.ComponentProps<typeof SettingsScreen>> = {}) {
   const props = {
-    onChangeAddressPreference: jest.fn(),
     onContinueAfterDelete: jest.fn(),
     onDeleteAllData: jest.fn(async () => undefined),
     ...overrides
@@ -24,14 +23,14 @@ function renderScreen(overrides: Partial<React.ComponentProps<typeof SettingsScr
   return props;
 }
 
-test("shows only settings, local privacy, address preference and local deletion destinations", () => {
-  const props = renderScreen();
+test("shows only local privacy and local deletion destinations", () => {
+  renderScreen();
 
   expect(screen.getByRole("header", { name: "设置" })).toBeTruthy();
   expect(screen.getByText("隐私与本机数据")).toBeTruthy();
   expect(screen.getByText(/能解锁这台设备的人仍可能看到/u)).toBeTruthy();
-  fireEvent.press(screen.getByRole("button", { name: "更改称呼" }));
-  expect(props.onChangeAddressPreference).toHaveBeenCalledTimes(1);
+  expect(screen.queryByRole("button", { name: "更改称呼" })).toBeNull();
+  expect(screen.queryByText("界面称呼")).toBeNull();
   expect(screen.queryByText(/账号|账户|云端|我的/u)).toBeNull();
 
   const scroll = screen.getByTestId("settings-scroll");

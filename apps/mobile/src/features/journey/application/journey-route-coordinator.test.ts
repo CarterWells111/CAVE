@@ -9,6 +9,7 @@ function activeDraft(currentPage: JourneyDraft["currentPage"] = "reflection"): J
     addressPreference: "你",
     prefaceRead: true,
     overnight: { stage: "concerns", resumeStage: "concerns" },
+    pointEventKeys: ["progress:overnight-complete:v1"],
     readKnowledgeCardIds: ["draft-knowledge-body-signals", "draft-knowledge-consent", "draft-knowledge-health"],
     explicitContentConsent: false,
     behaviorAttitudes: Object.fromEntries([
@@ -38,10 +39,10 @@ function harness(snapshot: JourneyDraft | null = activeDraft()) {
   return { coordinator: new JourneyRouteCoordinator(service, router), navigateTo, resetJourney, router, service };
 }
 
-test("guards adult-only routes before rendering and leaves welcome accessible", () => {
+test("guards content routes until onboarding prerequisites are present", () => {
   const { coordinator } = harness(null);
 
-  expect(coordinator.guard("welcome")).toBe(true);
+  expect(coordinator.guard("body-knowledge")).toBe(false);
   expect(coordinator.guard("overnight")).toBe(false);
 });
 
@@ -80,9 +81,9 @@ test("resumes at the snapshot page and restarts only after deleting the active d
 });
 
 test("does not navigate back before Page 1", async () => {
-  const { coordinator, router, service } = harness(activeDraft("welcome"));
+  const { coordinator, router, service } = harness(activeDraft("body-knowledge"));
 
-  await coordinator.backFrom("welcome");
+  await coordinator.backFrom("body-knowledge");
 
   expect(service.navigateTo).not.toHaveBeenCalled();
   expect(router.replace).not.toHaveBeenCalled();

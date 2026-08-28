@@ -1,5 +1,5 @@
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react-native";
-import { Text } from "react-native";
+import { Alert, Text } from "react-native";
 
 import { createJourneyDraft, type JourneyDraft, type JourneyPageId } from "../domain/types";
 import { JourneyAction } from "./components/JourneyAction";
@@ -14,6 +14,7 @@ const mockRuntime = {
     resetJourney: jest.fn(async () => undefined)
   },
   controller: {},
+  restart: jest.fn(async () => undefined),
   runAndRefresh: jest.fn(async <T,>(action: () => Promise<T>) => action())
 };
 
@@ -31,6 +32,7 @@ beforeEach(() => {
   mockRuntime.service.getSnapshot.mockImplementation(() => mockRuntime.snapshot);
   mockRuntime.service.navigateTo.mockImplementation(async () => undefined);
   mockRuntime.runAndRefresh.mockImplementation(async <T,>(action: () => Promise<T>) => action());
+  mockRuntime.restart.mockResolvedValue(undefined);
 });
 
 function deferred<T>() {
@@ -68,7 +70,8 @@ function createUnlockedDraft(currentPage: JourneyPageId): JourneyDraft {
     },
     journalSaveChoice: "not-saved",
     journal: { text: "", saveChoice: "not-saved" },
-    practice: { completed: true, mirrorRehearsed: true }
+    practice: { completed: true, mirrorRehearsed: true },
+    pointEventKeys: ["progress:overnight-complete:v1"]
   };
 }
 
@@ -102,7 +105,7 @@ test("renders active snapshot state and persists back navigation before replacin
   expect(mockRuntime.runAndRefresh).toHaveBeenCalledTimes(1);
 });
 
-test("exits every journey page to root without resetting or deleting the active draft", async () => {
+test("opens journey options and exits to root without deleting the active draft", async () => {
   mockRuntime.snapshot = createUnlockedDraft("reflection");
 
   render(
@@ -111,6 +114,8 @@ test("exits every journey page to root without resetting or deleting the active 
     </JourneyRouteScreen>
   );
 
+  fireEvent.press(screen.getByRole("button", { name: "旅程选项" }));
+  expect(screen.getByRole("header", { name: "旅程选项" })).toBeTruthy();
   fireEvent.press(screen.getByRole("button", { name: "退出旅程" }));
 
   await waitFor(() => expect(mockReplace).toHaveBeenCalledWith("/"));
@@ -118,6 +123,43 @@ test("exits every journey page to root without resetting or deleting the active 
   expect(mockRuntime.service.navigateTo).not.toHaveBeenCalled();
   expect(mockRuntime.runAndRefresh).not.toHaveBeenCalled();
   expect(mockRuntime.snapshot?.id).toBe("journey-1");
+});
+
+test("returns from Page 1 to the preface through journey options without deleting the draft", async () => {
+  mockRuntime.snapshot = createUnlockedDraft("body-knowledge");
+
+  render(
+    <JourneyRouteScreen pageId="body-knowledge">
+      {() => <Text>body-knowledge</Text>}
+    </JourneyRouteScreen>
+  );
+
+  fireEvent.press(screen.getByRole("button", { name: "旅程选项" }));
+  fireEvent.press(screen.getByRole("button", { name: "返回上一步" }));
+
+  await waitFor(() => expect(mockReplace).toHaveBeenCalledWith("/journey/preface"));
+  expect(mockRuntime.service.navigateTo).not.toHaveBeenCalled();
+  expect(mockRuntime.restart).not.toHaveBeenCalled();
+});
+
+test("requires confirmation before restarting and hides a local deletion failure", async () => {
+  const alert = jest.spyOn(Alert, "alert").mockImplementation(() => undefined);
+  mockRuntime.snapshot = createUnlockedDraft("reflection");
+  mockRuntime.restart.mockRejectedValueOnce(new Error("private database failure"));
+  render(
+    <JourneyRouteScreen pageId="reflection">{() => <Text>reflection</Text>}</JourneyRouteScreen>,
+  );
+
+  fireEvent.press(screen.getByRole("button", { name: "旅程选项" }));
+  fireEvent.press(screen.getByRole("button", { name: "重新开始" }));
+  expect(mockRuntime.restart).not.toHaveBeenCalled();
+  const destructive = alert.mock.calls[0]?.[2]?.find(({ style }) => style === "destructive");
+  await act(async () => { destructive?.onPress?.(); });
+
+  expect(await screen.findByText("重新开始失败，请重试。")).toBeTruthy();
+  expect(screen.queryByText("private database failure")).toBeNull();
+  expect(mockReplace).not.toHaveBeenCalledWith("/journey/welcome");
+  alert.mockRestore();
 });
 
 test("does not replace the root with a late forward navigation after exit", async () => {
@@ -131,7 +173,7 @@ test("does not replace the root with a late forward navigation after exit", asyn
         <JourneyAction
           label="next-page"
           loadingLabel="正在继续…"
-          onAction={() => goTo("body-knowledge")}
+          onAction={() => goTo("behavior-map")}
           testID="next-page"
         />
       )}
@@ -139,11 +181,12 @@ test("does not replace the root with a late forward navigation after exit", asyn
   );
 
   fireEvent.press(screen.getByTestId("next-page"));
+  fireEvent.press(screen.getByRole("button", { name: "旅程选项" }));
   fireEvent.press(screen.getByRole("button", { name: "退出旅程" }));
   await act(async () => pendingForward.resolve());
 
   expect(mockReplace).toHaveBeenCalledWith("/");
-  expect(mockReplace).not.toHaveBeenCalledWith("/journey/body-knowledge");
+  expect(mockReplace).not.toHaveBeenCalledWith("/journey/behavior-map");
   expect(mockRuntime.service.resetJourney).not.toHaveBeenCalled();
 });
 
@@ -162,7 +205,7 @@ test("does not replace the route when a deferred back navigation resolves after 
   view.unmount();
   await act(async () => pendingBack.resolve());
 
-  expect(mockReplace).not.toHaveBeenCalledWith("/journey/behavior-attitudes");
+  expect(mockReplace).not.toHaveBeenCalledWith("/journey/behavior-map");
 });
 
 test("keeps back navigation busy, blocks duplicates, and hides rejection details", async () => {
@@ -208,7 +251,7 @@ test("keeps forward navigation busy, handles rejection safely, and retries", asy
           errorMessage="继续失败，请重试。"
           label="next-page"
           loadingLabel="正在继续…"
-          onAction={() => goTo("body-knowledge")}
+          onAction={() => goTo("behavior-map")}
           testID="next-page"
         />
       )}
@@ -231,7 +274,7 @@ test("keeps forward navigation busy, handles rejection safely, and retries", asy
   fireEvent.press(screen.getByTestId("next-page"));
   await waitFor(() => {
     expect(mockRuntime.runAndRefresh).toHaveBeenCalledTimes(2);
-    expect(mockRuntime.service.navigateTo).toHaveBeenCalledWith("body-knowledge");
-    expect(mockReplace).toHaveBeenCalledWith("/journey/body-knowledge");
+    expect(mockRuntime.service.navigateTo).toHaveBeenCalledWith("behavior-map");
+    expect(mockReplace).toHaveBeenCalledWith("/journey/behavior-map");
   });
 });

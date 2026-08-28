@@ -18,6 +18,7 @@ import type { AppShellStateRepository } from "../../shell/infrastructure/app-she
 import type { ReviewHistoryRepository } from "../../reviews/infrastructure/review-history-repository";
 import type { JourneyApplicationService } from "./journey-application-service";
 import type { JourneyCompletionTransaction } from "../infrastructure/journey-write-coordinator";
+import { OVERNIGHT_COMPLETE_POINT_EVENT_KEY } from "./journey-progress-markers";
 
 export interface ClipboardAdapter {
   setStringAsync(value: string): Promise<void>;
@@ -74,14 +75,6 @@ type CanonicalPracticeInput = {
 export class JourneyPageController {
   constructor(private readonly dependencies: Dependencies) {}
 
-  async enterWelcome({ adult, prefaceRead }: { adult: boolean; prefaceRead: boolean }) {
-    if (!adult) return "underage-exit" as const;
-    await this.dependencies.service.confirmAdult();
-    await this.dependencies.service.dispatch({ type: "set-preface-read", read: prefaceRead });
-    await this.dependencies.service.navigateTo("overnight");
-    return "overnight" as const;
-  }
-
   setAddressPreference(preference: Exclude<AddressPreference, null>) {
     return this.dependencies.service.dispatch({ type: "set-address-preference", preference });
   }
@@ -96,6 +89,10 @@ export class JourneyPageController {
       expectationIds: input.expectationIds,
       concernIds: input.concernIds,
       customNote: input.customNote,
+    });
+    await this.dependencies.service.dispatch({
+      type: "record-point-event",
+      key: OVERNIGHT_COMPLETE_POINT_EVENT_KEY,
     });
   }
 

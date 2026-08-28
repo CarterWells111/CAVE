@@ -14,11 +14,10 @@ function routeSource(name: string) {
   return readFileSync(resolve(routeDirectory, name), "utf8");
 }
 
-test("ships exactly the seven canonical journey route modules", () => {
+test("ships exactly the six canonical content route modules", () => {
   const canonical = [
-    "welcome",
-    "overnight",
     "body-knowledge",
+    "overnight",
     "behavior-map",
     "reflection",
     "preset-practice",
@@ -45,7 +44,8 @@ test.each([
 });
 
 test("connects every canonical continue action without an eighth page or dead-end alias", () => {
-  expect(routeSource("body-knowledge.tsx")).toContain('goTo("behavior-map")');
+  expect(routeSource("body-knowledge.tsx")).toContain('goTo("overnight")');
+  expect(routeSource("body-knowledge.tsx")).not.toContain('/journey/adult-gate');
   expect(routeSource("preset-practice.tsx")).toContain('goTo("final-preparation")');
 
   const canonicalSources = [
@@ -63,7 +63,7 @@ test("connects every canonical continue action without an eighth page or dead-en
   expect(canonicalSources).not.toMatch(/\b8\s*\/\s*8\b|\/8\b|共\s*8\s*页/u);
 });
 
-test("guards the seven-screen first run and the long-term shell at the application entry", () => {
+test("guards the six-page first run and the long-term shell at the application entry", () => {
   const entry = readFileSync(resolve(routeDirectory, "../index.tsx"), "utf8");
 
   expect(entry).toContain("resolveShellLaunchPath");

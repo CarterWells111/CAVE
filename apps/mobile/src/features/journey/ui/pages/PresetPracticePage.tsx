@@ -161,11 +161,11 @@ export function PresetPracticePage({
   };
 
   return (
-    <View style={{ gap: theme.space.lg, width: "100%" }} testID="page-6-content">
+    <View style={{ gap: theme.space.lg, width: "100%" }} testID="page-5-content">
       <View style={{ alignItems: "center", flexDirection: "row", flexWrap: "wrap", gap: theme.space.sm, justifyContent: "space-between" }}>
         <Text style={{ ...theme.typography.caption, color: theme.color.info }}>预设对话，不使用 AI</Text>
         {context === "journey" ? (
-          <Text accessibilityLabel="第 6 屏，共 7 屏" style={{ ...theme.typography.caption, color: theme.color.textMuted }}>6 / 7</Text>
+          <Text accessibilityLabel="第 5 页，共 6 页" style={{ ...theme.typography.caption, color: theme.color.textMuted }}>5 / 6</Text>
         ) : <Text style={{ ...theme.typography.caption, color: theme.color.textMuted }}>独立练习</Text>}
       </View>
       <Heading>改变主意，也属于过程</Heading>

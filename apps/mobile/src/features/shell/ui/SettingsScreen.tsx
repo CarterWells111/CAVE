@@ -8,7 +8,6 @@ import { InfoCard } from "../../../core/ui/info-card";
 import { SecondaryButton } from "../../../core/ui/secondary-button";
 
 export type SettingsScreenProps = {
-  onChangeAddressPreference(): void;
   onDeleteAllData(): Promise<void>;
   onContinueAfterDelete(): void;
 };
@@ -64,7 +63,6 @@ function DestructiveButton({
 }
 
 export function SettingsScreen({
-  onChangeAddressPreference,
   onContinueAfterDelete,
   onDeleteAllData
 }: SettingsScreenProps) {
@@ -105,19 +103,9 @@ export function SettingsScreen({
           设置
         </Text>
         <Text selectable style={{ ...theme.typography.body, color: theme.color.textSecondary }}>
-          管理界面称呼，以及保存在这台设备上的内容。
+          管理保存在这台设备上的内容。
         </Text>
       </View>
-
-      <Card accessible={false}>
-        <Text accessibilityRole="header" selectable style={{ ...theme.typography.heading, color: theme.color.text }}>
-          界面称呼
-        </Text>
-        <Text selectable style={{ ...theme.typography.body, color: theme.color.textSecondary }}>
-          只改变界面怎样称呼你，不会改变已经填写的内容。
-        </Text>
-        <SecondaryButton label="更改称呼" onPress={onChangeAddressPreference} />
-      </Card>
 
       <InfoCard title="隐私与本机数据">
         <Text selectable style={{ ...theme.typography.body, color: theme.color.textSecondary }}>
