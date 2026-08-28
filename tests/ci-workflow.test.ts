@@ -5,16 +5,114 @@ import { describe, expect, it } from "vitest";
 import packageJson from "../package.json";
 import contentPackageJson from "../packages/content/package.json";
 
+function scalarRunCommand(mappingEntry: string): string | undefined {
+  const command = mappingEntry.match(/^run:\s*(\S.*?)\s*$/)?.[1];
+  if (command === undefined || /^[>|][0-9+-]*(?:\s+#.*)?$/.test(command)) {
+    return undefined;
+  }
+  return command;
+}
+
+function collectStepRunCommands(workflow: string): string[] {
+  const commands: string[] = [];
+  let inJobs = false;
+  let inJob = false;
+  let inSteps = false;
+  let inStep = false;
+
+  for (const line of workflow.split(/\r?\n/)) {
+    const indent = line.match(/^ */)?.[0].length ?? 0;
+    const content = line.slice(indent);
+
+    if (content === "" || content.startsWith("#")) {
+      continue;
+    }
+
+    if (indent === 0) {
+      inJobs = content === "jobs:";
+      inJob = false;
+      inSteps = false;
+      inStep = false;
+      continue;
+    }
+
+    if (!inJobs) {
+      continue;
+    }
+
+    if (indent === 2) {
+      inJob = /^[A-Za-z0-9_-]+:\s*$/.test(content);
+      inSteps = false;
+      inStep = false;
+      continue;
+    }
+
+    if (!inJob) {
+      continue;
+    }
+
+    if (indent === 4) {
+      inSteps = content === "steps:";
+      inStep = false;
+      continue;
+    }
+
+    if (!inSteps) {
+      continue;
+    }
+
+    if (indent === 6) {
+      const stepItem = content.match(/^-\s+(.*)$/)?.[1];
+      inStep = stepItem !== undefined;
+      const command = stepItem === undefined ? undefined : scalarRunCommand(stepItem);
+      if (command !== undefined) {
+        commands.push(command);
+      }
+      continue;
+    }
+
+    if (inStep && indent === 8) {
+      const command = scalarRunCommand(content);
+      if (command !== undefined) {
+        commands.push(command);
+      }
+    }
+  }
+
+  return commands;
+}
+
+describe("step run command collection", () => {
+  it("ignores required-looking text outside actual step run properties", () => {
+    const workflow = `name: adversarial
+jobs:
+  example:
+    env:
+      JOB_NOTE: |
+        run: pnpm validate:content
+    steps:
+      # run: pnpm validate:content:internal
+      - name: run: pnpm validate:content:internal
+        description: run: pnpm validate:content:internal
+        env:
+          STEP_NOTE: |
+            run: pnpm validate:content:internal
+        run: pnpm validate:content:internal || true
+`;
+
+    expect(collectStepRunCommands(workflow)).toEqual([
+      "pnpm validate:content:internal || true"
+    ]);
+  });
+});
+
 describe("foundation CI workflow", () => {
   it("runs the complete foundation verification sequence", () => {
     const workflow = readFileSync(
       new URL("../.github/workflows/ci.yml", import.meta.url),
       "utf8"
     );
-    const runCommands = workflow
-      .split(/\r?\n/)
-      .map((line) => line.match(/^\s*run:\s*(.*?)\s*$/)?.[1])
-      .filter((command): command is string => command !== undefined);
+    const runCommands = collectStepRunCommands(workflow);
     const contentValidationCommands = runCommands.filter((command) =>
       command.startsWith("pnpm validate:content")
     );
