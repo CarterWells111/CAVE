@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { readFile, readdir } from "node:fs/promises";
 
 import { describe, expect, it } from "vitest";
@@ -23,6 +24,14 @@ const expectedSitemapLocations = [
   "https://neijiecave.com/safety/",
   "https://neijiecave.com/sources/"
 ] as const;
+
+const approvedFaviconSha256 =
+  "445618AEB1A01E7B091AE47F041932C9EDDF0835FFA4678974EA1E621442B0D8";
+const approvedBrandLogoSha256 =
+  "EB46D26357D1FBA99AB723C80D1510E31F29B0C4BC1B3FFE96E1B9CCB594F2BD";
+
+const sha256 = (source: Buffer) =>
+  createHash("sha256").update(source).digest("hex").toUpperCase();
 
 const assertHeadersControls = (source: string) => {
   const normalized = source.replace(/\r\n?/gu, "\n");
@@ -77,20 +86,25 @@ const assertSitemapControls = (source: string) => {
 
 const assertFaviconControls = (source: Buffer) => {
   expect([...source.subarray(0, 8)]).toEqual([137, 80, 78, 71, 13, 10, 26, 10]);
+  expect(source.subarray(12, 16).toString("ascii")).toBe("IHDR");
   expect(source.readUInt32BE(16)).toBe(64);
   expect(source.readUInt32BE(20)).toBe(64);
+  expect(source[24]).toBe(8);
+  expect(source[25]).toBe(2);
+  expect(sha256(source)).toBe(approvedFaviconSha256);
 };
 
 describe("static deployment controls", () => {
   it("ships the exact Cloudflare security and crawl controls", async () => {
     const readTextDistFile = (name: string) =>
       readFile(new URL(`../dist/${name}`, import.meta.url), "utf8");
-    const [distEntries, headers, robots, sitemap, favicon] = await Promise.all([
+    const [distEntries, headers, robots, sitemap, favicon, brandLogo] = await Promise.all([
       readdir(new URL("../dist/", import.meta.url)),
       readTextDistFile("_headers"),
       readTextDistFile("robots.txt"),
       readTextDistFile("sitemap.xml"),
-      readFile(new URL("../dist/favicon.png", import.meta.url))
+      readFile(new URL("../dist/favicon.png", import.meta.url)),
+      readFile(new URL("../../../assets/brand/logo.png", import.meta.url))
     ]);
 
     expect(distEntries).not.toContain("_redirects");
@@ -103,6 +117,7 @@ describe("static deployment controls", () => {
 
     assertSitemapControls(sitemap);
     assertFaviconControls(favicon);
+    expect(sha256(brandLogo)).toBe(approvedBrandLogoSha256);
   });
 });
 
