@@ -15,4 +15,18 @@ describe("@cave/content public surface", () => {
       )
     ).toBe(true);
   });
+
+  it("keeps SRC-011 on the verified national geographic information source", () => {
+    expect(JOURNEY_SOURCE_REGISTRY.find((source) => source.id === "SRC-011")).toEqual({
+      id: "SRC-011",
+      sourceType: "SAFE",
+      title: "天地图助力12338妇联维权服务中心地图上线",
+      organization: "国家基础地理信息中心",
+      url: "https://www.ngcc.cn/xwzx/ywcg/202506/t20250617_2538.html",
+      appliesTo: "中国大陆所在地 12338 妇女维权热线及线下服务中心入口",
+      publicationOrReviewDate: "2025-06-17",
+      accessedAt: "2026-08-28",
+      verificationStatus: "source_verified"
+    });
+  });
 });
