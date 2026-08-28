@@ -52,6 +52,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       typedRoutes: true
     },
     ios: {
+      icon: "./assets/app-icon.png",
       bundleIdentifier: "com.neijie.cave",
       supportsTablet: false,
       config: {

@@ -19,6 +19,17 @@ afterEach(() => {
 });
 
 describe("Expo app identity", () => {
+  test.each(["development", "preview", "production"])(
+    "uses the shared iOS icon for the %s profile",
+    (profile) => {
+      const config = configFor(profile);
+
+      expect(config.icon).toBeUndefined();
+      expect(config.ios?.icon).toBe("./assets/app-icon.png");
+      expect(config.android).toBeUndefined();
+    }
+  );
+
   test.each([
     ["development", "内界 CAVE Dev"],
     ["preview", "内界 CAVE Preview"],
