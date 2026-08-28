@@ -42,6 +42,7 @@ describe("seven-screen content and source model", () => {
       ...journey.practice.partnerResponses,
       ...journey.practice.safetyBranches,
       ...journey.practice.supportResources,
+      journey.uiCopy.bodyKnowledgeDefinition,
       ...journey.uiCopy.behaviorMapPoints,
       ...journey.uiCopy.attitudes,
       ...journey.uiCopy.communicationSections
@@ -52,7 +53,7 @@ describe("seven-screen content and source model", () => {
     expect(reviewables.filter(({ reviewStatus }) => reviewStatus === "reviewed")).toHaveLength(56);
     expect(
       reviewables.filter(({ reviewStatus }) => reviewStatus === "internal_test_approved")
-    ).toHaveLength(34);
+    ).toHaveLength(36);
     expect(
       reviewables.every(({ reviewedAt }) => reviewedAt === "2026-08-28T09:56:30Z")
     ).toBe(true);
@@ -149,7 +150,7 @@ describe("seven-screen content and source model", () => {
 
     expect(() => validateCatalog(catalog, { mode: "draft" })).not.toThrow();
     const productionIssues = issuesFor(catalog, "production");
-    expect(productionIssues).toHaveLength(34);
+    expect(productionIssues).toHaveLength(36);
     expect(new Set(productionIssues.map(({ code }) => code))).toEqual(
       new Set(["INTERNAL_TEST_APPROVAL_ONLY"])
     );
