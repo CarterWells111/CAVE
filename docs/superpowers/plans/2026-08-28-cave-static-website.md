@@ -22,7 +22,7 @@
 - `apps/web/src/components/*.astro`: focused presentational units.
 - `apps/web/src/styles/global.css`: tokens, layout, responsive rules, focus, reduced motion.
 - `apps/web/src/pages/*.astro`: the five routes.
-- `apps/web/public/*`: Cloudflare headers/redirects, robots, sitemap, favicon.
+- `apps/web/public/*`: Cloudflare headers, robots, sitemap, favicon.
 - `apps/web/tests/*.test.ts`: content and production-output contracts.
 - `package.json`: root convenience scripts only.
 
@@ -450,24 +450,23 @@ git commit -m "feat(web): add official content and policy pages"
 
 **Files:**
 - Create: `apps/web/public/_headers`
-- Create: `apps/web/public/_redirects`
 - Create: `apps/web/public/robots.txt`
 - Create: `apps/web/public/sitemap.xml`
 - Create: `apps/web/public/favicon.svg`
-- Modify: `apps/web/tests/dist.test.ts`
+- Modify: `apps/web/tests/static-controls.test.ts`
 
 - [ ] **Step 1: Add failing static-control assertions**
 
 ```ts
-it("ships Cloudflare security, redirect, and crawl controls", async () => {
-  const [headers, redirects, robots, sitemap] = await Promise.all(
-    ["_headers", "_redirects", "robots.txt", "sitemap.xml"].map((name) =>
+it("ships Cloudflare security and crawl controls without a domain redirect file", async () => {
+  const [headers, robots, sitemap] = await Promise.all(
+    ["_headers", "robots.txt", "sitemap.xml"].map((name) =>
       readFile(new URL(`../dist/${name}`, import.meta.url), "utf8")
     )
   );
   expect(headers).toContain("Content-Security-Policy: default-src 'self'");
   expect(headers).toContain("X-Content-Type-Options: nosniff");
-  expect(redirects).toContain("https://www.neijiecave.com/* https://neijiecave.com/:splat 301");
+  await expect(readFile(new URL("../dist/_redirects", import.meta.url), "utf8")).rejects.toMatchObject({ code: "ENOENT" });
   expect(robots).toContain("Sitemap: https://neijiecave.com/sitemap.xml");
   for (const path of ["/", "/privacy", "/support", "/safety", "/sources"]) expect(sitemap).toContain(`<loc>https://neijiecave.com${path}</loc>`);
 });
@@ -492,13 +491,9 @@ Expected: FAIL reading `dist/_headers`.
   Permissions-Policy: camera=(), geolocation=(), microphone=(), payment=(), usb=()
 ```
 
-`public/_redirects`:
-
-```text
-https://www.neijiecave.com/* https://neijiecave.com/:splat 301
-```
-
 `robots.txt` allows all crawlers and points to the production sitemap. `sitemap.xml` lists exactly the five canonical URLs with `lastmod` `2026-08-28`. `favicon.svg` is a minimal accessible brand mark using the approved warm-charcoal background and the letters `CAVE`; it contains no scripts, external references, people, anatomy, or imagery.
+
+Do not create `public/_redirects`: Cloudflare Pages `_redirects` does not support domain-level redirects. Configure `www.neijiecave.com` to apex only during publishing with the account-level Bulk Redirects workflow in the Cloudflare publishing plan.
 
 - [ ] **Step 4: Run build and tests**
 
@@ -509,7 +504,7 @@ Expected: PASS.
 - [ ] **Step 5: Commit production controls**
 
 ```bash
-git add apps/web/public apps/web/tests/dist.test.ts
+git add apps/web/public/_headers apps/web/public/robots.txt apps/web/public/sitemap.xml apps/web/public/favicon.svg apps/web/tests/static-controls.test.ts
 git commit -m "feat(web): add static security and crawl controls"
 ```
 

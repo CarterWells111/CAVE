@@ -49,15 +49,20 @@ Expected: one successful production deployment with the exact source commit visi
 - [ ] In the Pages project, open Custom domains and add `neijiecave.com` through the Pages workflow; do not manually invent an apex CNAME first.
 - [ ] Wait until the apex domain status is Active and its certificate is issued.
 - [ ] Add `www.neijiecave.com` as a second custom domain.
-- [ ] Verify the deployed `_redirects` rule sends every `www` path to the same path on the apex with HTTP 301.
+- [ ] Before configuring the redirect, wait until the `www` DNS record and Pages custom-domain status are Active and HTTPS works.
+- [ ] In the account-level Cloudflare Dashboard, follow the official [Redirecting www to domain apex](https://developers.cloudflare.com/pages/how-to/www-redirect/) workflow: open Bulk Redirects and create a redirect list.
+- [ ] Add one redirect entry and confirm each field before saving: source `www.neijiecave.com`, target `https://neijiecave.com`, and status `301`.
+- [ ] Review the parameters shown in the current Dashboard and enable the options required by the current official guide, including `Preserve query string`, `Subpath matching`, `Preserve path suffix`, and `Include subdomains` when those labels are present. Do not invent an API payload, rule expression, or secret.
+- [ ] Create and enable the account-level Bulk Redirect rule using that list, then verify it sends every `www` path to the same path on the apex without dropping the query string.
 - [ ] Keep website records proxied as Pages creates them. Do not proxy MX, SPF, DKIM, or future DMARC records.
 
-Expected: apex serves the site over HTTPS; `www` returns 301 to apex without a redirect loop.
+Expected: apex serves the site over HTTPS; the account-level Bulk Redirect returns 301 from `www` to apex while preserving path and query, without a redirect loop.
 
 ### Task 5: Production verification
 
 - [ ] Request all five canonical URLs from an external network and confirm HTTP 200.
-- [ ] Confirm `https://www.neijiecave.com/privacy` returns 301 to `https://neijiecave.com/privacy`.
+- [ ] Confirm the account-level Bulk Redirect makes `https://www.neijiecave.com/privacy` return 301 to `https://neijiecave.com/privacy`.
+- [ ] Confirm a `www` URL containing both a nested path and query string returns 301 to the same apex path and query string.
 - [ ] Inspect response headers for CSP, Referrer-Policy, X-Content-Type-Options, X-Frame-Options, and Permissions-Policy.
 - [ ] Confirm page source contains the canonical production URL and no `pages.dev` canonical.
 - [ ] Confirm no Cookie banner appears because the site sets no nonessential cookies or trackers.
