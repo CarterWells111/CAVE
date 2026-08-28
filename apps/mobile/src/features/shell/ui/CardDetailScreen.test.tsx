@@ -2,6 +2,7 @@ import { act, fireEvent, render, screen } from "@testing-library/react-native";
 import type { ComponentProps } from "react";
 import { StyleSheet, Text } from "react-native";
 
+import { darkTheme } from "../../../core/design/theme";
 import { CardDetailScreen } from "./CardDetailScreen";
 
 const metadata = {
@@ -117,6 +118,7 @@ test("keeps the detail scrollable, text-wrapping and all controls at least 44 po
   const scroll = screen.getByTestId("card-detail-scroll");
   expect(scroll.props.contentInsetAdjustmentBehavior).toBe("automatic");
   expect(scroll.props.keyboardShouldPersistTaps).toBe("handled");
+  expect(StyleSheet.flatten(scroll.props.style).backgroundColor).toBe(darkTheme.color.background);
   for (const control of screen.getAllByRole("button")) {
     expect(StyleSheet.flatten(control.props.style).minHeight).toBeGreaterThanOrEqual(44);
   }

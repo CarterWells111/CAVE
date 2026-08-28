@@ -5,6 +5,7 @@ import { useTheme } from "../design/theme-provider";
 
 type ChoiceChipProps = {
   label: string;
+  accessibilityLabel?: string;
   onPress: () => void;
   selected: boolean;
   semantics: "checkbox" | "radio";
@@ -14,6 +15,7 @@ type ChoiceChipProps = {
 
 export function ChoiceChip({
   label,
+  accessibilityLabel,
   onPress,
   selected,
   semantics,
@@ -30,7 +32,7 @@ export function ChoiceChip({
 
   return (
     <Pressable
-      accessibilityLabel={label}
+      accessibilityLabel={accessibilityLabel ?? label}
       accessibilityRole={semantics}
       accessibilityState={state}
       disabled={disabled}

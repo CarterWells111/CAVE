@@ -13,6 +13,7 @@ import {
   ShellFrame,
   ShellLoading,
   SupportingText,
+  type ActiveJourneyMetadataItem,
   type ShellLoadState,
   type ShellMetadataItem,
 } from "./shell-ui-components";
@@ -20,10 +21,10 @@ import { ReplaceReviewConfirmation } from "./ReplaceReviewConfirmation";
 
 type Props = {
   loadState?: ShellLoadState;
-  activeReview?: ShellMetadataItem | null;
+  activeJourney?: ActiveJourneyMetadataItem | null;
   reviews: ShellMetadataItem[];
   topics: Array<{ id: string; label: string }>;
-  onContinueReview?: (id: string) => void;
+  onContinueJourney?: (id: string) => void;
   onOpenReview?: (id: string) => void;
   onRetry?: () => void;
   onStartFullReview: () => void;
@@ -31,9 +32,9 @@ type Props = {
 };
 
 export function ReviewsHubScreen({
-  activeReview,
+  activeJourney,
   loadState = "ready",
-  onContinueReview,
+  onContinueJourney,
   onOpenReview,
   onRetry,
   onStartFullReview,
@@ -44,7 +45,7 @@ export function ReviewsHubScreen({
   const theme = useTheme();
   const [confirmingReplacement, setConfirmingReplacement] = useState(false);
   const requestFullReview = () => {
-    if (activeReview) setConfirmingReplacement(true);
+    if (activeJourney?.kind === "review") setConfirmingReplacement(true);
     else onStartFullReview();
   };
   return (
@@ -60,7 +61,13 @@ export function ReviewsHubScreen({
       ) : null}
       {loadState === "ready" ? (
         <>
-          {activeReview ? <MetadataCard actionLabel="继续本次回顾" item={activeReview} onAction={onContinueReview} /> : null}
+          {activeJourney ? (
+            <MetadataCard
+              actionLabel={activeJourney.kind === "initial" ? "继续首次旅程" : "继续本次回顾"}
+              item={activeJourney}
+              onAction={onContinueJourney}
+            />
+          ) : null}
           {confirmingReplacement ? (
             <ReplaceReviewConfirmation
               onCancel={() => setConfirmingReplacement(false)}
@@ -72,8 +79,14 @@ export function ReviewsHubScreen({
           ) : null}
           <Card accessible={false} variant="accent">
             <SectionHeading>选择回顾方式</SectionHeading>
-            <SupportingText>可以直接从一个主题开始，也可以由你主动启动完整六页回顾。</SupportingText>
-            <Button label="开始完整六页回顾" onPress={requestFullReview} />
+            <SupportingText>
+              {activeJourney?.kind === "initial"
+                ? "首次旅程完成前，可以继续原旅程或直接从一个主题开始。"
+                : "可以直接从一个主题开始，也可以由你主动启动完整六页回顾。"}
+            </SupportingText>
+            {activeJourney?.kind !== "initial" ? (
+              <Button label="开始完整六页回顾" onPress={requestFullReview} />
+            ) : null}
           </Card>
           <View style={{ gap: theme.space.md }}>
             <SectionHeading>按主题进入</SectionHeading>

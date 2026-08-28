@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react-native";
+import { fireEvent, render, screen } from "@testing-library/react-native";
 import { Text } from "react-native";
 
 import { ShellRouteGate } from "./ShellRouteGate";
@@ -37,13 +37,12 @@ test("redirects public tab deep links without reading private shell state", () =
   expect(screen.queryByText("four-tabs")).toBeNull();
 });
 
-test("never reveals long-term navigation before a completion marker exists", async () => {
+test("allows long-term routes before a completion marker exists", async () => {
   mockLoad.mockResolvedValueOnce(null);
   render(<ShellRouteGate><Text>four-tabs</Text></ShellRouteGate>);
 
-  expect(screen.queryByText("four-tabs")).toBeNull();
-  await waitFor(() => expect(mockReplace).toHaveBeenCalledWith("/journey/welcome"));
-  expect(screen.queryByText("four-tabs")).toBeNull();
+  expect(await screen.findByText("four-tabs")).toBeTruthy();
+  expect(mockReplace).not.toHaveBeenCalled();
 });
 
 test("renders long-term routes when the completion marker exists", async () => {

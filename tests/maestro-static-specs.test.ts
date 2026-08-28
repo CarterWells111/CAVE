@@ -52,10 +52,12 @@ describe("Maestro release selectors", () => {
   it("locks the seven-screen completion flow to the current four-tab shell", () => {
     const flow = read(".maestro/core-flow.yaml");
     const nav = read("apps/mobile/src/features/shell/ui/LongTermBottomNav.tsx");
+    const destinations = read("apps/mobile/src/features/shell/ui/long-term-navigation.ts");
     const shell = read("apps/mobile/src/features/journey/ui/JourneyScreenShell.tsx");
 
+    expect(nav).toContain("LONG_TERM_DESTINATIONS.map");
     for (const label of ["首页", "回顾", "练习", "卡片"]) {
-      expect(nav).toContain(`label: "${label}"`);
+      expect(destinations).toContain(`label: "${label}"`);
       expect(flow).toContain(`"${label}"`);
     }
     for (const title of [

@@ -7,11 +7,14 @@ function source(path: string) {
   return readFileSync(resolve(__dirname, "../../../app", path), "utf8");
 }
 
-test("ships exactly the four approved long-term tabs behind the completion guard", () => {
+test("ships exactly the four approved long-term tabs with a storage-readiness guard", () => {
   const layout = source("(tabs)/_layout.tsx");
   expect(layout.match(/<Tabs\.Screen/gu)).toHaveLength(4);
   for (const label of ["首页", "回顾", "练习", "卡片"]) expect(layout).toContain(`title: "${label}"`);
   expect(layout).toContain("ShellRouteGate");
+  expect(layout).toContain("LongTermTabBar");
+  expect(layout).toContain('type: "tabPress"');
+  expect(layout).toContain("canPreventDefault: true");
   expect(layout).not.toMatch(/我的|课程|记录/u);
 });
 
@@ -33,8 +36,16 @@ test("keeps settings outside tabs and available before journey completion", () =
 test("keeps the long-term navigation available during later full reviews", () => {
   expect(source("journey/_layout.tsx")).toContain("JourneyLongTermNav");
   const nav = source("../src/features/shell/ui/LongTermBottomNav.tsx");
-  for (const label of ["首页", "回顾", "练习", "卡片"]) expect(nav).toContain(`label: "${label}"`);
+  const destinations = source("../src/features/shell/ui/long-term-navigation.ts");
+  for (const label of ["首页", "回顾", "练习", "卡片"]) expect(destinations).toContain(`label: "${label}"`);
   expect(nav).toContain('accessibilityRole="tab"');
+});
+
+test("classifies and resumes the unfinished initial journey without replacing it", () => {
+  for (const route of ["(tabs)/index.tsx", "(tabs)/reviews.tsx"]) {
+    expect(source(route)).toContain("classifyActiveJourney");
+    expect(source(route)).toContain("getResumePath");
+  }
 });
 
 test("opens standalone practice and saved-card details without journey prerequisites", () => {
@@ -44,4 +55,12 @@ test("opens standalone practice and saved-card details without journey prerequis
   expect(source("(tabs)/reviews.tsx")).toContain("`/reviews/topic/${id}`");
   expect(source("(tabs)/cards.tsx")).toContain("`/cards/${id}`");
   expect(source("cards/[id].tsx")).toContain("runtime.cards.load(id)");
+});
+
+test("edits every saved-card section and applies only explicit updates", () => {
+  const route = source("cards/[id].tsx");
+  expect(route).toContain("buildEditableSavedCardSections(record)");
+  expect(route).toContain("applySavedCardSectionUpdates(record, updates)");
+  expect(route).toContain("sections={editableSections}");
+  expect(route).toContain("setRecord(updatedRecord)");
 });
