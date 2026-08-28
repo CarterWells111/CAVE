@@ -14,8 +14,9 @@
 
 - Approved execution date: 2026-08-28.
 - Branch: `codex/plan-07a-local-hardening`.
-- Fresh base: `origin/main@9f244ce3d4b9eedec826a9bf918e81000b83fce4`.
-- The planning-time base `715ff6f618848a41e57cb79dd43f0e163bfc470c` is superseded by the fresh base above.
+- Initial execution base: `origin/main@9f244ce3d4b9eedec826a9bf918e81000b83fce4`.
+- Final integration base: `origin/main@8837eafd7b1b046d7e3590778be5c9cef3ced74f`, merged non-destructively in `a05556f199058d3dd935e790ee5b41db517ab574` after Plan 04 PR #16 merged.
+- The planning-time base `715ff6f618848a41e57cb79dd43f0e163bfc470c` is superseded by the recorded execution bases above.
 - Feature freeze is active. No new feature, public interface, content, medical-review assertion, redesign, account, cloud, community, store, or Gateway runtime consumer is allowed.
 - Plan 04 owns Gateway safety-policy/evaluator code and its evidence document. 07A must not edit or copy that parallel work.
 - `reviewStatus`, Golden expectations, and `reviewedAt` remain owned by their reviewers. Production validation must fail honestly while draft/expert-pending records remain.
@@ -55,7 +56,8 @@ The final evidence must always list these independently:
 - `device_external_pending`
 - `npm_audit_authorization_pending`
 - `worker_deployment_pending`
-- `plan_04_merge_sync_pending` until `origin/main` contains the parallel evaluator repair and this branch has synced and rerun the full final matrix
+
+The conditional `plan_04_merge_sync_pending` status is cleared only by the final integration evidence: both Plan 04 merge `8837eafd` and head `c2be26a2` are ancestors of the branch, and the complete matrix has been rerun.
 
 ## Task 1: Define the local gate and evidence templates
 

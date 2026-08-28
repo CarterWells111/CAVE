@@ -4,7 +4,7 @@ Updated: 2026-08-28
 
 This checklist prepares a local walkthrough; it is not evidence of Expo Go observation, a signed build, real Maestro execution, or a formal rehearsal.
 
-Automated preparation status: `local_automated_pass`. Release code under test is anchored at Task 2 commit `301227e381a75b13bf16899fb955048341e7db0f`; the checkout intentionally also contains later verification-evidence and policy-fix commits. The human walkthrough below remains pending.
+Automated preparation status: `local_automated_pass`. Release code under test is anchored at Task 2 commit `301227e381a75b13bf16899fb955048341e7db0f`; the checkout intentionally also contains later verification-evidence and policy-fix commits plus the non-destructive Plan 04 integration at `a05556f199058d3dd935e790ee5b41db517ab574`. The human walkthrough below remains pending.
 
 ## Before the walkthrough
 
@@ -36,5 +36,5 @@ Automated preparation status: `local_automated_pass`. Release code under test is
 - [ ] State `device_external_pending` for all signed/native/device evidence.
 - [ ] State `content_expert_review_pending` and `production_content_validation_pending`.
 - [ ] State `npm_audit_authorization_pending` and `worker_deployment_pending`.
-- [ ] State `plan_04_merge_sync_pending` until the evaluator repair merges and the branch resynchronizes/reverifies.
+- [x] Confirm `plan_04_merge_sync_pending` is cleared only because `origin/main@8837eafd` was integrated and the full matrix, including the evaluator/TurnService regressions, passed freshly.
 - [ ] Do not create RC/final tags or unlock Plan 08.

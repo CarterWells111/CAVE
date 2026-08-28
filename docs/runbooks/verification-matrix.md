@@ -4,7 +4,11 @@ Updated: 2026-08-28
 
 Branch: `codex/plan-07a-local-hardening`
 
-Base: `origin/main@9f244ce3d4b9eedec826a9bf918e81000b83fce4`
+Initial base: `origin/main@9f244ce3d4b9eedec826a9bf918e81000b83fce4`
+
+Final integration base: `origin/main@8837eafd7b1b046d7e3590778be5c9cef3ced74f`
+
+Integration commit: `a05556f199058d3dd935e790ee5b41db517ab574`
 
 ## Status contract
 
@@ -16,20 +20,22 @@ Base: `origin/main@9f244ce3d4b9eedec826a9bf918e81000b83fce4`
 
 | Gate | Fresh command | Exit | Duration | Evidence |
 |---|---|---:|---:|---|
-| Frozen offline install | `$env:CI='true'; corepack pnpm install --frozen-lockfile --offline` | 0 | 1.56 s | All 7 projects already up to date; lockfile unchanged; 1,093 packages had previously been populated from the same frozen lockfile without audit. |
-| Workspace typecheck | `corepack pnpm typecheck` | 0 | 5.17 s | All 6 scoped workspace projects passed. |
-| Workspace lint | `corepack pnpm lint` | 0 | 6.31 s | All 6 scoped workspace projects passed with zero warnings. |
-| Full tests | `corepack pnpm test` | 0 | 28.86 s | 119 suites / 825 tests: mobile 91/578, Gateway 16/160, contracts 4/19, content 4/39, scenario engine 2/18, fixtures 2/11. |
-| Content tests | `corepack pnpm test:content` | 0 | 2.01 s | 4 files / 39 tests passed. |
-| Draft validation | `corepack pnpm validate:content:draft` | 0 | 1.96 s | 1 course, 1 lesson, and 3 scenarios passed draft validation. |
-| Production validation | `corepack pnpm validate:content` | 1 | 1.34 s | Expected honest gate: checked-in `DRAFT_CONTENT` and `EXPERT_REVIEW_PENDING` entries were reported. No `reviewedAt` or review state changed. Status remains `production_content_validation_pending`. |
-| Safety tests | `corepack pnpm test:safety` | 0 | 1.56 s | 4 files / 53 tests passed. This is the pre-Plan-04-merge baseline and does not claim PR #16's evaluator integration. |
-| Gateway dry-run | `corepack pnpm build:gateway` | 0 | 7.08 s | Wrangler 4.126.0 dry-run; 726.90 KiB upload / 121.40 KiB gzip; no deployment. A prior sandbox-only attempt exited 1 because Wrangler could not write its host log or traverse the linked worktree; the identical host-permission retry passed. |
-| iOS export | `apps/mobile/node_modules/.bin/expo.CMD export --platform ios --output-dir dist --clear` from `apps/mobile` | 0 | 31.8 s | Hermes bundle: 1 bundle, 3.65 MB, 1,202 modules; 24 assets including the 309 kB medical illustration; 1 metadata file. The filter-form command first exited 1 because Windows did not resolve the Expo shim; the pinned workspace shim above passed. |
-| Bundle secret scan | `corepack pnpm security:scan-bundle` | 0 | 0.80 s | 26 exported files passed. |
-| Mobile source policy | `corepack pnpm verify:mobile-policy` | 0 | 0.96 s | 122 production files passed: 93 under `apps/mobile/src` and 29 Expo Router files under `apps/mobile/app`. The AST-based scan forbids mobile network access, recording APIs, permission-method references outside the exact image-save call, dynamic production logs, and readiness implementation. |
-| Policy and Maestro specification tests | `node_modules/.bin/vitest.CMD run tests/verify-mobile-source-policy.test.ts tests/maestro-static-specs.test.ts` | 0 | 10.49 s | 2 files / 49 tests passed. All three Maestro files were parsed as YAML and selector-locked, not executed. |
-| Critical-path/stress tests | `corepack pnpm --filter @cave/mobile test -- src/test/release-critical-stress.test.ts src/features/journey/journey-production-flow.integration.test.tsx src/features/journey/journey-production-navigation.integration.test.tsx src/features/shell/shell-routes.integration.test.ts src/features/reviews/review-history.integration.test.ts src/core/privacy/delete-all-data.test.ts` | 0 | 5.52 s | 6 suites / 21 tests passed: seven-screen first run, back/edit propagation, four-tab shell, production-composed reset/history/branch/delete/recovery stress, and delete-all. |
+| Frozen offline install | `$env:CI='true'; corepack pnpm install --frozen-lockfile --offline` | 0 | 2.29 s | All 7 projects already up to date; lockfile unchanged; no audit performed. |
+| Workspace typecheck | `corepack pnpm typecheck` | 0 | 6.70 s | All 6 scoped workspace projects passed. |
+| Workspace lint | `corepack pnpm lint` | 0 | 6.23 s | All 6 scoped workspace projects passed with zero warnings. |
+| Full tests | `corepack pnpm test` | 0 | 29.20 s | 119 suites / 840 tests: mobile 91/578, Gateway 16/175, contracts 4/19, content 4/39, scenario engine 2/18, fixtures 2/11. |
+| Root release-tool tests | `corepack pnpm test:ci-config` | 0 | 12.77 s | 7 files / 75 tests passed, including fail-closed canary cases for bundle-secret and mobile-policy tooling. |
+| Plan 04 evaluator/TurnService regressions | `node_modules/.bin/vitest.CMD run --root apps/gateway test/safety-policy.test.ts test/turn-service.test.ts` | 0 | 1.65 s | 2 files / 41 tests passed against the real `createTurnSafetyEvaluator` and production `TurnService` integration. |
+| Content tests | `corepack pnpm test:content` | 0 | 2.70 s | 4 files / 39 tests passed. |
+| Draft validation | `corepack pnpm validate:content:draft` | 0 | 0.52 s | 1 course, 1 lesson, and 3 scenarios passed draft validation. |
+| Production validation | `corepack pnpm validate:content` | 1 | 1.87 s | Expected honest gate: 56 `DRAFT_CONTENT` and 34 `EXPERT_REVIEW_PENDING` entries were reported. No `reviewedAt` or review state changed. Status remains `production_content_validation_pending`. |
+| Safety tests | `corepack pnpm test:safety` | 0 | 2.34 s | 4 files / 66 tests passed after the Plan 04 merge. |
+| Gateway dry-run | `corepack pnpm build:gateway` | 0 | 3.92 s | Wrangler 4.126.0 dry-run; 727.47 KiB upload / 121.61 KiB gzip; no deployment. |
+| iOS export | `apps/mobile/node_modules/.bin/expo.CMD export --platform ios --output-dir dist --clear` from `apps/mobile` | 0 | 23.72 s | Hermes bundle: 1 bundle, 3.65 MB, 1,202 modules; 24 assets including the 309 kB medical illustration; 1 metadata file. |
+| Bundle secret scan | `corepack pnpm security:scan-bundle` | 0 | 0.75 s | 26 exported files passed. |
+| Mobile source policy | `corepack pnpm verify:mobile-policy` | 0 | 1.21 s | 122 production files passed: 93 under `apps/mobile/src` and 29 Expo Router files under `apps/mobile/app`. The AST-based scan forbids mobile network access, recording APIs, permission-method references outside the exact image-save call, dynamic production logs, and readiness implementation. |
+| Policy and Maestro specification tests | `node_modules/.bin/vitest.CMD run tests/verify-mobile-source-policy.test.ts tests/maestro-static-specs.test.ts` | 0 | 13.06 s | 2 files / 49 tests passed. All three Maestro files were parsed as YAML and selector-locked, not executed. |
+| Critical-path/stress tests | `corepack pnpm --filter @cave/mobile test -- src/test/release-critical-stress.test.ts src/features/journey/journey-production-flow.integration.test.tsx src/features/journey/journey-production-navigation.integration.test.tsx src/features/shell/shell-routes.integration.test.ts src/features/reviews/review-history.integration.test.ts src/core/privacy/delete-all-data.test.ts` | 0 | 7.52 s | 6 suites / 21 tests passed: seven-screen first run, back/edit propagation, four-tab shell, production-composed reset/history/branch/delete/recovery stress, and delete-all. |
 | Branch-range diff check | `git diff --check origin/main...HEAD` | 0 | <1 s | No whitespace errors across the complete release branch. Generated `apps/mobile/dist` and Gateway `dist` outputs remain ignored. |
 
 ## Static Maestro specifications
@@ -55,6 +61,5 @@ No product P0/P1 defect was reproduced. Independent review reproduced and closed
 - `device_external_pending`
 - `npm_audit_authorization_pending`
 - `worker_deployment_pending`
-- `plan_04_merge_sync_pending`
 
-The final fetch left `origin/main` at `9f244ce3d4b9eedec826a9bf918e81000b83fce4`. `git merge-base --is-ancestor c2be26a2a510238b22d3b22274933c1a38fedede origin/main` exited 1, so Plan 04 PR #16 has not merged. Before this PR can be merged, sync the `origin/main` that contains PR #16 and rerun this entire matrix, including its evaluator/TurnService regressions.
+Plan 04 integration is complete: `origin/main@8837eafd7b1b046d7e3590778be5c9cef3ced74f` contains both merge `8837eafd` and Plan 04 head `c2be26a2`; both ancestry checks exit 0 from branch integration commit `a05556f`. The conditional `plan_04_merge_sync_pending` status is therefore cleared.
