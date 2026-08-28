@@ -1,3 +1,7 @@
+import { spawnSync } from "node:child_process";
+import { createRequire } from "node:module";
+import { fileURLToPath } from "node:url";
+
 import { describe, expect, it } from "vitest";
 
 import { loadCatalog } from "./load";
@@ -17,6 +21,16 @@ function issueCodes(run: () => unknown) {
   return validationIssues(run).map((issue) => issue.code);
 }
 
+const validateCliPath = fileURLToPath(new URL("./validate-cli.ts", import.meta.url));
+const tsxCliPath = createRequire(import.meta.url).resolve("tsx/cli");
+
+function runValidateCli(args: string[]) {
+  return spawnSync(process.execPath, [tsxCliPath, validateCliPath, ...args], {
+    encoding: "utf8",
+    env: { ...process.env, NO_COLOR: "1" }
+  });
+}
+
 function allJourneyReviewables(catalog: ReturnType<typeof loadCatalog>) {
   return [
     ...catalog.journey.options,
@@ -33,6 +47,25 @@ function allJourneyReviewables(catalog: ReturnType<typeof loadCatalog>) {
 }
 
 describe("versioned content validation", () => {
+  it.each([
+    ["missing", []],
+    ["unsupported", ["--mode", "staging"]]
+  ] as const)("rejects a %s CLI validation mode", (_label, args) => {
+    const result = runValidateCli([...args]);
+
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain(
+      "--mode must be exactly one of: draft, internal, production"
+    );
+  });
+
+  it("accepts an exact CLI validation mode", () => {
+    const result = runValidateCli(["--mode", "draft"]);
+
+    expect(result.status).toBe(0);
+    expect(result.stdout).toContain("content validation passed (draft)");
+  });
+
   it("uses the CAVE course identity and lesson back-reference", () => {
     const catalog = loadCatalog();
 
@@ -68,12 +101,15 @@ describe("versioned content validation", () => {
     );
   });
 
-  it("requires complete evidence for internal approval even in draft mode", () => {
+  it.each([
+    ["reviewed", "产品与编辑审核人"],
+    ["internal_test_approved", "内部测试审核人"]
+  ] as const)("requires complete evidence for %s status even in draft mode", (reviewStatus, reviewerRole) => {
     const catalog = loadCatalog();
     Object.assign(catalog.journey.knowledge[0]!, {
-      reviewStatus: "internal_test_approved",
+      reviewStatus,
       reviewer: "annie",
-      reviewerRole: "内部测试审核人",
+      reviewerRole,
       reviewedAt: "2026-08-28T09:56:30Z",
       reviewedVersion: "2026-08-28-review-1"
     });
