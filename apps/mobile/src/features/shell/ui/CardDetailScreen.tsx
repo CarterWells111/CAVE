@@ -1,7 +1,7 @@
 import { useRef, useState } from "react";
 import { ScrollView, Text, View } from "react-native";
 
-import { theme } from "../../../core/design/theme";
+import { useTheme } from "../../../core/design/theme-provider";
 import { Button } from "../../../core/ui/Button";
 import { Card } from "../../../core/ui/Card";
 import { InfoCard } from "../../../core/ui/info-card";
@@ -42,6 +42,7 @@ export function CardDetailScreen({
   onEdit,
   onFullscreen
 }: CardDetailScreenProps) {
+  const theme = useTheme();
   const [actionState, setActionState] = useState<ActionState>("idle");
   const activeAction = useRef<"copy" | "edit" | null>(null);
   const busy = actionState === "copying" || actionState === "editing";

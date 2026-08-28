@@ -52,14 +52,17 @@ async function completeLocalFlow() {
     now: () => "2026-08-27T11:00:00.000Z"
   });
 
-  await controller.enterWelcome({ adult: true, prefaceRead: false });
+  await app.confirmAdult();
+  await app.dispatch({ type: "set-address-preference", preference: "你" });
+  await app.dispatch({ type: "set-preface-read", read: true });
+  await controller.readKnowledge("draft-knowledge-body-signals");
+  await controller.readKnowledge("draft-knowledge-consent");
+  await controller.readKnowledge("draft-knowledge-health");
   await controller.saveOvernight({
     expectationIds: ["draft-expect-rest"],
     concernIds: ["draft-concern-pressure"],
     customNote: "I need a quiet exit option"
   });
-  await app.navigateTo("body-knowledge");
-  await controller.readKnowledge("draft-knowledge-consent");
   await app.navigateTo("behavior-map");
   await controller.setBehaviorAttitude("draft-kissing", "unsure");
   await app.navigateTo("reflection");
@@ -88,7 +91,7 @@ async function completeLocalFlow() {
   return { app, clipboard, controller, storage };
 }
 
-test("completes the seven-screen journey offline, explicitly saves/copies, and resumes after restart", async () => {
+test("completes the six-page journey offline, explicitly saves/copies, and resumes after restart", async () => {
   const originalFetch = globalThis.fetch;
   const offline = jest.fn(async () => { throw new Error("offline"); });
   globalThis.fetch = offline as typeof fetch;
@@ -100,7 +103,7 @@ test("completes the seven-screen journey offline, explicitly saves/copies, and r
 
     expect(await storage.cards.list()).toHaveLength(1);
     expect(clipboard.setStringAsync).toHaveBeenCalledWith(COMMUNICATION_CARD_CONSENT_FOOTER);
-    expect(getPointSummary(app.getSnapshot()!.pointEventKeys)).toMatchObject({ total: 60 });
+    expect(getPointSummary(app.getSnapshot()!.pointEventKeys)).toMatchObject({ total: 80 });
     expect(offline).not.toHaveBeenCalled();
 
     const restarted = application(storage.drafts);

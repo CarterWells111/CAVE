@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { Pressable, ScrollView, Text, TextInput, View } from "react-native";
 
-import { theme } from "../../../../core/design/theme";
+import { useTheme } from "../../../../core/design/theme-provider";
 import { Card } from "../../../../core/ui/Card";
 import { InfoCard } from "../../../../core/ui/info-card";
 import type { BehaviorAttitude } from "../../domain/types";
@@ -56,6 +56,7 @@ export function BehaviorMapPage({
   onComplete,
   createCustomBehaviorId = () => `custom-${Date.now()}`,
 }: BehaviorMapPageProps) {
+  const theme = useTheme();
   const initialUnlockedIndex = (() => {
     const missingBaseIndex = requiredBaseBehaviorIds.findIndex((id) => initialAttitudes[id] === undefined);
     if (missingBaseIndex >= 0) return missingBaseIndex;
@@ -159,7 +160,7 @@ export function BehaviorMapPage({
   };
 
   return (
-    <View style={{ gap: theme.space.xl, maxWidth: "100%", width: "100%" }} testID="page-4-content">
+    <View style={{ gap: theme.space.xl, maxWidth: "100%", width: "100%" }} testID="page-3-content">
       <Card accessible={false} variant="muted">
         <Text accessibilityRole="header" selectable style={{ ...theme.typography.title, color: theme.color.text }}>
           每一种靠近，都可以有不同答案
@@ -412,9 +413,11 @@ export function BehaviorMapPage({
 }
 
 function SectionTitleText({ children }: { children: string }) {
+  const theme = useTheme();
   return <Text accessibilityRole="header" selectable style={{ ...theme.typography.heading, color: theme.color.text }}>{children}</Text>;
 }
 
 function SupportingText({ children }: { children: string }) {
+  const theme = useTheme();
   return <Text selectable style={{ ...theme.typography.body, color: theme.color.textSecondary }}>{children}</Text>;
 }

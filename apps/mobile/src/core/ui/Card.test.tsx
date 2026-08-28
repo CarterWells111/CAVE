@@ -1,7 +1,7 @@
 import { render, screen } from "@testing-library/react-native";
 import { StyleSheet, Text } from "react-native";
 
-import { theme } from "../design/theme";
+import { darkTheme as theme } from "../design/theme";
 import { Card } from "./Card";
 
 describe("Card", () => {

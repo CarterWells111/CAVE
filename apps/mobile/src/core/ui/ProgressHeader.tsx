@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { AccessibilityInfo, Pressable, Text, useWindowDimensions, View } from "react-native";
 
-import { theme } from "../design/theme";
+import { useTheme } from "../design/theme-provider";
 
 type ProgressHeaderProps = {
   currentPage: number;
@@ -24,6 +24,7 @@ type HeaderActionProps = {
 };
 
 function HeaderAction({ label, onPress, busy = false, disabled = false }: HeaderActionProps) {
+  const theme = useTheme();
   const [focused, setFocused] = useState(false);
   const unavailable = busy || disabled;
   return (
@@ -79,6 +80,7 @@ export function ProgressHeader({
   backDisabled = false,
   testID,
 }: ProgressHeaderProps) {
+  const theme = useTheme();
   const { fontScale, width } = useWindowDimensions();
   const validTotal = Number.isInteger(totalPages) && totalPages > 0;
   const validCurrent = validTotal && Number.isInteger(currentPage) && currentPage >= 1 && currentPage <= totalPages;

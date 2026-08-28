@@ -1,5 +1,5 @@
 import { border, color, radius, size, space, tokens, typography } from "./tokens";
-import { darkTheme, paperTheme, theme } from "./theme";
+import { darkTheme, lightTheme, paperTheme } from "./theme";
 
 describe("DARK/PAPER semantic design tokens", () => {
   it("uses the approved dark canvas, surface, brand, text, safety, and paper palette", () => {
@@ -14,7 +14,24 @@ describe("DARK/PAPER semantic design tokens", () => {
       paperSecondary: "#745F69",
     }));
     expect(darkTheme.name).toBe("dark");
-    expect(theme).toBe(darkTheme);
+  });
+
+  it("defines the approved warm-paper light palette with the same semantic contract", () => {
+    expect(lightTheme.name).toBe("light");
+    expect(lightTheme.color).toEqual(expect.objectContaining({
+      background: "#FBF4F0",
+      surface: "#FFFDFC",
+      surfaceAccent: "#F2E3E9",
+      text: "#33262D",
+      textSecondary: "#745F69",
+      primary: "#6D345A",
+      primaryPressed: "#542342",
+      focus: "#6D345A",
+      success: "#2F6B50",
+      warning: "#7C4A25",
+      danger: "#9A3F4B",
+    }));
+    expect(Object.keys(lightTheme.color).sort()).toEqual(Object.keys(darkTheme.color).sort());
   });
 
   it("preserves the established flat semantic API as dark-role aliases", () => {
@@ -40,7 +57,6 @@ describe("DARK/PAPER semantic design tokens", () => {
         accent: "#6D345A",
       },
     });
-    expect(theme.name).toBe("dark");
     expect(Object.isFrozen(paperTheme)).toBe(true);
     expect(Object.isFrozen(paperTheme.color)).toBe(true);
   });
@@ -68,7 +84,7 @@ describe("DARK/PAPER semantic design tokens", () => {
   });
 
   it("freezes every token contract", () => {
-    for (const group of [tokens, color, typography, space, radius, size, border, tokens.motion, darkTheme]) {
+    for (const group of [tokens, color, typography, space, radius, size, border, tokens.motion, darkTheme, lightTheme]) {
       expect(Object.isFrozen(group)).toBe(true);
     }
   });

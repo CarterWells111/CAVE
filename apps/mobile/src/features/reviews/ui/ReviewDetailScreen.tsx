@@ -1,7 +1,7 @@
 import { useRef, useState } from "react";
 import { Pressable, ScrollView, Text, View } from "react-native";
 
-import { theme } from "../../../core/design/theme";
+import { useTheme } from "../../../core/design/theme-provider";
 import { Button } from "../../../core/ui/Button";
 import { Card } from "../../../core/ui/Card";
 import { InfoCard } from "../../../core/ui/info-card";
@@ -30,6 +30,7 @@ type DeleteState = "idle" | "confirming" | "deleting" | "error" | "success";
 type BranchState = "idle" | "branching" | "error";
 
 function DeleteButton({ label, loading = false, onPress }: { label: string; loading?: boolean; onPress(): void }) {
+  const theme = useTheme();
   const [focused, setFocused] = useState(false);
   return (
     <Pressable
@@ -74,6 +75,7 @@ function DeleteButton({ label, loading = false, onPress }: { label: string; load
 }
 
 export function ReviewDetailScreen(_props: ReviewDetailScreenProps) {
+  const theme = useTheme();
   const { metadata, onBack, onBranch, onContinueAfterDelete, onDelete, sections } = _props;
   const [deleteState, setDeleteState] = useState<DeleteState>("idle");
   const [branchState, setBranchState] = useState<BranchState>("idle");

@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { fireEvent, render, screen } from "@testing-library/react-native";
 import { AccessibilityInfo } from "react-native";
 
-import { theme } from "../design/theme";
+import { darkTheme as theme } from "../design/theme";
 import { StatusBanner } from "./StatusBanner";
 
 const originalExpoOs = process.env.EXPO_OS;

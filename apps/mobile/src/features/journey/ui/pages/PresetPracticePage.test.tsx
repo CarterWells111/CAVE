@@ -227,7 +227,7 @@ test("uses full-width flexible actions and semantic controls for large text layo
   const start = screen.getByRole("button", { name: "开始情境练习" });
   expect(start.props.accessibilityState.disabled).toBe(false);
   expect(StyleSheet.flatten(start.props.style)).toEqual(expect.objectContaining({ minHeight: 52, minWidth: 44 }));
-  expect(screen.getByText("6 / 7")).toBeTruthy();
+  expect(screen.getByText("5 / 6")).toBeTruthy();
 });
 
 test("keeps the editable phrase keyboard-friendly and text-scalable", () => {

@@ -2,7 +2,7 @@ import { useRouter } from "expo-router";
 import { type PropsWithChildren, useCallback, useEffect, useRef, useState } from "react";
 import { Text } from "react-native";
 
-import { theme } from "../../../core/design/theme";
+import { useTheme } from "../../../core/design/theme-provider";
 import { ErrorState } from "../../../core/ui/ErrorState";
 import { Screen } from "../../../core/ui/Screen";
 import { useJourneyRuntime } from "../../journey/runtime/JourneyRuntimeProvider";
@@ -10,6 +10,7 @@ import { useJourneyRuntime } from "../../journey/runtime/JourneyRuntimeProvider"
 type GateState = "loading" | "allowed" | "redirecting" | "error";
 
 export function ShellRouteGate({ children }: PropsWithChildren) {
+  const theme = useTheme();
   const router = useRouter();
   const { shellState } = useJourneyRuntime();
   const mountedRef = useRef(true);

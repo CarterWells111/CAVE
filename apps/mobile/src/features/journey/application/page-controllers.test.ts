@@ -4,7 +4,9 @@ import { createJourneyDraft, type JourneyDraft } from "../domain/types";
 import type { CommunicationCardRepository } from "../infrastructure/journey-draft-repository";
 import type { JourneyCompletionTransaction } from "../infrastructure/journey-write-coordinator";
 import type { AppShellStateRepository } from "../../shell/infrastructure/app-shell-state-repository";
+import { reduceJourneyDraft } from "../domain/reducer";
 import type { JourneyApplicationService } from "./journey-application-service";
+import { canAccessJourneyPage } from "./journey-navigation";
 import { JourneyPageController, type ClipboardAdapter } from "./page-controllers";
 
 function activeDraft(): JourneyDraft {
@@ -112,19 +114,6 @@ test("keeps the active snapshot when atomic native completion fails", async () =
   expect(service.getSnapshot()).not.toBeNull();
 });
 
-test("keeps the underage exit unsaved and creates only an adult journey", async () => {
-  const { controller, service } = harness();
-
-  await expect(controller.enterWelcome({ adult: false, prefaceRead: true })).resolves.toBe("underage-exit");
-  expect(service.confirmAdult).not.toHaveBeenCalled();
-  expect(service.dispatch).not.toHaveBeenCalled();
-
-  await expect(controller.enterWelcome({ adult: true, prefaceRead: false })).resolves.toBe("overnight");
-  expect(service.confirmAdult).toHaveBeenCalledTimes(1);
-  expect(service.dispatch).toHaveBeenCalledWith({ type: "set-preface-read", read: false });
-  expect(service.navigateTo).toHaveBeenCalledWith("overnight");
-});
-
 test("translates Page 2-5 events into page-owned commands and idempotent task keys", async () => {
   const { controller, service } = harness();
 
@@ -142,6 +131,52 @@ test("translates Page 2-5 events into page-owned commands and idempotent task ke
   expect(service.dispatch).toHaveBeenCalledWith({ type: "record-point-event", key: "learning:draft-knowledge-consent:v1" });
   expect(service.dispatch).toHaveBeenCalledWith({ type: "record-point-event", key: "reflection:page-5:v1" });
   expect(service.dispatch).toHaveBeenCalledWith({ type: "set-behavior-attitude", behaviorId: "draft-kissing", attitude: "unsure" });
+});
+
+test("marks overnight complete only after saving optional blank selections", async () => {
+  const { controller, service } = harness();
+  let snapshot: JourneyDraft = {
+    ...activeDraft(),
+    addressPreference: "你",
+    prefaceRead: true,
+    readKnowledgeCardIds: ["draft-knowledge-body-signals", "draft-knowledge-consent", "draft-knowledge-health"],
+    overnight: { stage: "concerns", resumeStage: "concerns" },
+    expectationIds: [],
+    concernIds: [],
+  };
+  jest.mocked(service.getSnapshot).mockImplementation(() => snapshot);
+  jest.mocked(service.dispatch).mockImplementation(async (command) => {
+    snapshot = reduceJourneyDraft(snapshot, command);
+  });
+
+  expect(canAccessJourneyPage(snapshot, "behavior-map")).toBe(false);
+
+  await controller.saveOvernight({ expectationIds: [], concernIds: [], customNote: "" });
+
+  expect(service.dispatch).toHaveBeenNthCalledWith(1, {
+    type: "save-overnight",
+    expectationIds: [],
+    concernIds: [],
+    customNote: "",
+  });
+  expect(service.dispatch).toHaveBeenNthCalledWith(2, {
+    type: "record-point-event",
+    key: "progress:overnight-complete:v1",
+  });
+  expect(canAccessJourneyPage(snapshot, "behavior-map")).toBe(true);
+});
+
+test("does not mark overnight complete when saving its answers fails", async () => {
+  const { controller, service } = harness();
+  jest.mocked(service.dispatch).mockRejectedValueOnce(new Error("overnight-save-failed"));
+
+  await expect(controller.saveOvernight({ expectationIds: [], concernIds: [], customNote: "" }))
+    .rejects.toThrow("overnight-save-failed");
+
+  expect(service.dispatch).not.toHaveBeenCalledWith({
+    type: "record-point-event",
+    key: "progress:overnight-complete:v1",
+  });
 });
 
 test("marks the medical diagram opened through the controller", async () => {

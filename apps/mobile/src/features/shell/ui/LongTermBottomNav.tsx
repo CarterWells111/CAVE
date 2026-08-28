@@ -1,6 +1,6 @@
 import { Pressable, Text, View } from "react-native";
 
-import { theme } from "../../../core/design/theme";
+import { useTheme } from "../../../core/design/theme-provider";
 
 export type LongTermTab = "home" | "reviews" | "practice" | "cards";
 
@@ -17,6 +17,7 @@ const destinations: ReadonlyArray<Readonly<{ icon: string; label: string; tab: L
 ];
 
 export function LongTermBottomNav({ activeTab, navigate }: LongTermBottomNavProps) {
+  const theme = useTheme();
   return (
     <View
       accessibilityLabel="长期使用导航"

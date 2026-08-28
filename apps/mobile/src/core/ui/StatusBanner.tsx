@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { AccessibilityInfo, Pressable, Text, View } from "react-native";
 
-import { theme } from "../design/theme";
+import { useTheme } from "../design/theme-provider";
 
 type StatusVariant = "info" | "success" | "warning" | "error";
 
@@ -14,32 +14,6 @@ type StatusBannerProps = {
   testID?: string;
 };
 
-const STATUS_PRESENTATION: Record<
-  StatusVariant,
-  { backgroundColor: string; icon: string; tone: string }
-> = {
-  info: {
-    backgroundColor: theme.color.surfaceMuted,
-    icon: "ⓘ",
-    tone: theme.color.info
-  },
-  success: {
-    backgroundColor: theme.color.surfaceMuted,
-    icon: "✓",
-    tone: theme.color.success
-  },
-  warning: {
-    backgroundColor: theme.color.surfaceMuted,
-    icon: "!",
-    tone: theme.color.warning
-  },
-  error: {
-    backgroundColor: theme.color.dangerSurface,
-    icon: "×",
-    tone: theme.color.error
-  }
-};
-
 export function StatusBanner({
   accessibilityLabel,
   message,
@@ -48,8 +22,18 @@ export function StatusBanner({
   onAction,
   testID
 }: StatusBannerProps) {
+  const theme = useTheme();
+  const statusPresentation: Record<
+    StatusVariant,
+    { backgroundColor: string; icon: string; tone: string }
+  > = {
+    info: { backgroundColor: theme.color.surfaceMuted, icon: "ⓘ", tone: theme.color.info },
+    success: { backgroundColor: theme.color.surfaceMuted, icon: "✓", tone: theme.color.success },
+    warning: { backgroundColor: theme.color.surfaceMuted, icon: "!", tone: theme.color.warning },
+    error: { backgroundColor: theme.color.dangerSurface, icon: "×", tone: theme.color.error },
+  };
   const [actionFocused, setActionFocused] = useState(false);
-  const presentation = STATUS_PRESENTATION[variant];
+  const presentation = statusPresentation[variant];
   const isError = variant === "error";
 
   useEffect(() => {

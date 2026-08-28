@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { AccessibilityInfo, Pressable, Text, View } from "react-native";
 
-import { theme } from "../design/theme";
+import { useTheme } from "../design/theme-provider";
 
 export type ErrorStateProps = {
   title: string;
@@ -11,6 +11,7 @@ export type ErrorStateProps = {
 };
 
 export function ErrorState({ title, message, actionLabel, onAction }: ErrorStateProps) {
+  const theme = useTheme();
   const [actionFocused, setActionFocused] = useState(false);
   const hasAction = Boolean(actionLabel && onAction);
 

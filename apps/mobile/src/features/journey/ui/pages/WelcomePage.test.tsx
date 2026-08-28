@@ -1,68 +1,45 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react-native";
+import { fireEvent, render, screen } from "@testing-library/react-native";
 
 import { WelcomePage } from "./WelcomePage";
 
-test("adult confirmation leads to address preference then the preface without numeric progress", async () => {
-  const onAdult = jest.fn();
-  render(<WelcomePage onAdult={onAdult} onUnderage={jest.fn()} resumeAvailable={false} />);
+test("shows one journey action and a top-right help action without age or login prompts", () => {
+  const onStart = jest.fn();
+  const onOpenSettings = jest.fn();
+  render(<WelcomePage onOpenSettings={onOpenSettings} onStart={onStart} resumeAvailable={false} />);
 
-  expect(screen.queryByText(/\/ 7/u)).toBeNull();
-  fireEvent.press(screen.getByRole("button", { name: "我已满 18 岁，开始探索" }));
-  expect(screen.getByTestId("welcome-address-sheet")).toHaveProp("accessibilityViewIsModal", true);
-  expect(screen.getByRole("button", { name: "这样称呼我" })).toHaveProp(
-    "accessibilityState", expect.objectContaining({ disabled: true }),
-  );
-
-  fireEvent.press(screen.getByRole("radio", { name: "妳｜明确称呼女性，更有书信感。" }));
-  fireEvent.press(screen.getByRole("button", { name: "这样称呼我" }));
-  await waitFor(() => expect(screen.getByText("开始前，想告诉妳")).toBeTruthy());
-  expect(screen.getByText(/这不是为了让妳表现得更大胆/u)).toBeTruthy();
-  fireEvent.press(screen.getByRole("button", { name: "先跳过" }));
-  await waitFor(() => {
-    expect(onAdult).toHaveBeenCalledTimes(1);
-    expect(screen.queryByText("开始前，想告诉妳")).toBeNull();
-  });
+  expect(screen.getByRole("button", { name: "开启旅程" })).toBeTruthy();
+  expect(screen.getByRole("button", { name: "帮助" })).toBeTruthy();
+  expect(screen.getByRole("button", { name: "设置" })).toBeTruthy();
+  expect(screen.getAllByRole("button").slice(0, 2).map((button) => button.props.accessibilityLabel))
+    .toEqual(["设置", "帮助"]);
+  expect(screen.queryByText(/18|成年|登录|邮箱|验证码/u)).toBeNull();
+  fireEvent.press(screen.getByRole("button", { name: "开启旅程" }));
+  expect(onStart).toHaveBeenCalledTimes(1);
+  fireEvent.press(screen.getByRole("button", { name: "设置" }));
+  expect(onOpenSettings).toHaveBeenCalledTimes(1);
 });
 
-test("failed adult continuation stays on the preface and can be retried", async () => {
-  const onAdult = jest.fn().mockRejectedValueOnce(new Error("offline")).mockResolvedValue(undefined);
-  render(<WelcomePage onAdult={onAdult} onUnderage={jest.fn()} resumeAvailable={false} />);
-  fireEvent.press(screen.getByRole("button", { name: "我已满 18 岁，开始探索" }));
-  fireEvent.press(screen.getByRole("radio", { name: "你｜日常、自然，不限定性别。" }));
-  fireEvent.press(screen.getByRole("button", { name: "这样称呼我" }));
-  await waitFor(() => expect(screen.getByRole("button", { name: "我知道了，开始探索" })).toBeTruthy());
-  fireEvent.press(screen.getByRole("button", { name: "我知道了，开始探索" }));
-  await waitFor(() => expect(screen.getByText("暂时无法开始，请重试。")).toBeTruthy());
-  fireEvent.press(screen.getByRole("button", { name: "我知道了，开始探索" }));
-  await waitFor(() => {
-    expect(onAdult).toHaveBeenCalledTimes(2);
-    expect(screen.queryByText("开始前，想告诉你")).toBeNull();
-  });
+test("help explains product scope, 18+ gate, non-diagnosis and local-first privacy", () => {
+  render(<WelcomePage onOpenSettings={jest.fn()} onStart={jest.fn()} resumeAvailable={false} />);
+  fireEvent.press(screen.getByRole("button", { name: "帮助" }));
+
+  expect(screen.getByRole("header", { name: "关于内界 CAVE" })).toBeTruthy();
+  expect(screen.getByText(/亲密关系中的身体、安全、边界与沟通/u)).toBeTruthy();
+  expect(screen.getByText(/点击“开启旅程”后.*本机.*年满 18 岁的自我声明/u)).toBeTruthy();
+  expect(screen.getByText(/声明后.*“开始前，想告诉你”.*六页正式内容/u)).toBeTruthy();
+  expect(screen.getByText(/不是身份核验.*不是真实年龄核验/u)).toBeTruthy();
+  expect(screen.getByText(/不收集.*生日.*证件.*邮箱/u)).toBeTruthy();
+  expect(screen.getByText(/不提供医疗诊断/u)).toBeTruthy();
+  expect(screen.getByText(/旅程记录以本机保存为先/u)).toBeTruthy();
+  expect(screen.queryByText(/身体与安全知识可以先阅读/u)).toBeNull();
+  expect(screen.queryByText(/验证码|登录|账号|多设备/u)).toBeNull();
 });
 
-test("underage choice stays in a safe terminal until explicit exit", () => {
-  const onUnderage = jest.fn();
-  render(<WelcomePage onAdult={jest.fn()} onUnderage={onUnderage} resumeAvailable={false} />);
+test("uses a continue label when an unfinished local journey exists", () => {
+  const onResume = jest.fn();
+  render(<WelcomePage onOpenSettings={jest.fn()} onStart={jest.fn()} onResume={onResume} resumeAvailable />);
 
-  fireEvent.press(screen.getByRole("button", { name: "我未满 18 岁" }));
-  expect(screen.getByText("这个版本暂时只为成年人设计。你可以先离开，照顾好自己的节奏。")).toBeTruthy();
-  expect(onUnderage).not.toHaveBeenCalled();
-  expect(screen.queryByRole("button", { name: "我已满 18 岁，开始探索" })).toBeNull();
-  fireEvent.press(screen.getByRole("button", { name: "退出体验" }));
-  expect(onUnderage).toHaveBeenCalledTimes(1);
-});
-
-test("resume and restart actions remain available without blocking a fresh start", () => {
-  render(
-    <WelcomePage
-      onAdult={jest.fn()}
-      onRestart={jest.fn()}
-      onResume={jest.fn()}
-      onUnderage={jest.fn()}
-      resumeAvailable
-    />,
-  );
-  expect(screen.getByRole("button", { name: "继续本机旅程" })).toHaveStyle({ minHeight: 48, minWidth: 44 });
-  expect(screen.getByRole("button", { name: "重新开始（需要确认）" })).toBeTruthy();
-  expect(screen.getByRole("button", { name: "我已满 18 岁，开始探索" })).toBeTruthy();
+  expect(screen.queryByRole("button", { name: "开启旅程" })).toBeNull();
+  fireEvent.press(screen.getByRole("button", { name: "继续旅程" }));
+  expect(onResume).toHaveBeenCalledTimes(1);
 });

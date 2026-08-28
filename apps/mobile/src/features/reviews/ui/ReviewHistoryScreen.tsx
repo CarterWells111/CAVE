@@ -1,6 +1,6 @@
 import { ScrollView, Text, View } from "react-native";
 
-import { theme } from "../../../core/design/theme";
+import { useTheme } from "../../../core/design/theme-provider";
 import { Card } from "../../../core/ui/Card";
 import { EmptyState } from "../../../core/ui/EmptyState";
 import { SecondaryButton } from "../../../core/ui/secondary-button";
@@ -21,6 +21,7 @@ export type ReviewHistoryScreenProps = {
 };
 
 export function ReviewHistoryScreen(_props: ReviewHistoryScreenProps) {
+  const theme = useTheme();
   const { loadState, onOpenReview, onRetry, reviews } = _props;
   return (
     <ScrollView

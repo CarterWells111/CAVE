@@ -3,7 +3,8 @@ import { useRef, useState } from "react";
 import { Text, TextInput, View } from "react-native";
 import { captureRef } from "react-native-view-shot";
 
-import { paperTheme, theme } from "../../../../core/design/theme";
+import { paperTheme } from "../../../../core/design/theme";
+import { useTheme } from "../../../../core/design/theme-provider";
 import { Button } from "../../../../core/ui/Button";
 import { Card } from "../../../../core/ui/Card";
 import { SecondaryButton } from "../../../../core/ui/secondary-button";
@@ -72,6 +73,7 @@ function cloneDraft(draft: JourneyDraft): JourneyDraft {
 }
 
 function SharePreview({ card }: { card: ConfirmedCommunicationCard }) {
+  const theme = useTheme();
   return (
     <View
       accessibilityLabel="沟通卡分享预览"
@@ -101,6 +103,7 @@ export function FinalPreparationPage({
   onSetVisibility,
   onUpdatePreparation
 }: Props) {
+  const theme = useTheme();
   const draftRef = useRef(cloneDraft(draft));
   const previewRef = useRef<View>(null);
   const queueRef = useRef<Promise<void>>(Promise.resolve());
@@ -254,10 +257,10 @@ export function FinalPreparationPage({
 
   const confirmed = selectConfirmedCommunicationCard(draftRef.current);
   return (
-    <View style={{ gap: theme.space.lg, maxWidth: "100%", width: "100%" }} testID="page-7-content">
+    <View style={{ gap: theme.space.lg, maxWidth: "100%", width: "100%" }} testID="page-6-content">
       <View style={{ alignItems: "center", flexDirection: "row", justifyContent: "space-between" }}>
         <Text style={{ ...theme.typography.caption, color: theme.color.textMuted }}>最终整理</Text>
-        <Text accessibilityLabel="第 7 屏，共 7 屏" style={{ ...theme.typography.caption, color: theme.color.textMuted }}>7 / 7</Text>
+        <Text accessibilityLabel="第 6 屏，共 6 屏" style={{ ...theme.typography.caption, color: theme.color.textMuted }}>6 / 6</Text>
       </View>
       <Text accessibilityRole="header" style={{ ...theme.typography.title, color: theme.color.text }}>先留给自己，再决定分享什么</Text>
 
@@ -371,7 +374,6 @@ export function FinalPreparationPage({
       {finishSucceeded && onCompleted !== undefined ? (
         <Button label="返回应用入口" onPress={onCompleted} />
       ) : null}
-      <Text style={{ ...theme.typography.caption, color: theme.color.textSecondary }}>云端同步｜后续版本（不可用）</Text>
     </View>
   );
 }

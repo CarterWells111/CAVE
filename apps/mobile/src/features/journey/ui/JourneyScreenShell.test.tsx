@@ -3,8 +3,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { StyleSheet, Text } from "react-native";
 
-import { brand } from "../../../config/brand";
-import { theme } from "../../../core/design/theme";
+import { darkTheme as theme } from "../../../core/design/theme";
 import { JourneyScreenShell } from "./JourneyScreenShell";
 
 const onExit = jest.fn();
@@ -25,26 +24,25 @@ beforeEach(() => {
 });
 
 test.each([
+  ["body-knowledge", 1],
   ["overnight", 2],
-  ["body-knowledge", 3],
-  ["behavior-map", 4],
-  ["reflection", 5],
-  ["preset-practice", 6],
-  ["final-preparation", 7]
-] as const)("renders %s as step %i of the seven-screen journey", (pageId, pageNumber) => {
+  ["behavior-map", 3],
+  ["reflection", 4],
+  ["preset-practice", 5],
+  ["final-preparation", 6]
+] as const)("renders %s as step %i of the six-page journey", (pageId, pageNumber) => {
   render(<JourneyScreenShell pageId={pageId} onExit={onExit} />);
 
   expect(screen.getByTestId(`journey-page-${pageId}`)).toBeTruthy();
-  expect(screen.getByText(`${pageNumber} / 7`)).toBeTruthy();
+  expect(screen.getByText(`${pageNumber} / 6`)).toBeTruthy();
   expect(screen.queryByText(/准备度|readiness|score|percentage/iu)).toBeNull();
 });
 
-test("keeps Screen 1 unnumbered while preserving the exit action", () => {
-  render(<JourneyScreenShell pageId="welcome" onExit={onExit} />);
+test("numbers the first knowledge page and exposes journey options", () => {
+  render(<JourneyScreenShell pageId="body-knowledge" onExit={onExit} />);
 
-  expect(screen.queryByTestId("progress-center")).toBeNull();
-  expect(screen.queryByText(/1\s*\/\s*7/u)).toBeNull();
-  expect(screen.getByRole("button", { name: "退出旅程" })).toBeTruthy();
+  expect(screen.getByText("1 / 6")).toBeTruthy();
+  expect(screen.getByRole("button", { name: "旅程选项" })).toBeTruthy();
 });
 
 test.each([
@@ -64,8 +62,8 @@ test("composes the shared 06A screen, card, progress and status primitives", () 
   expect(source).toContain('from "../../../core/ui/Card"');
   expect(source).toContain('from "../../../core/ui/ProgressHeader"');
   expect(source).toContain('from "../../../core/ui/StatusBanner"');
-  expect(source).toContain('from "../../../core/design/theme"');
-  expect(source).toContain('from "../../../config/brand"');
+  expect(source).toContain('from "../../../core/design/theme-provider"');
+  expect(source).toContain("useTheme()");
   expect(source).not.toContain("journey-ui-tokens");
   expect(source).not.toContain("SafeAreaView");
   expect(source).not.toContain("Platform.OS");
@@ -105,7 +103,7 @@ test("keeps the page title and header actions flexible for large text", () => {
   expect(title.props.numberOfLines).toBeUndefined();
   expect(title.props.ellipsizeMode).toBeUndefined();
 
-  for (const label of ["返回上一页", "退出旅程"]) {
+  for (const label of ["返回上一页", "旅程选项"]) {
     const action = screen.getByRole("button", { name: label });
     const actionLabel = screen.getByText(label);
     expect(action).toHaveStyle({ minHeight: 44, minWidth: 44 });
@@ -114,22 +112,12 @@ test("keeps the page title and header actions flexible for large text", () => {
   }
 });
 
-test("uses the canonical brand in the welcome title and keeps symmetric header slots", () => {
-  render(<JourneyScreenShell pageId="welcome" onExit={onExit} />);
-
-  expect(screen.getByRole("header", { name: `欢迎来到${brand.displayName}` })).toBeTruthy();
-  expect(screen.queryByRole("button", { name: "返回上一页" })).toBeNull();
-  expect(screen.getByRole("button", { name: "退出旅程" })).toBeTruthy();
-  expect(screen.getByTestId("progress-leading-slot")).toHaveStyle({ flex: 1 });
-  expect(screen.getByTestId("progress-trailing-slot")).toHaveStyle({ flex: 1 });
-});
-
-test("exposes working back and exit actions on later pages", () => {
+test("exposes working back and options actions on later pages", () => {
   const onBack = jest.fn();
   render(<JourneyScreenShell pageId="overnight" onBack={onBack} onExit={onExit} />);
 
   fireEvent.press(screen.getByRole("button", { name: "返回上一页" }));
-  fireEvent.press(screen.getByRole("button", { name: "退出旅程" }));
+  fireEvent.press(screen.getByRole("button", { name: "旅程选项" }));
 
   expect(onBack).toHaveBeenCalledTimes(1);
   expect(onExit).toHaveBeenCalledTimes(1);
@@ -148,7 +136,7 @@ test("renders the page title in a shared surface card", () => {
 test("keeps a runtime-injected notice as one accessible status with its custom label", () => {
   render(
     <JourneyScreenShell
-      pageId="welcome"
+      pageId="body-knowledge"
       onExit={onExit}
       runtimeNotice={{
         accessibilityLabel: "当前为 Expo Go 演示模式",
@@ -170,12 +158,12 @@ test.each(["resolve", "reject"] as const)(
     const onOldBack = jest.fn(() => oldBack.promise);
     const onCurrentBack = jest.fn(() => currentBack.promise);
     const view = render(
-      <JourneyScreenShell pageId="overnight" onBack={onOldBack} onExit={onExit} />
+      <JourneyScreenShell pageId="behavior-map" onBack={onOldBack} onExit={onExit} />
     );
 
     fireEvent.press(screen.getByRole("button", { name: "返回上一页" }));
     view.rerender(
-      <JourneyScreenShell pageId="body-knowledge" onBack={onCurrentBack} onExit={onExit} />
+      <JourneyScreenShell pageId="overnight" onBack={onCurrentBack} onExit={onExit} />
     );
     fireEvent.press(screen.getByRole("button", { name: "返回上一页" }));
 

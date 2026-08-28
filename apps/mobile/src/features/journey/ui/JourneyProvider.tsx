@@ -11,7 +11,7 @@ import {
 } from "react";
 import { Text, View } from "react-native";
 
-import { theme } from "../../../core/design/theme";
+import { useTheme } from "../../../core/design/theme-provider";
 import { Button } from "../../../core/ui/Button";
 import { ErrorState } from "../../../core/ui/ErrorState";
 import { StatusBanner } from "../../../core/ui/StatusBanner";
@@ -49,6 +49,7 @@ export function JourneyProvider({
   service,
   children
 }: PropsWithChildren<{ service: InitializableJourneyService }>) {
+  const theme = useTheme();
   const [state, setState] = useState<JourneyProviderState>({ status: "loading" });
   const [snapshot, setSnapshot] = useState<JourneyDraft | null>(null);
   const [pendingRecoveryAction, setPendingRecoveryAction] = useState<PendingRecoveryAction | null>(null);

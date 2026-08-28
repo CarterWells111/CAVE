@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Pressable, Text } from "react-native";
 
-import { theme } from "../design/theme";
+import { useTheme } from "../design/theme-provider";
 
 export type SecondaryButtonProps = {
   label: string;
@@ -12,6 +12,7 @@ export type SecondaryButtonProps = {
 };
 
 export function SecondaryButton({ label, onPress, disabled = false, loading = false, testID }: SecondaryButtonProps) {
+  const theme = useTheme();
   const [focused, setFocused] = useState(false);
   const unavailable = disabled || loading;
   return (

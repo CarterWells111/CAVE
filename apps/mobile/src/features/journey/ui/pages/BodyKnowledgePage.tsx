@@ -2,7 +2,8 @@ import type { JourneyKnowledgeCard, JourneySource } from "@cave/content";
 import { useMemo, useState } from "react";
 import { Image, type ImageSourcePropType, Text, View } from "react-native";
 
-import { theme } from "../../../../core/design/theme";
+import { useTheme } from "../../../../core/design/theme-provider";
+import type { AppTheme } from "../../../../core/design/theme";
 import { BottomSheet } from "../../../../core/ui/bottom-sheet";
 import { Card } from "../../../../core/ui/Card";
 import { InfoCard } from "../../../../core/ui/info-card";
@@ -36,6 +37,8 @@ export function BodyKnowledgePage({
   addressPreference = "你",
   reducedMotion = false,
 }: BodyKnowledgePageProps) {
+  const theme = useTheme();
+  const styles = createStyles(theme);
   const sortedCards = [...cards].sort((a, b) => a.order - b.order).slice(0, 3);
   const relevantSources = useMemo(() => {
     const ids = new Set(sortedCards.flatMap((card) => card.sourceIds));
@@ -62,7 +65,7 @@ export function BodyKnowledgePage({
   const zoomPercent = Math.round(diagramZoom * 100);
 
   return (
-    <View style={styles.page} testID="page-3-content">
+    <View style={styles.page} testID="page-1-content">
       <Text accessibilityRole="header" style={styles.title}>身体会回应，决定仍属于{addressPreference}</Text>
       <Text style={styles.body}>认识身体，不是为了找到一条必须走完的路线。它帮助{addressPreference}分清身体正在发生什么，以及自己是否愿意。</Text>
 
@@ -140,7 +143,7 @@ export function BodyKnowledgePage({
       ) : null}
       <JourneyAction
         errorMessage="暂时无法继续，请重试。"
-        label="看看我对不同靠近的感觉"
+        label="看看我对过夜的期待"
         loadingLabel="正在继续…"
         onAction={complete}
       />
@@ -176,7 +179,8 @@ export function BodyKnowledgePage({
   );
 }
 
-const styles = {
+function createStyles(theme: AppTheme) {
+  return {
   page: { flexGrow: 1, gap: theme.space.xl, minWidth: 0 },
   title: { ...theme.typography.title, color: theme.color.text, flexShrink: 1 },
   body: { ...theme.typography.body, color: theme.color.text, flexShrink: 1 },
@@ -207,4 +211,5 @@ const styles = {
   },
   image: { height: "100%" as const, width: "100%" as const },
   zoomControls: { gap: theme.space.compact, width: "100%" as const },
-};
+  };
+}

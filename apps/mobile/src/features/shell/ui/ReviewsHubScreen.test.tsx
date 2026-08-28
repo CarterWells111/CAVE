@@ -2,7 +2,7 @@ import { fireEvent, render, screen } from "@testing-library/react-native";
 
 import { ReviewsHubScreen } from "./ReviewsHubScreen";
 
-test("supports continuing, topic entry, history, and a user-started full seven-screen review", () => {
+test("supports continuing, topic entry, history, and a user-started full six-page review", () => {
   const onContinueReview = jest.fn();
   const onOpenReview = jest.fn();
   const onStartFullReview = jest.fn();
@@ -19,7 +19,7 @@ test("supports continuing, topic entry, history, and a user-started full seven-s
 
   fireEvent.press(screen.getByRole("button", { name: "继续本次回顾" }));
   fireEvent.press(screen.getByRole("button", { name: "按主题回顾：边界与表达" }));
-  fireEvent.press(screen.getByRole("button", { name: "开始完整七屏回顾" }));
+  fireEvent.press(screen.getByRole("button", { name: "开始完整六页回顾" }));
   expect(onStartFullReview).not.toHaveBeenCalled();
   fireEvent.press(screen.getByRole("button", { name: "确认开始新回顾" }));
   fireEvent.press(screen.getByRole("button", { name: "打开第一次回顾" }));

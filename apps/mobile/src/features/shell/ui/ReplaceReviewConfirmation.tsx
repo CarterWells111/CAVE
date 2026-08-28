@@ -1,6 +1,6 @@
 import { View } from "react-native";
 
-import { theme } from "../../../core/design/theme";
+import { useTheme } from "../../../core/design/theme-provider";
 import { Button } from "../../../core/ui/Button";
 import { Card } from "../../../core/ui/Card";
 import { SecondaryButton } from "../../../core/ui/secondary-button";
@@ -10,6 +10,7 @@ export function ReplaceReviewConfirmation({ onCancel, onConfirm }: {
   onCancel(): void;
   onConfirm(): void;
 }) {
+  const theme = useTheme();
   return (
     <Card accessibilityRole="alert" variant="accent">
       <SectionHeading>已有进行中的回顾</SectionHeading>

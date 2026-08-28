@@ -50,9 +50,13 @@ export class DefaultJourneyApplicationService implements JourneyApplicationServi
     return this.enqueue(async () => {
       if (this.snapshot?.ageConfirmed === true) return;
       const now = this.dependencies.now();
+      const current = this.snapshot ?? createJourneyDraft({ id: this.dependencies.createId(), now });
       const next = {
-        ...createJourneyDraft({ id: this.dependencies.createId(), now }),
-        ageConfirmed: true
+        ...current,
+        ageConfirmed: true,
+        prefaceRead: false,
+        currentPage: "body-knowledge" as const,
+        updatedAt: now,
       };
       await this.persist(next);
     });

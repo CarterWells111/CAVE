@@ -1,4 +1,5 @@
 import { JourneyDomainError, reduceJourneyDraft } from "./reducer";
+import type { JourneyCommand } from "./commands";
 import { createJourneyDraft } from "./types";
 
 const NOW = "2026-08-27T08:00:00.000Z";
@@ -29,7 +30,7 @@ test("updates page-owned overnight fields and de-duplicates stable ids", () => {
   expect(original.expectationIds).toEqual([]);
 });
 
-test("records knowledge actions without duplicating a read card", () => {
+test("records first-page knowledge actions after the adult declaration without duplicating a read card", () => {
   const opened = reduceJourneyDraft(adultDraft(), { type: "set-medical-diagram-opened", opened: true });
   const readOnce = reduceJourneyDraft(opened, { type: "mark-knowledge-card-read", cardId: "draft-body-signals" });
   const readTwice = reduceJourneyDraft(readOnce, { type: "mark-knowledge-card-read", cardId: "draft-body-signals" });
@@ -66,16 +67,31 @@ test("updates reflection fields independently", () => {
     motivationIds: ["draft-curious"],
     comfortNeedIds: ["draft-privacy"],
     expressionSupportNeeded: false,
-    journalSaveChoice: "not-saved",
-    cloudSaveAvailability: "coming-soon"
+    journalSaveChoice: "not-saved"
   });
 });
 
-test("rejects page 2-8 writes before adult confirmation", () => {
+test("rejects adult-only writes before the adult declaration", () => {
   expect(() => reduceJourneyDraft(createJourneyDraft({ id: "journey-1", now: NOW }), {
     type: "set-expectation-ids",
     ids: ["draft-rest"]
   })).toThrow(new JourneyDomainError("adult-confirmation-required"));
+});
+
+test("rejects every formerly exempt preface and knowledge write before the adult declaration", () => {
+  const draft = createJourneyDraft({ id: "journey-1", now: NOW });
+  const blockedCommands: JourneyCommand[] = [
+    { type: "set-preface-read", read: true },
+    { type: "set-address-preference", preference: "你" },
+    { type: "mark-knowledge-card-read", cardId: "draft-knowledge-consent" },
+    { type: "set-medical-diagram-opened", opened: true },
+    { type: "record-point-event", key: "learning:body-signals:v1" },
+  ];
+
+  for (const command of blockedCommands) {
+    expect(() => reduceJourneyDraft(draft, command))
+      .toThrow(new JourneyDomainError("adult-confirmation-required"));
+  }
 });
 
 test("rejects blank or duplicate custom behaviors", () => {
