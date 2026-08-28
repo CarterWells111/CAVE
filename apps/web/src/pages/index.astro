@@ -1,0 +1,24 @@
+---
+import EchoBackdrop from "../components/EchoBackdrop.astro";
+import { site } from "../content/site";
+import BaseLayout from "../layouts/BaseLayout.astro";
+---
+
+<BaseLayout
+  title="CAVE 内界｜成年人的身体认知与同意教育"
+  description={site.statement}
+  path="/"
+>
+  <section class="hero section" aria-labelledby="home-title">
+    <EchoBackdrop />
+    <div class="hero-grid">
+      <div class="hero__content">
+        <p class="eyebrow">{site.eyebrow}</p>
+        <h1 id="home-title">CAVE 内界</h1>
+        <p class="hero__statement">{site.statement}</p>
+        <p class="hero__reassurance">{site.reassurance}</p>
+        <p class="adult-notice">面向 18 岁及以上成年人</p>
+      </div>
+    </div>
+  </section>
+</BaseLayout>

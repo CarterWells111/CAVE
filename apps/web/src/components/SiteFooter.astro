@@ -1,0 +1,20 @@
+---
+import { navItems, site } from "../content/site";
+---
+
+<footer class="site-footer">
+  <div class="site-footer__inner">
+    <nav aria-label="页脚导航">
+      <ul>
+        {navItems.map((item) => (
+          <li><a href={item.href}>{item.label}</a></li>
+        ))}
+      </ul>
+    </nav>
+    <a href={`mailto:${site.supportEmail}`}>{site.supportEmail}</a>
+    <div class="site-footer__legal">
+      <p>© 2026 {site.owner}</p>
+      <p>最后更新：{site.updatedAt}</p>
+    </div>
+  </div>
+</footer>
