@@ -65,7 +65,7 @@ test("deterministically recomputes derived fields while preserving edits for rev
   expect(first.communicationCard[section]).toMatchObject({
     userText: "my own wording",
     needsReview: true,
-    visibility: "included",
+    visibility: "pending",
   });
   expect(first.privatePreparation.items).toEqual(second.privatePreparation.items);
 });

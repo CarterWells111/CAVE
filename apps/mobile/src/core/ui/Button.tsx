@@ -80,7 +80,7 @@ export const Button = forwardRef<View, ButtonProps>(function Button({
         maxWidth: "100%",
         minHeight: theme.size.primaryActionHeight,
         minWidth: theme.size.minimumTouchTarget,
-        opacity: disabled ? 0.55 : pressed && !reducedMotion ? 0.82 : 1,
+        opacity: disabled ? 0.55 : pressed ? (reducedMotion ? 0.9 : 0.82) : 1,
         outlineColor: theme.color.focus,
         outlineOffset: theme.border.focusOffset,
         outlineWidth: focused ? theme.border.focusWidth : 0,

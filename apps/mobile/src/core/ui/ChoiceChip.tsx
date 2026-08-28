@@ -60,7 +60,7 @@ export function ChoiceChip({
         maxWidth: "100%",
         minHeight: 56,
         minWidth: theme.size.minimumTouchTarget,
-        opacity: disabled ? 0.55 : pressed && !reducedMotion ? 0.82 : 1,
+        opacity: disabled ? 0.55 : pressed ? (reducedMotion ? 0.9 : 0.82) : 1,
         outlineColor: theme.color.focus,
         outlineOffset: theme.border.focusOffset,
         outlineWidth: focused ? theme.border.focusWidth : 0,

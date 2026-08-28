@@ -102,7 +102,8 @@ test("practice and final routes use real user-triggered local persistence", () =
   expect(final).toContain("await runAndRefresh(() => controller.completeInitialJourney())");
   expect(final).toContain("router.replace(`/cards/${cardId}`)");
   expect(final).toContain("saveCardImageToLibrary");
-  expect(final).not.toContain("cardImagePermissionRecovery");
+  expect(final).toContain("cardImagePermissionRecovery.openSettings");
+  expect(final).toContain("onOpenImageSettings");
   expect(final).toContain("copyConfirmedCommunicationCard");
   expect(final).toContain("onUpdatePreparation");
 });
