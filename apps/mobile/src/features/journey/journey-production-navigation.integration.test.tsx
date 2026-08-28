@@ -10,12 +10,26 @@ import {
   InMemoryJourneyDraftRepository,
 } from "./infrastructure/in-memory-journey-repositories";
 import { composeJourneyRuntime, type JourneyRuntime } from "./runtime/journey-runtime";
-import { JourneyRuntimeProvider } from "./runtime/JourneyRuntimeProvider";
+import {
+  JourneyRuntimeProvider,
+  useOptionalJourneyRuntime
+} from "./runtime/JourneyRuntimeProvider";
 
 const mockRouter = { push: jest.fn(), replace: jest.fn() };
 jest.mock("expo-router", () => ({ useRouter: () => mockRouter }));
+let authorizedRuntimeRendered = false;
+let runtimeReadyWhenPrefaceOpened: boolean | null = null;
 
-function runtime() {
+function AdultGateReadinessProbe() {
+  const journeyRuntime = useOptionalJourneyRuntime();
+  if (journeyRuntime?.snapshot?.ageConfirmed === true) {
+    authorizedRuntimeRendered = true;
+  }
+  return <AdultGateRoute />;
+}
+
+function runtime(adultDeclared = true) {
+  let hasAdultDeclaration = adultDeclared;
   return composeJourneyRuntime({
     mode: "expo-go-demo",
     persistence: "memory-only",
@@ -24,6 +38,12 @@ function runtime() {
     clipboard: { setStringAsync: jest.fn(async () => undefined) },
     createId: () => "production-navigation-journey",
     now: () => "2026-08-28T12:00:00.000Z",
+    adultDeclaration: {
+      hasAdultDeclaration: async () => hasAdultDeclaration,
+      recordAdultDeclaration: async () => { hasAdultDeclaration = true; },
+      deleteAdultDeclaration: async () => { hasAdultDeclaration = false; },
+      hasPendingLocalDataDeletion: async () => false,
+    },
   });
 }
 
@@ -43,7 +63,16 @@ async function openRoute(element: ReactElement, journeyRuntime: JourneyRuntime):
   return view;
 }
 
-beforeEach(() => jest.clearAllMocks());
+beforeEach(() => {
+  jest.clearAllMocks();
+  authorizedRuntimeRendered = false;
+  runtimeReadyWhenPrefaceOpened = null;
+  mockRouter.replace.mockImplementation((path: string) => {
+    if (path === "/journey/preface") {
+      runtimeReadyWhenPrefaceOpened = authorizedRuntimeRendered;
+    }
+  });
+});
 
 test("landing has one start action and routes to the adult declaration", async () => {
   const journeyRuntime = runtime();
@@ -118,8 +147,8 @@ test("preface cannot be opened before the local adult declaration", async () => 
 });
 
 test("adult declaration creates the local journey and opens the preface", async () => {
-  const journeyRuntime = runtime();
-  const view = await openRoute(<AdultGateRoute />, journeyRuntime);
+  const journeyRuntime = runtime(false);
+  const view = await openRoute(<AdultGateReadinessProbe />, journeyRuntime);
 
   expect(screen.queryByText(/验证码|登录/u)).toBeNull();
   expect(screen.getByText(/不收集.*邮箱/u)).toBeTruthy();
@@ -131,11 +160,12 @@ test("adult declaration creates the local journey and opens the preface", async 
     currentPage: "body-knowledge",
   }));
   expect(mockRouter.replace).toHaveBeenCalledWith("/journey/preface");
+  expect(runtimeReadyWhenPrefaceOpened).toBe(true);
   view.unmount();
 });
 
 test("adult confirmation blocks the underage decision and only opens the preface when persistence finishes", async () => {
-  const journeyRuntime = runtime();
+  const journeyRuntime = runtime(false);
   const savingDeclaration = deferred<void>();
   const saveActive = journeyRuntime.drafts.saveActive.bind(journeyRuntime.drafts);
   jest.spyOn(journeyRuntime.drafts, "saveActive").mockImplementation(async (draft) => {
@@ -158,7 +188,7 @@ test("adult confirmation blocks the underage decision and only opens the preface
 });
 
 test("adult confirmation can retry after persistence fails", async () => {
-  const journeyRuntime = runtime();
+  const journeyRuntime = runtime(false);
   const saveActive = journeyRuntime.drafts.saveActive.bind(journeyRuntime.drafts);
   jest.spyOn(journeyRuntime.drafts, "saveActive")
     .mockRejectedValueOnce(new Error("private persistence failure"))
@@ -179,7 +209,7 @@ test("adult confirmation can retry after persistence fails", async () => {
 });
 
 test("a pending adult confirmation does not navigate after the route unmounts", async () => {
-  const journeyRuntime = runtime();
+  const journeyRuntime = runtime(false);
   const savingDeclaration = deferred<void>();
   const saveActive = journeyRuntime.drafts.saveActive.bind(journeyRuntime.drafts);
   jest.spyOn(journeyRuntime.drafts, "saveActive").mockImplementation(async (draft) => {
@@ -199,7 +229,7 @@ test("a pending adult confirmation does not navigate after the route unmounts", 
 });
 
 test("underage action opens the blocking route without writing a declaration", async () => {
-  const journeyRuntime = runtime();
+  const journeyRuntime = runtime(false);
   const view = await openRoute(<AdultGateRoute />, journeyRuntime);
 
   fireEvent.press(screen.getByRole("button", { name: "我未满 18 岁" }));
