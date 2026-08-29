@@ -8,7 +8,7 @@
     "start:dev-client": "expo start --dev-client",
     "typecheck": "tsc --noEmit",
     "lint": "expo lint",
-    "test": "jest --runInBand --detectOpenHandles --forceExit",
+    "test": "jest --runInBand",
     "test:watch": "jest --watch",
     "expo:doctor": "expo-doctor",
     "export:ios": "expo export --platform ios --output-dir dist"

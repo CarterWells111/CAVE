@@ -11,11 +11,12 @@ import type { JournalRecordSummary } from "../infrastructure/journal-repository"
 import { isJournalDateInRange, journalDateFromDate } from "../domain/journal-date";
 
 const prompts = ["遇到了什么困难？", "你采取了什么做法？", "什么有帮助，什么没有帮助？", "你怎样理解这些变化？", "下次想提醒自己什么？"];
+const systemNow = () => new Date();
 
-export function JournalPeriodReviewScreen({ service, onSaved }: Readonly<{ service: JournalService; onSaved(): void }>) {
+export function JournalPeriodReviewScreen({ service, onSaved, now = systemNow }: Readonly<{ service: JournalService; onSaved(): void; now?(): Date }>) {
   const theme = useTheme(); const [records, setRecords] = useState<readonly JournalRecordSummary[]>([]);
   const [selected, setSelected] = useState<string[]>([]); const [title, setTitle] = useState("最近 30 天的回顾"); const [body, setBody] = useState(""); const [error, setError] = useState<string | null>(null);
-  const end = useMemo(() => new Date(), []); const start = useMemo(() => new Date(end.getTime() - 30 * 24 * 60 * 60 * 1000), [end]);
+  const end = useMemo(now, [now]); const start = useMemo(() => new Date(end.getTime() - 30 * 24 * 60 * 60 * 1000), [end]);
   const endDate = useMemo(() => journalDateFromDate(end), [end]); const startDate = useMemo(() => journalDateFromDate(start), [start]);
   useEffect(() => { void service.listRecords().then((items) => setRecords(items.filter((record) => isJournalDateInRange(record.occurredAt, startDate, endDate)))); }, [endDate, service, startDate]);
   const field = { backgroundColor: theme.color.surface, borderColor: theme.color.border, borderRadius: theme.radius.md, borderWidth: 1, color: theme.color.text, padding: theme.space.md } as const;
