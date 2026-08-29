@@ -1,3 +1,5 @@
+import path from "node:path";
+
 import contentPackage from "../../../../packages/content/package.json";
 import contractsPackage from "../../../../packages/contracts/package.json";
 import mobilePackage from "../../package.json";
@@ -28,10 +30,17 @@ describe("Metro workspace dependencies", () => {
     const blockList = metroConfig.resolver?.blockList;
     const expressions = Array.isArray(blockList) ? blockList : [blockList];
 
-    expect(
-      expressions.some((expression) =>
-        expression?.test("C:\\repo\\.worktrees\\other-branch\\node_modules\\package"),
-      ),
-    ).toBe(true);
+    const workspaceRoot = path.resolve(__dirname, "../../../..");
+    const nestedWorktreePackage = path.join(
+      workspaceRoot,
+      ".worktrees",
+      "other-branch",
+      "node_modules",
+      "package",
+    );
+    const currentWorkspacePackage = path.join(workspaceRoot, "node_modules", "package");
+
+    expect(expressions.some((expression) => expression?.test(nestedWorktreePackage))).toBe(true);
+    expect(expressions.some((expression) => expression?.test(currentWorkspacePackage))).toBe(false);
   });
 });

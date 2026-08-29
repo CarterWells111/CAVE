@@ -18,9 +18,10 @@ export default function BehaviorMapRoute() {
           onAddCustomBehavior={(behavior) => runtime.runAndRefresh(
             () => runtime.service.dispatch({ type: "add-custom-behavior", behavior })
           )}
-          onComplete={() => goTo("reflection")}
-          onSetAttitude={(behaviorId, attitude) => runAndRefresh(
-            () => controller.setBehaviorAttitude(behaviorId, attitude)
+          onComplete={() => runAndRefresh(() => controller.completeBehaviorMap())
+            .then(() => goTo("reflection"))}
+          onSetAttitudes={(behaviorIds, attitude) => runAndRefresh(
+            () => controller.setBehaviorAttitudes(behaviorIds, attitude)
           )}
           onSetSensitiveContentConsent={(consented) => runAndRefresh(
             () => controller.setExplicitContentConsent(consented)

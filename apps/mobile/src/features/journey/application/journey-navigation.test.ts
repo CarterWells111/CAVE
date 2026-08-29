@@ -74,6 +74,7 @@ test("keeps address, preface, and sequential prerequisites after the adult decla
     ...overnight,
     currentPage: "behavior-map" as const,
     explicitContentConsent: false,
+    pointEventKeys: ["progress:overnight-complete:v1", "progress:behavior-map-complete:v1"],
     behaviorAttitudes: Object.fromEntries([
       "behavior-hug", "draft-kissing", "behavior-same-bed", "behavior-my-nudity",
       "behavior-partner-nudity", "behavior-over-clothes-touch", "behavior-direct-touch",
@@ -99,6 +100,11 @@ test("keeps address, preface, and sequential prerequisites after the adult decla
   expect(canAccessJourneyPage(overnight, "reflection")).toBe(false);
   expect(canAccessJourneyPage({ ...mapped, pointEventKeys: [] }, "reflection")).toBe(false);
   expect(canAccessJourneyPage(mapped, "reflection")).toBe(true);
+  expect(canAccessJourneyPage({
+    ...mapped,
+    behaviorAttitudes: {},
+    explicitContentConsent: null,
+  }, "reflection")).toBe(true);
   expect(canAccessJourneyPage(mapped, "preset-practice")).toBe(false);
   expect(canAccessJourneyPage(reflected, "preset-practice")).toBe(true);
   expect(canAccessJourneyPage(reflected, "final-preparation")).toBe(false);

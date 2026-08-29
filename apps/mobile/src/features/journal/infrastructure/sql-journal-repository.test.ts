@@ -56,9 +56,11 @@ describe("SqlJournalRepository", () => {
     const base = {
       title: "事件", highlight_kind: "feeling" as const, highlight_text: "安心", topics_json: "[]",
     };
+    const olderCreatedAt = new Date(2026, 7, 29, 20).toISOString();
+    const newerCreatedAt = new Date(2026, 7, 29, 21).toISOString();
     const getAllAsync = jest.fn(async () => [
-      { ...base, id: "older", occurred_at: "2026-08-29T20:00:00.000Z", created_at: "2026-08-29T20:00:00.000Z" },
-      { ...base, id: "newer", occurred_at: "2026-08-29", created_at: "2026-08-29T21:00:00.000Z" },
+      { ...base, id: "older", occurred_at: olderCreatedAt, created_at: olderCreatedAt },
+      { ...base, id: "newer", occurred_at: "2026-08-29", created_at: newerCreatedAt },
     ]);
     const repository = new SqlJournalRepository({
       initialize: async () => ({ runAsync: jest.fn(), getFirstAsync: jest.fn(), getAllAsync }),

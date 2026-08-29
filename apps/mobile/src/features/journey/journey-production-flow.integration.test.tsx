@@ -146,20 +146,39 @@ test("the production landing opens onboarding without creating an active draft",
   view.unmount();
 });
 
-test("the production final screen keeps exports behind explicit confirmation", async () => {
+test("the production reflection screen omits the prior behavior-answer review card", async () => {
+  const journeyRuntime = runtime();
+  await unlockAllSixPages(journeyRuntime);
+  await journeyRuntime.service.navigateTo("reflection");
+  const view = await openRoute(<ReflectionRoute />, journeyRuntime);
+
+  expect(screen.queryByText("这是你刚才留下的答案")).toBeNull();
+  expect(screen.queryByRole("button", { name: /修改.*的答案/u })).toBeNull();
+  expect(screen.getAllByText("尚未记录")).toHaveLength(5);
+  view.unmount();
+});
+
+test("the production final screen saves retained sections before opening the private draft", async () => {
   const journeyRuntime = runtime();
   await unlockAllSixPages(journeyRuntime);
   await journeyRuntime.service.navigateTo("final-preparation");
   const view = await openRoute(<FinalPreparationRoute />, journeyRuntime);
 
-  expect(screen.getAllByText("待确认")).toHaveLength(7);
-  expect(screen.getAllByText("加入分享")).toHaveLength(7);
-  expect(screen.getByRole("button", { name: "复制已确认内容" })).toBeTruthy();
-  expect(screen.getByRole("button", { name: "保存为图片" })).toBeTruthy();
-  fireEvent.press(screen.getByText("保存沟通草稿"));
+  expect(screen.queryByText("保留在沟通草稿中")).toBeNull();
+  expect(screen.queryByText("只给自己看的准备")).toBeNull();
+  expect(screen.queryByText("逐段确认沟通内容")).toBeNull();
+  expect(screen.queryByRole("button", { name: "复制已确认内容" })).toBeNull();
+  expect(screen.queryByRole("button", { name: "保存为图片" })).toBeNull();
+  fireEvent.press(screen.getAllByText("从草稿中删除")[0]!);
+  fireEvent.press(screen.getByText("保存并查看我的沟通草稿"));
   await waitFor(() => expect(mockRouter.replace).toHaveBeenCalledWith("/cards/card:production-flow-journey"));
-  await expect(journeyRuntime.cards.load("card:production-flow-journey")).resolves.toMatchObject({
+  const saved = await journeyRuntime.cards.load("card:production-flow-journey");
+  expect(saved).toMatchObject({
     journeyId: "production-flow-journey"
   });
+  expect(saved?.card["communication-night-expectations"].visibility).toBe("deleted");
+  expect(Object.entries(saved?.card ?? {}).filter(([id]) => id !== "communication-night-expectations").every(([, { needsReview, visibility }]) => (
+    needsReview === false && visibility === "pending"
+  ))).toBe(true);
   view.unmount();
 });

@@ -57,6 +57,13 @@ export function reduceJourneyDraft(draft: JourneyDraft, command: JourneyCommand)
       return changed(draft, {
         behaviorAttitudes: { ...draft.behaviorAttitudes, [command.behaviorId]: command.attitude }
       });
+    case "set-behavior-attitudes":
+      return changed(draft, {
+        behaviorAttitudes: unique(command.behaviorIds).reduce(
+          (attitudes, behaviorId) => ({ ...attitudes, [behaviorId]: command.attitude }),
+          { ...draft.behaviorAttitudes },
+        ),
+      });
     case "add-custom-behavior": {
       const label = command.behavior.label.trim();
       if (label.length === 0) throw new JourneyDomainError("invalid-custom-behavior");

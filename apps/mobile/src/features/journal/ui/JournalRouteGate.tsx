@@ -1,5 +1,5 @@
-import { usePathname, useRouter } from "expo-router";
-import { type PropsWithChildren, useCallback, useEffect, useRef } from "react";
+import { useLocalSearchParams, usePathname, useRouter } from "expo-router";
+import { type PropsWithChildren, useCallback, useEffect, useMemo, useRef } from "react";
 import { Alert, Text } from "react-native";
 
 import { useTheme } from "../../../core/design/theme-provider";
@@ -11,13 +11,21 @@ import { useJournalAccess } from "../runtime/JournalAccessProvider";
 export function JournalRouteGate({ children }: PropsWithChildren) {
   const access = useJournalAccess();
   const pathname = usePathname();
+  const { cardId, reviewId } = useLocalSearchParams<{ cardId?: string; reviewId?: string }>();
   const router = useRouter();
   const theme = useTheme();
   const loginPrompted = useRef(false);
   const previewPrompted = useRef(false);
+  const returnTo = useMemo(() => {
+    const query = [
+      typeof cardId === "string" ? `cardId=${encodeURIComponent(cardId)}` : null,
+      typeof reviewId === "string" ? `reviewId=${encodeURIComponent(reviewId)}` : null,
+    ].filter((value): value is string => value !== null);
+    return query.length === 0 ? pathname : `${pathname}?${query.join("&")}`;
+  }, [cardId, pathname, reviewId]);
   const goToLogin = useCallback(
-    () => router.push({ pathname: "/auth/email", params: { returnTo: pathname } }),
-    [pathname, router],
+    () => router.push({ pathname: "/auth/email", params: { returnTo } }),
+    [returnTo, router],
   );
 
   useEffect(() => {

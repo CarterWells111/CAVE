@@ -3,7 +3,10 @@ import {
   type JourneyDraft,
   type JourneyPageId
 } from "../domain/types";
-import { OVERNIGHT_COMPLETE_POINT_EVENT_KEY } from "./journey-progress-markers";
+import {
+  BEHAVIOR_MAP_COMPLETE_POINT_EVENT_KEY,
+  OVERNIGHT_COMPLETE_POINT_EVENT_KEY,
+} from "./journey-progress-markers";
 
 export const JOURNEY_PAGE_IDS = DOMAIN_JOURNEY_PAGE_IDS;
 export type JourneyRoutePath = `/journey/${JourneyPageId}` | "/journey/welcome";
@@ -51,9 +54,13 @@ export function canAccessJourneyPage(draft: JourneyDraft | null, page: JourneyPa
     && draft.pointEventKeys.includes(OVERNIGHT_COMPLETE_POINT_EVENT_KEY);
   if (page === "behavior-map") return overnightCompleted;
 
-  const behaviorMapCompleted = overnightCompleted
-    && draft.explicitContentConsent !== null
+  const legacyBehaviorMapCompleted = draft.explicitContentConsent !== null
     && REQUIRED_BASE_BEHAVIOR_IDS.every((id) => draft.behaviorAttitudes[id] !== undefined);
+  const behaviorMapCompleted = overnightCompleted
+    && (
+      draft.pointEventKeys.includes(BEHAVIOR_MAP_COMPLETE_POINT_EVENT_KEY)
+      || legacyBehaviorMapCompleted
+    );
   if (page === "reflection") return behaviorMapCompleted;
 
   const reflectionCompleted = behaviorMapCompleted

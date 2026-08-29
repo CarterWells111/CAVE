@@ -1,6 +1,5 @@
 import {
   COMMUNICATION_SECTION_IDS,
-  CURRENT_COMMUNICATION_CARD_SHARING_POLICY_VERSION,
   type CommunicationSectionId,
   type SavedCommunicationCardRecord,
   type SharingVisibility,
@@ -45,13 +44,12 @@ export function buildEditableSavedCardSections(
   });
 }
 
-export function confirmSavedCardSharingPolicy(
-  record: SavedCommunicationCardRecord
-): SavedCommunicationCardRecord {
-  return {
-    ...record,
-    sharingPolicyVersion: CURRENT_COMMUNICATION_CARD_SHARING_POLICY_VERSION
-  };
+export function buildRetainedLocalDraftSections(
+  record: SavedCommunicationCardRecord,
+): Array<Readonly<{ id: CommunicationSectionId; text: string }>> {
+  return buildEditableSavedCardSections(record)
+    .filter(({ text, visibility }) => visibility !== "deleted" && text.trim().length > 0)
+    .map(({ id, text }) => ({ id, text }));
 }
 
 export function applySavedCardSectionUpdates(

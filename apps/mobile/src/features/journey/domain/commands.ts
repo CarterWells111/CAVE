@@ -25,6 +25,7 @@ export type JourneyCommand =
   | { type: "mark-knowledge-card-read"; cardId: string }
   | { type: "set-medical-diagram-opened"; opened: boolean }
   | { type: "set-behavior-attitude"; behaviorId: string; attitude: BehaviorAttitude }
+  | { type: "set-behavior-attitudes"; behaviorIds: string[]; attitude: BehaviorAttitude }
   | { type: "add-custom-behavior"; behavior: { id: string; label: string } }
   | { type: "remove-custom-behavior"; behaviorId: string }
   | { type: "set-motivation-ids"; ids: string[] }

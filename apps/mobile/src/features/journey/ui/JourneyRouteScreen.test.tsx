@@ -125,6 +125,24 @@ test("opens journey options and exits to the four-tab home without deleting the 
   expect(mockRuntime.snapshot?.id).toBe("journey-1");
 });
 
+test("keeps route navigation unavailable while the page reports an unpersisted snapshot", () => {
+  mockRuntime.snapshot = createUnlockedDraft("overnight");
+  render(
+    <JourneyRouteScreen navigationLocked pageId="overnight">
+      {() => <Text>overnight-content</Text>}
+    </JourneyRouteScreen>,
+  );
+
+  const back = screen.getByRole("button", { name: "返回上一页" });
+  const exit = screen.getByRole("button", { name: "旅程选项" });
+  expect(back).toHaveProp("accessibilityState", expect.objectContaining({ disabled: true }));
+  expect(exit).toHaveProp("accessibilityState", expect.objectContaining({ disabled: true }));
+  fireEvent.press(back);
+  fireEvent.press(exit);
+  expect(mockRuntime.runAndRefresh).not.toHaveBeenCalled();
+  expect(screen.queryByRole("header", { name: "旅程选项" })).toBeNull();
+});
+
 test("returns from Page 1 to the preface through journey options without deleting the draft", async () => {
   mockRuntime.snapshot = createUnlockedDraft("body-knowledge");
 

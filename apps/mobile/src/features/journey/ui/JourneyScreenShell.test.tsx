@@ -125,6 +125,28 @@ test("exposes working back and options actions on later pages", () => {
   expect(onExit).toHaveBeenCalledTimes(1);
 });
 
+test("blocks every header navigation action while page persistence is locked", () => {
+  const onBack = jest.fn();
+  const onLockedExit = jest.fn();
+  render(
+    <JourneyScreenShell
+      navigationLocked
+      pageId="overnight"
+      onBack={onBack}
+      onExit={onLockedExit}
+    />,
+  );
+
+  const back = screen.getByRole("button", { name: "返回上一页" });
+  const exit = screen.getByRole("button", { name: "旅程选项" });
+  expect(back).toHaveProp("accessibilityState", expect.objectContaining({ disabled: true }));
+  expect(exit).toHaveProp("accessibilityState", expect.objectContaining({ disabled: true }));
+  fireEvent.press(back);
+  fireEvent.press(exit);
+  expect(onBack).not.toHaveBeenCalled();
+  expect(onLockedExit).not.toHaveBeenCalled();
+});
+
 test("renders the page title in a shared surface card", () => {
   render(<JourneyScreenShell pageId="reflection" onBack={jest.fn()} onExit={onExit} />);
 

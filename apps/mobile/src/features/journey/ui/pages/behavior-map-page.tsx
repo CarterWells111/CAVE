@@ -14,6 +14,7 @@ import {
 import type { AppTheme } from "../../../../core/design/theme";
 import { useTheme } from "../../../../core/design/theme-provider";
 import { useReducedMotion } from "../../../../core/design/motion-preferences";
+import { useScreenScroll } from "../../../../core/ui/Screen";
 import { TextAction } from "../../../../core/ui/text-action";
 import type { BehaviorAttitude } from "../../domain/types";
 import { loadJourneyContentCatalog } from "../../infrastructure/journey-content-catalog";
@@ -23,7 +24,13 @@ import { JourneyScrollTarget, useJourneyGuidedScroll } from "../guided-scroll-sc
 import type { JourneyAction as JourneyActionCallback } from "../journey-ui-contracts";
 
 type CustomBehavior = { id: string; label: string };
-type BehaviorDeckCard = { kind: "behavior"; id: string; frontLabel: string; questionLabel: string };
+type BehaviorDeckCard = {
+  kind: "behavior";
+  id: string;
+  behaviorIds: string[];
+  frontLabel: string;
+  questionLabel: string;
+};
 type MoreDeckCard = { kind: "more"; id: "behavior-map-more"; frontLabel: string };
 type AddCustomDeckCard = { kind: "add-custom"; id: "behavior-map-custom"; frontLabel: string };
 type DeckCard = BehaviorDeckCard | MoreDeckCard | AddCustomDeckCard;
@@ -34,7 +41,7 @@ export type BehaviorMapPageProps = {
   initialAttitudes?: Record<string, BehaviorAttitude>;
   initialCustomBehaviors?: CustomBehavior[];
   initialSensitiveContentConsent?: boolean | null;
-  onSetAttitude(behaviorId: string, attitude: BehaviorAttitude): ReturnType<JourneyActionCallback>;
+  onSetAttitudes(behaviorIds: string[], attitude: BehaviorAttitude): ReturnType<JourneyActionCallback>;
   onAddCustomBehavior?(behavior: CustomBehavior): ReturnType<JourneyActionCallback>;
   onSetSensitiveContentConsent?(consented: boolean): ReturnType<JourneyActionCallback>;
   onCardVisibilityChange?(visible: boolean): void;
@@ -53,10 +60,34 @@ const behaviorOptions = new Map(
     .map((option) => [option.id, option] as const),
 );
 const basePoints = mapPoints.filter(({ kind }) => kind === "behavior");
-const requiredBaseBehaviorIds = basePoints.flatMap(({ behaviorIds }) => behaviorIds.slice(0, 1));
 const morePoint = mapPoints.find(({ kind }) => kind === "more");
 const addCustomPoint = mapPoints.find(({ kind }) => kind === "custom");
 const sensitiveBehaviorIds = morePoint?.behaviorIds ?? [];
+const mergedBehaviorGroups = [
+  {
+    behaviorIds: ["behavior-my-nudity", "behavior-partner-nudity"],
+    frontLabel: "彼此裸露",
+    id: "behavior-group-nudity",
+  },
+  {
+    behaviorIds: ["behavior-over-clothes-touch", "behavior-direct-touch"],
+    frontLabel: "触摸私密部位",
+    id: "behavior-group-private-touch",
+  },
+] as const;
+const mergedGroupByBehaviorId = new Map<string, (typeof mergedBehaviorGroups)[number]>(
+  mergedBehaviorGroups.flatMap((group) => group.behaviorIds.map((behaviorId) => [behaviorId, group] as const)),
+);
+
+function selectedAttitude(card: BehaviorDeckCard, attitudes: Record<string, BehaviorAttitude>) {
+  const values = card.behaviorIds.map((behaviorId) => attitudes[behaviorId]);
+  const defined = values.filter((value): value is BehaviorAttitude => value !== undefined);
+  if (defined.length === 0) return { conflict: false, value: undefined };
+  if (defined.length !== values.length || new Set(defined).size !== 1) {
+    return { conflict: true, value: undefined };
+  }
+  return { conflict: false, value: defined[0] };
+}
 
 function toDomainAttitude(value: (typeof catalogAttitudes)[number]["value"]): BehaviorAttitude {
   return value === "expecting" ? "looking-forward" : value;
@@ -79,7 +110,7 @@ export function BehaviorMapPage({
   initialAttitudes = {},
   initialCustomBehaviors = [],
   initialSensitiveContentConsent = null,
-  onSetAttitude,
+  onSetAttitudes,
   onAddCustomBehavior,
   onSetSensitiveContentConsent,
   onCardVisibilityChange,
@@ -92,12 +123,15 @@ export function BehaviorMapPage({
   const { reveal } = useJourneyGuidedScroll();
   const systemReducedMotion = useReducedMotion();
   const shouldReduceMotion = reducedMotion ?? systemReducedMotion;
+  const { scrollToNode } = useScreenScroll();
   const styles = createStyles(theme);
   const { height } = useWindowDimensions();
   const flipRotation = useRef(new Animated.Value(0)).current;
   const mountedRef = useRef(true);
   const questionRef = useRef<Text>(null);
   const triggerRefs = useRef<Record<string, View | null>>({});
+  const pendingScrollTargetRef = useRef<string | null>(null);
+  const pendingFocusTargetRef = useRef<string | null>(null);
   const [activeCard, setActiveCard] = useState<DeckCard | null>(null);
   const [cardFace, setCardFace] = useState<CardFace>("front");
   const [animating, setAnimating] = useState(false);
@@ -116,18 +150,45 @@ export function BehaviorMapPage({
     mountedRef.current = false;
   }, []);
 
+  const renderedMergedGroups = new Set<string>();
   const baseCards: BehaviorDeckCard[] = basePoints.flatMap((point) => {
     const behaviorId = point.behaviorIds[0];
-    const option = behaviorId ? behaviorOptions.get(behaviorId) : undefined;
-    return option ? [{ kind: "behavior", id: option.id, frontLabel: point.label, questionLabel: option.label }] : [];
+    if (!behaviorId) return [];
+    const mergedGroup = mergedGroupByBehaviorId.get(behaviorId);
+    if (mergedGroup) {
+      if (renderedMergedGroups.has(mergedGroup.id)) return [];
+      renderedMergedGroups.add(mergedGroup.id);
+      return [{
+        behaviorIds: [...mergedGroup.behaviorIds],
+        frontLabel: mergedGroup.frontLabel,
+        id: mergedGroup.id,
+        kind: "behavior" as const,
+        questionLabel: mergedGroup.frontLabel,
+      }];
+    }
+    const option = behaviorOptions.get(behaviorId);
+    return option ? [{
+      behaviorIds: [option.id],
+      frontLabel: point.label,
+      id: option.id,
+      kind: "behavior" as const,
+      questionLabel: option.label,
+    }] : [];
   });
   const sensitiveCards: BehaviorDeckCard[] = sensitiveConsent === true
     ? sensitiveBehaviorIds.flatMap((behaviorId) => {
       const option = behaviorOptions.get(behaviorId);
-      return option ? [{ kind: "behavior", id: option.id, frontLabel: option.label, questionLabel: option.label }] : [];
+      return option ? [{
+        behaviorIds: [option.id],
+        frontLabel: option.label,
+        id: option.id,
+        kind: "behavior" as const,
+        questionLabel: option.label,
+      }] : [];
     })
     : [];
   const customCards: BehaviorDeckCard[] = customBehaviors.map((behavior) => ({
+    behaviorIds: [behavior.id],
     kind: "behavior",
     id: behavior.id,
     frontLabel: behavior.label,
@@ -135,21 +196,14 @@ export function BehaviorMapPage({
   }));
   const galleryCards: DeckCard[] = [
     ...baseCards,
-    ...(morePoint ? [{ kind: "more" as const, id: "behavior-map-more" as const, frontLabel: morePoint.label }] : []),
+    ...(morePoint && sensitiveConsent !== true
+      ? [{ kind: "more" as const, id: "behavior-map-more" as const, frontLabel: morePoint.label }]
+      : []),
     ...sensitiveCards,
     ...customCards,
     ...(addCustomPoint ? [{ kind: "add-custom" as const, id: "behavior-map-custom" as const, frontLabel: addCustomPoint.label }] : []),
   ];
-  const baseComplete = requiredBaseBehaviorIds.every((id) => attitudes[id] !== undefined);
-  const previousBaseCompleteRef = useRef(baseComplete);
   const flipDuration = Math.round(theme.motion.duration.slow / 2);
-
-  useEffect(() => {
-    if (baseComplete && !previousBaseCompleteRef.current) {
-      reveal("behavior-map-final-continue");
-    }
-    previousBaseCompleteRef.current = baseComplete;
-  }, [baseComplete, reveal]);
 
   const animateTo = (toValue: number) => new Promise<void>((resolve) => {
     Animated.timing(flipRotation, {
@@ -165,12 +219,30 @@ export function BehaviorMapPage({
     if (node !== null) AccessibilityInfo.setAccessibilityFocus(node);
   };
 
+  const setTriggerRef = (cardId: string, node: View | null) => {
+    triggerRefs.current[cardId] = node;
+    if (node === null) return;
+    if (pendingScrollTargetRef.current === cardId) {
+      pendingScrollTargetRef.current = null;
+      scrollToNode(node, !shouldReduceMotion);
+    }
+    if (pendingFocusTargetRef.current === cardId) {
+      pendingFocusTargetRef.current = null;
+      requestAnimationFrame(() => {
+        const currentNode = triggerRefs.current[cardId];
+        if (!currentNode) return;
+        const handle = resolveFocusHandle(currentNode);
+        if (handle !== null) AccessibilityInfo.setAccessibilityFocus(handle);
+      });
+    }
+  };
+
   const openCard = async (card: DeckCard) => {
     if (animating || activeCard) return;
     if (shouldReduceMotion) {
       setActiveCard(card);
       setCardFace("back");
-      setDraftAttitude(card.kind === "behavior" ? attitudes[card.id] : undefined);
+      setDraftAttitude(card.kind === "behavior" ? selectedAttitude(card, attitudes).value : undefined);
       setCustomLabel("");
       setSensitiveConfirmationChecked(false);
       if (card.kind === "more") setSensitiveStage(sensitiveConsent === true ? "confirmed" : "intro");
@@ -183,7 +255,7 @@ export function BehaviorMapPage({
     setAnimating(true);
     setActiveCard(card);
     setCardFace("front");
-    setDraftAttitude(card.kind === "behavior" ? attitudes[card.id] : undefined);
+    setDraftAttitude(card.kind === "behavior" ? selectedAttitude(card, attitudes).value : undefined);
     setCustomLabel("");
     setSensitiveConfirmationChecked(false);
     if (card.kind === "more") setSensitiveStage(sensitiveConsent === true ? "confirmed" : "intro");
@@ -204,17 +276,15 @@ export function BehaviorMapPage({
     focusQuestion();
   };
 
-  const returnToGallery = async () => {
+  const returnToGallery = async (focusTargetId = activeCard?.id ?? null) => {
     if (animating) return;
+    pendingFocusTargetRef.current = focusTargetId;
     if (shouldReduceMotion) {
       const label = activeCard?.frontLabel;
-      const trigger = activeCard ? triggerRefs.current[activeCard.id] : null;
       setCardFace("front");
       setActiveCard(null);
       onCardVisibilityChange?.(false);
       await frame();
-      const triggerNode = resolveFocusHandle(trigger ?? null);
-      if (triggerNode !== null) AccessibilityInfo.setAccessibilityFocus(triggerNode);
       if (label) AccessibilityInfo.announceForAccessibility(`${label}，已返回所有卡牌`);
       return;
     }
@@ -228,24 +298,24 @@ export function BehaviorMapPage({
     await animateTo(0);
     if (!mountedRef.current) return;
     const label = activeCard?.frontLabel;
-    const trigger = activeCard ? triggerRefs.current[activeCard.id] : null;
     setActiveCard(null);
     setAnimating(false);
     onCardVisibilityChange?.(false);
     await frame();
-    const triggerNode = resolveFocusHandle(trigger ?? null);
-    if (triggerNode !== null) AccessibilityInfo.setAccessibilityFocus(triggerNode);
     if (label) AccessibilityInfo.announceForAccessibility(`${label}，已返回所有卡牌`);
   };
 
-  const persistAttitude = async (behaviorId: string, attitude: BehaviorAttitude) => {
-    await onSetAttitude(behaviorId, attitude);
-    setAttitudes((current) => ({ ...current, [behaviorId]: attitude }));
+  const persistAttitudes = async (behaviorIds: string[], attitude: BehaviorAttitude) => {
+    await onSetAttitudes(behaviorIds, attitude);
+    setAttitudes((current) => behaviorIds.reduce(
+      (next, behaviorId) => ({ ...next, [behaviorId]: attitude }),
+      { ...current },
+    ));
   };
 
   const saveActiveBehavior = async () => {
     if (activeCard?.kind !== "behavior" || draftAttitude === undefined) return;
-    await persistAttitude(activeCard.id, draftAttitude);
+    await persistAttitudes(activeCard.behaviorIds, draftAttitude);
     await returnToGallery();
   };
 
@@ -259,7 +329,11 @@ export function BehaviorMapPage({
   const persistSensitiveConsent = async (consented: boolean) => {
     await onSetSensitiveContentConsent?.(consented);
     setSensitiveConsent(consented);
-    await returnToGallery();
+    const targetId = consented
+      ? (sensitiveBehaviorIds[0] ?? null)
+      : "behavior-map-more";
+    pendingScrollTargetRef.current = targetId;
+    await returnToGallery(targetId);
   };
 
   const addCustomBehavior = async () => {
@@ -274,12 +348,14 @@ export function BehaviorMapPage({
 
   const cardStatus = (card: DeckCard) => {
     if (card.kind === "behavior") {
-      const selected = attitudeLabel(attitudes[card.id]);
-      return selected ? `已选择：${selected}` : "点击选择";
+      const selection = selectedAttitude(card, attitudes);
+      if (selection.conflict) return "需要重新选择";
+      const label = attitudeLabel(selection.value);
+      return label ? `已选择：${label}` : "点击选择";
     }
     if (card.kind === "more") {
       if (sensitiveConsent === true) return "已展开，点击修改";
-      if (sensitiveConsent === false) return "这次不查看，点击修改";
+      if (sensitiveConsent === false) return "这次不查看，点击重新查看";
       return "可选，点击查看";
     }
     return "点击添加";
@@ -363,15 +439,15 @@ export function BehaviorMapPage({
                   selected={sensitiveConfirmationChecked}
                 />
                 <JourneyScrollTarget targetId="behavior-map-sensitive-confirm">
-                <JourneyAction
-                  disabled={!sensitiveConfirmationChecked}
-                  errorMessage="暂时无法记录，请重试。"
-                  label="我了解，继续查看"
-                  loadingLabel="正在记录选择…"
-                  onAction={() => persistSensitiveConsent(true)}
-                />
+                  <JourneyAction
+                    disabled={!sensitiveConfirmationChecked}
+                    errorMessage="暂时无法记录，请重试。"
+                    label="我了解，继续查看"
+                    loadingLabel="正在记录选择…"
+                    onAction={() => persistSensitiveConsent(true)}
+                  />
                 </JourneyScrollTarget>
-                <TextAction label="返回更多具体行为" onPress={() => setSensitiveStage("intro")} />
+                <JourneyAction errorMessage="暂时无法记录，请重试。" label="这次不查看" loadingLabel="正在记录…" onAction={() => persistSensitiveConsent(false)} />
               </>
             ) : (
               <>
@@ -414,7 +490,8 @@ export function BehaviorMapPage({
     <View style={styles.page} testID="page-3-content">
       <View style={styles.grid} testID="behavior-card-grid">
         {galleryCards.map((card) => {
-          const selected = card.kind === "behavior" && attitudes[card.id] !== undefined;
+          const selected = card.kind === "behavior" && selectedAttitude(card, attitudes).value !== undefined;
+          const declined = card.kind === "more" && sensitiveConsent === false;
           return (
             <Pressable
               accessibilityHint={selected ? "点击修改已经留下的感受" : "点击翻到卡牌反面"}
@@ -423,8 +500,12 @@ export function BehaviorMapPage({
               accessibilityState={{ selected }}
               key={card.id}
               onPress={() => { void openCard(card); }}
-              ref={(node) => { triggerRefs.current[card.id] = node; }}
-              style={({ pressed }) => [styles.frontCard, pressed ? styles.frontCardPressed : null]}
+              ref={(node) => setTriggerRef(card.id, node)}
+              style={({ pressed }) => [
+                styles.frontCard,
+                declined ? styles.frontCardDeclined : null,
+                pressed ? styles.frontCardPressed : null,
+              ]}
               testID={`behavior-card-front-${card.id}`}
             >
               <Text selectable style={styles.frontTitle}>{card.frontLabel}</Text>
@@ -434,16 +515,14 @@ export function BehaviorMapPage({
           );
         })}
       </View>
-      {baseComplete ? (
-        <JourneyScrollTarget targetId="behavior-map-final-continue">
+      <JourneyScrollTarget targetId="behavior-map-final-continue">
         <JourneyAction
-          accessibilityLabel="完成这些卡牌，继续整理感受"
-          label="完成这些卡牌，继续整理感受"
+          accessibilityLabel="继续整理感受"
+          label="继续整理感受"
           loadingLabel="正在继续…"
           onAction={() => onComplete({ participated: true })}
         />
-        </JourneyScrollTarget>
-      ) : null}
+      </JourneyScrollTarget>
     </View>
   );
 }
@@ -471,6 +550,7 @@ function createStyles(theme: AppTheme) {
     width: "47.5%" as const,
   },
   frontCardPressed: { backgroundColor: theme.color.surfacePressed, borderColor: theme.color.brandSoft },
+  frontCardDeclined: { backgroundColor: theme.color.surfaceSubtle, opacity: 0.62 },
   frontTitle: { ...theme.typography.cardTitle, color: theme.color.text, flexShrink: 1 },
   frontStatus: { ...theme.typography.caption, color: theme.color.textSecondary, flexShrink: 1 },
   modify: { ...theme.typography.label, color: theme.color.brandSoft, flexShrink: 1 },

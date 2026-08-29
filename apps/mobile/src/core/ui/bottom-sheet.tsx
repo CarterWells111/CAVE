@@ -23,6 +23,7 @@ export type BottomSheetProps = PropsWithChildren<{
   onRestoreFocus?: () => void;
   returnFocusRef?: RefObject<View | null> | undefined;
   closeLabel?: string;
+  hideHeader?: boolean;
   dismissible?: boolean;
   reducedMotion?: boolean | undefined;
   resolveFocusHandle?: typeof findNodeHandle;
@@ -38,6 +39,7 @@ export function BottomSheet({
   onRestoreFocus,
   returnFocusRef,
   closeLabel = `关闭${title}`,
+  hideHeader = false,
   dismissible = true,
   reducedMotion,
   resolveFocusHandle = findNodeHandle,
@@ -49,9 +51,11 @@ export function BottomSheet({
   const titleRef = useRef<Text>(null);
 
   const handleShow = () => {
-    const focusTarget = dismissible ? closeRef.current : titleRef.current;
-    const focusNode = resolveFocusHandle(focusTarget);
-    if (focusNode !== null) AccessibilityInfo.setAccessibilityFocus(focusNode);
+    if (!hideHeader) {
+      const focusTarget = dismissible ? closeRef.current : titleRef.current;
+      const focusNode = resolveFocusHandle(focusTarget);
+      if (focusNode !== null) AccessibilityInfo.setAccessibilityFocus(focusNode);
+    }
     onInitialFocus?.();
   };
   const handleModalDismiss = () => {
@@ -98,12 +102,14 @@ export function BottomSheet({
             style={{ flexShrink: 1, paddingHorizontal: theme.space.card, paddingTop: theme.space.md }}
             testID="bottom-sheet-panel"
           >
-            <View style={{ alignItems: "center", flexDirection: "row", gap: theme.space.sm, justifyContent: "space-between" }}>
-              <Text ref={titleRef} accessibilityRole="header" style={{ ...theme.typography.heading, color: theme.color.text, flex: 1, flexShrink: 1 }}>
-                {title}
-              </Text>
-              {dismissible ? <TextAction ref={closeRef} label={closeLabel} onPress={handleRequestClose} /> : null}
-            </View>
+            {!hideHeader ? (
+              <View style={{ alignItems: "center", flexDirection: "row", gap: theme.space.sm, justifyContent: "space-between" }}>
+                <Text ref={titleRef} accessibilityRole="header" style={{ ...theme.typography.heading, color: theme.color.text, flex: 1, flexShrink: 1 }}>
+                  {title}
+                </Text>
+                {dismissible ? <TextAction ref={closeRef} label={closeLabel} onPress={handleRequestClose} /> : null}
+              </View>
+            ) : null}
             <ScrollView
               automaticallyAdjustKeyboardInsets
               contentContainerStyle={{ gap: theme.space.md, paddingBottom: theme.space.card, paddingTop: theme.space.compact }}

@@ -13,6 +13,7 @@ type ProgressHeaderProps = {
   exitLabel?: string;
   backBusy?: boolean;
   backDisabled?: boolean;
+  exitDisabled?: boolean;
   testID?: string;
   exitRef?: RefObject<View | null> | undefined;
 };
@@ -76,6 +77,7 @@ export function ProgressHeader({
   exitLabel = "退出旅程",
   backBusy = false,
   backDisabled = false,
+  exitDisabled = false,
   testID,
   exitRef,
 }: ProgressHeaderProps) {
@@ -101,7 +103,7 @@ export function ProgressHeader({
   );
   const trailing = (
     <View style={{ alignItems: "flex-end", flex: 1 }} testID="progress-trailing-slot">
-      {onExit ? <HeaderAction ref={exitRef} label={exitLabel} onPress={onExit} /> : null}
+      {onExit ? <HeaderAction ref={exitRef} disabled={exitDisabled} label={exitLabel} onPress={onExit} /> : null}
     </View>
   );
   const progress = showProgress ? (

@@ -37,10 +37,12 @@ export type ScreenProps = Omit<ScrollViewProps, LockedScrollProp> & {
 };
 
 export type ScreenScrollController = Readonly<{
+  scrollToNode(node: View, animated: boolean): void;
   scrollToTop(): void;
 }>;
 
 const fallbackScrollController: ScreenScrollController = Object.freeze({
+  scrollToNode: () => undefined,
   scrollToTop: () => undefined,
 });
 
@@ -97,11 +99,27 @@ export const Screen = forwardRef<ComponentRef<typeof ScrollView>, ScreenProps>(f
   const safeAreaBottom = safeAreaInsets?.bottom ?? 0;
   const safeAreaTop = safeAreaInsets?.top ?? 0;
   const scrollRef = useRef<ScrollView>(null);
+  const innerViewRef = useRef<View>(null!);
   const horizontalPadding = contentHorizontalPadding(width);
   const scrollToTop = useCallback(() => {
     scrollRef.current?.scrollTo({ animated: false, y: 0 });
   }, []);
-  const scrollController = useMemo<ScreenScrollController>(() => ({ scrollToTop }), [scrollToTop]);
+  const scrollToNode = useCallback((node: View, animated: boolean) => {
+    requestAnimationFrame(() => {
+      const scrollView = scrollRef.current;
+      const innerViewNode = innerViewRef.current;
+      if (!scrollView || !innerViewNode) return;
+      node.measureLayout(
+        innerViewNode,
+        (_left, top) => scrollView.scrollTo({ animated, y: top }),
+        () => undefined,
+      );
+    });
+  }, []);
+  const scrollController = useMemo<ScreenScrollController>(
+    () => ({ scrollToNode, scrollToTop }),
+    [scrollToNode, scrollToTop],
+  );
   useImperativeHandle(forwardedRef, () => scrollRef.current as ComponentRef<typeof ScrollView>);
   const callerPresentation = { ...(StyleSheet.flatten(contentContainerStyle) ?? {}) };
   for (const lockedKey of [
@@ -158,6 +176,7 @@ export const Screen = forwardRef<ComponentRef<typeof ScrollView>, ScreenProps>(f
       ) : null}
       <ScrollView
         {...props}
+        innerViewRef={innerViewRef}
         ref={scrollRef}
         automaticallyAdjustContentInsets={!contentSafeAreaTop}
         automaticallyAdjustKeyboardInsets

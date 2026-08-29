@@ -4,14 +4,10 @@ import { useCallback, useEffect, useState } from "react";
 import { ErrorState } from "../../src/core/ui/ErrorState";
 import { Screen } from "../../src/core/ui/Screen";
 import type { SavedCommunicationCardRecord } from "../../src/features/journey/domain/types";
-import { selectConfirmedSavedCommunicationCard } from "../../src/features/journey/domain/derive-communication-card";
-import { createCommunicationCardExportModel } from "../../src/features/journey/domain/communication-card-export";
-import { cardImagePermissionRecovery, saveCardImageToLibrary } from "../../src/features/journey/infrastructure/expo-card-image-adapter";
 import { useJourneyRuntime } from "../../src/features/journey/runtime/JourneyRuntimeProvider";
 import {
   applySavedCardSectionUpdates,
   buildEditableSavedCardSections,
-  confirmSavedCardSharingPolicy,
 } from "../../src/features/shell/application/saved-card-edit";
 import { CardDetailScreen } from "../../src/features/shell/ui/CardDetailScreen";
 import { SavedCardEditScreen } from "../../src/features/shell/ui/SavedCardEditScreen";
@@ -81,41 +77,15 @@ export default function SavedCardRoute() {
     );
   }
 
-  const confirmedCard = selectConfirmedSavedCommunicationCard(record);
-  const confirmedExportModel = confirmedCard === null ? undefined : createCommunicationCardExportModel(
-    confirmedCard.sections.map((section) => ({
-      ...section,
-      title: editableSections.find(({ id: sectionId }) => sectionId === section.id)?.title ?? "沟通内容",
-    })),
-  );
-
   return (
     <CardDetailScreen
       metadata={metadata}
-      exportEligible={confirmedCard !== null}
-      {...(confirmedExportModel === undefined ? {} : { exportModel: confirmedExportModel })}
       sections={retainedSections}
       onBack={() => router.replace("/(tabs)/profile")}
       onEdit={async () => { router.replace(`/cards/${record.id}?mode=edit`); }}
       mode={mode === "fullscreen" ? "fullscreen" : "normal"}
       onFullscreen={() => router.replace(`/cards/${record.id}${mode === "fullscreen" ? "" : "?mode=fullscreen"}`)}
       onSaveToJournal={() => router.push({ pathname: "/journal/new", params: { cardId: record.id } })}
-      onReconfirm={async () => {
-        const confirmedRecord = confirmSavedCardSharingPolicy(record);
-        await runtime.cards.save(confirmedRecord);
-        setRecord(confirmedRecord);
-      }}
-      {...(confirmedCard === null ? {} : {
-        onCopy: async (model) => {
-          const result = await runtime.controller.copyConfirmedCommunicationCard({
-            consentFooter: model.consentFooter,
-            sections: model.sections.map(({ id: sectionId, text }) => ({ id: sectionId, text })),
-          });
-          if (result.status !== "success") throw new Error(result.code);
-        },
-        onSaveImage: (_model, imageUri: string) => saveCardImageToLibrary(imageUri),
-        onOpenImageSettings: cardImagePermissionRecovery.openSettings,
-      })}
     />
   );
 }

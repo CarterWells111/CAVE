@@ -23,6 +23,7 @@ const JOURNEY_PAGE_TITLES: Record<JourneyPageId, string> = {
 type Props = PropsWithChildren<{
   pageId: JourneyPageId;
   immersiveContent?: boolean;
+  navigationLocked?: boolean;
   onBack?: JourneyActionCallback | undefined;
   onExit: JourneyActionCallback;
   runtimeNotice?: JourneyRuntimeNotice;
@@ -34,6 +35,7 @@ type BackState = "idle" | "loading" | "error";
 export function JourneyScreenShell({
   pageId,
   immersiveContent = false,
+  navigationLocked = false,
   onBack,
   onExit,
   runtimeNotice,
@@ -64,7 +66,7 @@ export function JourneyScreenShell({
   }, [pageId]);
 
   const handleBack = () => {
-    if (!onBack || backInFlightRef.current) return;
+    if (!onBack || navigationLocked || backInFlightRef.current) return;
 
     const pageGeneration = pageGenerationRef.current;
     const operationGeneration = ++operationGenerationRef.current;
@@ -114,11 +116,12 @@ export function JourneyScreenShell({
             <ProgressHeader
               backLabel={backState === "loading" ? "正在返回…" : "返回上一页"}
               backBusy={backState === "loading"}
-              backDisabled={backState === "loading"}
+              backDisabled={navigationLocked || backState === "loading"}
               currentPage={pageNumber}
               showProgress
               totalPages={6}
               onExit={onExit}
+              exitDisabled={navigationLocked}
               exitLabel="旅程选项"
               exitRef={exitRef}
               testID="journey-progress-header"

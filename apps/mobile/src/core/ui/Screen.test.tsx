@@ -1,6 +1,6 @@
 import { createRef, type ComponentRef } from "react";
 import { act, fireEvent, render, screen, within } from "@testing-library/react-native";
-import { Dimensions, Pressable, ScrollView, StyleSheet, Text } from "react-native";
+import { Dimensions, Pressable, ScrollView, StyleSheet, Text, type View } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import {
@@ -24,6 +24,15 @@ const screenPropsLockScrollInvariants: [LockedScrollKey] extends [never] ? true 
 function StandaloneScrollAction() {
   const { scrollToTop } = useScreenScroll();
   return <Pressable accessibilityRole="button" onPress={scrollToTop}><Text>回到顶部</Text></Pressable>;
+}
+
+function ScrollToTargetAction({ target }: { target: View }) {
+  const { scrollToNode } = useScreenScroll();
+  return (
+    <Pressable accessibilityRole="button" onPress={() => scrollToNode(target, false)}>
+      <Text>滚动到目标</Text>
+    </Pressable>
+  );
 }
 
 describe("Screen", () => {
@@ -295,5 +304,32 @@ describe("Screen", () => {
     render(<StandaloneScrollAction />);
 
     expect(() => fireEvent.press(screen.getByRole("button", { name: "回到顶部" }))).not.toThrow();
+  });
+
+  it("measures automatic targets against the native inner view before scrolling", async () => {
+    jest.spyOn(global, "requestAnimationFrame").mockImplementation((callback) => {
+      callback(0);
+      return 1;
+    });
+    const ref = createRef<ComponentRef<typeof ScrollView>>();
+    const innerView = {} as View;
+    const scrollTo = jest.fn();
+    const measureLayout = jest.fn(
+      (_relativeTo: View, onSuccess: (_left: number, top: number) => void) => onSuccess(0, 128),
+    );
+    const target = { measureLayout } as unknown as View;
+    render(
+      <Screen ref={ref} testID="measurable-screen">
+        <ScrollToTargetAction target={target} />
+      </Screen>,
+    );
+    screen.getByTestId("measurable-screen").props.innerViewRef.current = innerView;
+    Object.defineProperty(ref.current, "scrollTo", { configurable: true, value: scrollTo });
+
+    fireEvent.press(screen.getByRole("button", { name: "滚动到目标" }));
+    await act(async () => Promise.resolve());
+
+    expect(measureLayout).toHaveBeenCalledWith(innerView, expect.any(Function), expect.any(Function));
+    expect(scrollTo).toHaveBeenCalledWith({ animated: false, y: 128 });
   });
 });

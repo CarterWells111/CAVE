@@ -9,6 +9,7 @@ const mockBack = jest.fn();
 const mockPush = jest.fn();
 const mockRetry = jest.fn();
 const mockAlert = jest.fn();
+let mockParams: { cardId?: string; reviewId?: string } = {};
 let mockAccess: {
   status: "locked" | "loading" | "ready" | "error";
   temporaryPreview: boolean;
@@ -16,6 +17,7 @@ let mockAccess: {
 } = { status: "locked", temporaryPreview: false, retry: mockRetry };
 
 jest.mock("expo-router", () => ({
+  useLocalSearchParams: () => mockParams,
   usePathname: () => "/journal/new",
   useRouter: () => ({ back: mockBack, push: mockPush }),
 }));
@@ -35,6 +37,7 @@ function renderGate() {
 beforeEach(() => {
   jest.clearAllMocks();
   jest.spyOn(Alert, "alert").mockImplementation(mockAlert);
+  mockParams = {};
   mockAccess = { status: "locked", temporaryPreview: false, retry: mockRetry };
 });
 
@@ -69,6 +72,20 @@ test("keeps visible login and back actions when returning from login still signe
   expect(mockPush).toHaveBeenCalledWith({ pathname: "/auth/email", params: { returnTo: "/journal/new" } });
   fireEvent.press(screen.getByRole("button", { name: "返回上一页" }));
   expect(mockBack).toHaveBeenCalledTimes(1);
+});
+
+test("preserves only supported source identifiers across login", async () => {
+  mockParams = { cardId: "card / 私密", reviewId: "review-1" };
+  renderGate();
+  await waitFor(() => expect(mockAlert).toHaveBeenCalledTimes(1));
+
+  fireEvent.press(screen.getByRole("button", { name: "去登录" }));
+  expect(mockPush).toHaveBeenCalledWith({
+    pathname: "/auth/email",
+    params: {
+      returnTo: "/journal/new?cardId=card%20%2F%20%E7%A7%81%E5%AF%86&reviewId=review-1",
+    },
+  });
 });
 
 test("renders children only after account ownership is ready", async () => {

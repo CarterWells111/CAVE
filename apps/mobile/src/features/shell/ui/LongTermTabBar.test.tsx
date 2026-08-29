@@ -21,7 +21,9 @@ test("renders the shared navigation with the Expo tab selection and navigation b
     />,
   );
 
-  expect(screen.getByRole("tab", { name: "回顾" }).props.accessibilityState).toEqual({ selected: true });
+  expect(screen.getByRole("tab", { name: "回顾" }).props.accessibilityState).toEqual(
+    expect.objectContaining({ disabled: false, selected: true }),
+  );
   expect(screen.getByText("home-outline")).toBeTruthy();
   expect(screen.getByText("time-outline")).toBeTruthy();
   expect(screen.getByText("chatbubbles-outline")).toBeTruthy();

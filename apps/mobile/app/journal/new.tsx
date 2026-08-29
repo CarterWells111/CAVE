@@ -1,11 +1,11 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
-import { selectConfirmedCommunicationCard } from "../../src/features/journey/domain/derive-communication-card";
 import { useJourneyRuntime } from "../../src/features/journey/runtime/JourneyRuntimeProvider";
 import { useReadyJournalService } from "../../src/features/journal/runtime/JournalAccessProvider";
 import type { JournalHighlight, JournalRecord, JournalSource } from "../../src/features/journal/domain/journal-record";
 import { JournalEditorScreen } from "../../src/features/journal/ui/JournalEditorScreen";
 import { JournalLoadingScreen } from "../../src/features/journal/ui/JournalLoadingScreen";
+import { buildRetainedLocalDraftSections } from "../../src/features/shell/application/saved-card-edit";
 
 type Initial = Readonly<{ title?: string; occurredAt?: string; highlight?: JournalHighlight; body?: string; source?: JournalSource; cardSnapshot?: JournalRecord["cardSnapshot"] }>;
 
@@ -21,12 +21,12 @@ export default function NewJournalRoute() {
       if (typeof cardId === "string") {
         const card = await runtime.cards.load(cardId);
         if (card === null) throw new Error("card-not-found");
-        const confirmed = selectConfirmedCommunicationCard({ communicationCard: card.card });
+        const retainedSections = buildRetainedLocalDraftSections(card);
         if (active) setInitial({
           title: "一次沟通准备", occurredAt: card.savedAt,
           highlight: { kind: "impression", text: "这张沟通卡记录了当时最想表达的内容" },
           source: { kind: "journey", journeyId: card.journeyId, cardId: card.id },
-          cardSnapshot: { cardId: card.id, capturedAt: new Date().toISOString(), sections: confirmed.sections.map(({ id, text }) => ({ id, text })) }
+          cardSnapshot: { cardId: card.id, capturedAt: new Date().toISOString(), sections: retainedSections }
         });
       } else if (typeof reviewId === "string") {
         const review = await runtime.reviewHistory.loadDetail(reviewId);

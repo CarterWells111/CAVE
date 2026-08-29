@@ -4,6 +4,15 @@ import { AccessibilityInfo, Animated, StyleSheet } from "react-native";
 import * as guidedScroll from "../guided-scroll-screen";
 import { BehaviorMapPage } from "./behavior-map-page";
 
+const mockScrollToNode = jest.fn();
+
+jest.mock("../../../../core/ui/Screen", () => ({
+  useScreenScroll: () => ({ scrollToNode: mockScrollToNode, scrollToTop: jest.fn() }),
+}));
+
+beforeEach(() => {
+  mockScrollToNode.mockClear();
+});
 afterEach(() => jest.restoreAllMocks());
 
 const completeBaseAttitudes = {
@@ -24,7 +33,7 @@ async function openCard(frontTestId: string, backTestId: string) {
 test("reveals a full-screen card action once after the first answer", async () => {
   const reveal = jest.fn();
   jest.spyOn(guidedScroll, "useJourneyGuidedScroll").mockReturnValue({ reveal });
-  render(<BehaviorMapPage onComplete={jest.fn()} onSetAttitude={jest.fn()} reducedMotion />);
+  render(<BehaviorMapPage onComplete={jest.fn()} onSetAttitudes={jest.fn()} reducedMotion />);
   await openCard("behavior-card-front-behavior-hug", "behavior-card-back-behavior-hug");
 
   fireEvent.press(screen.getByRole("radio", { name: "拥抱或依偎：我还没想清楚" }));
@@ -35,11 +44,17 @@ test("reveals a full-screen card action once after the first answer", async () =
   expect(screen.getByTestId("journey-scroll-target-behavior-map-active-action")).toBeTruthy();
 });
 
-test("renders all base actions as an independent two-column card grid", () => {
-  render(<BehaviorMapPage onComplete={jest.fn()} onSetAttitude={jest.fn()} reducedMotion />);
+test("merges nudity and touch into two single-answer cards", () => {
+  render(<BehaviorMapPage onComplete={jest.fn()} onSetAttitudes={jest.fn()} reducedMotion />);
 
   expect(screen.getByTestId("behavior-card-grid")).toBeTruthy();
-  expect(screen.getAllByText("点击选择")).toHaveLength(7);
+  expect(screen.getAllByText("点击选择")).toHaveLength(5);
+  expect(screen.getByText("彼此裸露")).toBeTruthy();
+  expect(screen.getByText("触摸私密部位")).toBeTruthy();
+  expect(screen.queryByText("我的裸露")).toBeNull();
+  expect(screen.queryByText("对方裸露")).toBeNull();
+  expect(screen.queryByText("隔着衣服触摸")).toBeNull();
+  expect(screen.queryByText("直接触摸")).toBeNull();
   expect(screen.getByText("更多具体行为")).toBeTruthy();
   expect(screen.getByText("添加一个我在意的行为")).toBeTruthy();
   expect(screen.queryByText("每一种靠近，都可以有不同答案")).toBeNull();
@@ -58,7 +73,7 @@ test("opens one card and offers all six non-ranked answers", async () => {
     <BehaviorMapPage
       onCardVisibilityChange={onCardVisibilityChange}
       onComplete={jest.fn()}
-      onSetAttitude={jest.fn()}
+      onSetAttitudes={jest.fn()}
       reducedMotion
     />,
   );
@@ -80,23 +95,23 @@ test("opens one card and offers all six non-ranked answers", async () => {
 });
 
 test("keeps a selection local until save, then returns to the updated card front", async () => {
-  const onSetAttitude = jest.fn();
+  const onSetAttitudes = jest.fn();
   const onCardVisibilityChange = jest.fn();
   render(
     <BehaviorMapPage
       onCardVisibilityChange={onCardVisibilityChange}
       onComplete={jest.fn()}
-      onSetAttitude={onSetAttitude}
+      onSetAttitudes={onSetAttitudes}
       reducedMotion
     />,
   );
   await openCard("behavior-card-front-behavior-hug", "behavior-card-back-behavior-hug");
 
   fireEvent.press(screen.getByRole("radio", { name: "拥抱或依偎：我已经习惯 / 我享受这类亲密行为" }));
-  expect(onSetAttitude).not.toHaveBeenCalled();
+  expect(onSetAttitudes).not.toHaveBeenCalled();
   fireEvent.press(screen.getByRole("button", { name: "带着这些感受继续" }));
 
-  await waitFor(() => expect(onSetAttitude).toHaveBeenCalledWith("behavior-hug", "familiar-enjoyed"));
+  await waitFor(() => expect(onSetAttitudes).toHaveBeenCalledWith(["behavior-hug"], "familiar-enjoyed"));
   await waitFor(() => expect(screen.getByTestId("behavior-card-grid")).toBeTruthy());
   expect(screen.getByText("已选择：我已经习惯 / 我享受这类亲密行为")).toBeTruthy();
   expect(screen.getByText("点击修改")).toBeTruthy();
@@ -105,7 +120,15 @@ test("keeps a selection local until save, then returns to the updated card front
 
 test("restores VoiceOver focus to the card trigger after saving", async () => {
   const focus = jest.spyOn(AccessibilityInfo, "setAccessibilityFocus").mockImplementation(jest.fn());
-  render(<BehaviorMapPage onComplete={jest.fn()} onSetAttitude={jest.fn()} reducedMotion resolveFocusHandle={() => 42} />);
+  const resolveFocusHandle = jest.fn((node: unknown) => node === null ? null : 42);
+  render(
+    <BehaviorMapPage
+      onComplete={jest.fn()}
+      onSetAttitudes={jest.fn()}
+      reducedMotion
+      resolveFocusHandle={resolveFocusHandle as never}
+    />,
+  );
   await openCard("behavior-card-front-behavior-hug", "behavior-card-back-behavior-hug");
   fireEvent.press(screen.getByRole("radio", { name: "拥抱或依偎：我还没想清楚" }));
   fireEvent.press(screen.getByRole("button", { name: "带着这些感受继续" }));
@@ -113,6 +136,7 @@ test("restores VoiceOver focus to the card trigger after saving", async () => {
   await waitFor(() => expect(screen.getByTestId("behavior-card-grid")).toBeTruthy());
   await waitFor(() => expect(focus.mock.calls.length).toBeGreaterThanOrEqual(2));
   expect(focus).toHaveBeenLastCalledWith(42);
+  expect(resolveFocusHandle.mock.calls.at(-1)?.[0]).not.toBeNull();
   focus.mockRestore();
 });
 
@@ -121,7 +145,7 @@ test("restores a saved answer on edit without treating it as current consent", a
     <BehaviorMapPage
       initialAttitudes={{ "behavior-hug": "familiar-enjoyed" }}
       onComplete={jest.fn()}
-      onSetAttitude={jest.fn()}
+      onSetAttitudes={jest.fn()}
       reducedMotion
     />,
   );
@@ -133,10 +157,10 @@ test("restores a saved answer on edit without treating it as current consent", a
 });
 
 test("stays on the card back when persistence fails and supports retry", async () => {
-  const onSetAttitude = jest.fn()
+  const onSetAttitudes = jest.fn()
     .mockRejectedValueOnce(new Error("offline"))
     .mockResolvedValueOnce(undefined);
-  render(<BehaviorMapPage onComplete={jest.fn()} onSetAttitude={onSetAttitude} reducedMotion />);
+  render(<BehaviorMapPage onComplete={jest.fn()} onSetAttitudes={onSetAttitudes} reducedMotion />);
   await openCard("behavior-card-front-behavior-hug", "behavior-card-back-behavior-hug");
 
   fireEvent.press(screen.getByRole("radio", { name: "拥抱或依偎：我还没想清楚" }));
@@ -146,28 +170,39 @@ test("stays on the card back when persistence fails and supports retry", async (
   expect(screen.getByText("不确定也是一个完整的答案。")).toBeTruthy();
 
   fireEvent.press(screen.getByRole("button", { name: "带着这些感受继续" }));
-  await waitFor(() => expect(onSetAttitude).toHaveBeenCalledTimes(2));
+  await waitFor(() => expect(onSetAttitudes).toHaveBeenCalledTimes(2));
   await waitFor(() => expect(screen.getByTestId("behavior-card-grid")).toBeTruthy());
 });
 
-test("shows the page continuation only after all seven base cards have answers", () => {
+test("shows page continuation immediately without requiring any card answers", () => {
   const onComplete = jest.fn();
-  const { unmount } = render(
-    <BehaviorMapPage onComplete={onComplete} onSetAttitude={jest.fn()} reducedMotion />,
-  );
-  expect(screen.queryByRole("button", { name: "完成这些卡牌，继续整理感受" })).toBeNull();
+  render(<BehaviorMapPage onComplete={onComplete} onSetAttitudes={jest.fn()} reducedMotion />);
 
-  unmount();
+  fireEvent.press(screen.getByRole("button", { name: "继续整理感受" }));
+  expect(onComplete).toHaveBeenCalledWith({ participated: true });
+});
+
+test("writes one grouped choice to both legacy ids and asks conflicting old drafts to reselect", async () => {
+  const onSetAttitudes = jest.fn();
   render(
     <BehaviorMapPage
       initialAttitudes={completeBaseAttitudes}
-      onComplete={onComplete}
-      onSetAttitude={jest.fn()}
+      onComplete={jest.fn()}
+      onSetAttitudes={onSetAttitudes}
       reducedMotion
     />,
   );
-  fireEvent.press(screen.getByRole("button", { name: "完成这些卡牌，继续整理感受" }));
-  expect(onComplete).toHaveBeenCalledWith({ participated: true });
+
+  expect(screen.getByText("需要重新选择")).toBeTruthy();
+  await openCard("behavior-card-front-behavior-group-nudity", "behavior-card-back-behavior-group-nudity");
+  fireEvent.press(screen.getByRole("radio", { name: "彼此裸露：我还没想清楚" }));
+  fireEvent.press(screen.getByRole("button", { name: "带着这些感受继续" }));
+
+  await waitFor(() => expect(onSetAttitudes).toHaveBeenCalledWith(
+    ["behavior-my-nudity", "behavior-partner-nudity"],
+    "unsure",
+  ));
+  await waitFor(() => expect(screen.getByText("已选择：我还没想清楚")).toBeTruthy());
 });
 
 test("gates sensitive details, then adds two independent cards after explicit consent", async () => {
@@ -175,7 +210,7 @@ test("gates sensitive details, then adds two independent cards after explicit co
   render(
     <BehaviorMapPage
       onComplete={jest.fn()}
-      onSetAttitude={jest.fn()}
+      onSetAttitudes={jest.fn()}
       onSetSensitiveContentConsent={onSetSensitiveContentConsent}
       reducedMotion
     />,
@@ -184,13 +219,19 @@ test("gates sensitive details, then adds two independent cards after explicit co
   expect(screen.queryByText("口腔与私密部位的接触")).toBeNull();
   await openCard("behavior-card-front-behavior-map-more", "behavior-card-back-more");
   fireEvent.press(screen.getByRole("button", { name: "了解内容后再决定" }));
+  expect(screen.queryByText("返回更多具体行为")).toBeNull();
+  expect(screen.getByRole("button", { name: "这次不查看" })).toBeTruthy();
   fireEvent.press(screen.getByRole("checkbox", { name: "我知道接下来会看到更具体的健康教育内容，并愿意继续" }));
   fireEvent.press(screen.getByRole("button", { name: "我了解，继续查看" }));
 
   await waitFor(() => expect(onSetSensitiveContentConsent).toHaveBeenCalledWith(true));
   await waitFor(() => expect(screen.getByTestId("behavior-card-grid")).toBeTruthy());
-  expect(screen.getByTestId("behavior-card-front-behavior-oral-genital-contact")).toBeTruthy();
+  expect(screen.queryByTestId("behavior-card-front-behavior-map-more")).toBeNull();
+  const oralCard = screen.getByTestId("behavior-card-front-behavior-oral-genital-contact");
+  expect(oralCard).toBeTruthy();
   expect(screen.getByTestId("behavior-card-front-draft-penetrative-sex")).toBeTruthy();
+  await waitFor(() => expect(mockScrollToNode).toHaveBeenCalledWith(expect.anything(), false));
+  expect(mockScrollToNode.mock.calls.at(-1)?.[0]).not.toBeNull();
 });
 
 test("does not expose sensitive cards when declining and retries failed consent persistence", async () => {
@@ -200,7 +241,7 @@ test("does not expose sensitive cards when declining and retries failed consent 
   render(
     <BehaviorMapPage
       onComplete={jest.fn()}
-      onSetAttitude={jest.fn()}
+      onSetAttitudes={jest.fn()}
       onSetSensitiveContentConsent={onSetSensitiveContentConsent}
       reducedMotion
     />,
@@ -215,6 +256,13 @@ test("does not expose sensitive cards when declining and retries failed consent 
   await waitFor(() => expect(onSetSensitiveContentConsent).toHaveBeenCalledTimes(2));
   await waitFor(() => expect(screen.getByTestId("behavior-card-grid")).toBeTruthy());
   expect(screen.queryByTestId("behavior-card-front-behavior-oral-genital-contact")).toBeNull();
+  const moreCard = screen.getByTestId("behavior-card-front-behavior-map-more");
+  expect(screen.getByText("这次不查看，点击重新查看")).toBeTruthy();
+  expect(StyleSheet.flatten(moreCard.props.style)).toEqual(expect.objectContaining({ opacity: 0.62 }));
+  await waitFor(() => expect(mockScrollToNode).toHaveBeenCalledWith(expect.anything(), false));
+  expect(mockScrollToNode.mock.calls.at(-1)?.[0]).not.toBeNull();
+  fireEvent.press(moreCard);
+  expect(await screen.findByTestId("behavior-card-back-more")).toBeTruthy();
 });
 
 test("adds a trimmed custom behavior as a normal editable card", async () => {
@@ -224,7 +272,7 @@ test("adds a trimmed custom behavior as a normal editable card", async () => {
       createCustomBehaviorId={() => "custom-gentle-touch"}
       onAddCustomBehavior={onAddCustomBehavior}
       onComplete={jest.fn()}
-      onSetAttitude={jest.fn()}
+      onSetAttitudes={jest.fn()}
       reducedMotion
     />,
   );
@@ -242,7 +290,7 @@ test("adds a trimmed custom behavior as a normal editable card", async () => {
 
 test("uses the flip animation unless reduced motion is requested", async () => {
   const timing = jest.spyOn(Animated, "timing");
-  render(<BehaviorMapPage onComplete={jest.fn()} onSetAttitude={jest.fn()} reducedMotion={false} />);
+  render(<BehaviorMapPage onComplete={jest.fn()} onSetAttitudes={jest.fn()} reducedMotion={false} />);
   await openCard("behavior-card-front-behavior-hug", "behavior-card-back-behavior-hug");
   expect(timing).toHaveBeenCalled();
   timing.mockRestore();
@@ -250,7 +298,7 @@ test("uses the flip animation unless reduced motion is requested", async () => {
 
 test("switches behavior card content directly without rotateY or timing calls in reduced-motion mode", async () => {
   const timing = jest.spyOn(Animated, "timing");
-  render(<BehaviorMapPage onComplete={jest.fn()} onSetAttitude={jest.fn()} reducedMotion />);
+  render(<BehaviorMapPage onComplete={jest.fn()} onSetAttitudes={jest.fn()} reducedMotion />);
   await openCard("behavior-card-front-behavior-hug", "behavior-card-back-behavior-hug");
 
   expect(timing).not.toHaveBeenCalled();

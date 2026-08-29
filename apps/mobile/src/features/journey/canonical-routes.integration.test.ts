@@ -82,9 +82,8 @@ test("Pages 1 through 4 hydrate canonical state and persist before navigation", 
   expect(reflection).toContain("pressureWithoutDisappointment: input.pressureWithoutDisappointment");
   expect(reflection).toContain("journalPromptId: input.journalPromptId");
   expect(reflection).toContain("journalText: input.journalText");
-  expect(reflection).toContain("behaviorAnswers={Object.entries(snapshot?.behaviorAttitudes ?? {})");
-  expect(reflection).toContain("controller.setBehaviorAttitude");
-  expect(reflection).toContain("onEditBehaviorAttitude");
+  expect(reflection).not.toContain("behaviorAnswers=");
+  expect(reflection).not.toContain("onEditBehaviorAttitude");
   expect(reflection).toMatch(/saveReflection\([\s\S]*goTo\("preset-practice"\)/u);
 });
 
@@ -99,11 +98,10 @@ test("practice and final routes use real user-triggered local persistence", () =
   const final = route("final-preparation");
   expect(final).toContain("<FinalPreparationPage");
   expect(final).toContain('type: "set-communication-card-visibility"');
+  expect(final).not.toContain("confirmCommunicationCardForSharing");
   expect(final).toContain("await runAndRefresh(() => controller.completeInitialJourney())");
   expect(final).toContain("router.replace(`/cards/${cardId}`)");
-  expect(final).toContain("saveCardImageToLibrary");
-  expect(final).toContain("cardImagePermissionRecovery.openSettings");
-  expect(final).toContain("onOpenImageSettings");
-  expect(final).toContain("copyConfirmedCommunicationCard");
-  expect(final).toContain("onUpdatePreparation");
+  expect(final).not.toContain("saveCardImageToLibrary");
+  expect(final).not.toContain("copyConfirmedCommunicationCard");
+  expect(final).not.toContain("onUpdatePreparation");
 });
