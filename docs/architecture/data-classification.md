@@ -1,31 +1,39 @@
-# Data classification and retention
+# 数据分类与保留
 
-内界 CAVE is local-first. Classification is a code and operations boundary, not a claim that all data has the same risk.
+数据分类是代码和运维共同遵守的边界。任何新字段在实现前都应明确存储位置、保留期限、删除路径和日志策略。
 
-| Class | Data | Allowed locations | Retention and handling |
+## 当前产品数据
+
+| 分类 | 示例 | 允许位置 | 保留与删除 |
 | --- | --- | --- | --- |
-| Public | App name, reviewed course/lesson/scenario text, prompt/policy version identifiers, non-secret build version | Mobile bundle, Worker, GitHub, build service | Versioned with the application. Prompt and policy *text* is not public even when a version identifier is. |
-| Local-operational | Pending local-data deletion marker | Device-only iOS SecureStore | Contains no正文 or identity data. Created before destructive deletion starts and cleared only after all local database files and secrets are removed. Its presence blocks authorization and causes startup to resume deletion. |
-| Local-private | Course answers and progress, saved expression cards, account-bound journals and period reviews, private-preparation checklist, communication-card fields and sharing confirmations, privacy settings, chosen form of address, local account profile, local 18+ declaration | iOS SQLCipher database; device-only iOS SecureStore for declaration and profile metadata; app document storage for an optional managed avatar | Retained until per-record deletion or Delete All Data. A save is a distinct user action. No cloud sync. A frozen `included && !needsReview` export snapshot may be deliberately copied to the system clipboard or saved to Photos after its own confirmation; iCloud behavior is controlled by device settings. Journal rows and local profiles are partitioned by account UUID but remain on this device. |
-| Account-pseudonymous | Account UUID, keyed email lookup, OTP/session digests, expiry/attempt metadata, rate buckets, deletion grants and short-lived idempotency receipts | Gateway D1 only | No raw email or content. Challenges expire after 10 minutes; access sessions after 15 minutes; refresh sessions after 30 days; deletion grants after 5 minutes. Account deletion cascades account sessions/challenges/grants. Expired operational rows are eligible for scheduled cleanup. |
-| Transient-identity | Normalized email address and one-time code during challenge delivery | Mobile memory, Worker memory, Resend delivery request | Used only to send a requested login or deletion code. Never written to D1, logs, analytics, errors, or support dumps. Resend handles the delivery request under its own service terms. |
-| Transient-sensitive | Current raw transcript, request/response text, provider response body | Mobile memory; Worker/provider memory only while servicing one request | Current transcript is memory-only. Gateway stores no request or response正文 and sends no正文 to logs or metrics. It is persisted only when the user explicitly saves that individual practice and opts to include its transcript. |
-| Secret | Model/provider credential, email/OTP HMAC keys, Resend credential, SQLCipher encryption key, random installation token, refresh token | Worker secret bindings; iOS SecureStore with device-only accessibility (key/token) | Access tokens are memory-only. Refresh tokens are stored only in device SecureStore and as one-way server digests. Never place secrets in the mobile bundle, GitHub, analytics, logs, errors, or support dumps. |
-| Restricted implementation text | System prompt and safety policy text | Worker source/build artifact and approved repository readers | Not returned to the model user, copied to logs, or disclosed by model output. Version identifiers may be logged. |
+| 公开内容 | 产品名称、课程与场景文案、来源元数据、公开版本号 | 移动端包、官网、Worker、GitHub | 随应用版本管理；内容审核状态必须一同保留 |
+| 本机私密 | 旅程答案与进度、沟通卡、回顾版本、手记、重点提要、本机头像和偏好 | 原生 SQLCipher 数据库、SecureStore、App 管理的文件目录 | 保留到用户逐条删除、删除全部本机数据或卸载 App；不提供云端恢复 |
+| 本机运行状态 | 成年自我声明、待删除标记、数据库密钥、安装令牌 | 设备 SecureStore | 只服务门禁、恢复、安全删除或限流；删除全部本机数据时一并清除 |
+| 云端匿名身份 | 账号 UUID、带密钥的邮箱索引、验证码和会话摘要、次数、有效期、限流桶、删除授权 | Gateway D1 | 按各自有效期清理；删除云端账号时级联删除相关身份记录 |
+| 短暂身份 | 标准化邮箱、一次性验证码 | 移动端内存、Worker 内存、Resend 投递请求 | 只在用户请求登录或删除验证码时处理，不写入 D1 或应用日志 |
+| 机密 | 邮箱索引密钥、验证码摘要密钥、Resend 凭据、数据库密钥、刷新令牌 | Worker Secret、设备 SecureStore | 不进入移动端公开环境变量、GitHub、分析系统、错误正文或支持材料 |
 
-## Persistence rules
+Access Token 只驻留移动端内存。Refresh Token 原文只保存在 SecureStore，D1 保存单向摘要。登录后的邮箱用于本机账户界面和会话恢复，但不会被写入私密内容表或用作云端内容索引。
 
-- `PrivacySettings.defaultSaveTranscript` is permanently `false`; there is no “always save transcripts” mode.
-- A normal practice turn creates no transcript row or default history. `saved_records.transcript` is nullable and is populated only by the current explicit save action.
-- Gateway processing is stateless with respect to正文. Logs contain allowlisted metadata and character/token counts only.
-- Installation tokens are random rate-limit pseudonyms, not account identifiers. The Worker hashes a token before using it as a rate key and never logs the raw value.
-- Delete All Data records a pending marker before revoking the declaration, waits for database operations to quiesce, then deletes the database key, database/WAL/SHM files, installation token, email-auth session, and finally the marker. Startup resumes an interrupted deletion before authorization or storage initialization. It does not recreate storage until a later explicit adult confirmation. Repeating it is safe.
-- Key/database mismatch is never silently repaired or deleted. Old-key/no-database, database/no-key, invalid-key, and SQLCipher mismatch states preserve the remaining artifacts and enter an explicit recovery-required state.
-- Schema changes are forward-only entries in a contiguous migration registry. Each version advances atomically under an exclusive database transaction; a newer on-device schema fails closed when opened by an older bundle.
-- Email login is optional and available only after the local 18+ declaration. The declaration remains self-attestation, not identity or age verification.
-- Login creates no cloud journey record and grants no server access to local-private content. Device logout removes only the local session; cloud-account deletion and local-content deletion remain separate explicit actions.
-- Communication-card export never includes pending, private, deleted, or review-required fields. Clipboard and Photos writes are each explicit, warned user actions; the Photos path uses iOS add-only `saveToLibraryAsync` and never reads the library. A legacy saved card must persist a current sharing-policy confirmation before those controls become available.
+## AI 研究接口中的瞬时数据
 
-## Data minimization review
+独立 AI gateway 能够处理一次请求中的练习文本，但当前移动端没有调用该接口。只有其他经过明确配置的客户端主动请求时，文本才会短暂经过 Worker 和模型提供方内存。
 
-New fields must be assigned a class, storage location, retention rule, deletion path, and log policy before implementation. Cloud sync, analytics profiles, and remote transcript storage remain out of scope.
+Gateway 不把请求正文、模型响应或卡片写入 D1，也不把它们加入日志或指标。未来移动端接入 AI 前，仍需增加用户可见的数据授权和撤回机制；本节不代表当前 App 已启用 AI。
+
+## 本地存储规则
+
+- 原生构建使用 SQLCipher；数据库密钥在查询 schema 前加载，不提供明文降级。
+- Expo Go 使用进程内存，不保证跨重启保留数据。
+- 密钥或数据库缺失、密钥无效、SQLCipher 不匹配和 schema 降级都会停止打开，不自动删除残留资料。
+- schema 迁移连续、只向前并在独占事务中原子执行。
+- 手记和本机资料按账号 UUID 分区，但仍只存在于当前设备。
+- 登录、退出和删除云端账号不会自动删除本机私密内容；删除本机内容也不会自动删除云端账号。
+
+## 导出与删除
+
+- 沟通卡只有在用户分别触发复制或保存图片后才离开 App。
+- 导出只包含用户选择分享、无需复核且未删除的字段，并带固定的同意提示。
+- 照片路径只请求 iOS 添加权限，不读取相册；系统剪贴板和 iCloud 的后续行为由设备设置决定。
+- 删除全部本机数据会等待数据库操作结束，再清除密钥、数据库及 WAL/SHM、安装令牌、本机会话和待删除标记。
+- 删除操作可在中断后继续，重复执行不会恢复已删除内容。
