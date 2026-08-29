@@ -57,11 +57,11 @@ test("Pages 1 through 4 hydrate canonical state and persist before navigation", 
   expect(overnight).toMatch(/onContinue[\s\S]*saveOvernight\(input\)[\s\S]*goTo\("behavior-map"\)/u);
 
   const knowledge = route("body-knowledge");
-  expect(knowledge).toContain("sources={catalog.sources}");
+  expect(knowledge).toContain("onOpenSources={openJourneySources}");
   expect(knowledge).toContain('require("../../../../assets/medical/vulva-anatomy-review-current.png")');
   expect(existsSync(resolve(__dirname, "../../../../../assets/medical/vulva-anatomy-review-current.png"))).toBe(true);
   expect(knowledge).toContain("diagramSource={medicalDiagram}");
-  expect(knowledge).toContain("onSourceAction");
+  expect(knowledge).not.toContain("onSourceAction");
   expect(knowledge).toContain('goTo("overnight")');
   expect(knowledge).not.toContain("useRouter");
   expect(knowledge).not.toContain('/journey/adult-gate');

@@ -45,7 +45,7 @@ type Props = {
     optionalResponse?: string;
   }): void | Promise<void>;
   onCopySupportNumber?: (number: string) => void | Promise<void>;
-  onOpenSources?: (sourceIds: string[]) => void | Promise<void>;
+  onOpenSources?: () => void | Promise<void>;
   onAddToPreparation?: (phrase: string) => void | Promise<void>;
   onPracticeAgain?: () => void | Promise<void>;
 };
@@ -358,7 +358,11 @@ export function PresetPracticePage({
               <TextAction label={`复制 ${resource.number}`} onPress={() => { void onCopySupportNumber?.(resource.number); }} />
             </View>
           ))}
-          <SecondaryButton label="查看信息来源" onPress={() => { void onOpenSources?.([...new Set(catalog.supportResources.flatMap(({ sourceIds }) => sourceIds))]); }} />
+          <SecondaryButton
+            accessibilityLabel="打开内界官网信息来源"
+            label="查看完整信息来源"
+            onPress={() => { void onOpenSources?.(); }}
+          />
           <Button label="结束这次练习" onPress={() => setState(closeSafetyPractice(state))} />
         </Card>
       ) : null}

@@ -24,7 +24,7 @@ export default function PresetPracticeRoute() {
           }))
             .then(() => goTo("final-preparation"))}
           onCopySupportNumber={async (number) => { await ExpoClipboard.setStringAsync(number); }}
-          onOpenSources={(sourceIds) => openJourneySources(catalog.sources, sourceIds)}
+          onOpenSources={openJourneySources}
         />;
       }}
     </JourneyRouteScreen>

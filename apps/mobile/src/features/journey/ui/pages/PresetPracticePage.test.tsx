@@ -220,11 +220,12 @@ test("awaits final completion, blocks duplicates, reports failure, and permits r
 });
 
 test("ends ordinary practice at the safety branch and only offers explicit support actions", () => {
+  const onOpenSources = jest.fn();
   render(<PresetPracticePage
     catalog={catalog}
     onComplete={jest.fn()}
     onCopySupportNumber={jest.fn()}
-    onOpenSources={jest.fn()}
+    onOpenSources={onOpenSources}
   />);
 
   fireEvent.press(screen.getByText("开始情境练习"));
@@ -243,6 +244,10 @@ test("ends ordinary practice at the safety branch and only offers explicit suppo
   expect(screen.getByText("这不是因为你没有说清楚")).toBeTruthy();
   expect(screen.getByText("110")).toBeTruthy();
   expect(screen.queryByText(/继续说服|暂停卡|自动拨号/u)).toBeNull();
+  const sourcesEntry = screen.getByRole("button", { name: "打开内界官网信息来源" });
+  expect(sourcesEntry).toHaveTextContent("查看完整信息来源");
+  fireEvent.press(sourcesEntry);
+  expect(onOpenSources).toHaveBeenCalledTimes(1);
   expect(screen.getByText("结束这次练习")).toBeTruthy();
 });
 

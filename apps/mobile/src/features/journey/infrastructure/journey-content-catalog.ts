@@ -1,5 +1,5 @@
-import { loadCatalog } from "@cave/content";
+import { loadMobileJourneyContentCatalog } from "@cave/content/mobile-journey";
 
 export function loadJourneyContentCatalog() {
-  return loadCatalog().journey;
+  return loadMobileJourneyContentCatalog();
 }

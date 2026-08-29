@@ -6,6 +6,7 @@ import { useReducedMotion } from "../design/motion-preferences";
 
 export type TextActionProps = {
   label: string;
+  accessibilityLabel?: string;
   onPress: () => void;
   disabled?: boolean;
   loading?: boolean;
@@ -14,7 +15,7 @@ export type TextActionProps = {
 };
 
 export const TextAction = forwardRef<View, TextActionProps>(function TextAction(
-  { label, onPress, disabled = false, loading = false, underlined = false, testID },
+  { label, accessibilityLabel, onPress, disabled = false, loading = false, underlined = false, testID },
   ref,
 ) {
   const theme = useTheme();
@@ -24,7 +25,7 @@ export const TextAction = forwardRef<View, TextActionProps>(function TextAction(
   return (
     <Pressable
       ref={ref}
-      accessibilityLabel={label}
+      accessibilityLabel={accessibilityLabel ?? label}
       accessibilityRole="button"
       accessibilityState={{ busy: loading, disabled: unavailable }}
       disabled={unavailable}

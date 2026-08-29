@@ -1,4 +1,4 @@
-import type { JourneyOption, JourneySource } from "@cave/content";
+import type { JourneyOption } from "@cave/content";
 import { useRef, useState } from "react";
 import { Pressable, Text, View } from "react-native";
 
@@ -7,7 +7,6 @@ import { useTheme } from "../../../../core/design/theme-provider";
 import { Card } from "../../../../core/ui/Card";
 import { ChoiceChip } from "../../../../core/ui/ChoiceChip";
 import { InfoCard } from "../../../../core/ui/info-card";
-import { SourceDrawer } from "../../../../core/ui/source-drawer";
 import { JourneyAction } from "../components/JourneyAction";
 
 type ActionResult = void | Promise<void>;
@@ -28,9 +27,7 @@ export type OvernightPageProps = {
   initialConcernIds?: string[];
   initialCustomNote?: string;
   initialStage?: Stage;
-  consentSource?: JourneySource;
-  onSourceAction?: (source: JourneySource) => ActionResult;
-  reducedMotion?: boolean;
+  onOpenSources?: () => ActionResult;
 };
 
 function updateSelection(current: string[], option: JourneyOption, group: JourneyOption[]): string[] {
@@ -117,9 +114,7 @@ export function OvernightPage({
   initialCustomNote = "",
   initialStage = "expectations",
   onProgress,
-  consentSource,
-  onSourceAction,
-  reducedMotion,
+  onOpenSources,
 }: OvernightPageProps) {
   const theme = useTheme();
   const styles = createStyles(theme);
@@ -143,8 +138,6 @@ export function OvernightPage({
     };
     resumeOpening: Panel | null;
   } | null>(null);
-  const [sourceOpen, setSourceOpen] = useState(false);
-  const sourceReturnFocusRef = useRef<View>(null);
   const stageChangeInFlightRef = useRef(false);
   const persistedStageRef = useRef<Stage>(initialStage);
   const bothCollapsed = !expanded.expectations && !expanded.concerns;
@@ -276,28 +269,22 @@ export function OvernightPage({
       ) : null}
 
       <View style={styles.footer}>
-        {consentSource ? (
-          <Pressable
-            accessibilityLabel="同意原则与来源"
-            accessibilityRole="link"
-            onPress={() => setSourceOpen(true)}
-            ref={sourceReturnFocusRef}
-            style={({ pressed }) => ({
-              justifyContent: "center",
-              minHeight: theme.size.minimumTouchTarget,
-              opacity: pressed ? 0.72 : 1,
-            })}
-          >
-            <Text style={styles.footerNote}>
-              这些感受可以同时被留下，不需要现在整理成一个确定答案。{" "}
-              <Text style={styles.sourceLink}>同意原则与来源</Text>
-            </Text>
-          </Pressable>
-        ) : (
-          <Text style={styles.footerNote}>
-            这些感受可以同时被留下，不需要现在整理成一个确定答案。
-          </Text>
-        )}
+        <Text style={styles.footerNote}>
+          这些感受可以同时被留下，不需要现在整理成一个确定答案。
+        </Text>
+        <Pressable
+          accessibilityLabel="打开内界官网信息来源"
+          accessibilityRole="link"
+          onPress={() => { void onOpenSources?.(); }}
+          style={({ pressed }) => ({
+            alignSelf: "flex-start",
+            justifyContent: "center",
+            minHeight: theme.size.minimumTouchTarget,
+            opacity: pressed ? 0.72 : 1,
+          })}
+        >
+          <Text style={styles.sourceLink}>查看完整信息来源</Text>
+        </Pressable>
         <JourneyAction
           errorMessage="保存失败，请重试。"
           label="带着这些感受继续"
@@ -306,19 +293,6 @@ export function OvernightPage({
           onAction={() => onContinue({ expectationIds, concernIds, customNote: initialCustomNote })}
         />
       </View>
-
-      {consentSource ? (
-        <SourceDrawer
-          institution={consentSource.organization}
-          onAction={() => { void onSourceAction?.(consentSource); }}
-          onClose={() => setSourceOpen(false)}
-          reducedMotion={reducedMotion}
-          returnFocusRef={sourceReturnFocusRef}
-          title={consentSource.title}
-          updatedAt={`${consentSource.publicationOrReviewDate} · 访问于 ${consentSource.accessedAt}`}
-          visible={sourceOpen}
-        />
-      ) : null}
     </View>
   );
 }

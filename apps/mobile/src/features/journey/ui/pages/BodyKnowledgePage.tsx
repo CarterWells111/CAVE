@@ -1,9 +1,8 @@
 import type {
   JourneyBodyKnowledgeDefinition,
   JourneyKnowledgeCard,
-  JourneySource,
 } from "@cave/content";
-import { useMemo, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { Image, type ImageSourcePropType, ScrollView, Text, View } from "react-native";
 
 import { useTheme } from "../../../../core/design/theme-provider";
@@ -12,7 +11,6 @@ import { BottomSheet } from "../../../../core/ui/bottom-sheet";
 import { Card } from "../../../../core/ui/Card";
 import { InfoCard } from "../../../../core/ui/info-card";
 import { SecondaryButton } from "../../../../core/ui/secondary-button";
-import { SourceDrawer } from "../../../../core/ui/source-drawer";
 import { TextAction } from "../../../../core/ui/text-action";
 import { JourneyAction } from "../components/JourneyAction";
 
@@ -21,11 +19,10 @@ type ActionResult = void | Promise<void>;
 export type BodyKnowledgePageProps = {
   cards: JourneyKnowledgeCard[];
   definition: JourneyBodyKnowledgeDefinition;
-  sources: JourneySource[];
   onContinue: () => ActionResult;
   onRead?: (id: string) => ActionResult;
   onOpenDiagram?: () => ActionResult;
-  onSourceAction?: (source: JourneySource) => ActionResult;
+  onOpenSources?: () => ActionResult;
   diagramSource?: ImageSourcePropType;
   addressPreference?: "你" | "妳";
   reducedMotion?: boolean;
@@ -34,11 +31,10 @@ export type BodyKnowledgePageProps = {
 export function BodyKnowledgePage({
   cards,
   definition,
-  sources,
   onContinue,
   onRead,
   onOpenDiagram,
-  onSourceAction,
+  onOpenSources,
   diagramSource,
   addressPreference = "你",
   reducedMotion,
@@ -46,14 +42,6 @@ export function BodyKnowledgePage({
   const theme = useTheme();
   const styles = createStyles(theme);
   const sortedCards = [...cards].sort((a, b) => a.order - b.order).slice(0, 3);
-  const relevantSources = useMemo(() => {
-    const ids = new Set([
-      ...sortedCards.flatMap((card) => card.sourceIds),
-      ...definition.sourceIds,
-    ]);
-    ids.add("SRC-004");
-    return sources.filter((source) => ids.has(source.id));
-  }, [definition.sourceIds, sortedCards, sources]);
   const [consentOpen, setConsentOpen] = useState(false);
   const diagramTriggerRef = useRef<View>(null);
   const [diagramOpen, setDiagramOpen] = useState(false);
@@ -61,10 +49,6 @@ export function BodyKnowledgePage({
   const [imageAttempt, setImageAttempt] = useState(0);
   const [imageError, setImageError] = useState(false);
   const [imageStatus, setImageStatus] = useState("");
-  const [source, setSource] = useState<JourneySource | null>(null);
-  const [sourceOpen, setSourceOpen] = useState(false);
-  const sourceReturnFocusRef = useRef<View>(null);
-  const sourceTriggerRefs = useRef(new Map<string, View | null>());
 
   const complete = async () => {
     for (const card of sortedCards) await onRead?.(card.id);
@@ -79,12 +63,6 @@ export function BodyKnowledgePage({
     setConsentOpen(false);
     setDiagramOpen(true);
   };
-  const openSource = (item: JourneySource, triggerId: string) => {
-    sourceReturnFocusRef.current = sourceTriggerRefs.current.get(triggerId) ?? null;
-    setSource(item);
-    setSourceOpen(true);
-  };
-
   const zoomPercent = Math.round(diagramZoom * 100);
 
   return (
@@ -196,24 +174,12 @@ export function BodyKnowledgePage({
       ))}
 
       <InfoCard title={`身体提供感受，决定仍然属于${addressPreference}。`} variant="pause" />
-      {relevantSources.length > 0 ? (
-        <View style={styles.sources}>
-          <TextAction
-            ref={(node) => { sourceTriggerRefs.current.set(`summary:${relevantSources[0]!.id}`, node); }}
-            label={`来源与医学说明 · ${relevantSources.length}`}
-            onPress={() => openSource(relevantSources[0]!, `summary:${relevantSources[0]!.id}`)}
-            underlined
-          />
-          {relevantSources.map((item) => (
-            <TextAction
-              key={item.id}
-              ref={(node) => { sourceTriggerRefs.current.set(`detail:${item.id}`, node); }}
-              label={`查看来源：${item.organization}｜${item.title}`}
-              onPress={() => openSource(item, `detail:${item.id}`)}
-            />
-          ))}
-        </View>
-      ) : null}
+      <TextAction
+        accessibilityLabel="打开内界官网信息来源"
+        label="查看完整信息来源"
+        onPress={() => { void onOpenSources?.(); }}
+        underlined
+      />
       <JourneyAction
         errorMessage="暂时无法继续，请重试。"
         label="看看我对过夜的期待"
@@ -237,20 +203,6 @@ export function BodyKnowledgePage({
         />
         <TextAction label="暂时不看" onPress={() => setConsentOpen(false)} />
       </BottomSheet>
-
-      {source ? (
-        <SourceDrawer
-          institution={source.organization}
-          onAction={() => { void onSourceAction?.(source); }}
-          onClose={() => setSourceOpen(false)}
-          onDismiss={() => setSource(null)}
-          reducedMotion={reducedMotion}
-          returnFocusRef={sourceReturnFocusRef}
-          title={source.title}
-          updatedAt={`${source.publicationOrReviewDate} · 访问于 ${source.accessedAt}`}
-          visible={sourceOpen}
-        />
-      ) : null}
     </View>
   );
 }
@@ -261,7 +213,6 @@ function createStyles(theme: AppTheme) {
   title: { ...theme.typography.title, color: theme.color.text, flexShrink: 1 },
   body: { ...theme.typography.body, color: theme.color.text, flexShrink: 1 },
   secondary: { ...theme.typography.caption, color: theme.color.textSecondary, flexShrink: 1 },
-  sources: { alignItems: "flex-start" as const, gap: theme.space.sm },
   exampleList: { gap: theme.space.compact },
   exampleRow: { alignItems: "flex-start" as const, flexDirection: "row" as const, gap: theme.space.sm },
   bullet: { ...theme.typography.body, color: theme.color.infoMuted },

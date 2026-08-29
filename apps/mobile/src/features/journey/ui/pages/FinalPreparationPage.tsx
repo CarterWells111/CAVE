@@ -1,4 +1,4 @@
-import { loadCatalog } from "@cave/content";
+import { loadMobileJourneyContentCatalog } from "@cave/content/mobile-journey";
 import { useRef, useState } from "react";
 import { Text, View } from "react-native";
 import { captureRef } from "react-native-view-shot";
@@ -30,7 +30,7 @@ type Props = {
 
 export type { CommunicationCardExportModel } from "../../domain/communication-card-export";
 
-const sectionCatalog = [...loadCatalog().journey.uiCopy.communicationSections]
+const sectionCatalog = [...loadMobileJourneyContentCatalog().uiCopy.communicationSections]
   .sort((left, right) => left.order - right.order);
 
 type ActiveOperation = "finish" | "retry-writes" | "save-draft" | "save-image";

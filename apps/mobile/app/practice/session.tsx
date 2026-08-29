@@ -25,7 +25,7 @@ export default function StandalonePracticeRoute() {
         {...(initialIntent ? { initialIntent } : {})}
         onComplete={async () => undefined}
         onCopySupportNumber={async (number) => { await ExpoClipboard.setStringAsync(number); }}
-        onOpenSources={(sourceIds) => openJourneySources(catalog.sources, sourceIds)}
+        onOpenSources={openJourneySources}
         onPracticeAgain={async () => { router.replace("/practice/session"); }}
       />
     </Screen>

@@ -62,6 +62,18 @@ test("TextAction blocks loading activation with busy semantics and visible statu
   expect(onPress).not.toHaveBeenCalled();
 });
 
+test("TextAction can expose a clearer VoiceOver label than its visible copy", () => {
+  render(
+    <TextAction
+      accessibilityLabel="打开内界官网信息来源"
+      label="查看完整信息来源"
+      onPress={jest.fn()}
+    />,
+  );
+
+  expect(screen.getByRole("button", { name: "打开内界官网信息来源" })).toHaveTextContent("查看完整信息来源");
+});
+
 test("StickyActionBar provides a raised continuous surface without swallowing child semantics", () => {
   render(<StickyActionBar testID="sticky"><Text>操作</Text></StickyActionBar>);
   expect(screen.getByTestId("sticky")).toHaveStyle({

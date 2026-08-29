@@ -2,7 +2,6 @@ import { fireEvent, render, screen } from "@testing-library/react-native";
 import { AccessibilityInfo, Text, type View } from "react-native";
 
 import { BottomSheet } from "./bottom-sheet";
-import { SourceDrawer } from "./source-drawer";
 
 test("BottomSheet exposes modal semantics, explicit close, back close, and scroll-safe content", () => {
   const onClose = jest.fn();
@@ -78,16 +77,4 @@ test("BottomSheet uses bottom safe-area insets and disables motion when requeste
   expect(screen.getByTestId("bottom-sheet-safe-area")).toHaveProp("edges", {
     bottom: "additive", left: "off", right: "off", top: "off",
   });
-});
-
-test("SourceDrawer presents metadata and invokes only the passed user action", () => {
-  const onAction = jest.fn();
-  render(
-    <SourceDrawer actionLabel="在浏览器中打开" institution="世界卫生组织" onAction={onAction} onClose={jest.fn()} title="来源与医学说明" updatedAt="访问于 2026-08-27" visible />,
-  );
-  expect(screen.getByText("世界卫生组织")).toBeTruthy();
-  expect(screen.getByText("访问于 2026-08-27")).toBeTruthy();
-  expect(onAction).not.toHaveBeenCalled();
-  fireEvent.press(screen.getByRole("button", { name: "在浏览器中打开" }));
-  expect(onAction).toHaveBeenCalledTimes(1);
 });

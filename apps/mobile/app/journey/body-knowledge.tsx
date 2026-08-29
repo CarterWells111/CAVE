@@ -1,11 +1,10 @@
-import { Linking } from "react-native";
-
 // Metro resolves this checked-in review asset at bundle time.
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const medicalDiagram = require("../../../../assets/medical/vulva-anatomy-review-current.png");
 
 import { loadJourneyContentCatalog } from "../../src/features/journey/infrastructure/journey-content-catalog";
 import { JourneyRouteScreen } from "../../src/features/journey/ui/JourneyRouteScreen";
+import { openJourneySources } from "../../src/features/journey/ui/open-journey-sources";
 import { BodyKnowledgePage } from "../../src/features/journey/ui/pages/BodyKnowledgePage";
 
 export default function BodyKnowledgeRoute() {
@@ -20,9 +19,8 @@ export default function BodyKnowledgeRoute() {
           diagramSource={medicalDiagram}
           onContinue={() => goTo("overnight")}
           onOpenDiagram={() => runAndRefresh(() => controller.openMedicalDiagram())}
+          onOpenSources={openJourneySources}
           onRead={(cardId) => runAndRefresh(() => controller.readKnowledge(cardId))}
-          onSourceAction={(source) => Linking.openURL(source.url)}
-          sources={catalog.sources}
         />
       )}
     </JourneyRouteScreen>
