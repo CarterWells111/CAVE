@@ -26,6 +26,19 @@ import {
   InMemoryAppearancePreferencesRepository,
   type AppearancePreferencesRepository,
 } from "../../../core/design/appearance-preferences";
+import {
+  DEFAULT_PRIVACY_SETTINGS,
+  type PrivacySettings,
+  type PrivacySettingsRepository,
+} from "../../../core/storage/types";
+
+class InMemoryPrivacySettingsRepository implements PrivacySettingsRepository {
+  private settings: PrivacySettings = { ...DEFAULT_PRIVACY_SETTINGS };
+
+  async getPrivacySettings() { return { ...this.settings }; }
+  async setPrivacySettings(settings: PrivacySettings) { this.settings = { ...settings }; }
+  async resetPrivacySettings() { this.settings = { ...DEFAULT_PRIVACY_SETTINGS }; }
+}
 
 export type JourneyRuntimeMode = "expo-go-demo" | "native-secure";
 export type JourneyRuntimePersistence = "memory-only" | "sqlcipher-secure-store";
@@ -48,6 +61,7 @@ export type JourneyRuntime = {
   reviewHistory: ReviewHistoryRepository<JourneyDraft>;
   adultDeclaration: AdultDeclarationRepository;
   appearancePreferences: AppearancePreferencesRepository;
+  privacySettings: PrivacySettingsRepository;
   deleteAllData(): Promise<void>;
   replaceActiveReview(): Promise<void>;
   branchFromReview(draft: JourneyDraft, lineage: { rootId: string; sourceVersionId: string; title: string }): Promise<void>;
@@ -67,6 +81,7 @@ type ComposeDependencies = RuntimeDependencies & {
   shellState?: AppShellStateRepository;
   reviewHistory?: ReviewHistoryRepository<JourneyDraft>;
   appearancePreferences?: AppearancePreferencesRepository;
+  privacySettings?: PrivacySettingsRepository;
   deleteStorage?: () => Promise<void>;
   saveVersionedDraft?: (draft: JourneyDraft, active: ActiveReview<JourneyDraft>) => Promise<void>;
   completeJourney?: (transaction: JourneyCompletionTransaction) => Promise<void>;
@@ -91,6 +106,7 @@ export function composeJourneyRuntime({
   shellState = new InMemoryAppShellStateRepository(),
   reviewHistory = new InMemoryPayloadReviewHistoryRepository<JourneyDraft>(),
   appearancePreferences = new InMemoryAppearancePreferencesRepository(),
+  privacySettings = new InMemoryPrivacySettingsRepository(),
   saveVersionedDraft,
   completeJourney,
   branchReview,
@@ -128,6 +144,7 @@ export function composeJourneyRuntime({
     await shellState.clear();
     await reviewHistory.clearAll();
     await appearancePreferences.save("system");
+    await privacySettings.resetPrivacySettings();
     await service.resetJourney();
   };
   const replaceActiveReview = async () => {
@@ -164,7 +181,7 @@ export function composeJourneyRuntime({
     }
     service.adoptPersistedJourney(draft);
   };
-  return { mode, persistence, service, controller, drafts: versionedDrafts, cards, shellState, reviewHistory, adultDeclaration, appearancePreferences, deleteAllData, replaceActiveReview, branchFromReview };
+  return { mode, persistence, service, controller, drafts: versionedDrafts, cards, shellState, reviewHistory, adultDeclaration, appearancePreferences, privacySettings, deleteAllData, replaceActiveReview, branchFromReview };
 }
 
 export async function createJourneyRuntime({

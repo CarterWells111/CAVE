@@ -18,17 +18,28 @@ export type SavedPracticeRecord = {
 export type PrivacySettings = {
   liveModelAcknowledged: boolean;
   defaultSaveTranscript: false;
+  showLocalJournalSaveNotice: boolean;
 };
 
-export interface LocalDataRepository {
+export const DEFAULT_PRIVACY_SETTINGS: PrivacySettings = {
+  liveModelAcknowledged: false,
+  defaultSaveTranscript: false,
+  showLocalJournalSaveNotice: true,
+};
+
+export interface PrivacySettingsRepository {
+  getPrivacySettings(): Promise<PrivacySettings>;
+  setPrivacySettings(settings: PrivacySettings): Promise<void>;
+  resetPrivacySettings(): Promise<void>;
+}
+
+export interface LocalDataRepository extends PrivacySettingsRepository {
   initialize(): Promise<void>;
   getCourseProgress(): Promise<CourseProgressRecord[]>;
   setCourseProgress(record: CourseProgressRecord): Promise<void>;
   listSavedRecords(): Promise<SavedPracticeRecord[]>;
   saveRecord(record: SavedPracticeRecord): Promise<void>;
   deleteRecord(id: string): Promise<void>;
-  getPrivacySettings(): Promise<PrivacySettings>;
-  setPrivacySettings(settings: PrivacySettings): Promise<void>;
   deleteAll(): Promise<void>;
 }
 

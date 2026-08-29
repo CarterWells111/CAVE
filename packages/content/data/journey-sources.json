@@ -141,5 +141,16 @@
     "publicationOrReviewDate": "2026-03-07",
     "accessedAt": "2026-08-27",
     "verificationStatus": "source_verified"
+  },
+  {
+    "id": "SRC-014",
+    "sourceType": "MED",
+    "title": "You and Your Sexuality",
+    "organization": "American College of Obstetricians and Gynecologists",
+    "url": "https://www.acog.org/womens-health/faqs/you-and-your-sexuality",
+    "appliesTo": "性行为不限于阴道性交；触摸、口腔、阴道和肛门等不同性活动方式",
+    "publicationOrReviewDate": "页面未列明",
+    "accessedAt": "2026-08-28",
+    "verificationStatus": "source_verified"
   }
 ]

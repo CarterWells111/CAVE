@@ -14,6 +14,7 @@ export default function StandaloneReviewTopicRoute() {
   const theme = useTheme();
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
+
   return (
     <Screen>
       <Text accessibilityRole="header" style={{ ...theme.typography.title, color: theme.color.text }}>

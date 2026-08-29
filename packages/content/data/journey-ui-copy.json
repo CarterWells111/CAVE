@@ -1,5 +1,26 @@
 {
   "version": "seven-screen-v1",
+  "bodyKnowledgeDefinition": {
+    "id": "body-knowledge-sexual-activity-definition",
+    "page": 3,
+    "contentType": "EDU",
+    "sourceIds": ["SRC-003", "SRC-014"],
+    "title": "性行为不只有一种方式",
+    "intro": "性行为可能指与另一个人之间多种带有性意味的身体互动，不只指阴茎进入阴道。",
+    "examples": [
+      "带有性意味的亲吻或触摸",
+      "彼此用手或身体刺激",
+      "口腔与外阴、阴茎或肛门接触",
+      "阴茎、手指或玩具进入阴道或肛门"
+    ],
+    "conclusion": "应说清具体互动。健康、自愿的性互动需要清楚、自愿、持续且针对具体行为的同意；同意一种，不代表同意其他方式。",
+    "reviewStatus": "internal_test_approved",
+    "reviewer": "annie",
+    "reviewerRole": "内部测试审核人",
+    "reviewedAt": "2026-08-28T09:56:30Z",
+    "reviewedVersion": "2026-08-28-review-1",
+    "reviewConclusion": "仅内测通过；发布前仍需合格专家完成医疗、安全或性教育审核"
+  },
   "behaviorMapPoints": [
     { "id": "behavior-map-hug", "page": 4, "contentType": "UX", "sourceIds": [], "order": 1, "label": "拥抱或依偎", "kind": "behavior", "behaviorIds": ["behavior-hug"], "reviewStatus": "reviewed", "reviewer": "annie", "reviewerRole": "产品与编辑审核人", "reviewedAt": "2026-08-28T09:56:30Z", "reviewedVersion": "2026-08-28-review-1", "reviewConclusion": "产品与编辑审核通过" },
     { "id": "behavior-map-kissing", "page": 4, "contentType": "UX", "sourceIds": [], "order": 2, "label": "接吻", "kind": "behavior", "behaviorIds": ["draft-kissing"], "reviewStatus": "reviewed", "reviewer": "annie", "reviewerRole": "产品与编辑审核人", "reviewedAt": "2026-08-28T09:56:30Z", "reviewedVersion": "2026-08-28-review-1", "reviewConclusion": "产品与编辑审核通过" },
@@ -13,10 +34,11 @@
   ],
   "attitudes": [
     { "id": "attitude-expecting", "page": 4, "contentType": "UX", "sourceIds": [], "order": 1, "value": "expecting", "label": "我有些期待", "feedback": "期待不代表已经答应，到了当时仍然需要彼此确认。", "reviewStatus": "reviewed", "reviewer": "annie", "reviewerRole": "产品与编辑审核人", "reviewedAt": "2026-08-28T09:56:30Z", "reviewedVersion": "2026-08-28-review-1", "reviewConclusion": "产品与编辑审核通过" },
-    { "id": "attitude-decide-in-moment", "page": 4, "contentType": "UX", "sourceIds": [], "order": 2, "value": "decide-in-moment", "label": "我想留到当时再感受", "feedback": "可以等到那一刻，再听听自己的感觉。", "reviewStatus": "reviewed", "reviewer": "annie", "reviewerRole": "产品与编辑审核人", "reviewedAt": "2026-08-28T09:56:30Z", "reviewedVersion": "2026-08-28-review-1", "reviewConclusion": "产品与编辑审核通过" },
-    { "id": "attitude-unsure", "page": 4, "contentType": "UX", "sourceIds": [], "order": 3, "value": "unsure", "label": "我还没想清楚", "feedback": "不确定也是一个完整的答案。", "reviewStatus": "reviewed", "reviewer": "annie", "reviewerRole": "产品与编辑审核人", "reviewedAt": "2026-08-28T09:56:30Z", "reviewedVersion": "2026-08-28-review-1", "reviewConclusion": "产品与编辑审核通过" },
-    { "id": "attitude-not-this-time", "page": 4, "contentType": "UX", "sourceIds": [], "order": 4, "value": "not-this-time", "label": "这不是我这次想要的", "feedback": "你不需要为这个答案补充理由。", "reviewStatus": "reviewed", "reviewer": "annie", "reviewerRole": "产品与编辑审核人", "reviewedAt": "2026-08-28T09:56:30Z", "reviewedVersion": "2026-08-28-review-1", "reviewConclusion": "产品与编辑审核通过" },
-    { "id": "attitude-skip", "page": 4, "contentType": "UX", "sourceIds": [], "order": 5, "value": "skip", "label": "暂时不回答", "feedback": "可以先留白，之后再回来看看。", "reviewStatus": "reviewed", "reviewer": "annie", "reviewerRole": "产品与编辑审核人", "reviewedAt": "2026-08-28T09:56:30Z", "reviewedVersion": "2026-08-28-review-1", "reviewConclusion": "产品与编辑审核通过" }
+    { "id": "attitude-familiar-enjoyed", "page": 4, "contentType": "EDU", "sourceIds": ["SRC-003"], "order": 2, "value": "familiar-enjoyed", "label": "我已经习惯 / 我享受这类亲密行为", "feedback": "熟悉或享受过，不代表这一次已经同意；仍然可以根据当下的感受重新决定。", "reviewStatus": "internal_test_approved", "reviewer": "annie", "reviewerRole": "内部测试审核人", "reviewedAt": "2026-08-28T09:56:30Z", "reviewedVersion": "2026-08-28-review-1", "reviewConclusion": "仅内测通过；发布前仍需合格专家完成医疗、安全或性教育审核" },
+    { "id": "attitude-decide-in-moment", "page": 4, "contentType": "UX", "sourceIds": [], "order": 3, "value": "decide-in-moment", "label": "我想留到当时再感受", "feedback": "可以等到那一刻，再听听自己的感觉。", "reviewStatus": "reviewed", "reviewer": "annie", "reviewerRole": "产品与编辑审核人", "reviewedAt": "2026-08-28T09:56:30Z", "reviewedVersion": "2026-08-28-review-1", "reviewConclusion": "产品与编辑审核通过" },
+    { "id": "attitude-unsure", "page": 4, "contentType": "UX", "sourceIds": [], "order": 4, "value": "unsure", "label": "我还没想清楚", "feedback": "不确定也是一个完整的答案。", "reviewStatus": "reviewed", "reviewer": "annie", "reviewerRole": "产品与编辑审核人", "reviewedAt": "2026-08-28T09:56:30Z", "reviewedVersion": "2026-08-28-review-1", "reviewConclusion": "产品与编辑审核通过" },
+    { "id": "attitude-not-this-time", "page": 4, "contentType": "UX", "sourceIds": [], "order": 5, "value": "not-this-time", "label": "这不是我这次想要的", "feedback": "你不需要为这个答案补充理由。", "reviewStatus": "reviewed", "reviewer": "annie", "reviewerRole": "产品与编辑审核人", "reviewedAt": "2026-08-28T09:56:30Z", "reviewedVersion": "2026-08-28-review-1", "reviewConclusion": "产品与编辑审核通过" },
+    { "id": "attitude-skip", "page": 4, "contentType": "UX", "sourceIds": [], "order": 6, "value": "skip", "label": "暂时不回答", "feedback": "可以先留白，之后再回来看看。", "reviewStatus": "reviewed", "reviewer": "annie", "reviewerRole": "产品与编辑审核人", "reviewedAt": "2026-08-28T09:56:30Z", "reviewedVersion": "2026-08-28-review-1", "reviewConclusion": "产品与编辑审核通过" }
   ],
   "communicationSections": [
     { "id": "communication-night-expectations", "page": 7, "contentType": "UX", "sourceIds": [], "order": 1, "title": "我对这个夜晚的期待", "defaultVisibility": "private", "confirmationRequired": true, "reviewStatus": "reviewed", "reviewer": "annie", "reviewerRole": "产品与编辑审核人", "reviewedAt": "2026-08-28T09:56:30Z", "reviewedVersion": "2026-08-28-review-1", "reviewConclusion": "产品与编辑审核通过" },

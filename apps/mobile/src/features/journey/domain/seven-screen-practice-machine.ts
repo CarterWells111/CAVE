@@ -4,7 +4,6 @@ import type { PracticeIntent } from "./practice-types";
 
 export type SevenScreenPracticeStage =
   | "entry"
-  | "behavior"
   | "need"
   | "editable-phrase"
   | "respectful-response"
@@ -73,26 +72,18 @@ export function beginPractice(catalog: JourneyPracticeCatalog): SevenScreenPract
 }
 
 export function completeMirror(state: SevenScreenPracticeState): SevenScreenPracticeState {
-  requireStage(state, ["entry", "editable-phrase"]);
-  return { ...state, mirrorConfirmed: true, stage: state.stage === "entry" ? "behavior" : state.stage };
+  requireStage(state, ["editable-phrase"]);
+  return { ...state, mirrorConfirmed: true };
 }
 
 export function startScenario(state: SevenScreenPracticeState): SevenScreenPracticeState {
   requireStage(state, ["entry"]);
-  return { ...state, stage: "behavior" };
+  return { ...state, behaviorId: null, stage: "need" };
 }
 
 export function skipMirror(state: SevenScreenPracticeState): SevenScreenPracticeState {
-  requireStage(state, ["entry", "editable-phrase"]);
-  return state.stage === "entry" ? { ...state, stage: "behavior" } : state;
-}
-
-export function selectPracticeBehavior(
-  state: SevenScreenPracticeState,
-  behaviorId: string | null
-): SevenScreenPracticeState {
-  requireStage(state, ["behavior"]);
-  return { ...state, behaviorId, stage: "need" };
+  requireStage(state, ["editable-phrase"]);
+  return state;
 }
 
 export function selectPracticeNeed(
@@ -130,11 +121,16 @@ export function showRespectfulResponse(
   return { ...state, partnerResponse: response.text, stage: "respectful-response" };
 }
 
+export function continueToAftercare(state: SevenScreenPracticeState): SevenScreenPracticeState {
+  requireStage(state, ["respectful-response"]);
+  return { ...state, stage: "aftercare" };
+}
+
 export function chooseAftercare(
   state: SevenScreenPracticeState,
   aftercareId: string
 ): SevenScreenPracticeState {
-  requireStage(state, ["respectful-response"]);
+  requireStage(state, ["aftercare"]);
   if (aftercareId.trim().length === 0) throw new Error("aftercare-required");
   return { ...state, aftercareId, stage: "optional-branch" };
 }

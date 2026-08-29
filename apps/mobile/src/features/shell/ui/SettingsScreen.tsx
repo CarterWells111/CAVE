@@ -1,6 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { type ComponentProps, useRef, useState } from "react";
-import { Pressable, ScrollView, Text, View } from "react-native";
+import { Pressable, ScrollView, Switch, Text, View } from "react-native";
 
 import { useTheme } from "../../../core/design/theme-provider";
 import type { ResolvedTheme, ThemePreference } from "../../../core/design/theme";
@@ -15,10 +15,18 @@ type DeleteCapability = {
   onContinue(): void;
 };
 
+type PrivacySettingsCapability = {
+  changeJournalSaveNotice(enabled: boolean): Promise<void>;
+  retry(): void;
+  showLocalJournalSaveNotice: boolean;
+  status: "loading" | "ready" | "error";
+};
+
 export type SettingsScreenProps = {
   appearancePreference: ThemePreference;
   appearanceSaving: boolean;
   deletion?: DeleteCapability | undefined;
+  privacy?: PrivacySettingsCapability | undefined;
   resolvedTheme: ResolvedTheme;
   onAppearancePreferenceChange(preference: ThemePreference): Promise<void>;
   onBack(): void;
@@ -140,11 +148,13 @@ export function SettingsScreen({
   deletion,
   onAppearancePreferenceChange,
   onBack,
+  privacy,
   resolvedTheme,
 }: SettingsScreenProps) {
   const theme = useTheme();
   const [deleteState, setDeleteState] = useState<DeleteState>("idle");
   const [appearanceError, setAppearanceError] = useState(false);
+  const [privacySaveState, setPrivacySaveState] = useState<"idle" | "saving" | "error">("idle");
   const deletionInFlight = useRef(false);
 
   const deleteAll = async () => {
@@ -168,6 +178,17 @@ export function SettingsScreen({
       await onAppearancePreferenceChange(preference);
     } catch {
       setAppearanceError(true);
+    }
+  };
+
+  const changeJournalSaveNotice = async (enabled: boolean) => {
+    if (!privacy || privacySaveState === "saving") return;
+    setPrivacySaveState("saving");
+    try {
+      await privacy.changeJournalSaveNotice(enabled);
+      setPrivacySaveState("idle");
+    } catch {
+      setPrivacySaveState("error");
     }
   };
 
@@ -266,8 +287,47 @@ export function SettingsScreen({
 
       <InfoCard title="隐私与本机数据">
         <Text selectable style={{ ...theme.typography.body, color: theme.color.textSecondary }}>
-          旅程、练习和沟通卡保存在本机。能解锁这台设备的人仍可能看到这些内容，请按自己的情况决定是否保留。
+          旅程、练习和沟通草稿保存在本机。能解锁这台设备的人仍可能看到这些内容，请按自己的情况决定是否保留。
         </Text>
+        {privacy ? (
+          <>
+            <View style={{ alignItems: "center", flexDirection: "row", gap: theme.space.md, justifyContent: "space-between" }}>
+              <Text selectable style={{ ...theme.typography.body, color: theme.color.text, flex: 1 }}>
+                保存私人记录前显示本机提示
+              </Text>
+              <Switch
+                accessibilityLabel="保存私人记录前显示本机提示"
+                disabled={privacy.status !== "ready" || privacySaveState === "saving"}
+                onValueChange={(enabled) => { void changeJournalSaveNotice(enabled); }}
+                trackColor={{ false: theme.color.disabled, true: theme.color.brandSoft }}
+                value={privacy.showLocalJournalSaveNotice}
+              />
+            </View>
+            {privacy.status === "loading" ? (
+              <Text accessibilityLiveRegion="polite" selectable style={{ ...theme.typography.caption, color: theme.color.textSecondary }}>
+                正在读取本机隐私设置…
+              </Text>
+            ) : null}
+            {privacySaveState === "saving" ? (
+              <Text accessibilityLiveRegion="polite" selectable style={{ ...theme.typography.caption, color: theme.color.textSecondary }}>
+                正在保存设置…
+              </Text>
+            ) : null}
+            {privacy.status === "error" ? (
+              <View style={{ gap: theme.space.sm }}>
+                <Text accessibilityRole="alert" selectable style={{ ...theme.typography.caption, color: theme.color.error }}>
+                  暂时无法读取本机隐私设置；保存提示会保持开启。
+                </Text>
+                <SecondaryButton label="重试读取隐私设置" onPress={privacy.retry} />
+              </View>
+            ) : null}
+            {privacySaveState === "error" ? (
+              <Text accessibilityRole="alert" selectable style={{ ...theme.typography.caption, color: theme.color.error }}>
+                设置尚未保存，请重试。
+              </Text>
+            ) : null}
+          </>
+        ) : null}
       </InfoCard>
 
       {deletion ? <Card accessible={false} style={{ borderColor: theme.color.danger }}>

@@ -2,9 +2,14 @@ import {
   COMMUNICATION_CARD_CONSENT_FOOTER,
   buildCommunicationCard,
   COMMUNICATION_CARD_SECTION_IDS,
-  selectConfirmedCommunicationCard
+  normalizeCommunicationDraft,
+  selectConfirmedCommunicationCard,
+  selectConfirmedSavedCommunicationCard
 } from "./derive-communication-card";
-import { createJourneyDraft } from "./types";
+import {
+  CURRENT_COMMUNICATION_CARD_SHARING_POLICY_VERSION,
+  createJourneyDraft
+} from "./types";
 
 function draft() {
   return {
@@ -40,6 +45,21 @@ test("generates user-readable Chinese without leaking template keys or raw optio
 
   expect(serialized).toMatch(/[\u3400-\u9fff]/u);
   expect(serialized).not.toMatch(/draft-card|draft-expect-rest|draft-comfort-privacy|draft-kissing/u);
+});
+
+test("keeps familiar or enjoyed closeness separate from current willingness", () => {
+  const input = {
+    ...draft(),
+    behaviorAttitudes: {
+      "behavior-hug": "looking-forward" as const,
+      "draft-kissing": "familiar-enjoyed" as const,
+    },
+  };
+
+  const text = buildCommunicationCard(input)["communication-possible-closeness"].generatedText;
+
+  expect(text).toContain("我可能愿意的靠近包括：拥抱或依偎。");
+  expect(text).toContain("我熟悉或享受过、但仍会在当下重新确认的靠近包括：接吻。");
 });
 
 test("uses the canonical Page 6 phrase before legacy phrase fields", () => {
@@ -84,6 +104,20 @@ test("refreshes untouched fields but preserves user text and flags it for review
   expect(changed["communication-night-expectations"].needsReview).toBe(false);
 });
 
+test("preserves every explicit privacy state across regeneration and normalization", () => {
+  const input = buildCommunicationCard(draft());
+  input["communication-comfort"].visibility = "deleted";
+  input["communication-night-expectations"].visibility = "private";
+
+  const rebuilt = buildCommunicationCard({ ...draft(), communicationCard: input, sourceRevision: 4 });
+  expect(rebuilt["communication-comfort"].visibility).toBe("deleted");
+  expect(rebuilt["communication-night-expectations"].visibility).toBe("private");
+  expect(Object.values(normalizeCommunicationDraft(input)).map(({ visibility }) => visibility))
+    .toContain("deleted");
+  expect(Object.values(normalizeCommunicationDraft(input)).some(({ visibility }) => visibility === "private"))
+    .toBe(true);
+});
+
 test("produces the same generated text for semantically identical unordered selections", () => {
   const first = createJourneyDraft({ id: "journey-1", now: "now" });
   first.expectationIds = ["draft-rest", "draft-connection"];
@@ -101,6 +135,7 @@ test("produces the same generated text for semantically identical unordered sele
 
 test("selects only explicitly included sections plus the fixed consent footer", () => {
   const card = buildCommunicationCard(draft());
+  for (const field of Object.values(card)) field.visibility = "deleted";
   card["communication-night-expectations"] = {
     ...card["communication-night-expectations"],
     userText: "I hope we can rest together.",
@@ -117,14 +152,32 @@ test("selects only explicitly included sections plus the fixed consent footer", 
     generatedText: "PENDING",
     visibility: "pending"
   };
+  card["communication-mutual-boundaries"] = {
+    ...card["communication-mutual-boundaries"],
+    generatedText: "STALE INCLUDED",
+    visibility: "included",
+    needsReview: true
+  };
 
   expect(selectConfirmedCommunicationCard({ ...draft(), communicationCard: card })).toEqual({
     sections: [{ id: "communication-night-expectations", text: "I hope we can rest together." }],
     consentFooter: COMMUNICATION_CARD_CONSENT_FOOTER
   });
   expect(JSON.stringify(selectConfirmedCommunicationCard({ ...draft(), communicationCard: card })))
-    .not.toMatch(/PRIVATE|DELETED|PENDING/);
+    .not.toMatch(/PRIVATE|DELETED|PENDING|STALE INCLUDED/);
   expect(COMMUNICATION_CARD_CONSENT_FOOTER).toBe(
     "这张卡只代表我整理它时的感受。任何人都可以随时改变主意，每一种靠近仍然需要当时再次确认。"
   );
+});
+
+test("requires the current sharing policy before a saved card can be selected for export", () => {
+  const card = buildCommunicationCard(draft());
+  card["communication-night-expectations"].visibility = "included";
+  const legacy = { id: "legacy", journeyId: "journey-1", card, savedAt: "now" };
+
+  expect(selectConfirmedSavedCommunicationCard(legacy)).toBeNull();
+  expect(selectConfirmedSavedCommunicationCard({
+    ...legacy,
+    sharingPolicyVersion: CURRENT_COMMUNICATION_CARD_SHARING_POLICY_VERSION
+  })?.sections).toHaveLength(1);
 });

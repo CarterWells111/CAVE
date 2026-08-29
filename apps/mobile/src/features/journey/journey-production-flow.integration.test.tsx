@@ -85,7 +85,12 @@ async function openRoute(element: ReactElement, journeyRuntime: JourneyRuntime):
       {element}
     </JourneyRuntimeProvider>
   );
-  await waitFor(() => expect(screen.queryByText("正在启动旅程运行时…")).toBeNull());
+  await waitFor(() => {
+    expect(screen.queryByText("正在启动旅程运行时…")).toBeNull();
+    expect(screen.queryByText("正在检查本机访问状态…")).toBeNull();
+    expect(screen.queryByText("正在读取外观设置…")).toBeNull();
+    expect(screen.queryByText("正在恢复本机旅程…")).toBeNull();
+  });
   expect(screen.queryByText("Expo Go 演示模式，数据仅在本次打开期间暂存")).toBeNull();
   return view;
 }
@@ -141,18 +146,20 @@ test("the production landing opens onboarding without creating an active draft",
   view.unmount();
 });
 
-test("clipboard failure is structured and visible on the production final screen", async () => {
-  const clipboard = { setStringAsync: jest.fn(async () => { throw new Error("denied"); }) };
-  const journeyRuntime = runtime(clipboard);
+test("the production final screen keeps exports behind explicit confirmation", async () => {
+  const journeyRuntime = runtime();
   await unlockAllSixPages(journeyRuntime);
   await journeyRuntime.service.navigateTo("final-preparation");
   const view = await openRoute(<FinalPreparationRoute />, journeyRuntime);
 
-  fireEvent.press(screen.getByText("复制已确认内容"));
-  expect(screen.getByText("请先查看最终预览，再次确认后复制。")).toBeTruthy();
-  expect(clipboard.setStringAsync).not.toHaveBeenCalled();
-  fireEvent.press(screen.getByText("复制已确认内容"));
-
-  expect(await screen.findByText("复制失败，请重试或手写记录。")).toBeTruthy();
+  expect(screen.getAllByText("待确认")).toHaveLength(7);
+  expect(screen.getAllByText("加入分享")).toHaveLength(7);
+  expect(screen.getByRole("button", { name: "复制已确认内容" })).toBeTruthy();
+  expect(screen.getByRole("button", { name: "保存为图片" })).toBeTruthy();
+  fireEvent.press(screen.getByText("保存沟通草稿"));
+  await waitFor(() => expect(mockRouter.replace).toHaveBeenCalledWith("/cards/card:production-flow-journey"));
+  await expect(journeyRuntime.cards.load("card:production-flow-journey")).resolves.toMatchObject({
+    journeyId: "production-flow-journey"
+  });
   view.unmount();
 });

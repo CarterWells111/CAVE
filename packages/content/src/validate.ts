@@ -42,7 +42,7 @@ const SAFETY_CODES = new Set<StopRuleCode>([
 ]);
 
 const REQUIRED_SOURCE_IDS = Array.from(
-  { length: 13 },
+  { length: 14 },
   (_, index) => `SRC-${String(index + 1).padStart(3, "0")}`
 );
 
@@ -64,6 +64,7 @@ function journeyReviewables(catalog: ContentCatalog): JourneyCopyMetadata[] {
     ...catalog.journey.practice.partnerResponses,
     ...catalog.journey.practice.safetyBranches,
     ...catalog.journey.practice.supportResources,
+    catalog.journey.uiCopy.bodyKnowledgeDefinition,
     ...catalog.journey.uiCopy.behaviorMapPoints,
     ...catalog.journey.uiCopy.attitudes,
     ...catalog.journey.uiCopy.communicationSections
@@ -159,7 +160,7 @@ function validateJourney(catalog: ContentCatalog, mode: ContentValidationMode, i
       issues,
       "INVALID_SOURCE_REGISTRY",
       "journey.sources",
-      "journey sources must exactly match the approved SRC-001 through SRC-013 registry"
+      "journey sources must exactly match the approved SRC-001 through SRC-014 registry"
     );
   }
   if (journey.sources.some(({ url }) => url.includes("example.invalid"))) {
@@ -209,6 +210,7 @@ function validateJourney(catalog: ContentCatalog, mode: ContentValidationMode, i
     ...journey.practice.partnerResponses.filter((item) => item.page !== 6),
     ...journey.practice.safetyBranches.filter((item) => item.page !== 6),
     ...journey.practice.supportResources.filter((item) => item.page !== 6),
+    ...[journey.uiCopy.bodyKnowledgeDefinition].filter((item) => item.page !== 3),
     ...journey.uiCopy.behaviorMapPoints.filter((item) => item.page !== 4),
     ...journey.uiCopy.attitudes.filter((item) => item.page !== 4),
     ...journey.uiCopy.communicationSections.filter((item) => item.page !== 7)
@@ -260,6 +262,7 @@ function validateJourney(catalog: ContentCatalog, mode: ContentValidationMode, i
   }
   const requiredAttitudes = [
     "expecting",
+    "familiar-enjoyed",
     "decide-in-moment",
     "unsure",
     "not-this-time",

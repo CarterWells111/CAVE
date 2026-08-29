@@ -39,21 +39,16 @@ export function reduceJourneyDraft(draft: JourneyDraft, command: JourneyCommand)
       return changed(draft, { addressPreference: command.preference });
     case "set-explicit-content-consent":
       return changed(draft, { explicitContentConsent: command.consented });
-    case "set-expectation-ids":
-      return changed(draft, { expectationIds: unique(command.ids) });
-    case "set-concern-ids":
-      return changed(draft, { concernIds: unique(command.ids) });
-    case "set-overnight-stage":
-      return userChanged(draft, { overnight: { stage: command.stage, resumeStage: command.stage } });
-    case "save-overnight":
+    case "save-overnight-progress":
       return changed(draft, {
-        overnight: { stage: "concerns", resumeStage: "concerns" },
+        overnight: { stage: command.stage, resumeStage: command.stage },
         expectationIds: unique(command.expectationIds),
         concernIds: unique(command.concernIds),
         overnightCustomNote: command.customNote,
+        ...(command.completed ? {
+          pointEventKeys: unique([...draft.pointEventKeys, "progress:overnight-complete:v1"]),
+        } : {}),
       });
-    case "set-overnight-custom-note":
-      return changed(draft, { overnightCustomNote: command.note });
     case "mark-knowledge-card-read":
       return changed(draft, { readKnowledgeCardIds: unique([...draft.readKnowledgeCardIds, command.cardId]) });
     case "set-medical-diagram-opened":
@@ -139,7 +134,14 @@ export function reduceJourneyDraft(draft: JourneyDraft, command: JourneyCommand)
       return userChanged(draft, {
         communicationCard: {
           ...draft.communicationCard,
-          [command.sectionId]: { ...field, userText: command.userText, needsReview: false }
+          [command.sectionId]: {
+            ...field,
+            userText: command.userText,
+            visibility: field.visibility === "included" && command.userText !== (field.userText ?? field.generatedText)
+              ? "pending"
+              : field.visibility,
+            needsReview: false
+          }
         }
       });
     }

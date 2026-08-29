@@ -10,23 +10,19 @@ function adultDraft() {
 
 test("updates page-owned overnight fields and de-duplicates stable ids", () => {
   const original = adultDraft();
-  const withExpectations = reduceJourneyDraft(original, {
-    type: "set-expectation-ids",
-    ids: ["draft-rest", "draft-rest", "draft-talk"]
-  });
-  const withConcerns = reduceJourneyDraft(withExpectations, {
-    type: "set-concern-ids",
-    ids: ["draft-pressure"]
-  });
-  const result = reduceJourneyDraft(withConcerns, {
-    type: "set-overnight-custom-note",
-    note: "Need a quiet exit option"
+  const result = reduceJourneyDraft(original, {
+    type: "save-overnight-progress",
+    completed: false,
+    stage: "expectations",
+    expectationIds: ["draft-rest", "draft-rest", "draft-talk"],
+    concernIds: ["draft-pressure"],
+    customNote: "Need a quiet exit option",
   });
 
   expect(result.expectationIds).toEqual(["draft-rest", "draft-talk"]);
   expect(result.concernIds).toEqual(["draft-pressure"]);
   expect(result.overnightCustomNote).toBe("Need a quiet exit option");
-  expect(result.sourceRevision).toBe(3);
+  expect(result.sourceRevision).toBe(1);
   expect(original.expectationIds).toEqual([]);
 });
 
@@ -73,8 +69,12 @@ test("updates reflection fields independently", () => {
 
 test("rejects adult-only writes before the adult declaration", () => {
   expect(() => reduceJourneyDraft(createJourneyDraft({ id: "journey-1", now: NOW }), {
-    type: "set-expectation-ids",
-    ids: ["draft-rest"]
+    type: "save-overnight-progress",
+    completed: false,
+    stage: "expectations",
+    expectationIds: ["draft-rest"],
+    concernIds: [],
+    customNote: "",
   })).toThrow(new JourneyDomainError("adult-confirmation-required"));
 });
 
@@ -116,7 +116,14 @@ test("never mutates a frozen input draft", () => {
   Object.freeze(draft);
   Object.freeze(draft.expectationIds);
 
-  expect(reduceJourneyDraft(draft, { type: "set-expectation-ids", ids: ["draft-rest"] }))
+  expect(reduceJourneyDraft(draft, {
+    type: "save-overnight-progress",
+    completed: false,
+    stage: "expectations",
+    expectationIds: ["draft-rest"],
+    concernIds: [],
+    customNote: "",
+  }))
     .toMatchObject({ expectationIds: ["draft-rest"] });
 });
 
@@ -186,17 +193,23 @@ test("edits checklist/card overrides and records points without changing source 
 
 test("stores and resumes the overnight screen's two-stage local progress", () => {
   const concerns = reduceJourneyDraft(adultDraft(), {
-    type: "set-overnight-stage",
-    stage: "concerns"
+    type: "save-overnight-progress",
+    completed: false,
+    stage: "concerns",
+    expectationIds: [],
+    concernIds: [],
+    customNote: "",
   });
 
   expect(concerns.overnight).toEqual({ stage: "concerns", resumeStage: "concerns" });
-  expect(concerns.sourceRevision).toBe(0);
+  expect(concerns.sourceRevision).toBe(1);
 });
 
-test("saves all overnight answers and the resume stage in one domain transition", () => {
+test("atomically saves an overnight progress snapshot and completes it idempotently", () => {
   const result = reduceJourneyDraft(adultDraft(), {
-    type: "save-overnight",
+    type: "save-overnight-progress",
+    completed: true,
+    stage: "concerns",
     expectationIds: ["expect-rest", "expect-rest"],
     concernIds: ["concern-space"],
     customNote: "想保留一点独处时间",
@@ -208,6 +221,24 @@ test("saves all overnight answers and the resume stage in one domain transition"
     overnightCustomNote: "想保留一点独处时间",
     overnight: { stage: "concerns", resumeStage: "concerns" },
   });
+  expect(result.pointEventKeys).toEqual(["progress:overnight-complete:v1"]);
+  expect(reduceJourneyDraft(result, {
+    type: "save-overnight-progress",
+    completed: true,
+    stage: "concerns",
+    expectationIds: result.expectationIds,
+    concernIds: result.concernIds,
+    customNote: result.overnightCustomNote,
+  }).pointEventKeys).toEqual(["progress:overnight-complete:v1"]);
+});
+
+test("persists an edited included communication field as pending", () => {
+  const draft = adultDraft();
+  draft.communicationCard["communication-not-this-time"] = { generatedText: "old", sourceRevision: 1, needsReview: false, visibility: "included" };
+
+  const updated = reduceJourneyDraft(draft, { type: "edit-communication-card-field", sectionId: "communication-not-this-time", userText: "new" });
+
+  expect(updated.communicationCard["communication-not-this-time"]).toMatchObject({ userText: "new", visibility: "pending" });
 });
 
 test("changes communication visibility only through the four explicit privacy states", () => {

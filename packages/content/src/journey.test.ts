@@ -24,6 +24,7 @@ describe("draft seven-screen journey catalogs", () => {
       ...journey.practice.partnerResponses,
       ...journey.practice.safetyBranches,
       ...journey.practice.supportResources,
+      journey.uiCopy.bodyKnowledgeDefinition,
       ...journey.uiCopy.behaviorMapPoints,
       ...journey.uiCopy.attitudes,
       ...journey.uiCopy.communicationSections
@@ -38,9 +39,9 @@ describe("draft seven-screen journey catalogs", () => {
       "draft-penetrative-sex"
     ]);
 
-    expect(reviewables).toHaveLength(90);
+    expect(reviewables).toHaveLength(92);
     expect(reviewed).toHaveLength(56);
-    expect(internalTestApproved).toHaveLength(34);
+    expect(internalTestApproved).toHaveLength(36);
     for (const entry of reviewables) {
       const requiresInternalApproval =
         internalOnlyContentTypes.has(entry.contentType) || internalOnlyUxIds.has(entry.id);
@@ -107,7 +108,7 @@ describe("draft seven-screen journey catalogs", () => {
     expect(() => validateCatalog(loadCatalog(), { mode: "internal" })).not.toThrow();
 
     const issueCodes = productionIssueCodes();
-    expect(issueCodes).toHaveLength(34);
+    expect(issueCodes).toHaveLength(36);
     expect(issueCodes.every((code) => code === "INTERNAL_TEST_APPROVAL_ONLY")).toBe(true);
     expect(issueCodes).not.toContain("DRAFT_CONTENT");
     expect(issueCodes).not.toContain("EXPERT_REVIEW_PENDING");

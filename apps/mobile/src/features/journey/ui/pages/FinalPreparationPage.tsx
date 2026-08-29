@@ -1,6 +1,6 @@
-import { loadCatalog } from "@cave/content";
+import { loadMobileJourneyContentCatalog } from "@cave/content/mobile-journey";
 import { useRef, useState } from "react";
-import { Text, TextInput, View } from "react-native";
+import { Text, View } from "react-native";
 import { captureRef } from "react-native-view-shot";
 
 import { paperTheme } from "../../../../core/design/theme";
@@ -9,121 +9,107 @@ import { Button } from "../../../../core/ui/Button";
 import { Card } from "../../../../core/ui/Card";
 import { SecondaryButton } from "../../../../core/ui/secondary-button";
 import { TextAction } from "../../../../core/ui/text-action";
+import { createCommunicationCardExportModel, type CommunicationCardExportModel } from "../../domain/communication-card-export";
+import type { ChecklistItemStatus, CommunicationSectionId, JourneyDraft, SharingVisibility } from "../../domain/types";
 import {
-  selectConfirmedCommunicationCard,
-  type ConfirmedCommunicationCard
-} from "../../domain/derive-communication-card";
-import type {
-  ChecklistItemStatus,
-  CommunicationSectionId,
-  JourneyDraft,
-  SharingVisibility
-} from "../../domain/types";
+  CommunicationDraftGrid,
+  type CommunicationDraftGridSection
+} from "../components/CommunicationDraftGrid";
 
 type Props = {
   draft: JourneyDraft;
-  onCompleted?(): void;
   onEdit(sectionId: CommunicationSectionId, userText: string): void | Promise<void>;
+  onFinish(): string | Promise<string>;
   onSetVisibility(sectionId: CommunicationSectionId, visibility: SharingVisibility): void | Promise<void>;
-  onCopy(card: ConfirmedCommunicationCard): void | Promise<void>;
-  onSaveImage(card: ConfirmedCommunicationCard, imageUri: string): void | Promise<void>;
-  onFinish(card: ConfirmedCommunicationCard): void | Promise<void>;
+  onCopy?(model: CommunicationCardExportModel): void | Promise<void>;
+  onSaveImage?(model: CommunicationCardExportModel, imageUri: string): void | Promise<void>;
   onOpenImageSettings?(): void | Promise<void>;
   onSaveDraft?(): void | Promise<void>;
   onUpdatePreparation?(itemId: string, status: ChecklistItemStatus): void | Promise<void>;
 };
 
-const sectionCatalog = [...loadCatalog().journey.uiCopy.communicationSections]
+export type { CommunicationCardExportModel } from "../../domain/communication-card-export";
+
+const sectionCatalog = [...loadMobileJourneyContentCatalog().uiCopy.communicationSections]
   .sort((left, right) => left.order - right.order);
 
-const VISIBILITY_LABELS: Record<SharingVisibility, string> = {
-  pending: "待确认",
-  included: "已加入分享",
-  private: "仅自己可见",
-  deleted: "已删除"
-};
-
-const PREPARATION_LABELS: Record<JourneyDraft["privatePreparation"]["items"][number]["category"], string> = {
-  attitude: "靠近与边界",
-  expression: "表达与暂停",
-  comfort: "让我安心的条件",
-  communication: "沟通准备",
-  logistics: "这个夜晚的安排",
-  health: "健康准备",
-  aftercare: "结束之后"
-};
-
-const PREPARATION_STATUSES: Array<{ label: string; value: ChecklistItemStatus }> = [
-  { label: "已经想到", value: "considered" },
-  { label: "想再准备", value: "prepare-more" },
-  { label: "这次不需要", value: "not-relevant" }
-];
-
-type ActiveOperation = "copy" | "image" | "finish" | "save-draft" | "retry-writes";
+type ActiveOperation = "finish" | "retry-writes" | "save-draft" | "save-image";
 
 function cloneDraft(draft: JourneyDraft): JourneyDraft {
   return {
     ...draft,
-    privatePreparation: {
-      ...draft.privatePreparation,
-      items: draft.privatePreparation.items.map((item) => ({ ...item, sourceIds: [...item.sourceIds] }))
-    },
+    privatePreparation: { ...draft.privatePreparation, items: draft.privatePreparation.items.map((item) => ({ ...item, sourceIds: [...item.sourceIds] })) },
     communicationCard: Object.fromEntries(Object.entries(draft.communicationCard).map(([id, field]) => [id, { ...field }])) as JourneyDraft["communicationCard"]
   };
 }
 
-function SharePreview({ card }: { card: ConfirmedCommunicationCard }) {
-  const theme = useTheme();
-  return (
-    <View
-      accessibilityLabel="沟通卡分享预览"
-      style={{ backgroundColor: paperTheme.color.canvas, borderRadius: theme.radius.lg, gap: theme.space.md, padding: theme.space.lg }}
-      testID="share-preview"
-    >
-      <Text accessibilityRole="header" style={{ ...theme.typography.heading, color: paperTheme.color.text }}>靠近之前，我想告诉你</Text>
-      {card.sections.length === 0 ? (
-        <Text style={{ ...theme.typography.body, color: paperTheme.color.secondary }}>还没有加入可分享的段落。</Text>
-      ) : card.sections.map(({ id, text }) => (
-        <Text key={id} selectable style={{ ...theme.typography.body, color: paperTheme.color.text }}>{text}</Text>
-      ))}
-      <Text selectable style={{ ...theme.typography.caption, color: paperTheme.color.secondary }}>{card.consentFooter}</Text>
-    </View>
-  );
+const PREPARATION_LABELS: Record<JourneyDraft["privatePreparation"]["items"][number]["category"], string> = {
+  attitude: "靠近与边界", expression: "表达与暂停", comfort: "让我更安心的条件", communication: "沟通准备", logistics: "这个夜晚的安排", health: "健康准备", aftercare: "结束之后"
+};
+
+function privatePreparationDetails(draft: JourneyDraft) {
+  const answers = Object.values(draft.reflection)
+    .filter((value): value is string => typeof value === "string" && value.trim().length > 0);
+  const phrase = draft.practice.editedPhrase?.trim() || draft.practice.phrase?.trim();
+  return [
+    ["只给自己的回答", answers.join("；")],
+    ["表达句", phrase ?? "尚未写下"],
+    ["安心需要", draft.comfortNeedIds.join("、") || "尚未选择"],
+    ["条件式健康准备", draft.privatePreparation.items.filter((item) => item.category === "health").map((item) => item.id).join("、") || "本次未出现"],
+    ["事后照顾", draft.privatePreparation.aftercareIds.join("、") || "尚未选择"],
+  ] as const;
 }
 
-export function FinalPreparationPage({
-  draft,
-  onCompleted,
-  onCopy,
-  onEdit,
-  onFinish,
-  onOpenImageSettings,
-  onSaveDraft,
-  onSaveImage,
-  onSetVisibility,
-  onUpdatePreparation
-}: Props) {
+function exportModel(draft: JourneyDraft): CommunicationCardExportModel {
+  return createCommunicationCardExportModel(sectionCatalog.flatMap((section) => {
+      const id = section.id as CommunicationSectionId;
+      const field = draft.communicationCard[id];
+      return field.visibility === "included" && !field.needsReview
+        ? [{ id, title: section.title, text: field.userText ?? field.generatedText }]
+        : [];
+    }));
+}
+
+function gridSections(draft: JourneyDraft): CommunicationDraftGridSection[] {
+  return sectionCatalog.map((section) => {
+    const id = section.id as CommunicationSectionId;
+    const field = draft.communicationCard[id];
+    return {
+      id,
+      title: section.title,
+      text: field.userText ?? field.generatedText,
+      deleted: field.visibility === "deleted",
+      needsReview: field.needsReview
+    };
+  });
+}
+
+export function FinalPreparationPage({ draft, onCopy, onEdit, onFinish, onOpenImageSettings, onSaveDraft, onSaveImage, onSetVisibility, onUpdatePreparation }: Props) {
   const theme = useTheme();
   const draftRef = useRef(cloneDraft(draft));
   const previewRef = useRef<View>(null);
+  const exportModelRef = useRef<CommunicationCardExportModel | null>(null);
   const queueRef = useRef<Promise<void>>(Promise.resolve());
   const failedWritesRef = useRef<Array<() => void | Promise<void>>>([]);
   const [, renderVersion] = useState(0);
-  const [editingId, setEditingId] = useState<CommunicationSectionId>();
-  const [editingText, setEditingText] = useState("");
-  const [previewVisible, setPreviewVisible] = useState(false);
-  const [imageConfirmationVisible, setImageConfirmationVisible] = useState(false);
-  const [imageSettingsRecoveryVisible, setImageSettingsRecoveryVisible] = useState(false);
-  const [handwritingVisible, setHandwritingVisible] = useState(false);
   const [status, setStatus] = useState<string>();
   const operationRef = useRef<ActiveOperation | undefined>(undefined);
   const [activeOperation, setActiveOperation] = useState<ActiveOperation | undefined>(undefined);
   const [hasFailedWrites, setHasFailedWrites] = useState(false);
-  const finishSucceededRef = useRef(false);
-  const [finishSucceeded, setFinishSucceeded] = useState(false);
+  const [previewVisible, setPreviewVisible] = useState(false);
+  const [copyConfirmationVisible, setCopyConfirmationVisible] = useState(false);
+  const [imageConfirmationVisible, setImageConfirmationVisible] = useState(false);
+  const [imageSettingsRecoveryVisible, setImageSettingsRecoveryVisible] = useState(false);
+  const [handwritingVisible, setHandwritingVisible] = useState(false);
 
   const updateLocal = (update: (current: JourneyDraft) => JourneyDraft) => {
     draftRef.current = update(draftRef.current);
+    // Any local change invalidates an already reviewed export snapshot. The
+    // next copy/image action must render and confirm the new immutable model.
+    exportModelRef.current = null;
+    setPreviewVisible(false);
+    setCopyConfirmationVisible(false);
+    setImageConfirmationVisible(false);
     renderVersion((version) => version + 1);
   };
   const enqueue = (operation: () => void | Promise<void>) => {
@@ -133,14 +119,32 @@ export function FinalPreparationPage({
       } catch {
         failedWritesRef.current.push(operation);
         setHasFailedWrites(true);
+        setStatus("保存更改失败，请重试。");
       }
     };
     const next = queueRef.current.then(run, run);
     queueRef.current = next;
     return next;
   };
-  const setVisibility = (sectionId: CommunicationSectionId, visibility: SharingVisibility) => {
-    if (operationRef.current !== undefined || failedWritesRef.current.length > 0 || finishSucceededRef.current) return;
+  const editSection = (sectionId: CommunicationSectionId, userText: string) => {
+    if (operationRef.current !== undefined || failedWritesRef.current.length > 0) return;
+    updateLocal((current) => ({
+      ...current,
+      communicationCard: {
+        ...current.communicationCard,
+        [sectionId]: {
+          ...current.communicationCard[sectionId],
+          userText,
+          visibility: current.communicationCard[sectionId].visibility === "included" ? "pending" : current.communicationCard[sectionId].visibility,
+          needsReview: false
+        }
+      }
+    }));
+    return enqueue(() => onEdit(sectionId, userText));
+  };
+  const setDeleted = (sectionId: CommunicationSectionId, deleted: boolean) => {
+    if (operationRef.current !== undefined || failedWritesRef.current.length > 0) return;
+    const visibility = deleted ? "deleted" : "pending";
     updateLocal((current) => ({
       ...current,
       communicationCard: {
@@ -148,74 +152,18 @@ export function FinalPreparationPage({
         [sectionId]: { ...current.communicationCard[sectionId], visibility }
       }
     }));
+    return enqueue(() => onSetVisibility(sectionId, visibility));
+  };
+  const setVisibility = (sectionId: CommunicationSectionId, visibility: SharingVisibility) => {
+    if (operationRef.current !== undefined || failedWritesRef.current.length > 0) return;
+    updateLocal((current) => ({ ...current, communicationCard: { ...current.communicationCard, [sectionId]: { ...current.communicationCard[sectionId], visibility } } }));
     void enqueue(() => onSetVisibility(sectionId, visibility));
   };
-  const updatePreparation = (itemId: string, nextStatus: ChecklistItemStatus) => {
-    if (onUpdatePreparation === undefined || operationRef.current !== undefined || failedWritesRef.current.length > 0 || finishSucceededRef.current) return;
-    updateLocal((current) => ({
-      ...current,
-      privatePreparation: {
-        ...current.privatePreparation,
-        items: current.privatePreparation.items.map((item) => item.id === itemId
-          ? { ...item, status: nextStatus }
-          : item)
-      }
-    }));
-    void enqueue(() => onUpdatePreparation(itemId, nextStatus));
+  const updatePreparation = (itemId: string, status: ChecklistItemStatus) => {
+    if (onUpdatePreparation === undefined || operationRef.current !== undefined || hasFailedWrites) return;
+    updateLocal((current) => ({ ...current, privatePreparation: { ...current.privatePreparation, items: current.privatePreparation.items.map((item) => item.id === itemId ? { ...item, status } : item) } }));
+    void enqueue(() => onUpdatePreparation(itemId, status));
   };
-  const saveEdit = () => {
-    if (operationRef.current !== undefined || failedWritesRef.current.length > 0 || finishSucceededRef.current || editingId === undefined || editingText.trim().length === 0) return;
-    const sectionId = editingId;
-    const userText = editingText.trim();
-    updateLocal((current) => ({
-      ...current,
-      communicationCard: {
-        ...current.communicationCard,
-        [sectionId]: { ...current.communicationCard[sectionId], userText, needsReview: false }
-      }
-    }));
-    setEditingId(undefined);
-    void enqueue(() => onEdit(sectionId, userText));
-  };
-  const afterFlush = async (
-    kind: ActiveOperation,
-    operation: (card: ConfirmedCommunicationCard) => void | Promise<void>,
-    success: string,
-    failure: string
-  ) => {
-    if (operationRef.current !== undefined) return;
-    operationRef.current = kind;
-    setActiveOperation(kind);
-    setStatus("正在处理…");
-    try {
-      await queueRef.current;
-      if (failedWritesRef.current.length > 0) {
-        setStatus("保存更改失败，请重试。");
-        return;
-      }
-      await operation(selectConfirmedCommunicationCard(draftRef.current));
-      if (kind === "finish") {
-        finishSucceededRef.current = true;
-        setFinishSucceeded(true);
-      }
-      setStatus(success);
-    } catch (error) {
-      if (
-        kind === "image"
-        && typeof error === "object"
-        && error !== null
-        && "recovery" in error
-        && error.recovery === "open-settings"
-      ) {
-        setImageSettingsRecoveryVisible(true);
-      }
-      setStatus(failure);
-    } finally {
-      operationRef.current = undefined;
-      setActiveOperation(undefined);
-    }
-  };
-
   const retryFailedWrites = async () => {
     if (operationRef.current !== undefined || failedWritesRef.current.length === 0) return;
     operationRef.current = "retry-writes";
@@ -224,156 +172,158 @@ export function FinalPreparationPage({
     const writes = failedWritesRef.current.splice(0);
     setHasFailedWrites(false);
     try {
-      for (const write of writes) {
-        await enqueue(write);
-      }
+      for (const write of writes) await enqueue(write);
       await queueRef.current;
-      if (failedWritesRef.current.length > 0) {
-        setStatus("保存更改失败，请重试。");
-      } else {
-        setStatus("更改已保存，请再次选择复制或保存。");
-      }
+      setStatus(failedWritesRef.current.length > 0 ? "保存更改失败，请重试。" : "更改已保存。");
     } finally {
       operationRef.current = undefined;
       setActiveOperation(undefined);
     }
   };
-
-  const requestCopy = () => {
-    if (!previewVisible) {
-      setPreviewVisible(true);
-      setStatus("请先查看最终预览，再次确认后复制。");
-      return;
+  const finish = async () => {
+    if (operationRef.current !== undefined || failedWritesRef.current.length > 0) return;
+    operationRef.current = "finish";
+    setActiveOperation("finish");
+    setStatus("正在保存沟通草稿…");
+    try {
+      await queueRef.current;
+      if (failedWritesRef.current.length > 0) {
+        setStatus("保存更改失败，请重试。");
+        return;
+      }
+      await onFinish();
+      setStatus("沟通草稿已保存到本机。");
+    } catch {
+      setStatus("沟通草稿保存失败，请重试。");
+    } finally {
+      operationRef.current = undefined;
+      setActiveOperation(undefined);
     }
-    void afterFlush("copy", onCopy, "已复制。", "复制失败，请重试或手写记录。");
   };
-
-  const requestImageConfirmation = () => {
-    setImageSettingsRecoveryVisible(false);
+  const showPreview = () => {
+    exportModelRef.current ??= exportModel(draftRef.current);
     setPreviewVisible(true);
-    setImageConfirmationVisible(true);
-    setStatus("请先查看最终预览和相册提示，再确认保存图片。");
+  };
+  const model = exportModelRef.current;
+  const requestCopy = () => {
+    if (onCopy === undefined || operationRef.current !== undefined) return;
+    showPreview();
+    setCopyConfirmationVisible(true);
+    setStatus("请确认：复制会将内容写入系统剪贴板；只有确认后才会写入。");
+  };
+  const copy = async () => {
+    if (onCopy === undefined || operationRef.current !== undefined || model === null) return;
+    operationRef.current = "finish"; setActiveOperation("finish");
+    try { await queueRef.current; if (failedWritesRef.current.length > 0) throw new Error(); await onCopy(model); setStatus("已复制。文字会进入系统剪贴板，请自行选择粘贴位置。"); } catch { setStatus("复制失败，请重试或手写记录。"); } finally { operationRef.current = undefined; setActiveOperation(undefined); }
+  };
+  const saveImage = async () => {
+    if (onSaveImage === undefined || previewRef.current === null || operationRef.current !== undefined || model === null) return;
+    operationRef.current = "save-image"; setActiveOperation("save-image");
+    try {
+      await queueRef.current;
+      if (failedWritesRef.current.length > 0) throw new Error("pending-write-failed");
+      const imageUri = await captureRef(previewRef, { format: "png", quality: 1, result: "tmpfile" });
+      await onSaveImage(model, imageUri);
+      setStatus("图片已保存。相册或 iCloud 的后续处理由设备设置决定。");
+    } catch (error) {
+      if ((error as { recovery?: unknown }).recovery === "open-settings") setImageSettingsRecoveryVisible(true);
+      setStatus("图片保存失败，请检查权限后重试。");
+    } finally { operationRef.current = undefined; setActiveOperation(undefined); }
+  };
+  const saveDraft = async () => {
+    if (onSaveDraft === undefined || operationRef.current !== undefined) return;
+    operationRef.current = "save-draft"; setActiveOperation("save-draft");
+    try {
+      await queueRef.current;
+      if (failedWritesRef.current.length > 0) throw new Error("pending-write-failed");
+      await onSaveDraft();
+      setStatus("已保存给自己。");
+    } catch { setStatus("保存给自己失败，请先重试未完成的更改。"); }
+    finally { operationRef.current = undefined; setActiveOperation(undefined); }
   };
 
-  const confirmed = selectConfirmedCommunicationCard(draftRef.current);
   return (
     <View style={{ gap: theme.space.lg, maxWidth: "100%", width: "100%" }} testID="page-6-content">
       <View style={{ alignItems: "center", flexDirection: "row", justifyContent: "space-between" }}>
-        <Text style={{ ...theme.typography.caption, color: theme.color.textMuted }}>最终整理</Text>
-        <Text accessibilityLabel="第 6 屏，共 6 屏" style={{ ...theme.typography.caption, color: theme.color.textMuted }}>6 / 6</Text>
+        <Text style={{ ...theme.typography.caption, color: theme.color.textMuted }}>整理草稿</Text>
       </View>
-      <Text accessibilityRole="header" style={{ ...theme.typography.title, color: theme.color.text }}>先留给自己，再决定分享什么</Text>
+      <Text accessibilityRole="header" style={{ ...theme.typography.title, color: theme.color.text }}>
+        回顾一下，留下想保存的内容
+      </Text>
+      <Text selectable style={{ ...theme.typography.body, color: theme.color.textSecondary }}>
+        七段内容默认都会保存在沟通草稿箱。你可以编辑，也可以暂时删除；删除后的内容会变灰，保存前后都能恢复。
+      </Text>
+
+      <CommunicationDraftGrid
+        disabled={activeOperation !== undefined || hasFailedWrites}
+        onEdit={editSection}
+        onSetDeleted={setDeleted}
+        sections={gridSections(draftRef.current)}
+      />
 
       <Card accessible={false} variant="muted">
         <Text accessibilityRole="header" style={{ ...theme.typography.heading, color: theme.color.text }}>只给自己看的准备</Text>
-        <Text style={{ ...theme.typography.body, color: theme.color.textSecondary }}>这部分只给你自己看。这不是一张必须完成的清单；只有你主动加入的内容，才会出现在沟通卡里。设备被他人解锁时，本机内容仍可能被看到。</Text>
-        {draftRef.current.privatePreparation.items.length === 0 ? (
-          <Text style={{ ...theme.typography.body, color: theme.color.textSecondary }}>目前没有必须完成的准备项，你仍然可以继续。</Text>
-        ) : draftRef.current.privatePreparation.items.map((item) => (
-          <View key={item.id} style={{ borderColor: theme.color.border, borderRadius: theme.radius.control, borderWidth: theme.border.width, gap: theme.space.xs, padding: theme.space.md }}>
+        <Text selectable style={{ ...theme.typography.body, color: theme.color.textSecondary }}>这些准备只留在本机，不会进入沟通卡或导出内容。</Text>
+        {privatePreparationDetails(draftRef.current).map(([title, detail]) => (
+          <View key={title} style={{ gap: theme.space.xs }}>
+            <Text accessibilityRole="header" style={{ ...theme.typography.cardTitle, color: theme.color.text }}>{title}</Text>
+            <Text selectable style={{ ...theme.typography.body, color: theme.color.textSecondary }}>{detail}</Text>
+          </View>
+        ))}
+        {draftRef.current.privatePreparation.items.map((item) => (
+          <View key={item.id} style={{ gap: theme.space.xs }}>
             <Text style={{ ...theme.typography.body, color: theme.color.text }}>{PREPARATION_LABELS[item.category]}</Text>
-            {item.userNote ? <Text selectable style={{ ...theme.typography.body, color: theme.color.textSecondary }}>{item.userNote}</Text> : null}
-            {PREPARATION_STATUSES.map((option) => (
-              <Button
-                accessibilityLabel={`${PREPARATION_LABELS[item.category]}：${option.label}`}
-                key={option.value}
-                label={option.label}
-                onPress={() => updatePreparation(item.id, option.value)}
-                role="radio"
-                selected={item.status === option.value}
-                disabled={onUpdatePreparation === undefined || activeOperation !== undefined || hasFailedWrites || finishSucceeded}
-              />
+            {(["considered", "prepare-more", "not-relevant"] as ChecklistItemStatus[]).map((choice) => (
+              <Button accessibilityLabel={`${PREPARATION_LABELS[item.category]}：${choice}`} key={choice} label={choice === "considered" ? "已经想到" : choice === "prepare-more" ? "想再准备" : "这次不需要"} onPress={() => updatePreparation(item.id, choice)} role="radio" selected={item.status === choice} disabled={onUpdatePreparation === undefined} />
             ))}
           </View>
         ))}
       </Card>
 
       <View style={{ gap: theme.space.md }}>
-        <Text accessibilityRole="header" style={{ ...theme.typography.heading, color: theme.color.text }}>我的沟通草稿</Text>
-        <Text style={{ ...theme.typography.body, color: theme.color.textSecondary }}>七段内容都从待确认开始。只有你明确加入的段落才会出现在复制和图片中。</Text>
+        <Text accessibilityRole="header" style={{ ...theme.typography.heading, color: theme.color.text }}>逐段确认沟通内容</Text>
+        <Text selectable style={{ ...theme.typography.body, color: theme.color.textSecondary }}>七段内容从待确认开始；只有“已加入分享”且不需要复查的段落会进入预览、复制和图片。</Text>
         {sectionCatalog.map((section) => {
-          const sectionId = section.id as CommunicationSectionId;
-          const field = draftRef.current.communicationCard[sectionId];
-          const text = field.userText ?? field.generatedText;
-          return (
-            <Card accessible={false} key={section.id}>
-              <Text accessibilityRole="header" style={{ ...theme.typography.heading, color: theme.color.text }}>{section.title}</Text>
-              <Text style={{ ...theme.typography.caption, color: theme.color.textSecondary }}>{VISIBILITY_LABELS[field.visibility]}</Text>
-              {field.needsReview ? <Text style={{ ...theme.typography.caption, color: theme.color.warning }}>内容已变化，需要重新确认</Text> : null}
-              {editingId === sectionId ? (
-                <>
-                  <TextInput
-                    accessibilityLabel={`编辑${section.title}`}
-                    multiline
-                    onChangeText={setEditingText}
-                    style={{ ...theme.typography.body, borderColor: theme.color.interactiveBorder, borderRadius: theme.radius.control, borderWidth: theme.border.width, color: theme.color.text, minHeight: 112, padding: theme.space.md }}
-                    value={editingText}
-                  />
-                  <Button disabled={activeOperation !== undefined || hasFailedWrites || finishSucceeded} label="保存编辑" onPress={saveEdit} />
-                </>
-              ) : (
-                <Text selectable style={{ ...theme.typography.body, color: theme.color.text }}>{field.visibility === "deleted" ? "这段已删除" : text}</Text>
-              )}
-              <Button accessibilityLabel={`加入分享：${section.title}`} disabled={activeOperation !== undefined || hasFailedWrites || finishSucceeded} label="加入分享" onPress={() => setVisibility(sectionId, "included")} role="radio" selected={field.visibility === "included"} />
-              <SecondaryButton disabled={activeOperation !== undefined || hasFailedWrites || finishSucceeded} label={`编辑：${section.title}`} onPress={() => { setEditingId(sectionId); setEditingText(text); }} />
-              <Button accessibilityLabel={`保持私密：${section.title}`} disabled={activeOperation !== undefined || hasFailedWrites || finishSucceeded} label="只留给自己" onPress={() => setVisibility(sectionId, "private")} role="radio" selected={field.visibility === "private"} />
-              <Button accessibilityLabel={`删除：${section.title}`} disabled={activeOperation !== undefined || hasFailedWrites || finishSucceeded} label="删除这一段" onPress={() => setVisibility(sectionId, "deleted")} role="radio" selected={field.visibility === "deleted"} />
-            </Card>
-          );
+          const id = section.id as CommunicationSectionId;
+          const field = draftRef.current.communicationCard[id];
+          return <View key={id} style={{ gap: theme.space.xs }}>
+            <Text style={{ ...theme.typography.cardTitle, color: theme.color.text }}>{section.title}</Text>
+            <Text style={{ ...theme.typography.caption, color: field.needsReview ? theme.color.warning : theme.color.textSecondary }}>{field.needsReview ? "上游内容已变化，需要重新确认" : field.visibility === "pending" ? "待确认" : field.visibility === "included" ? "已加入分享" : "仅自己可见"}</Text>
+            <Button accessibilityLabel={`加入分享：${section.title}`} label="加入分享" onPress={() => setVisibility(id, "included")} role="radio" selected={field.visibility === "included"} />
+            <SecondaryButton accessibilityLabel={`保持私密：${section.title}`} label="只留给自己" onPress={() => setVisibility(id, "private")} />
+          </View>;
         })}
       </View>
 
-      <Button label="预览分享卡" onPress={() => setPreviewVisible(true)} />
-      {previewVisible ? (
-        <View collapsable={false} ref={previewRef}>
-          <SharePreview card={confirmed} />
-        </View>
-      ) : null}
-      {previewVisible ? <Text style={{ ...theme.typography.body, color: theme.color.textSecondary }}>文字会进入系统剪贴板。CAVE 不会自动发送，你可以粘贴到自己选择的应用中。</Text> : null}
-      <Button disabled={activeOperation !== undefined && activeOperation !== "copy"} label={activeOperation === "copy" ? "正在复制…" : "复制已确认内容"} loading={activeOperation === "copy"} onPress={requestCopy} />
-      <SecondaryButton disabled={activeOperation !== undefined} label="保存为图片" onPress={requestImageConfirmation} />
-      {imageConfirmationVisible ? (
-        <View style={{ gap: theme.space.sm }}>
-          <Text style={{ ...theme.typography.body, color: theme.color.textSecondary }}>图片会进入系统相册。如果设备开启了相册云同步，它也可能同步到你的云端账户。</Text>
-          <Button
-            label={activeOperation === "image" ? "正在保存图片…" : "确认并保存图片"}
-            loading={activeOperation === "image"}
-            onPress={() => {
-              void afterFlush("image", async (card) => {
-                if (previewRef.current === null) throw new Error("preview-not-ready");
-                const imageUri = await captureRef(previewRef, { format: "png", quality: 1, result: "tmpfile" });
-                await onSaveImage(card, imageUri);
-              }, "图片已保存。", "图片保存失败，请检查权限后重试。");
-            }}
-          />
-        </View>
-      ) : null}
-      {imageSettingsRecoveryVisible && onOpenImageSettings !== undefined ? (
-        <Button label="前往系统设置" onPress={() => { void onOpenImageSettings(); }} />
-      ) : null}
+      <Button label="预览分享卡" onPress={showPreview} />
+      {previewVisible && model !== null ? <View ref={previewRef} collapsable={false} style={{ backgroundColor: paperTheme.color.canvas, borderRadius: theme.radius.lg, gap: theme.space.md, padding: theme.space.lg }} testID="communication-card-export-preview"><Text accessibilityRole="header" style={{ ...theme.typography.heading, color: paperTheme.color.text }}>{model.title}</Text>{model.sections.map((section) => <View key={section.id}><Text accessibilityRole="header" style={{ ...theme.typography.cardTitle, color: paperTheme.color.text }}>{section.title}</Text><Text style={{ ...theme.typography.body, color: paperTheme.color.text }}>{section.text}</Text></View>)}<Text style={{ ...theme.typography.caption, color: paperTheme.color.secondary }}>{model.consentFooter}</Text></View> : null}
+      <Button disabled={onCopy === undefined} label={activeOperation === "finish" ? "正在复制…" : "复制已确认内容"} loading={activeOperation === "finish"} onPress={requestCopy} />
+      {copyConfirmationVisible ? <View style={{ gap: theme.space.sm }}><Text selectable style={{ ...theme.typography.body, color: theme.color.textSecondary }}>复制会写入系统剪贴板。请只在你愿意粘贴到的位置使用它。</Text><Button label="确认复制到剪贴板" onPress={() => { void copy(); }} /></View> : null}
+      <SecondaryButton disabled={onSaveImage === undefined} label="保存为图片" onPress={() => { showPreview(); setImageConfirmationVisible(true); }} />
+      {imageConfirmationVisible ? <View style={{ gap: theme.space.sm }}><Text selectable style={{ ...theme.typography.body, color: theme.color.textSecondary }}>保存前请确认：图片会进入系统相册；设备如开启 iCloud 相册同步，图片也可能同步到你的云端账户。</Text><Button label="确认并保存图片" onPress={() => { void saveImage(); }} /></View> : null}
+      {imageSettingsRecoveryVisible && onOpenImageSettings !== undefined ? <Button label="打开系统设置" onPress={() => { void onOpenImageSettings(); }} /> : null}
       <TextAction label="我想手写" onPress={() => setHandwritingVisible(true)} />
-      {handwritingVisible ? <Text style={{ ...theme.typography.body, color: theme.color.text }}>可以把确认后的内容抄写到纸上；CAVE 不会自动分享。</Text> : null}
-      {status ? <Text accessibilityLiveRegion="polite" style={{ ...theme.typography.body, color: theme.color.text }}>{status}</Text> : null}
-      {hasFailedWrites ? <Button label="重试保存更改" loading={activeOperation === "retry-writes"} onPress={() => { void retryFailedWrites(); }} /> : null}
-      <SecondaryButton
-        disabled={onSaveDraft === undefined || activeOperation !== undefined || finishSucceeded}
-        label={activeOperation === "save-draft" ? "正在保存草稿…" : "保存给自己"}
-        loading={activeOperation === "save-draft"}
-        onPress={() => {
-          if (onSaveDraft !== undefined) {
-            void afterFlush("save-draft", async () => onSaveDraft(), "已保存当前草稿，不会自动分享。", "草稿保存失败，请重试。");
-          }
-        }}
-      />
-      <Button
-        disabled={finishSucceeded || (activeOperation !== undefined && activeOperation !== "finish")}
-        label={finishSucceeded ? "首次记录已完成" : activeOperation === "finish" ? "正在完成…" : "完成首次记录"}
-        loading={activeOperation === "finish"}
-        onPress={() => { void afterFlush("finish", onFinish, "已保存到本机。", "保存失败，请重试。"); }}
-      />
-      {finishSucceeded && onCompleted !== undefined ? (
-        <Button label="返回应用入口" onPress={onCompleted} />
+      {handwritingVisible ? <Text selectable style={{ ...theme.typography.body, color: theme.color.text }}>可以把确认后的内容抄写到纸上；CAVE 不会自动分享。</Text> : null}
+      <SecondaryButton disabled={onSaveDraft === undefined || activeOperation !== undefined || hasFailedWrites} label={activeOperation === "save-draft" ? "正在保存给自己…" : "保存给自己"} onPress={() => { void saveDraft(); }} />
+
+      {status ? (
+        <Text accessibilityLiveRegion="polite" selectable style={{ ...theme.typography.body, color: theme.color.text }}>
+          {status}
+        </Text>
       ) : null}
+      {hasFailedWrites ? (
+        <Button
+          label="重试保存更改"
+          loading={activeOperation === "retry-writes"}
+          onPress={() => { void retryFailedWrites(); }}
+        />
+      ) : null}
+      <Button
+        disabled={activeOperation !== undefined || hasFailedWrites}
+        label={activeOperation === "finish" ? "正在保存沟通草稿…" : "保存沟通草稿"}
+        loading={activeOperation === "finish"}
+        onPress={() => { void finish(); }}
+      />
     </View>
   );
 }

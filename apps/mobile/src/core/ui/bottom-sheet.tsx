@@ -1,4 +1,4 @@
-import { useEffect, useRef, type PropsWithChildren } from "react";
+import { useRef, type PropsWithChildren, type RefObject } from "react";
 import {
   AccessibilityInfo,
   findNodeHandle,
@@ -11,6 +11,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { useTheme } from "../design/theme-provider";
+import { useReducedMotion } from "../design/motion-preferences";
 import { TextAction } from "./text-action";
 
 export type BottomSheetProps = PropsWithChildren<{
@@ -18,10 +19,12 @@ export type BottomSheetProps = PropsWithChildren<{
   title: string;
   onClose: () => void;
   onInitialFocus?: () => void;
+  onDismiss?: () => void;
   onRestoreFocus?: () => void;
+  returnFocusRef?: RefObject<View | null> | undefined;
   closeLabel?: string;
   dismissible?: boolean;
-  reducedMotion?: boolean;
+  reducedMotion?: boolean | undefined;
   resolveFocusHandle?: typeof findNodeHandle;
 }>;
 
@@ -31,21 +34,19 @@ export function BottomSheet({
   title,
   onClose,
   onInitialFocus,
+  onDismiss,
   onRestoreFocus,
+  returnFocusRef,
   closeLabel = `关闭${title}`,
   dismissible = true,
-  reducedMotion = false,
+  reducedMotion,
   resolveFocusHandle = findNodeHandle,
 }: BottomSheetProps) {
   const theme = useTheme();
-  const wasVisible = useRef(false);
+  const systemReducedMotion = useReducedMotion();
+  const shouldReduceMotion = reducedMotion ?? systemReducedMotion;
   const closeRef = useRef<View>(null);
   const titleRef = useRef<Text>(null);
-
-  useEffect(() => {
-    if (wasVisible.current && !visible) onRestoreFocus?.();
-    wasVisible.current = visible;
-  }, [onRestoreFocus, visible]);
 
   const handleShow = () => {
     const focusTarget = dismissible ? closeRef.current : titleRef.current;
@@ -53,15 +54,22 @@ export function BottomSheet({
     if (focusNode !== null) AccessibilityInfo.setAccessibilityFocus(focusNode);
     onInitialFocus?.();
   };
+  const handleModalDismiss = () => {
+    const returnNode = resolveFocusHandle(returnFocusRef?.current ?? null);
+    if (returnNode !== null) AccessibilityInfo.setAccessibilityFocus(returnNode);
+    onRestoreFocus?.();
+    onDismiss?.();
+  };
 
-  const handleDismiss = () => {
+  const handleRequestClose = () => {
     if (dismissible) onClose();
   };
 
   return (
     <Modal
-      animationType={reducedMotion ? "none" : "slide"}
-      onRequestClose={handleDismiss}
+      animationType={shouldReduceMotion ? "none" : "slide"}
+      onDismiss={handleModalDismiss}
+      onRequestClose={handleRequestClose}
       onShow={handleShow}
       testID="bottom-sheet-modal"
       transparent
@@ -86,7 +94,7 @@ export function BottomSheet({
           <View
             accessibilityLabel={title}
             accessibilityViewIsModal
-            onAccessibilityEscape={handleDismiss}
+            onAccessibilityEscape={handleRequestClose}
             style={{ flexShrink: 1, paddingHorizontal: theme.space.card, paddingTop: theme.space.md }}
             testID="bottom-sheet-panel"
           >
@@ -94,7 +102,7 @@ export function BottomSheet({
               <Text ref={titleRef} accessibilityRole="header" style={{ ...theme.typography.heading, color: theme.color.text, flex: 1, flexShrink: 1 }}>
                 {title}
               </Text>
-              {dismissible ? <TextAction ref={closeRef} label={closeLabel} onPress={handleDismiss} /> : null}
+              {dismissible ? <TextAction ref={closeRef} label={closeLabel} onPress={handleRequestClose} /> : null}
             </View>
             <ScrollView
               automaticallyAdjustKeyboardInsets

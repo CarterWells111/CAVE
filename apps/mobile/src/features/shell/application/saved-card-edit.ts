@@ -1,5 +1,6 @@
 import {
   COMMUNICATION_SECTION_IDS,
+  CURRENT_COMMUNICATION_CARD_SHARING_POLICY_VERSION,
   type CommunicationSectionId,
   type SavedCommunicationCardRecord,
   type SharingVisibility,
@@ -44,6 +45,15 @@ export function buildEditableSavedCardSections(
   });
 }
 
+export function confirmSavedCardSharingPolicy(
+  record: SavedCommunicationCardRecord
+): SavedCommunicationCardRecord {
+  return {
+    ...record,
+    sharingPolicyVersion: CURRENT_COMMUNICATION_CARD_SHARING_POLICY_VERSION
+  };
+}
+
 export function applySavedCardSectionUpdates(
   record: SavedCommunicationCardRecord,
   updates: readonly SavedCardSectionUpdate[],
@@ -54,10 +64,13 @@ export function applySavedCardSectionUpdates(
     card: Object.fromEntries(COMMUNICATION_SECTION_IDS.map((id) => {
       const field = record.card[id];
       const update = updatesById.get(id);
-      return [id, update === undefined ? field : {
+      if (update === undefined) return [id, field];
+      const userText = update.text.trim();
+      const changedText = userText !== (field.userText ?? field.generatedText);
+      return [id, {
         ...field,
-        userText: update.text.trim(),
-        visibility: update.visibility,
+        userText,
+        visibility: update.visibility === "included" && changedText ? "pending" : update.visibility,
         needsReview: false,
       }];
     })) as SavedCommunicationCardRecord["card"],

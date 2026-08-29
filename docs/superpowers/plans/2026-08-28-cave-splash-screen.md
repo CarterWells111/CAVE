@@ -169,4 +169,3 @@ Run `git diff --check` against the parent commit and inspect `git status --short
 - [ ] **Step 4: Runtime observation guidance**
 
 Restart Metro and reopen the project in Expo Go to observe the development-only splash simulation. Treat a preview or production iOS build as the acceptance environment for the real native launch screen, following Expo's documented limitation.
-

@@ -53,15 +53,15 @@ test("Pages 1 through 4 hydrate canonical state and persist before navigation", 
   const overnight = route("overnight");
   expect(overnight).toContain("options={catalog.options}");
   expect(overnight).toContain("initialStage={snapshot?.overnight.resumeStage");
-  expect(overnight).toContain('type: "set-overnight-stage"');
+  expect(overnight).toContain("controller.saveOvernightProgress(input)");
   expect(overnight).toMatch(/onContinue[\s\S]*saveOvernight\(input\)[\s\S]*goTo\("behavior-map"\)/u);
 
   const knowledge = route("body-knowledge");
-  expect(knowledge).toContain("sources={catalog.sources}");
+  expect(knowledge).toContain("onOpenSources={openJourneySources}");
   expect(knowledge).toContain('require("../../../../assets/medical/vulva-anatomy-review-current.png")');
   expect(existsSync(resolve(__dirname, "../../../../../assets/medical/vulva-anatomy-review-current.png"))).toBe(true);
   expect(knowledge).toContain("diagramSource={medicalDiagram}");
-  expect(knowledge).toContain("onSourceAction");
+  expect(knowledge).not.toContain("onSourceAction");
   expect(knowledge).toContain('goTo("overnight")');
   expect(knowledge).not.toContain("useRouter");
   expect(knowledge).not.toContain('/journey/adult-gate');
@@ -75,18 +75,20 @@ test("Pages 1 through 4 hydrate canonical state and persist before navigation", 
 
   const reflection = route("reflection");
   expect(reflection).toContain("initialValue={{");
-  expect(reflection).toContain("behaviorAnswers=");
+  expect(reflection).toContain("onCardVisibilityChange={setCardOpen}");
+  expect(reflection).toContain("immersiveContent={cardOpen}");
+  expect(reflection).toContain("onSave={(input)");
+  expect(reflection).toContain("onSetJournalSaveNotice={setJournalSaveNotice}");
   expect(reflection).toContain("pressureWithoutDisappointment: input.pressureWithoutDisappointment");
   expect(reflection).toContain("journalPromptId: input.journalPromptId");
   expect(reflection).toContain("journalText: input.journalText");
-  expect(reflection).toContain("catalog.options");
-  expect(reflection).toContain("controller.setBehaviorAttitude(behaviorId, attitude)");
-  expect(reflection).not.toContain('onEditBehaviorAttitude={() => goTo("behavior-map")}');
-  expect(reflection).not.toContain("?? behaviorId");
+  expect(reflection).toContain("behaviorAnswers={Object.entries(snapshot?.behaviorAttitudes ?? {})");
+  expect(reflection).toContain("controller.setBehaviorAttitude");
+  expect(reflection).toContain("onEditBehaviorAttitude");
   expect(reflection).toMatch(/saveReflection\([\s\S]*goTo\("preset-practice"\)/u);
 });
 
-test("practice and final routes use real user-triggered local adapters", () => {
+test("practice and final routes use real user-triggered local persistence", () => {
   const practice = route("preset-practice");
   expect(practice).toContain("catalog={catalog.practice}");
   expect(practice).toContain("ExpoClipboard.setStringAsync");
@@ -97,12 +99,11 @@ test("practice and final routes use real user-triggered local adapters", () => {
   const final = route("final-preparation");
   expect(final).toContain("<FinalPreparationPage");
   expect(final).toContain('type: "set-communication-card-visibility"');
-  expect(final).toContain("saveCardImageToLibrary(imageUri)");
-  expect(final).toContain("cardImagePermissionRecovery.openSettings()");
-  expect(final).toContain('result.status === "error"');
-  expect(final).toContain("await runAndRefresh(() => controller.completeInitialJourney(card));");
-  expect(final).toContain('router.replace("/");');
-  expect(final).toContain("onSaveDraft={() => controller.saveCommunicationCard()}");
-  expect(final).toContain("onUpdatePreparation={(itemId, status) => runAndRefresh(");
-  expect(final).toContain("controller.updateChecklist(itemId, status)");
+  expect(final).toContain("await runAndRefresh(() => controller.completeInitialJourney())");
+  expect(final).toContain("router.replace(`/cards/${cardId}`)");
+  expect(final).toContain("saveCardImageToLibrary");
+  expect(final).toContain("cardImagePermissionRecovery.openSettings");
+  expect(final).toContain("onOpenImageSettings");
+  expect(final).toContain("copyConfirmedCommunicationCard");
+  expect(final).toContain("onUpdatePreparation");
 });

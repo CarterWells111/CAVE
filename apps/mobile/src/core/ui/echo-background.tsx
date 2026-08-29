@@ -1,11 +1,14 @@
 import { View } from "react-native";
 
 import { useTheme } from "../design/theme-provider";
+import { useReducedMotion } from "../design/motion-preferences";
 
-export type EchoBackgroundProps = { reducedMotion?: boolean; testID?: string };
+export type EchoBackgroundProps = { reducedMotion?: boolean | undefined; testID?: string };
 
-export function EchoBackground({ reducedMotion = false, testID }: EchoBackgroundProps) {
+export function EchoBackground({ reducedMotion, testID }: EchoBackgroundProps) {
   const theme = useTheme();
+  const systemReducedMotion = useReducedMotion();
+  const shouldReduceMotion = reducedMotion ?? systemReducedMotion;
   return (
     <View
       accessible={false}
@@ -21,7 +24,7 @@ export function EchoBackground({ reducedMotion = false, testID }: EchoBackground
           borderRadius: theme.radius.pill,
           borderWidth: 2,
           height: 320,
-          opacity: reducedMotion ? 0.08 : 0.12,
+          opacity: shouldReduceMotion ? 0.08 : 0.12,
           position: "absolute",
           right: -140,
           top: -80,

@@ -109,7 +109,7 @@ export type JourneyBehaviorMapPoint = JourneyCopyMetadata & {
 
 export type JourneyAttitude = JourneyCopyMetadata & {
   order: number;
-  value: "expecting" | "decide-in-moment" | "unsure" | "not-this-time" | "skip";
+  value: "expecting" | "familiar-enjoyed" | "decide-in-moment" | "unsure" | "not-this-time" | "skip";
   label: string;
   feedback: string;
 };
@@ -121,8 +121,16 @@ export type JourneyCommunicationSection = JourneyCopyMetadata & {
   confirmationRequired: true;
 };
 
+export type JourneyBodyKnowledgeDefinition = JourneyCopyMetadata & {
+  title: string;
+  intro: string;
+  examples: string[];
+  conclusion: string;
+};
+
 export type JourneyUiCopyCatalog = {
   version: string;
+  bodyKnowledgeDefinition: JourneyBodyKnowledgeDefinition;
   behaviorMapPoints: JourneyBehaviorMapPoint[];
   attitudes: JourneyAttitude[];
   communicationSections: JourneyCommunicationSection[];

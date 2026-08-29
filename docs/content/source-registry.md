@@ -1,6 +1,6 @@
 # CAVE 医学及教育内容来源台账
 
-> 访问日期：2026-08-27  
+> 访问日期：2026-08-27；SRC-014 访问于 2026-08-28
 > 说明：“来源已核验”只表示链接、机构和适用内容已核对，不代表 CAVE 中文改写已通过临床或性教育专家复核。
 
 ## 状态定义
@@ -27,6 +27,7 @@
 | SRC-011 | SAFE | 12338 妇联维权服务中心地图上线 | 全国妇联女性之声 / 北京妇女网转载 | https://study.bjwomen.gov.cn/thought/politics/2025/05/30/16190.shtml | 中国大陆所在地 12338 妇女维权热线及线下服务中心入口 | 2025-05-30 | 2026-08-27 | source_verified; expert_review_pending |
 | SRC-012 | SAFE | 权益科工作职能 | 深圳市盐田区妇女联合会 | https://www.yantian.gov.cn/ytfl/gkmlpt/content/12/12597/post_12597195.html | 12338 提供妇女咨询、调解与维权公益服务；证明地方服务内容与时间存在差异 | 2026-01-12 | 2026-08-27 | source_verified; expert_review_pending |
 | SRC-013 | MED | 小阴唇肥大是什么原因 | 中国医药信息查询平台；主讲专家来自北京大学第一医院妇产科 | https://m.dayi.org.cn/qa/42340.html | 先天差异及长期摩擦可能与小阴唇一侧增生、左右不对称有关；作为 SRC-004 的中国大陆辅助来源 | 2026-03-07 | 2026-08-27 | source_verified; expert_review_pending |
+| SRC-014 | MED | You and Your Sexuality | American College of Obstetricians and Gynecologists | https://www.acog.org/womens-health/faqs/you-and-your-sexuality | 性行为不限于阴道性交；触摸、口腔、阴道和肛门等不同性活动方式 | 页面未列明 | 2026-08-28 | source_verified; expert_review_pending |
 
 ## 医学图资产登记
 

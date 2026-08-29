@@ -3,12 +3,15 @@ import { useCallback, useEffect, useState } from "react";
 
 import { ErrorState } from "../../src/core/ui/ErrorState";
 import { Screen } from "../../src/core/ui/Screen";
-import { selectConfirmedCommunicationCard } from "../../src/features/journey/domain/derive-communication-card";
 import type { SavedCommunicationCardRecord } from "../../src/features/journey/domain/types";
+import { selectConfirmedSavedCommunicationCard } from "../../src/features/journey/domain/derive-communication-card";
+import { createCommunicationCardExportModel } from "../../src/features/journey/domain/communication-card-export";
+import { cardImagePermissionRecovery, saveCardImageToLibrary } from "../../src/features/journey/infrastructure/expo-card-image-adapter";
 import { useJourneyRuntime } from "../../src/features/journey/runtime/JourneyRuntimeProvider";
 import {
   applySavedCardSectionUpdates,
   buildEditableSavedCardSections,
+  confirmSavedCardSharingPolicy,
 } from "../../src/features/shell/application/saved-card-edit";
 import { CardDetailScreen } from "../../src/features/shell/ui/CardDetailScreen";
 import { SavedCardEditScreen } from "../../src/features/shell/ui/SavedCardEditScreen";
@@ -44,32 +47,30 @@ export default function SavedCardRoute() {
       <Screen>
         <ErrorState
           actionLabel="重试"
-          message="暂时无法读取这张本机沟通卡。"
+          message="暂时无法读取这份本机沟通草稿。"
           onAction={() => { void load(); }}
-          title="无法打开沟通卡"
+          title="无法打开沟通草稿"
         />
       </Screen>
     );
   }
 
-  const confirmed = selectConfirmedCommunicationCard({ communicationCard: record.card });
   const editableSections = buildEditableSavedCardSections(record);
-  const titlesById = new Map(editableSections.map(({ id: sectionId, title }) => [sectionId, title]));
-  const confirmedSections = confirmed.sections.map((section) => ({
-    ...section,
-    title: titlesById.get(section.id) ?? "确认内容",
-  }));
+  const retainedSections = editableSections
+    .filter(({ text, visibility }) => visibility !== "deleted" && text.trim().length > 0)
+    .map(({ id: sectionId, text, title }) => ({ id: sectionId, text, title }));
   const metadata = {
     id: record.id,
-    title: "沟通卡",
+    title: "沟通草稿",
     dateLabel: record.savedAt.slice(0, 10),
     statusLabel: "仅存本机",
   };
+
   if (mode === "edit") {
     return (
       <SavedCardEditScreen
-        sections={editableSections}
         metadata={metadata}
+        sections={editableSections}
         onCancel={() => router.replace(`/cards/${record.id}`)}
         onSave={async (updates) => {
           const updatedRecord = applySavedCardSectionUpdates(record, updates);
@@ -79,18 +80,39 @@ export default function SavedCardRoute() {
       />
     );
   }
+
+  const confirmedCard = selectConfirmedSavedCommunicationCard(record);
+  const confirmedExportModel = confirmedCard === null ? undefined : createCommunicationCardExportModel(
+    confirmedCard.sections.map((section) => ({
+      ...section,
+      title: editableSections.find(({ id: sectionId }) => sectionId === section.id)?.title ?? "沟通内容",
+    })),
+  );
+
   return (
     <CardDetailScreen
-      confirmedSections={confirmedSections}
       metadata={metadata}
-      mode={mode === "fullscreen" ? "fullscreen" : "normal"}
+      exportEligible={confirmedCard !== null}
+      {...(confirmedExportModel === undefined ? {} : { exportModel: confirmedExportModel })}
+      sections={retainedSections}
       onBack={() => router.replace("/(tabs)/profile")}
-      onCopy={async () => {
-        const result = await runtime.controller.copyConfirmedCommunicationCard(confirmed);
-        if (result.status === "error") throw new Error(result.code);
-      }}
       onEdit={async () => { router.replace(`/cards/${record.id}?mode=edit`); }}
-      onFullscreen={() => router.replace(`/cards/${record.id}${mode === "fullscreen" ? "" : "?mode=fullscreen"}`)}
+      onReconfirm={async () => {
+        const confirmedRecord = confirmSavedCardSharingPolicy(record);
+        await runtime.cards.save(confirmedRecord);
+        setRecord(confirmedRecord);
+      }}
+      {...(confirmedCard === null ? {} : {
+        onCopy: async (model) => {
+          const result = await runtime.controller.copyConfirmedCommunicationCard({
+            consentFooter: model.consentFooter,
+            sections: model.sections.map(({ id: sectionId, text }) => ({ id: sectionId, text })),
+          });
+          if (result.status !== "success") throw new Error(result.code);
+        },
+        onSaveImage: (_model, imageUri: string) => saveCardImageToLibrary(imageUri),
+        onOpenImageSettings: cardImagePermissionRecovery.openSettings,
+      })}
     />
   );
 }

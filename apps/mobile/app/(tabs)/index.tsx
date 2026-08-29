@@ -85,7 +85,7 @@ function AuthorizedHomeRoute({ runtime }: { runtime: JourneyRuntimeContextValue 
       const records = await runtime.cards.listMetadata();
       setCards(records.map((record) => ({
         id: record.id,
-        title: "沟通卡",
+        title: "沟通草稿",
         dateLabel: record.savedAt.slice(0, 10),
         statusLabel: "已保存到本机",
       })));

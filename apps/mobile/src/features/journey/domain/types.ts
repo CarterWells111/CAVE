@@ -11,6 +11,7 @@ export type JourneyPageId = (typeof JOURNEY_PAGE_IDS)[number];
 
 export type BehaviorAttitude =
   | "looking-forward"
+  | "familiar-enjoyed"
   | "decide-in-moment"
   | "unsure"
   | "not-this-time"
@@ -20,6 +21,9 @@ export type ChecklistItemStatus = "considered" | "prepare-more" | "not-relevant"
 export type JournalSaveChoice = "not-saved" | "device";
 export type AddressPreference = null | "你" | "妳";
 export type SharingVisibility = "pending" | "included" | "private" | "deleted";
+export const CURRENT_COMMUNICATION_CARD_SHARING_POLICY_VERSION = 1 as const;
+export type CommunicationCardSharingPolicyVersion =
+  typeof CURRENT_COMMUNICATION_CARD_SHARING_POLICY_VERSION;
 export type OvernightStage = "expectations" | "concerns";
 
 export type JourneyReflection = {
@@ -78,7 +82,7 @@ export type ChecklistItem = {
 
 export type JourneyDraft = {
   id: string;
-  schemaVersion: 3;
+  schemaVersion: 4;
   currentPage: JourneyPageId;
   ageConfirmed: boolean;
   addressPreference: AddressPreference;
@@ -136,11 +140,16 @@ export type JourneyDraft = {
   updatedAt: string;
 };
 
+export type JourneyDraftV3 = Omit<JourneyDraft, "schemaVersion"> & {
+  schemaVersion: 3;
+};
+
 export type SavedCommunicationCardRecord = {
   id: string;
   journeyId: string;
   card: JourneyDraft["communicationCard"];
   savedAt: string;
+  sharingPolicyVersion?: number;
 };
 
 export type SavedCommunicationCardMetadata = {
@@ -152,7 +161,7 @@ export type SavedCommunicationCardMetadata = {
 export function createJourneyDraft({ id, now }: { id: string; now: string }): JourneyDraft {
   return {
     id,
-    schemaVersion: 3,
+    schemaVersion: 4,
     currentPage: "body-knowledge",
     ageConfirmed: false,
     addressPreference: null,

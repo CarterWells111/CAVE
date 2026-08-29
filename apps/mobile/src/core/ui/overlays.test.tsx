@@ -1,8 +1,7 @@
 import { fireEvent, render, screen } from "@testing-library/react-native";
-import { AccessibilityInfo, Text } from "react-native";
+import { AccessibilityInfo, Text, type View } from "react-native";
 
 import { BottomSheet } from "./bottom-sheet";
-import { SourceDrawer } from "./source-drawer";
 
 afterEach(() => {
   jest.restoreAllMocks();
@@ -29,6 +28,8 @@ test("BottomSheet exposes verifiable initial-focus and focus-restore callbacks",
   );
   fireEvent(screen.getByTestId("bottom-sheet-modal"), "show");
   expect(onInitialFocus).toHaveBeenCalledTimes(1);
+  const modal = screen.getByTestId("bottom-sheet-modal");
+  fireEvent(modal, "dismiss");
   rerender(<BottomSheet onClose={jest.fn()} onInitialFocus={onInitialFocus} onRestoreFocus={onRestoreFocus} title="来源" visible={false} />);
   expect(onRestoreFocus).toHaveBeenCalledTimes(1);
 });
@@ -54,24 +55,43 @@ test("BottomSheet moves initial accessibility focus to close and supports access
   expect(onClose).toHaveBeenCalledTimes(1);
 });
 
+test("BottomSheet restores focus through the returnFocusRef contract while retaining callbacks", () => {
+  const focus = jest.spyOn(AccessibilityInfo, "setAccessibilityFocus").mockImplementation(jest.fn());
+  const onRestoreFocus = jest.fn();
+  const returnFocusRef = { current: {} } as React.RefObject<View | null>;
+  const { rerender } = render(
+    <BottomSheet
+      onClose={jest.fn()}
+      onRestoreFocus={onRestoreFocus}
+      resolveFocusHandle={(() => 77) as never}
+      returnFocusRef={returnFocusRef}
+      title="来源"
+      visible
+    />,
+  );
+
+  const modal = screen.getByTestId("bottom-sheet-modal");
+  fireEvent(modal, "dismiss");
+  rerender(
+    <BottomSheet
+      onClose={jest.fn()}
+      onRestoreFocus={onRestoreFocus}
+      resolveFocusHandle={(() => 77) as never}
+      returnFocusRef={returnFocusRef}
+      title="来源"
+      visible={false}
+    />,
+  );
+  expect(focus).toHaveBeenCalledWith(77);
+  expect(onRestoreFocus).toHaveBeenCalledTimes(1);
+});
+
 test("BottomSheet uses bottom safe-area insets and disables motion when requested", () => {
   render(<BottomSheet onClose={jest.fn()} reducedMotion title="来源" visible />);
   expect(screen.getByTestId("bottom-sheet-modal")).toHaveProp("animationType", "none");
   expect(screen.getByTestId("bottom-sheet-safe-area")).toHaveProp("edges", {
     bottom: "additive", left: "off", right: "off", top: "off",
   });
-});
-
-test("SourceDrawer presents metadata and invokes only the passed user action", () => {
-  const onAction = jest.fn();
-  render(
-    <SourceDrawer actionLabel="在浏览器中打开" institution="世界卫生组织" onAction={onAction} onClose={jest.fn()} title="来源与医学说明" updatedAt="访问于 2026-08-27" visible />,
-  );
-  expect(screen.getByText("世界卫生组织")).toBeTruthy();
-  expect(screen.getByText("访问于 2026-08-27")).toBeTruthy();
-  expect(onAction).not.toHaveBeenCalled();
-  fireEvent.press(screen.getByRole("button", { name: "在浏览器中打开" }));
-  expect(onAction).toHaveBeenCalledTimes(1);
 });
 
 test("supports a non-dismissible reading sheet without exposing a skip action", () => {

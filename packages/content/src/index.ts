@@ -3,6 +3,7 @@ export type {
   GuideCategory,
   JourneyAttitude,
   JourneyBehaviorMapPoint,
+  JourneyBodyKnowledgeDefinition,
   JourneyCommunicationSection,
   JourneyContentType,
   JourneyCopyMetadata,
