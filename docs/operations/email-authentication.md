@@ -2,6 +2,13 @@
 
 邮箱身份服务用于验证码登录、会话恢复和云端账号删除。它不会接收或保存旅程、沟通卡、手记、反思或其他本机私密内容。
 
+## 当前生产状态
+
+- 已核对的生产地址是 `https://api.neijiecave.com`。邮箱认证已部署在 Cloudflare Workers，使用 D1 与 Resend；本架构不使用 Railway。
+- 截至 2026-08-29，健康检查正常、D1 没有待应用 migration，Worker 已配置 `RESEND_API_KEY`、`AUTH_EMAIL_LOOKUP_KEY_V1` 和 `AUTH_OTP_KEY_V1` 三个 Secret binding。这里只记录配置名称，不记录值。
+- 移动端默认使用生产地址。`EXPO_PUBLIC_GATEWAY_URL` 仅作为明确的开发或构建覆盖；HTTP 只允许在 `__DEV__` bundle 中连接经核对的本地 Gateway，非开发 bundle 会拒绝非 HTTPS 覆盖，手机不会静默回退到 `localhost`。
+- 身份服务只保存账号和会话元数据。手记不会上传到 Worker 或 D1，也不存在远程手记正文表。
+
 ## 固定行为
 
 - 发件人：`内界 CAVE <support@neijiecave.com>`，通过 Resend 投递；同一地址继续由 Zoho 接收回复。
@@ -43,6 +50,15 @@
 5. 使用受控邮箱分别完成登录验证码和账号删除验证码测试。
 6. 只检查路由、状态、延迟和不透明请求 ID 等白名单日志，确认没有邮箱、验证码、令牌或提供方响应正文。
 7. 验证限流、错误验证码锁定、离线会话、Refresh Token 轮换、退出、删除重试，以及云端账号删除与本机数据删除的独立性。
+
+## 移动端手记存储边界
+
+- Development、Preview 与 Production 安装包使用 SQLCipher 保存本机私密内容，数据库密钥保留在设备 SecureStore。
+- Expo Go 无法验证 SQLCipher。开发预览中仅手记、后来和阶段回顾写入专用明文 SQLite `cave-expo-go-journal.db`；只有用户明确把冻结沟通卡快照存入手记时，该快照才进入数据库。旅程草稿和实时沟通卡等其他 runtime 继续使用内存。
+- Expo Go 删除事务会同步写入不含正文的持久清理标记。只有 `wal_checkpoint(TRUNCATE)` 返回 `busy=0` 且没有剩余日志帧时，安全清理才算完成。按账号删除还会保留账号 UUID tombstone，防止页面或进程重启后绕过清理或误报已删除手记仍被保留；该账号再次新建手记时会原子清除 tombstone。
+- 同一 Expo Go 安装中，手记按稳定的服务端 `accountId` 分区。退出登录只清除会话；重新登录同一账号会再次显示该账号的本机手记，其他账号不能读取。
+- Expo Go 与正式安装包使用不同沙箱，不共享本机记录。卸载 Expo Go、清除项目数据或主动删除后无法恢复。
+- 两种 runtime 都不会上传手记。跨设备、跨安装或 Expo Go 到正式安装包的恢复，需要未来单独审核的用户主动导出、导入或上传设计。
 
 ## 密钥轮换
 

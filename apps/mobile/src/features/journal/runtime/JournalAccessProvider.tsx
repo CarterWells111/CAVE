@@ -9,6 +9,7 @@ import {
 } from "react";
 
 import { useAuth } from "../../auth/runtime/AuthProvider";
+import type { JournalPersistence } from "../../journey/runtime/journey-runtime";
 import { useOptionalJourneyRuntime } from "../../journey/runtime/JourneyRuntimeProvider";
 import type { JournalService } from "../application/journal-service";
 
@@ -18,8 +19,9 @@ export type JournalAccessContextValue = {
   status: JournalAccessStatus;
   accountId?: string;
   service?: JournalService;
-  temporaryPreview: boolean;
+  journalPersistence: JournalPersistence;
   retry(): void;
+  ensureDeletionCleanup(): Promise<boolean>;
   clearCurrentAccount(): Promise<void>;
 };
 
@@ -52,28 +54,31 @@ export function JournalAccessProvider({ children }: PropsWithChildren) {
 
   const retry = useCallback(() => setAttempt((value) => value + 1), []);
   const value = useMemo<JournalAccessContextValue>(() => {
-    const temporaryPreview = runtime?.mode === "expo-go-demo";
+    const journalPersistence = runtime?.journalPersistence ?? "memory-only";
     if (auth.status === "signedOut") {
       return {
         status: "locked",
-        temporaryPreview,
+        journalPersistence,
         retry,
+        ensureDeletionCleanup: async () => { throw new Error("journal-auth-required"); },
         clearCurrentAccount: async () => { throw new Error("journal-auth-required"); },
       };
     }
     if (auth.status === "loading") {
       return {
         status: "loading",
-        temporaryPreview,
+        journalPersistence,
         retry,
+        ensureDeletionCleanup: async () => { throw new Error("journal-auth-loading"); },
         clearCurrentAccount: async () => { throw new Error("journal-auth-loading"); },
       };
     }
     if (accountId === undefined || runtime === null) {
       return {
         status: "error",
-        temporaryPreview,
+        journalPersistence,
         retry,
+        ensureDeletionCleanup: async () => { throw new Error("journal-runtime-unavailable"); },
         clearCurrentAccount: async () => { throw new Error("journal-runtime-unavailable"); },
       };
     }
@@ -81,8 +86,9 @@ export function JournalAccessProvider({ children }: PropsWithChildren) {
       return {
         status: "loading",
         accountId,
-        temporaryPreview,
+        journalPersistence,
         retry,
+        ensureDeletionCleanup: async () => { throw new Error("journal-service-loading"); },
         clearCurrentAccount: async () => { throw new Error("journal-service-loading"); },
       };
     }
@@ -90,8 +96,9 @@ export function JournalAccessProvider({ children }: PropsWithChildren) {
       return {
         status: "error",
         accountId,
-        temporaryPreview,
+        journalPersistence,
         retry,
+        ensureDeletionCleanup: async () => { throw new Error("journal-service-unavailable"); },
         clearCurrentAccount: async () => { throw new Error("journal-service-unavailable"); },
       };
     }
@@ -99,8 +106,9 @@ export function JournalAccessProvider({ children }: PropsWithChildren) {
       status: "ready",
       accountId,
       service: serviceState.service,
-      temporaryPreview,
+      journalPersistence,
       retry,
+      ensureDeletionCleanup: () => serviceState.service.ensureDeletionCleanup(),
       clearCurrentAccount: () => serviceState.service.clearCurrentAccount(),
     };
   }, [accountId, auth.status, retry, runtime, serviceState]);

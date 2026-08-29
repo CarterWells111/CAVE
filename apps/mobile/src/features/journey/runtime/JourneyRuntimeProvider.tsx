@@ -23,6 +23,7 @@ import type { JourneyRuntime, JourneyRuntimeMode } from "./journey-runtime";
 
 export type JourneyRuntimeContextValue = {
   mode: JourneyRuntimeMode;
+  journalPersistence: JourneyRuntime["journalPersistence"];
   snapshot: JourneyDraft | null;
   controller: JourneyRuntime["controller"];
   cards: JourneyRuntime["cards"];
@@ -92,6 +93,7 @@ function RuntimeContextProvider({
   );
   const context = useMemo<JourneyRuntimeContextValue>(() => ({
     mode: runtime.mode,
+    journalPersistence: runtime.journalPersistence,
     snapshot,
     controller: runtime.controller,
     cards: runtime.cards,

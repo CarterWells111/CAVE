@@ -7,6 +7,7 @@ import { Button } from "../../../core/ui/Button";
 import { Card } from "../../../core/ui/Card";
 import { IconTextAction } from "../../../core/ui/icon-text-action";
 import { SecondaryButton } from "../../../core/ui/secondary-button";
+import { getAuthErrorMessage } from "./auth-error-message";
 
 type Props = {
   status: "loading" | "signedOut" | "signedIn" | "offline";
@@ -38,9 +39,9 @@ export function EmailAuthScreen(props: Props) {
     inFlight.current = true;
     setPending(true);
     setError(null);
-    try { await action(); } catch {
+    try { await action(); } catch (caught) {
       if (__DEV__) console.warn("auth.action.failed");
-      setError("操作未完成。请检查网络、邮箱或验证码后重试。");
+      setError(getAuthErrorMessage(caught));
     } finally {
       inFlight.current = false;
       setPending(false);

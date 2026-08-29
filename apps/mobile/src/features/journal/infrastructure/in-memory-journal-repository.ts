@@ -10,6 +10,10 @@ export class InMemoryJournalRepository implements JournalRepository {
   private readonly entries = new Map<string, JournalEntry>();
   private readonly reviews = new Map<string, { ownerAccountId: string | null; review: JournalPeriodReview }>();
 
+  async ensureDeletionCleanup(): Promise<boolean> {
+    return false;
+  }
+
   async claimUnowned(ownerAccountId: string): Promise<void> {
     for (const [id, value] of this.records) {
       if (value.ownerAccountId === null) this.records.set(id, { ...value, ownerAccountId });

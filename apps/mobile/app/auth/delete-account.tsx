@@ -13,10 +13,11 @@ export default function DeleteAccountRoute() {
     createIdempotencyKey={auth.createAccountDeletionIdempotencyKey}
     onBack={() => router.back()}
     onClearCurrentAccountJournal={journalAccess.clearCurrentAccount}
+    onEnsureJournalCleanup={journalAccess.ensureDeletionCleanup}
     onComplete={() => router.replace("/settings")}
     onDeleteAccount={auth.deleteAccount}
     onRequestChallenge={auth.requestAccountDeletionChallenge}
     onVerifyChallenge={auth.verifyAccountDeletionChallenge}
-    temporaryPreview={journalAccess.temporaryPreview}
+    journalPersistence={journalAccess.journalPersistence}
   />;
 }

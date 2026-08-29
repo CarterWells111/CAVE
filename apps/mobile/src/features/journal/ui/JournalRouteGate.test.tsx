@@ -12,9 +12,9 @@ const mockAlert = jest.fn();
 let mockParams: { cardId?: string; reviewId?: string } = {};
 let mockAccess: {
   status: "locked" | "loading" | "ready" | "error";
-  temporaryPreview: boolean;
+  journalPersistence: "memory-only" | "plaintext-sqlite" | "sqlcipher";
   retry: typeof mockRetry;
-} = { status: "locked", temporaryPreview: false, retry: mockRetry };
+} = { status: "locked", journalPersistence: "sqlcipher", retry: mockRetry };
 
 jest.mock("expo-router", () => ({
   useLocalSearchParams: () => mockParams,
@@ -38,7 +38,7 @@ beforeEach(() => {
   jest.clearAllMocks();
   jest.spyOn(Alert, "alert").mockImplementation(mockAlert);
   mockParams = {};
-  mockAccess = { status: "locked", temporaryPreview: false, retry: mockRetry };
+  mockAccess = { status: "locked", journalPersistence: "sqlcipher", retry: mockRetry };
 });
 
 test("shows one accurate local-only login prompt and routes back to the intended journal page", async () => {
@@ -49,6 +49,7 @@ test("shows one accurate local-only login prompt and routes back to the intended
   const [title, message, actions] = mockAlert.mock.calls[0]!;
   expect(title).toBe("登录后使用内界手记");
   expect(message).toContain("仍只保存在本机，不会上传");
+  expect(message).toContain("本机加密保存");
   expect(message).toContain("卸载 App 或清除本机数据仍会丢失");
 
   act(() => actions.find(({ text }: { text: string }) => text === "去登录").onPress());
@@ -89,26 +90,42 @@ test("preserves only supported source identifiers across login", async () => {
 });
 
 test("renders children only after account ownership is ready", async () => {
-  mockAccess = { status: "ready", temporaryPreview: false, retry: mockRetry };
+  mockAccess = { status: "ready", journalPersistence: "sqlcipher", retry: mockRetry };
   renderGate();
 
   expect(await screen.findByText("私密手记内容")).toBeTruthy();
   expect(mockAlert).not.toHaveBeenCalled();
 });
 
-test("keeps the Expo Go persistence limitation visible after login", async () => {
-  mockAccess = { status: "ready", temporaryPreview: true, retry: mockRetry };
+test("warns once that Expo Go journals persist across restarts without SQLCipher", async () => {
+  mockAccess = { status: "ready", journalPersistence: "plaintext-sqlite", retry: mockRetry };
   renderGate();
 
   await waitFor(() => expect(mockAlert).toHaveBeenCalledWith(
-      "Expo Go 临时预览",
-      "关闭 App 后，本次手记记录不会保留。请使用正式安装包保存手记。",
+      "Expo Go 明文存储提示",
+      expect.stringContaining("会在此安装中跨重启保留"),
     ));
+  expect(mockAlert.mock.calls[0]![1]).toContain("未使用 SQLCipher 加密");
+  expect(mockAlert.mock.calls[0]![1]).toContain("仅适合开发预览");
+  expect(mockAlert.mock.calls[0]![1]).toContain("请勿录入真实敏感内容");
+  expect(mockAlert.mock.calls[0]![1]).toContain("卸载 Expo Go、清除项目数据或主动删除后不可恢复");
   expect(screen.getByText("私密手记内容")).toBeTruthy();
 });
 
+test("explains the Expo Go plaintext boundary before login", async () => {
+  mockAccess = { status: "locked", journalPersistence: "plaintext-sqlite", retry: mockRetry };
+  renderGate();
+
+  await waitFor(() => expect(mockAlert).toHaveBeenCalledTimes(1));
+  const message = mockAlert.mock.calls[0]![1];
+  expect(message).toContain("会在此安装中跨重启保留");
+  expect(message).toContain("未使用 SQLCipher 加密");
+  expect(message).toContain("卸载 Expo Go、清除项目数据或主动删除后不可恢复");
+  expect(message).not.toContain("关闭后不会保留记录");
+});
+
 test("offers retry when local ownership initialization fails", async () => {
-  mockAccess = { status: "error", temporaryPreview: false, retry: mockRetry };
+  mockAccess = { status: "error", journalPersistence: "sqlcipher", retry: mockRetry };
   renderGate();
 
   fireEvent.press(await screen.findByRole("button", { name: "重试读取手记" }));
