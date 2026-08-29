@@ -44,6 +44,7 @@ export function canAccessJourneyPage(draft: JourneyDraft | null, page: JourneyPa
   if (draft?.ageConfirmed !== true) return false;
   const onboardingCompleted = draft.addressPreference !== null && draft.prefaceRead;
   if (page === "body-knowledge") return onboardingCompleted;
+  if (onboardingCompleted && draft.currentPage === page) return true;
 
   const knowledgeCompleted = onboardingCompleted
     && REQUIRED_KNOWLEDGE_CARD_IDS.every((id) => draft.readKnowledgeCardIds.includes(id));

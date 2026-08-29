@@ -75,6 +75,16 @@ function createUnlockedDraft(currentPage: JourneyPageId): JourneyDraft {
   };
 }
 
+function createWelcomedDraft(currentPage: JourneyPageId = "body-knowledge"): JourneyDraft {
+  return {
+    ...createJourneyDraft({ id: "journey-demo", now: "now" }),
+    ageConfirmed: true,
+    addressPreference: "你",
+    prefaceRead: true,
+    currentPage,
+  };
+}
+
 test("redirects an unconfirmed visitor before rendering an adult-only page", async () => {
   render(
     <JourneyRouteScreen pageId="overnight">
@@ -143,8 +153,8 @@ test("keeps route navigation unavailable while the page reports an unpersisted s
   expect(screen.queryByRole("header", { name: "旅程选项" })).toBeNull();
 });
 
-test("returns from Page 1 to the preface through journey options without deleting the draft", async () => {
-  mockRuntime.snapshot = createUnlockedDraft("body-knowledge");
+test("replaces the options back action with six progress destinations", async () => {
+  mockRuntime.snapshot = createWelcomedDraft();
 
   render(
     <JourneyRouteScreen pageId="body-knowledge">
@@ -153,11 +163,80 @@ test("returns from Page 1 to the preface through journey options without deletin
   );
 
   fireEvent.press(screen.getByRole("button", { name: "旅程选项" }));
-  fireEvent.press(screen.getByRole("button", { name: "返回上一步" }));
+  expect(screen.getByRole("header", { name: "旅程进度" })).toBeTruthy();
+  expect(screen.getByText("完成 18+ 成年确认、称呼和须知后，可以直接前往任意一页。跳过不会自动填写内容。")).toBeTruthy();
+  expect(screen.queryByRole("button", { name: "返回上一步" })).toBeNull();
+  const destinations = [
+    "1/6 身体与安全知识（当前页）",
+    "2/6 过夜期待与在意",
+    "3/6 行为地图与边界",
+    "4/6 自我反思",
+    "5/6 预设沟通练习",
+    "6/6 我的沟通草稿",
+  ];
+  for (const label of destinations) {
+    expect(screen.getByRole("button", { name: label })).toBeTruthy();
+  }
+  expect(screen.getByRole("button", { name: destinations[0]! })).toHaveProp(
+    "accessibilityState",
+    expect.objectContaining({ disabled: true }),
+  );
 
-  await waitFor(() => expect(mockReplace).toHaveBeenCalledWith("/journey/preface"));
-  expect(mockRuntime.service.navigateTo).not.toHaveBeenCalled();
-  expect(mockRuntime.restart).not.toHaveBeenCalled();
+  fireEvent.press(screen.getByRole("button", { name: destinations[5]! }));
+  await waitFor(() => {
+    expect(mockRuntime.service.navigateTo).toHaveBeenCalledWith("final-preparation");
+    expect(mockReplace).toHaveBeenCalledWith("/journey/final-preparation");
+  });
+});
+
+test("keeps progress options open with a retryable generic error when persistence fails", async () => {
+  mockRuntime.snapshot = createWelcomedDraft();
+  mockRuntime.service.navigateTo
+    .mockRejectedValueOnce(new Error("private database path"))
+    .mockResolvedValueOnce(undefined);
+  render(
+    <JourneyRouteScreen pageId="body-knowledge">
+      {() => <Text>body-knowledge</Text>}
+    </JourneyRouteScreen>,
+  );
+
+  fireEvent.press(screen.getByRole("button", { name: "旅程选项" }));
+  const target = screen.getByRole("button", { name: "6/6 我的沟通草稿" });
+  fireEvent.press(target);
+  fireEvent.press(target);
+
+  expect(await screen.findByRole("alert")).toHaveTextContent("暂时无法切换旅程进度，请重试。");
+  expect(screen.queryByText("private database path")).toBeNull();
+  expect(mockRuntime.service.navigateTo).toHaveBeenCalledTimes(1);
+  expect(mockReplace).not.toHaveBeenCalledWith("/journey/final-preparation");
+
+  fireEvent.press(screen.getByRole("button", { name: "6/6 我的沟通草稿" }));
+  await waitFor(() => expect(mockRuntime.service.navigateTo).toHaveBeenCalledTimes(2));
+  await waitFor(() => expect(mockReplace).toHaveBeenCalledWith("/journey/final-preparation"));
+});
+
+test("keeps an unresolved progress jump modal and suppresses late navigation after unmount", async () => {
+  const pendingJump = deferred<void>();
+  mockRuntime.snapshot = createWelcomedDraft();
+  mockRuntime.service.navigateTo.mockReturnValueOnce(pendingJump.promise);
+  const view = render(
+    <JourneyRouteScreen pageId="body-knowledge">
+      {() => <Text>body-knowledge</Text>}
+    </JourneyRouteScreen>,
+  );
+
+  fireEvent.press(screen.getByRole("button", { name: "旅程选项" }));
+  fireEvent.press(screen.getByRole("button", { name: "6/6 我的沟通草稿" }));
+
+  expect(screen.queryByRole("button", { name: "关闭旅程选项" })).toBeNull();
+  expect(screen.getByRole("button", { name: "6/6 我的沟通草稿" })).toHaveProp(
+    "accessibilityState",
+    expect.objectContaining({ busy: true, disabled: true }),
+  );
+  view.unmount();
+  await act(async () => pendingJump.resolve());
+
+  expect(mockReplace).not.toHaveBeenCalledWith("/journey/final-preparation");
 });
 
 test("requires confirmation before restarting and hides a local deletion failure", async () => {

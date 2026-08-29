@@ -6,10 +6,11 @@ import { useTheme } from "../../../core/design/theme-provider";
 import { BottomSheet } from "../../../core/ui/bottom-sheet";
 import { Button } from "../../../core/ui/Button";
 import { TextAction } from "../../../core/ui/text-action";
+import { JOURNEY_PAGE_IDS } from "../application/journey-navigation";
 import { JourneyRouteCoordinator } from "../application/journey-route-coordinator";
 import type { JourneyDraft, JourneyPageId } from "../domain/types";
 import { useJourneyRuntime } from "../runtime/JourneyRuntimeProvider";
-import { JourneyScreenShell } from "./JourneyScreenShell";
+import { JOURNEY_PAGE_TITLES, JourneyScreenShell } from "./JourneyScreenShell";
 
 type JourneyRouteRenderProps = {
   snapshot: JourneyDraft | null;
@@ -35,6 +36,9 @@ export function JourneyRouteScreen({
   const [optionsOpen, setOptionsOpen] = useState(false);
   const optionsReturnFocusRef = useRef<View>(null);
   const [restartFailed, setRestartFailed] = useState(false);
+  const [progressJumpFailed, setProgressJumpFailed] = useState(false);
+  const [progressJumpTarget, setProgressJumpTarget] = useState<JourneyPageId | null>(null);
+  const progressJumpInFlightRef = useRef(false);
   const navigationActiveRef = useRef(true);
   const navigationGenerationRef = useRef(0);
   const guardCoordinator = useMemo(
@@ -87,12 +91,13 @@ export function JourneyRouteScreen({
       return runAndRefresh(() => activeCoordinator.backFrom(pageId));
     };
   const exitJourney = () => {
-    if (navigationLocked) return;
+    if (navigationLocked || progressJumpInFlightRef.current) return;
     navigationActiveRef.current = false;
     navigationGenerationRef.current += 1;
     router.replace("/(tabs)");
   };
   const restart = () => {
+    if (progressJumpInFlightRef.current) return;
     setRestartFailed(false);
     Alert.alert("确认重新开始", "只会清除当前未完成的本机旅程草稿。", [
       { text: "取消", style: "cancel" },
@@ -110,6 +115,39 @@ export function JourneyRouteScreen({
       },
     ]);
   };
+  const openOptions = () => {
+    if (navigationLocked) return;
+    setProgressJumpFailed(false);
+    setOptionsOpen(true);
+  };
+  const jumpToProgress = (targetPage: JourneyPageId) => {
+    if (
+      navigationLocked
+      || targetPage === pageId
+      || progressJumpInFlightRef.current
+    ) return;
+
+    const generation = navigationGenerationRef.current;
+    const isCurrentOperation = () => (
+      navigationActiveRef.current
+      && navigationGenerationRef.current === generation
+    );
+    const activeCoordinator = createActiveCoordinator();
+    progressJumpInFlightRef.current = true;
+    setProgressJumpFailed(false);
+    setProgressJumpTarget(targetPage);
+    return runAndRefresh(() => activeCoordinator.jumpToProgress(targetPage))
+      .then(() => {
+        if (isCurrentOperation()) setOptionsOpen(false);
+      })
+      .catch(() => {
+        if (isCurrentOperation()) setProgressJumpFailed(true);
+      })
+      .finally(() => {
+        progressJumpInFlightRef.current = false;
+        if (isCurrentOperation()) setProgressJumpTarget(null);
+      });
+  };
 
   return (
     <>
@@ -117,7 +155,7 @@ export function JourneyRouteScreen({
         immersiveContent={immersiveContent}
         navigationLocked={navigationLocked}
         pageId={pageId}
-        onExit={() => { if (!navigationLocked) setOptionsOpen(true); }}
+        onExit={openOptions}
         exitRef={optionsReturnFocusRef}
         {...(onBack === undefined ? {} : { onBack })}
       >
@@ -129,7 +167,8 @@ export function JourneyRouteScreen({
         })}
       </JourneyScreenShell>
       <BottomSheet
-        onClose={() => setOptionsOpen(false)}
+        dismissible={progressJumpTarget === null}
+        onClose={() => { if (!progressJumpInFlightRef.current) setOptionsOpen(false); }}
         returnFocusRef={optionsReturnFocusRef}
         title="旅程选项"
         visible={optionsOpen}
@@ -137,19 +176,37 @@ export function JourneyRouteScreen({
         <Text selectable style={{ ...theme.typography.body, color: theme.color.text }}>
           退出会保留当前本机草稿；重新开始会清除这份未完成草稿。
         </Text>
+        <Text accessibilityRole="header" selectable style={{ ...theme.typography.heading, color: theme.color.text }}>
+          旅程进度
+        </Text>
+        <Text selectable style={{ ...theme.typography.body, color: theme.color.textSecondary }}>
+          完成 18+ 成年确认、称呼和须知后，可以直接前往任意一页。跳过不会自动填写内容。
+        </Text>
+        {progressJumpFailed ? (
+          <Text accessibilityRole="alert" style={{ ...theme.typography.body, color: theme.color.error }}>
+            暂时无法切换旅程进度，请重试。
+          </Text>
+        ) : null}
+        {JOURNEY_PAGE_IDS.map((targetPage, index) => {
+          const current = targetPage === pageId;
+          const label = `${index + 1}/6 ${JOURNEY_PAGE_TITLES[targetPage]}${current ? "（当前页）" : ""}`;
+          return (
+            <TextAction
+              disabled={current || progressJumpTarget !== null}
+              key={targetPage}
+              label={label}
+              loading={progressJumpTarget === targetPage}
+              onPress={() => jumpToProgress(targetPage)}
+            />
+          );
+        })}
         {restartFailed ? (
           <Text accessibilityRole="alert" style={{ ...theme.typography.body, color: theme.color.error }}>
             重新开始失败，请重试。
           </Text>
         ) : null}
-        {onBack ? (
-          <TextAction label="返回上一步" onPress={() => {
-            setOptionsOpen(false);
-            void onBack();
-          }} />
-        ) : null}
-        <Button label="退出旅程" onPress={exitJourney} />
-        <TextAction label="重新开始" onPress={restart} />
+        <Button disabled={progressJumpTarget !== null} label="退出旅程" onPress={exitJourney} />
+        <TextAction disabled={progressJumpTarget !== null} label="重新开始" onPress={restart} />
       </BottomSheet>
     </>
   );
