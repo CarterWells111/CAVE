@@ -1,7 +1,10 @@
 import type { JourneyKnowledgeCard, JourneySource } from "@cave/content";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react-native";
 
+import * as guidedScroll from "../guided-scroll-screen";
 import { BodyKnowledgePage } from "./BodyKnowledgePage";
+
+afterEach(() => jest.restoreAllMocks());
 
 const cards = [1, 2, 3].map((order) => ({
   id: `card-${order}`, page: 3, contentType: "MED", order,
@@ -54,6 +57,8 @@ test("announces progress toward overnight expectations while completion is being
 });
 
 test("waits for persisted consent before showing optional explicit anatomy content", async () => {
+  const reveal = jest.fn();
+  jest.spyOn(guidedScroll, "useJourneyGuidedScroll").mockReturnValue({ reveal });
   let resolveOpen!: () => void;
   const onOpenDiagram = jest.fn(() => new Promise<void>((resolve) => { resolveOpen = resolve; }));
   render(
@@ -81,6 +86,14 @@ test("waits for persisted consent before showing optional explicit anatomy conte
   );
   expect(screen.getByText("医学图审核稿")).toBeTruthy();
   expect(screen.getByText(/就诊前可以询问是否能安排女性医生/u)).toBeTruthy();
+  expect(reveal).toHaveBeenCalledWith("body-knowledge-diagram");
+  expect(screen.getByTestId("journey-scroll-target-body-knowledge-diagram")).toBeTruthy();
+  fireEvent.press(screen.getByRole("button", { name: "查看身体图" }));
+  fireEvent.press(screen.getByRole("button", { name: "我愿意查看" }));
+  expect(onOpenDiagram).toHaveBeenCalledTimes(2);
+  resolveOpen();
+  await waitFor(() => expect(screen.getByLabelText(/阴阜、大阴唇/u)).toBeTruthy());
+  expect(reveal).toHaveBeenCalledTimes(1);
 });
 
 test("keeps the diagram hidden after a persistence failure and allows an announced retry", async () => {

@@ -3,11 +3,14 @@ import { loadCatalog } from "@cave/content";
 
 import { selectConfirmedCommunicationCard, type ConfirmedCommunicationCard } from "../../domain/derive-communication-card";
 import { createJourneyDraft, type CommunicationSectionId } from "../../domain/types";
+import * as guidedScroll from "../guided-scroll-screen";
 import { FinalPreparationPage } from "./FinalPreparationPage";
 
 jest.mock("react-native-view-shot", () => ({
   captureRef: jest.fn(async () => "file:///cave-card.png"),
 }));
+
+afterEach(() => jest.restoreAllMocks());
 
 function draft() {
   const value = createJourneyDraft({ id: "journey-1", now: "now" });
@@ -19,6 +22,54 @@ function draft() {
   value.communicationCard["communication-not-this-time"].generatedText = "今晚不想做这件事。";
   return value;
 }
+
+test("advances each preparation and sharing group once after its write succeeds", async () => {
+  const reveal = jest.fn();
+  jest.spyOn(guidedScroll, "useJourneyGuidedScroll").mockReturnValue({ reveal });
+  const onSetVisibility = jest.fn(async () => undefined);
+  const onUpdatePreparation = jest.fn(async () => undefined);
+  render(
+    <FinalPreparationPage
+      draft={draft()}
+      onCopy={jest.fn()}
+      onEdit={jest.fn()}
+      onFinish={jest.fn()}
+      onSaveImage={jest.fn()}
+      onSetVisibility={onSetVisibility}
+      onUpdatePreparation={onUpdatePreparation}
+    />,
+  );
+
+  fireEvent.press(screen.getByRole("radio", { name: "表达与暂停：已经想到" }));
+  await waitFor(() => expect(reveal).toHaveBeenLastCalledWith("final-preparation-section-communication-night-expectations"));
+
+  reveal.mockClear();
+  fireEvent.press(screen.getByRole("radio", { name: "加入分享：我对这个夜晚的期待" }));
+  await waitFor(() => expect(reveal).toHaveBeenLastCalledWith("final-preparation-section-communication-possible-closeness"));
+  fireEvent.press(screen.getByRole("radio", { name: "保持私密：我对这个夜晚的期待" }));
+  await waitFor(() => expect(onSetVisibility).toHaveBeenCalledTimes(2));
+  expect(reveal).toHaveBeenCalledTimes(1);
+});
+
+test("does not advance a preparation group when its write fails", async () => {
+  const reveal = jest.fn();
+  jest.spyOn(guidedScroll, "useJourneyGuidedScroll").mockReturnValue({ reveal });
+  render(
+    <FinalPreparationPage
+      draft={draft()}
+      onCopy={jest.fn()}
+      onEdit={jest.fn()}
+      onFinish={jest.fn()}
+      onSaveImage={jest.fn()}
+      onSetVisibility={jest.fn()}
+      onUpdatePreparation={jest.fn(async () => { throw new Error("write failed"); })}
+    />,
+  );
+
+  fireEvent.press(screen.getByRole("radio", { name: "表达与暂停：已经想到" }));
+  await waitFor(() => expect(screen.getByRole("button", { name: "重试保存更改" })).toBeTruthy());
+  expect(reveal).not.toHaveBeenCalled();
+});
 
 test("starts all seven sections pending and exposes explicit non-color visibility choices", () => {
   render(<FinalPreparationPage draft={draft()} onCopy={jest.fn()} onEdit={jest.fn()} onFinish={jest.fn()} onSaveImage={jest.fn()} onSetVisibility={jest.fn()} />);
@@ -33,6 +84,8 @@ test("starts all seven sections pending and exposes explicit non-color visibilit
 });
 
 test("uses the confirmed selector for preview, clipboard and image export", async () => {
+  const reveal = jest.fn();
+  jest.spyOn(guidedScroll, "useJourneyGuidedScroll").mockReturnValue({ reveal });
   const onCopy = jest.fn<Promise<void>, [ConfirmedCommunicationCard]>(async (card) => { void card; });
   const onSaveImage = jest.fn<Promise<void>, [ConfirmedCommunicationCard, string]>(async (card, uri) => { void card; void uri; });
   render(<FinalPreparationPage draft={draft()} onCopy={onCopy} onEdit={jest.fn()} onFinish={jest.fn()} onSaveImage={onSaveImage} onSetVisibility={jest.fn()} />);
@@ -47,12 +100,14 @@ test("uses the confirmed selector for preview, clipboard and image export", asyn
   expect(screen.getByTestId("share-preview")).toHaveTextContent(/我期待一起休息。/u);
   expect(screen.getByTestId("share-preview")).not.toHaveTextContent(/请先问我。/u);
   expect(screen.getByTestId("share-preview")).not.toHaveTextContent(/今晚不想做这件事。/u);
+  expect(reveal).toHaveBeenLastCalledWith("final-preparation-preview");
 
   fireEvent.press(screen.getByText("复制已确认内容"));
   await waitFor(() => expect(onCopy).toHaveBeenCalledTimes(1));
   expect(await screen.findByText("已复制。")).toBeTruthy();
   fireEvent.press(screen.getByText("保存为图片"));
   expect(screen.getByText(/图片会进入系统相册/u)).toBeTruthy();
+  expect(reveal).toHaveBeenLastCalledWith("final-preparation-image-confirmation");
   fireEvent.press(screen.getByText("确认并保存图片"));
   await waitFor(() => expect(onSaveImage).toHaveBeenCalledTimes(1));
   expect(await screen.findByText("图片已保存。")).toBeTruthy();

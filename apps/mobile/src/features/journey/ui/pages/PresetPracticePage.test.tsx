@@ -2,9 +2,28 @@ import { act, fireEvent, render, screen, waitFor } from "@testing-library/react-
 import { loadCatalog } from "@cave/content";
 import { StyleSheet } from "react-native";
 
+import * as guidedScroll from "../guided-scroll-screen";
 import { PresetPracticePage } from "./PresetPracticePage";
 
+afterEach(() => jest.restoreAllMocks());
+
 const catalog = loadCatalog().journey.practice;
+
+test("keeps each replacement stage card visible and allows the nearest correction", () => {
+  const reveal = jest.fn();
+  jest.spyOn(guidedScroll, "useJourneyGuidedScroll").mockReturnValue({ reveal });
+  render(<PresetPracticePage behaviorOptions={[]} catalog={catalog} onComplete={jest.fn()} />);
+
+  fireEvent.press(screen.getByText("开始情境练习"));
+  expect(reveal).toHaveBeenLastCalledWith("practice-stage-behavior", { mode: "nearest" });
+  fireEvent.press(screen.getByText("不说具体行为"));
+  expect(reveal).toHaveBeenLastCalledWith("practice-stage-need", { mode: "nearest" });
+  fireEvent.press(screen.getByText("整体推进得有点快"));
+  expect(reveal).toHaveBeenLastCalledWith("practice-stage-editable-phrase", { mode: "nearest" });
+  fireEvent.press(screen.getByText("先对着镜子说一遍"));
+  expect(reveal).toHaveBeenLastCalledWith("practice-stage-mirror", { mode: "nearest" });
+  expect(screen.getByTestId("journey-scroll-target-practice-stage-mirror")).toBeTruthy();
+});
 
 function deferred<T>() {
   let resolve!: (value: T | PromiseLike<T>) => void;

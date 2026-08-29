@@ -10,6 +10,7 @@ import { InfoCard } from "../../../../core/ui/info-card";
 import { SourceDrawer } from "../../../../core/ui/source-drawer";
 import { TextAction } from "../../../../core/ui/text-action";
 import { JourneyAction } from "../components/JourneyAction";
+import { JourneyScrollTarget, useJourneyGuidedScroll } from "../guided-scroll-screen";
 
 type ActionResult = void | Promise<void>;
 type Stage = "expectations" | "concerns";
@@ -59,6 +60,7 @@ export function OvernightPage({
   reducedMotion = false,
 }: OvernightPageProps) {
   const theme = useTheme();
+  const { reveal } = useJourneyGuidedScroll();
   const styles = createStyles(theme);
   const expectations = options.filter((item) => item.group === "expectation").sort((a, b) => a.order - b.order);
   const concerns = options.filter((item) => item.group === "concern").sort((a, b) => a.order - b.order);
@@ -68,6 +70,8 @@ export function OvernightPage({
   const [customNote, setCustomNote] = useState(initialCustomNote);
   const [sourceOpen, setSourceOpen] = useState(false);
   const concernHeadingRef = useRef<ComponentRef<typeof Text>>(null);
+  const expectationAdvancedRef = useRef(false);
+  const concernAdvancedRef = useRef(false);
 
   useEffect(() => {
     if (stage !== "concerns") return;
@@ -76,11 +80,31 @@ export function OvernightPage({
   }, [stage]);
 
   const moveTo = (next: Stage): ActionResult => {
+    const commitStage = () => {
+      setStage(next);
+      if (next === "concerns") reveal("overnight-concerns-heading");
+    };
     const result = onStageChange?.(next);
     if (result && typeof result.then === "function") {
-      return result.then(() => setStage(next));
+      return result.then(commitStage);
     }
-    setStage(next);
+    commitStage();
+  };
+
+  const updateExpectations = (option: JourneyOption) => {
+    setExpectationIds((current) => updateSelection(current, option, expectations));
+    if (!expectationAdvancedRef.current) {
+      expectationAdvancedRef.current = true;
+      reveal("overnight-expectations-continue");
+    }
+  };
+
+  const updateConcerns = (option: JourneyOption) => {
+    setConcernIds((current) => updateSelection(current, option, concerns));
+    if (!concernAdvancedRef.current) {
+      concernAdvancedRef.current = true;
+      reveal("overnight-final-continue");
+    }
   };
 
   return (
@@ -99,19 +123,21 @@ export function OvernightPage({
               <ChoiceChip
                 key={option.id}
                 label={option.label}
-                onPress={() => setExpectationIds((current) => updateSelection(current, option, expectations))}
+                onPress={() => updateExpectations(option)}
                 selected={expectationIds.includes(option.id)}
                 semantics="checkbox"
               />
             ))}
           </View>
           <Text style={styles.secondary}>暂时不选也可以</Text>
+          <JourneyScrollTarget targetId="overnight-expectations-continue">
           <JourneyAction
             errorMessage="阶段暂时无法保存，请重试。"
             label="继续看看我的在意"
             loadingLabel="正在保存期待…"
             onAction={() => moveTo("concerns")}
           />
+          </JourneyScrollTarget>
         </Card>
       ) : (
         <>
@@ -125,6 +151,7 @@ export function OvernightPage({
             loadingLabel="正在返回…"
             onAction={() => moveTo("expectations")}
           />
+          <JourneyScrollTarget targetId="overnight-concerns-heading">
           <Card accessible={false}>
             <Text accessibilityRole="header" ref={concernHeadingRef} style={styles.heading}>同时，你也有一些在意的是……</Text>
             <View style={styles.choices}>
@@ -132,13 +159,14 @@ export function OvernightPage({
                 <ChoiceChip
                   key={option.id}
                   label={option.label}
-                  onPress={() => setConcernIds((current) => updateSelection(current, option, concerns))}
+                  onPress={() => updateConcerns(option)}
                   selected={concernIds.includes(option.id)}
                   semantics="checkbox"
                 />
               ))}
             </View>
           </Card>
+          </JourneyScrollTarget>
           <Card accessible={false} variant="muted">
             <Text style={styles.cardTitle}>可选补充</Text>
             <TextInput
@@ -154,12 +182,14 @@ export function OvernightPage({
             />
           </Card>
           <InfoCard title="这些感受可以同时被留下，不需要现在整理成一个确定答案。" />
+          <JourneyScrollTarget targetId="overnight-final-continue">
           <JourneyAction
             errorMessage="保存失败，请重试。"
             label="带着这些感受继续"
             loadingLabel="正在继续…"
             onAction={() => onContinue({ expectationIds, concernIds, customNote })}
           />
+          </JourneyScrollTarget>
         </>
       )}
 

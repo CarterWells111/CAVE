@@ -1,3 +1,4 @@
+import { forwardRef, type ComponentRef } from "react";
 import { ScrollView, StyleSheet, type ScrollViewProps, useWindowDimensions } from "react-native";
 
 import { useTheme } from "../design/theme-provider";
@@ -11,7 +12,10 @@ export function contentHorizontalPadding(width: number): number {
   return width < 375 ? space.md : space.card;
 }
 
-export function Screen({ children, contentContainerStyle, style, ...props }: ScreenProps) {
+export const Screen = forwardRef<ComponentRef<typeof ScrollView>, ScreenProps>(function Screen(
+  { children, contentContainerStyle, style, ...props },
+  ref,
+) {
   const theme = useTheme();
   const { width } = useWindowDimensions();
   const horizontalPadding = contentHorizontalPadding(width);
@@ -25,6 +29,7 @@ export function Screen({ children, contentContainerStyle, style, ...props }: Scr
   return (
     <ScrollView
       {...props}
+      ref={ref}
       automaticallyAdjustKeyboardInsets
       horizontal={false}
       contentInsetAdjustmentBehavior="automatic"
@@ -48,4 +53,4 @@ export function Screen({ children, contentContainerStyle, style, ...props }: Scr
       {children}
     </ScrollView>
   );
-}
+});

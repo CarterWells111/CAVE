@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { Pressable, ScrollView, Text, TextInput, View } from "react-native";
 
 import { useTheme } from "../../../../core/design/theme-provider";
@@ -8,6 +8,7 @@ import type { BehaviorAttitude } from "../../domain/types";
 import { loadJourneyContentCatalog } from "../../infrastructure/journey-content-catalog";
 import { JourneyAction } from "../components/JourneyAction";
 import { JourneyChoice } from "../components/JourneyChoice";
+import { JourneyScrollTarget, useJourneyGuidedScroll } from "../guided-scroll-screen";
 import type { JourneyAction as JourneyActionCallback } from "../journey-ui-contracts";
 
 type CustomBehavior = { id: string; label: string };
@@ -57,6 +58,7 @@ export function BehaviorMapPage({
   createCustomBehaviorId = () => `custom-${Date.now()}`,
 }: BehaviorMapPageProps) {
   const theme = useTheme();
+  const { reveal } = useJourneyGuidedScroll();
   const initialUnlockedIndex = (() => {
     const missingBaseIndex = requiredBaseBehaviorIds.findIndex((id) => initialAttitudes[id] === undefined);
     if (missingBaseIndex >= 0) return missingBaseIndex;
@@ -87,6 +89,13 @@ export function BehaviorMapPage({
         : "intro",
   );
   const [sensitiveConfirmationChecked, setSensitiveConfirmationChecked] = useState(false);
+  const advancedGroupsRef = useRef(new Set<string>());
+
+  const revealOnce = (groupId: string, targetId: string) => {
+    if (advancedGroupsRef.current.has(groupId)) return;
+    advancedGroupsRef.current.add(groupId);
+    reveal(targetId);
+  };
 
   const activePoint = mapPoints.find(({ id }) => id === activePointId) ?? mapPoints[0];
   const activeBehavior = useMemo(() => {
@@ -153,6 +162,7 @@ export function BehaviorMapPage({
       setCustomBehaviors((current) => [...current, behavior]);
       setActiveCustomBehaviorId(behavior.id);
       setCustomLabel("");
+      reveal(`behavior-map-custom-question-${behavior.id}`);
     };
     const result = onAddCustomBehavior?.(behavior);
     if (result && typeof result.then === "function") return Promise.resolve(result).then(finish);
@@ -246,15 +256,25 @@ export function BehaviorMapPage({
           <SupportingText>部分内容可能让人不舒服。你可以随时返回；不查看不会影响后续流程或积分。</SupportingText>
           <JourneyChoice
             label="我知道接下来会看到更具体的健康教育内容，并愿意继续"
-            onSelect={() => setSensitiveConfirmationChecked((current) => !current)}
+            onSelect={() => {
+              const next = !sensitiveConfirmationChecked;
+              setSensitiveConfirmationChecked(next);
+              if (next) revealOnce("sensitive-confirmation", "behavior-map-sensitive-confirm");
+            }}
             selected={sensitiveConfirmationChecked}
           />
+          <JourneyScrollTarget targetId="behavior-map-sensitive-confirm">
           <JourneyAction
             disabled={!sensitiveConfirmationChecked}
             label="我了解，继续查看"
             loadingLabel="正在记录选择…"
-            onAction={() => persistSensitiveConsent(true, () => undefined)}
+            onAction={() => persistSensitiveConsent(true, () => {
+              const firstSensitiveId = sensitiveBehaviorIds.find((id) => attitudes[id] === undefined)
+                ?? sensitiveBehaviorIds[0];
+              if (firstSensitiveId) reveal(`behavior-map-sensitive-question-${firstSensitiveId}`);
+            })}
           />
+          </JourneyScrollTarget>
           <JourneyAction
             label="返回更多具体行为"
             loadingLabel="正在返回…"
@@ -294,6 +314,7 @@ export function BehaviorMapPage({
       ) : null}
 
       {activePoint?.kind === "custom" && !activeBehavior ? (
+        <JourneyScrollTarget targetId="behavior-map-custom-section">
         <Card accessible={false}>
           <Text accessibilityRole="header" selectable style={{ ...theme.typography.heading, color: theme.color.text }}>
             还有没有一件你在意、但没有出现在前面的事？
@@ -332,9 +353,15 @@ export function BehaviorMapPage({
             onAction={() => onComplete({ participated: true })}
           />
         </Card>
+        </JourneyScrollTarget>
       ) : null}
 
       {activeBehavior ? (
+        <JourneyScrollTarget targetId={activePoint?.kind === "more"
+          ? `behavior-map-sensitive-question-${activeBehavior.id}`
+          : activePoint?.kind === "custom"
+            ? `behavior-map-custom-question-${activeBehavior.id}`
+            : `behavior-map-question-${activeBehavior.id}`}>
         <Card accessible={false} testID={`behavior-card-${activeBehavior.id}`}>
           <Text accessibilityRole="header" selectable style={{ ...theme.typography.heading, color: theme.color.text }}>
             {`对于${activeBehavior.label}，此刻的你更接近哪种感觉？`}
@@ -358,9 +385,22 @@ export function BehaviorMapPage({
                   mode="single"
                   onSelect={() => {
                     const sensitiveIndex = sensitiveBehaviorIds.indexOf(activeBehavior.id);
-                    return persistAttitude(activeBehavior.id, domainAttitude, sensitiveIndex >= 0 && sensitiveIndex < sensitiveBehaviorIds.length - 1
-                      ? () => setActiveMoreBehaviorId(sensitiveBehaviorIds[sensitiveIndex + 1])
-                      : undefined);
+                    return persistAttitude(activeBehavior.id, domainAttitude, () => {
+                      if (sensitiveIndex >= 0 && sensitiveIndex < sensitiveBehaviorIds.length - 1) {
+                        const nextSensitiveId = sensitiveBehaviorIds[sensitiveIndex + 1];
+                        setActiveMoreBehaviorId(nextSensitiveId);
+                        if (nextSensitiveId) revealOnce(
+                          `attitude:${activeBehavior.id}`,
+                          `behavior-map-sensitive-question-${nextSensitiveId}`,
+                        );
+                      } else if (sensitiveIndex === sensitiveBehaviorIds.length - 1) {
+                        revealOnce(`attitude:${activeBehavior.id}`, "behavior-map-sensitive-continue");
+                      } else if (activePoint?.kind === "custom") {
+                        revealOnce(`attitude:${activeBehavior.id}`, "behavior-map-final-continue");
+                      } else {
+                        revealOnce(`attitude:${activeBehavior.id}`, "behavior-map-next-action");
+                      }
+                    });
                   }}
                   selected={attitudes[activeBehavior.id] === domainAttitude}
                 />
@@ -375,6 +415,7 @@ export function BehaviorMapPage({
             </InfoCard>
           ) : null}
         </Card>
+        </JourneyScrollTarget>
       ) : null}
 
       {activePointIndex > 0 ? (
@@ -385,21 +426,26 @@ export function BehaviorMapPage({
         />
       ) : null}
       {activePointIndex >= 0 && activePointIndex < 7 && activeBehavior ? (
+        <JourneyScrollTarget targetId="behavior-map-next-action">
         <JourneyAction
           disabled={attitudes[activeBehavior.id] === undefined}
           label="记录这个感受，继续"
           loadingLabel="正在记录…"
           onAction={() => moveToPoint(activePointIndex + 1)}
         />
+        </JourneyScrollTarget>
       ) : null}
       {activePointIndex === 7 && sensitiveGateStage === "confirmed" && sensitiveAnswersComplete ? (
+        <JourneyScrollTarget targetId="behavior-map-sensitive-continue">
         <JourneyAction
           label="继续到自定义行为"
           loadingLabel="正在继续…"
           onAction={() => moveToPoint(8)}
         />
+        </JourneyScrollTarget>
       ) : null}
       {activePointIndex === 8 ? (
+        <JourneyScrollTarget targetId="behavior-map-final-continue">
         <JourneyAction
           accessibilityLabel="带着这些感受继续"
           disabled={!baseComplete}
@@ -407,6 +453,7 @@ export function BehaviorMapPage({
           loadingLabel="正在继续…"
           onAction={() => onComplete({ participated: true })}
         />
+        </JourneyScrollTarget>
       ) : null}
     </View>
   );

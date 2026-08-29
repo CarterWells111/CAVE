@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Text, View } from "react-native";
 
 import { useTheme } from "../../../../core/design/theme-provider";
 import { Card } from "../../../../core/ui/Card";
 import { ChoiceChip } from "../../../../core/ui/ChoiceChip";
 import { JourneyAction } from "../components/JourneyAction";
+import { JourneyScrollTarget, useJourneyGuidedScroll } from "../guided-scroll-screen";
 
 type AddressPreference = "你" | "妳";
 
@@ -14,7 +15,16 @@ export function PrefacePage({
   onContinue(preference: AddressPreference): void | Promise<void>;
 }) {
   const theme = useTheme();
+  const { reveal } = useJourneyGuidedScroll();
   const [preference, setPreference] = useState<AddressPreference | null>(null);
+  const preferenceAdvancedRef = useRef(false);
+  const choosePreference = (nextPreference: AddressPreference) => {
+    setPreference(nextPreference);
+    if (!preferenceAdvancedRef.current) {
+      preferenceAdvancedRef.current = true;
+      reveal("preface-continue");
+    }
+  };
   const addressed = preference ?? "你";
   return (
     <View style={{ gap: theme.space.lg }} testID="journey-preface">
@@ -30,16 +40,18 @@ export function PrefacePage({
         </Text>
       </Card>
       <View style={{ gap: theme.space.compact }}>
-        <ChoiceChip label="你｜日常、自然，不限定性别。" onPress={() => setPreference("你")} selected={preference === "你"} semantics="radio" />
-        <ChoiceChip label="妳｜明确称呼女性，更有书信感。" onPress={() => setPreference("妳")} selected={preference === "妳"} semantics="radio" />
+        <ChoiceChip label="你｜日常、自然，不限定性别。" onPress={() => choosePreference("你")} selected={preference === "你"} semantics="radio" />
+        <ChoiceChip label="妳｜明确称呼女性，更有书信感。" onPress={() => choosePreference("妳")} selected={preference === "妳"} semantics="radio" />
       </View>
-      <JourneyAction
-        disabled={preference === null}
-        errorMessage="称呼暂时无法保存，请重试。"
-        label="这样称呼我"
-        loadingLabel="正在保存称呼…"
-        onAction={() => preference === null ? undefined : onContinue(preference)}
-      />
+      <JourneyScrollTarget targetId="preface-continue">
+        <JourneyAction
+          disabled={preference === null}
+          errorMessage="称呼暂时无法保存，请重试。"
+          label="这样称呼我"
+          loadingLabel="正在保存称呼…"
+          onAction={() => preference === null ? undefined : onContinue(preference)}
+        />
+      </JourneyScrollTarget>
     </View>
   );
 }

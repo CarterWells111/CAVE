@@ -24,6 +24,7 @@ export type ReviewDetailScreenProps = {
   onBranch(reviewId: string): Promise<void>;
   onDelete(reviewId: string): Promise<void>;
   onContinueAfterDelete(): void;
+  onSaveToJournal?(): void;
 };
 
 type DeleteState = "idle" | "confirming" | "deleting" | "error" | "success";
@@ -76,7 +77,7 @@ function DeleteButton({ label, loading = false, onPress }: { label: string; load
 
 export function ReviewDetailScreen(_props: ReviewDetailScreenProps) {
   const theme = useTheme();
-  const { metadata, onBack, onBranch, onContinueAfterDelete, onDelete, sections } = _props;
+  const { metadata, onBack, onBranch, onContinueAfterDelete, onDelete, onSaveToJournal, sections } = _props;
   const [deleteState, setDeleteState] = useState<DeleteState>("idle");
   const [branchState, setBranchState] = useState<BranchState>("idle");
   const deletionInFlight = useRef(false);
@@ -169,6 +170,7 @@ export function ReviewDetailScreen(_props: ReviewDetailScreenProps) {
                 onPress={() => { void branchReview(); }}
               />
               <SecondaryButton disabled={deleting || branchState === "branching"} label="返回我的回顾" onPress={onBack} />
+              {onSaveToJournal ? <SecondaryButton disabled={deleting || branchState === "branching"} label="保存到内界手记" onPress={onSaveToJournal} /> : null}
             </View>
 
             <Card accessible={false} style={{ borderColor: theme.color.danger }}>

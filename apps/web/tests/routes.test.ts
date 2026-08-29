@@ -138,7 +138,7 @@ describe("official site routes", () => {
     expect(homeCallout).toContain('href="/privacy/"');
     expect(homeCallout).toContain('href="/support/"');
     expect(textContent(homeCallout)).toContain(
-      "首版无需账号。你的旅程内容默认只保存在当前设备，并由你决定是否导出。"
+      "旅程无需账号；内界手记需登录以隔离同一设备上的不同账号。所有私密正文仍只保存在当前设备。"
     );
     expect(textContent(homeCallout)).toContain(
       "查看常见问题、删除说明、联系渠道，以及 CAVE 能做与不能做的事。"
@@ -220,7 +220,8 @@ describe("official site routes", () => {
   it("states privacy ownership, retention, deletion, and system-service boundaries", async () => {
     const html = await readRoute("privacy");
 
-    expect(html).toContain("首版无需账号或登录");
+    expect(html).toContain("邮箱地址以不可逆的带密钥摘要用于查找");
+    expect(html).toContain("删除云端账户与删除本机内容是两个独立操作");
     expect(html.match(/data-privacy-point/gu) ?? []).toHaveLength(6);
     expect(html).toContain("保留");
     expect(html).toContain("删除");
@@ -241,7 +242,7 @@ describe("official site routes", () => {
       readRoute("safety")
     ]);
 
-    expect(supportHtml.match(/data-faq/gu) ?? []).toHaveLength(5);
+    expect(supportHtml.match(/data-faq/gu) ?? []).toHaveLength(6);
     expect(supportHtml).toContain('href="mailto:support@neijiecave.com"');
     expect(supportHtml).toContain("再次确认后完成清除");
     expect(textContent(supportHtml)).toContain(sharingBoundary);

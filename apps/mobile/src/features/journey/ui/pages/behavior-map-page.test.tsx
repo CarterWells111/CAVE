@@ -1,7 +1,10 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react-native";
 import { StyleSheet } from "react-native";
 
+import * as guidedScroll from "../guided-scroll-screen";
 import { BehaviorMapPage } from "./behavior-map-page";
+
+afterEach(() => jest.restoreAllMocks());
 
 const completeBaseAttitudes = {
   "behavior-hug": "looking-forward",
@@ -30,6 +33,8 @@ test("renders the nine catalog map points as equal, non-ranked 44-point controls
 });
 
 test("uses the five catalog attitudes and saves the selected behavior without hierarchy", () => {
+  const reveal = jest.fn();
+  jest.spyOn(guidedScroll, "useJourneyGuidedScroll").mockReturnValue({ reveal });
   const onSetAttitude = jest.fn();
   render(<BehaviorMapPage onComplete={jest.fn()} onSetAttitude={onSetAttitude} />);
 
@@ -44,6 +49,10 @@ test("uses the five catalog attitudes and saves the selected behavior without hi
   expect(onSetAttitude).toHaveBeenCalledWith("behavior-hug", "looking-forward");
   expect(screen.getByText("期待不代表已经答应，到了当时仍然需要彼此确认。")).toBeTruthy();
   expect(screen.getByText("当前选择：我有些期待")).toBeTruthy();
+  expect(reveal).toHaveBeenCalledWith("behavior-map-next-action");
+  expect(screen.getByTestId("journey-scroll-target-behavior-map-next-action")).toBeTruthy();
+  fireEvent.press(screen.getByRole("radio", { name: "拥抱或依偎：我还没想清楚" }));
+  expect(reveal).toHaveBeenCalledTimes(1);
 });
 
 test("restores saved answers and changes the active point without implying progress", () => {
@@ -142,6 +151,8 @@ test("keeps future items unavailable and requires every base item to have an exp
 });
 
 test("gates sensitive details behind learn, explicit confirmation, and a persistence callback", async () => {
+  const reveal = jest.fn();
+  jest.spyOn(guidedScroll, "useJourneyGuidedScroll").mockReturnValue({ reveal });
   const onSetAttitude = jest.fn();
   const onSetSensitiveContentConsent = jest.fn();
   render(
@@ -163,6 +174,10 @@ test("gates sensitive details behind learn, explicit confirmation, and a persist
     .toHaveProp("accessibilityState", expect.objectContaining({ disabled: true }));
 
   fireEvent.press(screen.getByRole("checkbox", { name: "我知道接下来会看到更具体的健康教育内容，并愿意继续" }));
+  expect(reveal).toHaveBeenLastCalledWith("behavior-map-sensitive-confirm");
+  fireEvent.press(screen.getByRole("checkbox", { name: "我知道接下来会看到更具体的健康教育内容，并愿意继续" }));
+  fireEvent.press(screen.getByRole("checkbox", { name: "我知道接下来会看到更具体的健康教育内容，并愿意继续" }));
+  expect(reveal).toHaveBeenCalledTimes(1);
   fireEvent.press(screen.getByRole("button", { name: "我了解，继续查看" }));
   await waitFor(() => expect(onSetSensitiveContentConsent).toHaveBeenCalledWith(true));
   expect(screen.getByText("对于口腔与私密部位的接触，此刻的你更接近哪种感觉？")).toBeTruthy();
@@ -175,9 +190,11 @@ test("gates sensitive details behind learn, explicit confirmation, and a persist
   expect(screen.getByText("对于任何形式的插入，此刻的你更接近哪种感觉？")).toBeTruthy();
   expect(screen.getByText(/包括手指、玩具或身体部位进入阴道或肛门/u)).toBeTruthy();
   expect(screen.getByText(/你的选择不能代替对方的同意/u)).toBeTruthy();
+  expect(reveal).toHaveBeenLastCalledWith("behavior-map-sensitive-question-draft-penetrative-sex");
   fireEvent.press(screen.getByRole("radio", { name: "任何形式的插入：这不是我这次想要的" }));
   await waitFor(() => expect(onSetAttitude).toHaveBeenCalledWith("draft-penetrative-sex", "not-this-time"));
   expect(screen.getByRole("button", { name: "继续到自定义行为" })).toBeTruthy();
+  expect(reveal).toHaveBeenLastCalledWith("behavior-map-sensitive-continue");
 });
 
 test("can return from informed consent without exposing sensitive behavior or losing the base map", () => {

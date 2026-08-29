@@ -29,6 +29,7 @@ export type CardDetailScreenProps = {
   onEdit(): Promise<void>;
   onCopy(sections: readonly ConfirmedCardSection[]): Promise<void>;
   onFullscreen(): void;
+  onSaveToJournal?(): void;
 };
 
 type ActionState = "idle" | "copying" | "copy-success" | "copy-error" | "editing" | "edit-error";
@@ -40,7 +41,8 @@ export function CardDetailScreen({
   onBack,
   onCopy,
   onEdit,
-  onFullscreen
+  onFullscreen,
+  onSaveToJournal
 }: CardDetailScreenProps) {
   const theme = useTheme();
   const [actionState, setActionState] = useState<ActionState>("idle");
@@ -152,6 +154,7 @@ export function CardDetailScreen({
             loading={actionState === "copying"}
             onPress={() => { void run("copy"); }}
           />
+          {onSaveToJournal ? <SecondaryButton disabled={busy} label="保存到内界手记" onPress={onSaveToJournal} /> : null}
           <SecondaryButton
             disabled={busy}
             label={mode === "fullscreen" ? "退出全屏展示" : "全屏展示"}

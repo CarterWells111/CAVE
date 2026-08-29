@@ -2,6 +2,7 @@ import { useRouter } from "expo-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { Screen } from "../../src/core/ui/Screen";
+import { useAccountProfile } from "../../src/features/account/runtime/AccountProfileProvider";
 import {
   type JourneyRuntimeContextValue,
   useOptionalJourneyRuntime,
@@ -12,19 +13,35 @@ import type { ShellLoadState, ShellMetadataItem } from "../../src/features/shell
 
 export default function ProfileRoute() {
   const runtime = useOptionalJourneyRuntime();
+  const account = useAccountProfile();
   return runtime === null
-    ? <PublicProfileRoute />
-    : <AuthorizedProfileRoute runtime={runtime} />;
+    ? <PublicProfileRoute account={account} />
+    : <AuthorizedProfileRoute account={account} runtime={runtime} />;
 }
 
-function PublicProfileRoute() {
+function profileScreenAccount(
+  account: ReturnType<typeof useAccountProfile>,
+  onSignIn: () => void,
+) {
+  return {
+    status: account.status,
+    ...(account.email === undefined ? {} : { email: account.email }),
+    ...(account.profile === undefined ? {} : { profile: account.profile }),
+    ...(account.status === "signedOut" ? { onSignIn } : {}),
+    ...(account.status === "error" ? { onRetry: account.retry } : {}),
+  };
+}
+
+function PublicProfileRoute({ account }: { account: ReturnType<typeof useAccountProfile> }) {
   const router = useRouter();
   return (
     <Screen>
       <ProfileScreen
+        account={profileScreenAccount(account, () => router.push("/auth/email"))}
         cards={[]}
         cardsLoadState="ready"
         onOpenSettings={() => router.push("/settings")}
+        onOpenJournal={() => router.push("/journal" as never)}
         reviews={[]}
         reviewsLoadState="ready"
       />
@@ -32,7 +49,13 @@ function PublicProfileRoute() {
   );
 }
 
-function AuthorizedProfileRoute({ runtime }: { runtime: JourneyRuntimeContextValue }) {
+function AuthorizedProfileRoute({
+  account,
+  runtime,
+}: {
+  account: ReturnType<typeof useAccountProfile>;
+  runtime: JourneyRuntimeContextValue;
+}) {
   const router = useRouter();
   const { cards, reviewHistory } = runtime;
   const [cardsLoadState, setCardsLoadState] = useState<ShellLoadState>("loading");
@@ -87,11 +110,13 @@ function AuthorizedProfileRoute({ runtime }: { runtime: JourneyRuntimeContextVal
   return (
     <Screen>
       <ProfileScreen
+        account={profileScreenAccount(account, () => router.push("/auth/email"))}
         cards={cardItems}
         cardsLoadState={cardsLoadState}
         onOpenCard={(id) => router.push(`/cards/${id}`)}
         onOpenReview={(id) => router.push(`/reviews/${id}`)}
         onOpenSettings={() => router.push("/settings")}
+        onOpenJournal={() => router.push("/journal" as never)}
         onRetryCards={() => { void loadCards(); }}
         onRetryReviews={() => { void loadReviews(); }}
         reviews={reviewItems}

@@ -1,8 +1,8 @@
 import { useRouter } from "expo-router";
 import { useEffect } from "react";
 
-import { Screen } from "../../src/core/ui/Screen";
 import { useJourneyRuntime } from "../../src/features/journey/runtime/JourneyRuntimeProvider";
+import { JourneyGuidedScrollScreen } from "../../src/features/journey/ui/guided-scroll-screen";
 import { PrefacePage } from "../../src/features/journey/ui/pages/preface-page";
 
 export default function PrefaceRoute() {
@@ -16,13 +16,13 @@ export default function PrefaceRoute() {
 
   if (!eligible) return null;
   return (
-    <Screen>
+    <JourneyGuidedScrollScreen resetKey="preface">
       <PrefacePage
         onContinue={(preference) => runtime.runAndRefresh(() => {
           return runtime.service.dispatch({ type: "set-address-preference", preference })
             .then(() => runtime.service.dispatch({ type: "set-preface-read", read: true }));
         }).then(() => router.replace("/journey/body-knowledge"))}
       />
-    </Screen>
+    </JourneyGuidedScrollScreen>
   );
 }

@@ -3,6 +3,9 @@ import type { ScenarioConfig } from "@cave/contracts";
 import { Hono, type MiddlewareHandler } from "hono";
 
 import { parseGatewayEnv, type GatewayEnv } from "./env";
+import { D1AuthRepository } from "./auth/d1-auth-repository";
+import { createResendAuthEmailSender } from "./auth/resend-email-sender";
+import { AuthServiceError, createAuthService, type AuthService } from "./auth/service";
 import { safeLogEvent } from "./observability/safe-log";
 import { buildSystemPrompt } from "./prompts/system";
 import { MockProvider } from "./providers/mock";
@@ -12,6 +15,7 @@ import type { ModelProvider } from "./providers/types";
 import { createHealthRoutes } from "./routes/health";
 import { createMetaRoutes } from "./routes/meta";
 import { createPracticeRoutes } from "./routes/practice";
+import { createAuthRoutes } from "./routes/auth";
 import { createOutputGuard } from "./security/output-guard";
 import {
   createRateLimiter,
@@ -38,6 +42,12 @@ export type WorkerBindings = Omit<
   MODEL_BASE_URL?: string;
   MODEL_API_KEY?: string;
   MODEL_NAME?: string;
+  AUTH_DB?: D1Database;
+  RESEND_API_KEY?: string;
+  AUTH_EMAIL_LOOKUP_KEY_V1?: string;
+  AUTH_EMAIL_LOOKUP_KEY_V2?: string;
+  AUTH_OTP_KEY_V1?: string;
+  AUTH_OTP_KEY_V2?: string;
 };
 
 export type GatewayAppOptions = {
@@ -46,7 +56,53 @@ export type GatewayAppOptions = {
   rateLimitStore?: RateLimitStore | undefined;
   fetch?: typeof fetch | undefined;
   logger?: ((line: string) => void) | undefined;
+  authService?: AuthService | undefined;
 };
+
+function unavailableAuthService(): AuthService {
+  const unavailable = async (): Promise<never> => {
+    throw new AuthServiceError("AUTH_DELIVERY_UNAVAILABLE", 503);
+  };
+  return {
+    requestEmailChallenge: unavailable,
+    verifyEmailChallenge: unavailable,
+    refresh: unavailable,
+    logout: unavailable,
+    requestAccountDeletionChallenge: unavailable,
+    verifyAccountDeletionChallenge: unavailable,
+    deleteAccount: unavailable,
+  } as AuthService;
+}
+
+function createBoundAuthService(rawEnv: unknown, options: GatewayAppOptions): AuthService {
+  if (options.authService !== undefined) return options.authService;
+  const bindings = rawEnv as Partial<WorkerBindings>;
+  if (
+    bindings.AUTH_DB === undefined
+    || typeof bindings.RESEND_API_KEY !== "string"
+    || typeof bindings.AUTH_EMAIL_LOOKUP_KEY_V1 !== "string"
+    || typeof bindings.AUTH_OTP_KEY_V1 !== "string"
+  ) return unavailableAuthService();
+  return createAuthService({
+    repository: new D1AuthRepository(bindings.AUTH_DB),
+    emailSender: createResendAuthEmailSender({
+      apiKey: bindings.RESEND_API_KEY,
+      ...(options.fetch === undefined ? {} : { fetch: options.fetch }),
+    }),
+    emailLookupKeys: [
+      ...(typeof bindings.AUTH_EMAIL_LOOKUP_KEY_V2 === "string"
+        ? [{ version: 2, value: bindings.AUTH_EMAIL_LOOKUP_KEY_V2 }]
+        : []),
+      { version: 1, value: bindings.AUTH_EMAIL_LOOKUP_KEY_V1 },
+    ],
+    otpKeys: [
+      ...(typeof bindings.AUTH_OTP_KEY_V2 === "string"
+        ? [{ version: 2, value: bindings.AUTH_OTP_KEY_V2 }]
+        : []),
+      { version: 1, value: bindings.AUTH_OTP_KEY_V1 },
+    ],
+  });
+}
 
 function catalogScenarioSource(scenarios: readonly ScenarioConfig[]): ScenarioSource {
   const byId = new Map(scenarios.map((scenario) => [scenario.id, scenario]));
@@ -176,6 +232,7 @@ export function createApp(
     options.rateLimitStore ??
     createWorkerRateLimitStore(rawEnv as WorkerBindings);
   const logger = options.logger ?? (() => undefined);
+  const authService = createBoundAuthService(rawEnv, options);
   const versions = {
     promptVersion: env.PROMPT_VERSION,
     policyVersion: env.POLICY_VERSION
@@ -212,6 +269,7 @@ export function createApp(
   );
   app.route("/", createHealthRoutes());
   app.route("/", createMetaRoutes(env));
+  app.route("/", createAuthRoutes({ service: authService, logger }));
   app.route(
     "/",
     createPracticeRoutes({ turnService, debriefService })

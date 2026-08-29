@@ -20,3 +20,16 @@ test("allows native light and dark appearance changes on both platforms", () => 
   expect(config.userInterfaceStyle).toBe("automatic");
   expect(config.plugins).toContain("expo-system-ui");
 });
+
+test("requests only the photo-library access needed for local account avatars", () => {
+  const config = getConfig({ config: {} } as ConfigContext);
+
+  expect(config.plugins).toContainEqual([
+    "expo-image-picker",
+    {
+      photosPermission: "允许内界 CAVE 访问你选择的照片，以便更改仅保存在本机的账号头像。",
+      cameraPermission: false,
+      microphonePermission: false,
+    },
+  ]);
+});

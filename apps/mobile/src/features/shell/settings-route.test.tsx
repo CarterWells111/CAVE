@@ -16,6 +16,30 @@ const mockThemePreference = {
   setPreference: mockSetPreference,
 };
 let mockRuntime: { deleteAllData(): Promise<void>; snapshot: null } | null = null;
+let mockAdultStatus: "public" | "authorized" = "public";
+const mockClearLocalSession = jest.fn(async () => undefined);
+const mockSaveDisplayName = jest.fn(async () => undefined);
+const mockChooseAvatar = jest.fn(async () => undefined);
+const mockRemoveAvatar = jest.fn(async () => undefined);
+const mockRetryProfile = jest.fn();
+let mockAccountProfile = {
+  status: "signedOut" as "signedOut" | "loading" | "ready" | "error",
+  email: undefined as string | undefined,
+  profile: undefined as { displayName: string; avatarUri?: string } | undefined,
+  error: null as "load" | "save" | "permission" | "picker" | null,
+  saveDisplayName: mockSaveDisplayName,
+  chooseAvatar: mockChooseAvatar,
+  removeAvatar: mockRemoveAvatar,
+  retry: mockRetryProfile,
+};
+
+jest.mock("../auth/runtime/AuthProvider", () => ({
+  useOptionalAuth: () => ({ status: "signedOut", clearLocalSession: mockClearLocalSession }),
+}));
+
+jest.mock("../account/runtime/AccountProfileProvider", () => ({
+  useAccountProfile: () => mockAccountProfile,
+}));
 
 jest.mock("expo-router", () => ({
   Redirect: (props: { href: string }) => {
@@ -32,11 +56,23 @@ jest.mock("../../core/design/theme-provider", () => ({
 
 jest.mock("../journey/runtime/JourneyRuntimeProvider", () => ({
   useOptionalJourneyRuntime: () => mockRuntime,
+  useAdultDeclaration: () => ({ status: mockAdultStatus }),
 }));
 
 beforeEach(() => {
   jest.clearAllMocks();
   mockRuntime = null;
+  mockAdultStatus = "public";
+  mockAccountProfile = {
+    status: "signedOut",
+    email: undefined,
+    profile: undefined,
+    error: null,
+    saveDisplayName: mockSaveDisplayName,
+    chooseAvatar: mockChooseAvatar,
+    removeAvatar: mockRemoveAvatar,
+    retry: mockRetryProfile,
+  };
 });
 
 test("public settings keeps appearance and back controls without exposing private deletion", () => {
@@ -57,6 +93,7 @@ test("public settings keeps appearance and back controls without exposing privat
 
 test("authorized settings navigates to the public tabs as soon as deletion succeeds", async () => {
   mockRuntime = { deleteAllData: mockDeleteAllData, snapshot: null };
+  mockAdultStatus = "authorized";
   render(<SettingsRoute />);
 
   fireEvent.press(screen.getByRole("button", { name: "删除全部本机数据" }));
@@ -64,7 +101,36 @@ test("authorized settings navigates to the public tabs as soon as deletion succe
 
   await screen.findByText("本机数据已删除。");
   expect(mockDeleteAllData).toHaveBeenCalledTimes(1);
+  expect(mockClearLocalSession).toHaveBeenCalledTimes(1);
+  expect(mockClearLocalSession.mock.invocationCallOrder[0])
+    .toBeLessThan(mockDeleteAllData.mock.invocationCallOrder[0]!);
   expect(mockReplace).toHaveBeenCalledWith("/(tabs)");
+});
+
+test("authorized signed-out settings opens email login from the single account card action", () => {
+  mockAdultStatus = "authorized";
+  render(<SettingsRoute />);
+
+  expect(screen.getAllByRole("button", { name: "邮箱登录" })).toHaveLength(1);
+  fireEvent.press(screen.getByRole("button", { name: "邮箱登录" }));
+  expect(mockPush).toHaveBeenCalledWith("/auth/email");
+});
+
+test("ready settings receives the local profile and keeps email read-only", () => {
+  mockAdultStatus = "authorized";
+  mockAccountProfile = {
+    ...mockAccountProfile,
+    status: "ready",
+    email: "person@example.com",
+    profile: { displayName: "阿岚", avatarUri: "file:///avatar.jpg" },
+  };
+  render(<SettingsRoute />);
+
+  expect(screen.getByText("阿岚")).toBeTruthy();
+  expect(screen.getByText("person@example.com")).toBeTruthy();
+  expect(screen.queryByLabelText("更改邮箱")).toBeNull();
+  expect(screen.getByRole("button", { name: "更改头像" })).toBeTruthy();
+  expect(screen.getByRole("button", { name: "更改昵称" })).toBeTruthy();
 });
 
 test("the journey welcome route exposes settings before authorization", () => {

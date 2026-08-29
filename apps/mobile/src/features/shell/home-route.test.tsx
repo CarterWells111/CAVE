@@ -8,6 +8,16 @@ const mockPush = jest.fn();
 const mockCardsListMetadata = jest.fn();
 const mockShellStateLoad = jest.fn();
 const mockReplaceActiveReview = jest.fn(async () => undefined);
+const mockJournalListRecords = jest.fn();
+let mockJournalAccess: {
+  status: "locked" | "loading" | "ready" | "error";
+  service?: { listRecords: typeof mockJournalListRecords };
+} = { status: "locked" };
+let mockAccountProfile: {
+  status: "signedOut" | "loading" | "ready" | "error";
+  profile?: { displayName: string; avatarUri?: string };
+  email?: string;
+} = { status: "signedOut" };
 
 type MockRuntime = {
   cards: { listMetadata: typeof mockCardsListMetadata };
@@ -24,6 +34,14 @@ jest.mock("expo-router", () => ({
 
 jest.mock("../journey/runtime/JourneyRuntimeProvider", () => ({
   useOptionalJourneyRuntime: () => mockRuntime,
+}));
+
+jest.mock("../journal/runtime/JournalAccessProvider", () => ({
+  useJournalAccess: () => mockJournalAccess,
+}));
+
+jest.mock("../account/runtime/AccountProfileProvider", () => ({
+  useAccountProfile: () => mockAccountProfile,
 }));
 
 function authorizedRuntime(snapshot: JourneyDraft | null = null): MockRuntime {
@@ -48,7 +66,83 @@ beforeEach(() => {
   mockCardsListMetadata.mockReset();
   mockShellStateLoad.mockReset();
   mockReplaceActiveReview.mockReset().mockResolvedValue(undefined);
+  mockJournalListRecords.mockReset().mockResolvedValue([]);
+  mockJournalAccess = { status: "locked" };
+  mockAccountProfile = { status: "signedOut" };
   mockRuntime = null;
+});
+
+test("does not read or expose recent journal metadata while signed out", async () => {
+  mockShellStateLoad.mockResolvedValueOnce({
+    initialJourneyId: "initial-journey",
+    initialJourneyCompletedAt: "2026-08-28T12:00:00.000Z",
+  });
+  mockCardsListMetadata.mockResolvedValueOnce([]);
+  mockRuntime = authorizedRuntime();
+
+  render(<HomeRoute />);
+
+  await screen.findByText("还没有最近手记");
+  expect(mockJournalListRecords).not.toHaveBeenCalled();
+});
+
+test("shows only the signed-in account recent journal metadata", async () => {
+  mockJournalAccess = { status: "ready", service: { listRecords: mockJournalListRecords } };
+  mockJournalListRecords.mockResolvedValueOnce([{
+    id: "journal-a",
+    title: "账号 A 的事件",
+    occurredAt: "2026-08-28T00:00:00.000Z",
+    createdAt: "2026-08-28T10:00:00.000Z",
+    highlight: { kind: "feeling", text: "安心" },
+    topics: [],
+  }]);
+  mockShellStateLoad.mockResolvedValueOnce({
+    initialJourneyId: "initial-journey",
+    initialJourneyCompletedAt: "2026-08-28T12:00:00.000Z",
+  });
+  mockCardsListMetadata.mockResolvedValueOnce([]);
+  mockRuntime = authorizedRuntime();
+
+  render(<HomeRoute />);
+
+  expect(await screen.findByText("账号 A 的事件")).toBeTruthy();
+  expect(mockJournalListRecords).toHaveBeenCalledTimes(1);
+});
+
+test("discards an old account journal response after sign-out", async () => {
+  const oldAccountJournal = deferred<Array<{
+    id: string;
+    title: string;
+    occurredAt: string;
+    createdAt: string;
+    highlight: { kind: "feeling"; text: string };
+    topics: never[];
+  }>>();
+  mockJournalAccess = { status: "ready", service: { listRecords: mockJournalListRecords } };
+  mockJournalListRecords.mockReturnValueOnce(oldAccountJournal.promise);
+  mockShellStateLoad.mockResolvedValue({
+    initialJourneyId: "initial-journey",
+    initialJourneyCompletedAt: "2026-08-28T12:00:00.000Z",
+  });
+  mockCardsListMetadata.mockResolvedValue([]);
+  mockRuntime = authorizedRuntime();
+
+  const view = render(<HomeRoute />);
+  await waitFor(() => expect(mockJournalListRecords).toHaveBeenCalledTimes(1));
+  mockJournalAccess = { status: "locked" };
+  view.rerender(<HomeRoute />);
+  await act(async () => oldAccountJournal.resolve([{
+    id: "journal-a",
+    title: "不应回写的账号 A 事件",
+    occurredAt: "2026-08-28",
+    createdAt: "2026-08-28T10:00:00.000Z",
+    highlight: { kind: "feeling", text: "账号 A 的私密提要" },
+    topics: [],
+  }]));
+
+  await screen.findByText("还没有最近手记");
+  expect(screen.queryByText("不应回写的账号 A 事件")).toBeNull();
+  expect(screen.queryByText("账号 A 的私密提要")).toBeNull();
 });
 
 test("renders the public first-run home without reading private repositories", () => {
@@ -148,7 +242,38 @@ test("renders the long-term home and metadata-only cards after completion", asyn
 
   render(<HomeRoute />);
 
-  expect(await screen.findAllByText("2026-08-28 · 已保存到本机")).toHaveLength(2);
+  expect(await screen.findAllByText("2026-08-28 · 已保存到本机")).toHaveLength(1);
   await waitFor(() => expect(mockCardsListMetadata).toHaveBeenCalledTimes(1));
   expect(mockShellStateLoad).toHaveBeenCalledTimes(1);
+});
+
+test("routes the completed signed-out home CTA directly to email login", async () => {
+  mockShellStateLoad.mockResolvedValueOnce({
+    initialJourneyId: "initial-journey",
+    initialJourneyCompletedAt: "2026-08-28T12:00:00.000Z",
+  });
+  mockCardsListMetadata.mockResolvedValueOnce([]);
+  mockRuntime = authorizedRuntime();
+
+  render(<HomeRoute />);
+
+  fireEvent.press(await screen.findByRole("button", { name: "去登录，享受更多功能" }));
+  expect(mockPush).toHaveBeenCalledWith("/auth/email");
+});
+
+test("routes a ready account entry to profile without another login prompt", async () => {
+  mockAccountProfile = { status: "ready", profile: { displayName: "阿岚" }, email: "person@example.com" };
+  mockShellStateLoad.mockResolvedValueOnce({
+    initialJourneyId: "initial-journey",
+    initialJourneyCompletedAt: "2026-08-28T12:00:00.000Z",
+  });
+  mockCardsListMetadata.mockResolvedValueOnce([]);
+  mockRuntime = authorizedRuntime();
+
+  render(<HomeRoute />);
+
+  expect(await screen.findByRole("button", { name: "查看阿岚的账号" })).toBeTruthy();
+  expect(screen.queryByText("去登录，享受更多功能")).toBeNull();
+  fireEvent.press(screen.getByRole("button", { name: "查看阿岚的账号" }));
+  expect(mockPush).toHaveBeenCalledWith("/(tabs)/profile");
 });

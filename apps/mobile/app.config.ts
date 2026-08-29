@@ -55,6 +55,14 @@ export default ({ config }: ConfigContext): ExpoConfig => {
           savePhotosPermission: "允许内界 CAVE 将你确认的沟通卡图片保存到本机相册。",
           granularPermissions: ["photo"]
         }
+      ],
+      [
+        "expo-image-picker",
+        {
+          photosPermission: "允许内界 CAVE 访问你选择的照片，以便更改仅保存在本机的账号头像。",
+          cameraPermission: false,
+          microphonePermission: false
+        }
       ]
     ],
     experiments: {

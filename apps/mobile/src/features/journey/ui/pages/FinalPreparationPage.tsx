@@ -19,6 +19,7 @@ import type {
   JourneyDraft,
   SharingVisibility
 } from "../../domain/types";
+import { JourneyScrollTarget, useJourneyGuidedScroll } from "../guided-scroll-screen";
 
 type Props = {
   draft: JourneyDraft;
@@ -104,6 +105,7 @@ export function FinalPreparationPage({
   onUpdatePreparation
 }: Props) {
   const theme = useTheme();
+  const { reveal } = useJourneyGuidedScroll();
   const draftRef = useRef(cloneDraft(draft));
   const previewRef = useRef<View>(null);
   const queueRef = useRef<Promise<void>>(Promise.resolve());
@@ -121,6 +123,7 @@ export function FinalPreparationPage({
   const [hasFailedWrites, setHasFailedWrites] = useState(false);
   const finishSucceededRef = useRef(false);
   const [finishSucceeded, setFinishSucceeded] = useState(false);
+  const advancedGroupsRef = useRef(new Set<string>());
 
   const updateLocal = (update: (current: JourneyDraft) => JourneyDraft) => {
     draftRef.current = update(draftRef.current);
@@ -139,6 +142,32 @@ export function FinalPreparationPage({
     queueRef.current = next;
     return next;
   };
+  const enqueueWithAdvance = (
+    groupId: string,
+    targetId: string,
+    operation: () => void | Promise<void>,
+  ) => {
+    const shouldAdvance = !advancedGroupsRef.current.has(groupId);
+    if (shouldAdvance) advancedGroupsRef.current.add(groupId);
+    void enqueue(async () => {
+      await operation();
+      if (shouldAdvance) reveal(targetId);
+    });
+  };
+  const firstSectionTarget = sectionCatalog[0]
+    ? `final-preparation-section-${sectionCatalog[0].id}`
+    : "final-preparation-preview-action";
+  const preparationTargetAfter = (itemId: string) => {
+    const items = draftRef.current.privatePreparation.items;
+    const index = items.findIndex((item) => item.id === itemId);
+    const next = items[index + 1];
+    return next ? `final-preparation-item-${next.id}` : firstSectionTarget;
+  };
+  const sectionTargetAfter = (sectionId: CommunicationSectionId) => {
+    const index = sectionCatalog.findIndex((section) => section.id === sectionId);
+    const next = sectionCatalog[index + 1];
+    return next ? `final-preparation-section-${next.id}` : "final-preparation-preview-action";
+  };
   const setVisibility = (sectionId: CommunicationSectionId, visibility: SharingVisibility) => {
     if (operationRef.current !== undefined || failedWritesRef.current.length > 0 || finishSucceededRef.current) return;
     updateLocal((current) => ({
@@ -148,7 +177,11 @@ export function FinalPreparationPage({
         [sectionId]: { ...current.communicationCard[sectionId], visibility }
       }
     }));
-    void enqueue(() => onSetVisibility(sectionId, visibility));
+    enqueueWithAdvance(
+      `section:${sectionId}`,
+      sectionTargetAfter(sectionId),
+      () => onSetVisibility(sectionId, visibility),
+    );
   };
   const updatePreparation = (itemId: string, nextStatus: ChecklistItemStatus) => {
     if (onUpdatePreparation === undefined || operationRef.current !== undefined || failedWritesRef.current.length > 0 || finishSucceededRef.current) return;
@@ -161,7 +194,11 @@ export function FinalPreparationPage({
           : item)
       }
     }));
-    void enqueue(() => onUpdatePreparation(itemId, nextStatus));
+    enqueueWithAdvance(
+      `preparation:${itemId}`,
+      preparationTargetAfter(itemId),
+      () => onUpdatePreparation(itemId, nextStatus),
+    );
   };
   const saveEdit = () => {
     if (operationRef.current !== undefined || failedWritesRef.current.length > 0 || finishSucceededRef.current || editingId === undefined || editingText.trim().length === 0) return;
@@ -197,6 +234,7 @@ export function FinalPreparationPage({
       if (kind === "finish") {
         finishSucceededRef.current = true;
         setFinishSucceeded(true);
+        reveal("final-preparation-completed-action");
       }
       setStatus(success);
     } catch (error) {
@@ -208,6 +246,7 @@ export function FinalPreparationPage({
         && error.recovery === "open-settings"
       ) {
         setImageSettingsRecoveryVisible(true);
+        reveal("final-preparation-image-settings");
       }
       setStatus(failure);
     } finally {
@@ -243,6 +282,7 @@ export function FinalPreparationPage({
     if (!previewVisible) {
       setPreviewVisible(true);
       setStatus("请先查看最终预览，再次确认后复制。");
+      reveal("final-preparation-preview");
       return;
     }
     void afterFlush("copy", onCopy, "已复制。", "复制失败，请重试或手写记录。");
@@ -253,6 +293,12 @@ export function FinalPreparationPage({
     setPreviewVisible(true);
     setImageConfirmationVisible(true);
     setStatus("请先查看最终预览和相册提示，再确认保存图片。");
+    reveal("final-preparation-image-confirmation");
+  };
+
+  const showPreview = () => {
+    setPreviewVisible(true);
+    reveal("final-preparation-preview");
   };
 
   const confirmed = selectConfirmedCommunicationCard(draftRef.current);
@@ -270,7 +316,8 @@ export function FinalPreparationPage({
         {draftRef.current.privatePreparation.items.length === 0 ? (
           <Text style={{ ...theme.typography.body, color: theme.color.textSecondary }}>目前没有必须完成的准备项，你仍然可以继续。</Text>
         ) : draftRef.current.privatePreparation.items.map((item) => (
-          <View key={item.id} style={{ borderColor: theme.color.border, borderRadius: theme.radius.control, borderWidth: theme.border.width, gap: theme.space.xs, padding: theme.space.md }}>
+          <JourneyScrollTarget key={item.id} targetId={`final-preparation-item-${item.id}`}>
+          <View style={{ borderColor: theme.color.border, borderRadius: theme.radius.control, borderWidth: theme.border.width, gap: theme.space.xs, padding: theme.space.md }}>
             <Text style={{ ...theme.typography.body, color: theme.color.text }}>{PREPARATION_LABELS[item.category]}</Text>
             {item.userNote ? <Text selectable style={{ ...theme.typography.body, color: theme.color.textSecondary }}>{item.userNote}</Text> : null}
             {PREPARATION_STATUSES.map((option) => (
@@ -285,6 +332,7 @@ export function FinalPreparationPage({
               />
             ))}
           </View>
+          </JourneyScrollTarget>
         ))}
       </Card>
 
@@ -296,11 +344,13 @@ export function FinalPreparationPage({
           const field = draftRef.current.communicationCard[sectionId];
           const text = field.userText ?? field.generatedText;
           return (
-            <Card accessible={false} key={section.id}>
+            <JourneyScrollTarget key={section.id} targetId={`final-preparation-section-${section.id}`}>
+            <Card accessible={false}>
               <Text accessibilityRole="header" style={{ ...theme.typography.heading, color: theme.color.text }}>{section.title}</Text>
               <Text style={{ ...theme.typography.caption, color: theme.color.textSecondary }}>{VISIBILITY_LABELS[field.visibility]}</Text>
               {field.needsReview ? <Text style={{ ...theme.typography.caption, color: theme.color.warning }}>内容已变化，需要重新确认</Text> : null}
               {editingId === sectionId ? (
+                <JourneyScrollTarget targetId={`final-preparation-editor-${section.id}`}>
                 <>
                   <TextInput
                     accessibilityLabel={`编辑${section.title}`}
@@ -311,28 +361,39 @@ export function FinalPreparationPage({
                   />
                   <Button disabled={activeOperation !== undefined || hasFailedWrites || finishSucceeded} label="保存编辑" onPress={saveEdit} />
                 </>
+                </JourneyScrollTarget>
               ) : (
                 <Text selectable style={{ ...theme.typography.body, color: theme.color.text }}>{field.visibility === "deleted" ? "这段已删除" : text}</Text>
               )}
               <Button accessibilityLabel={`加入分享：${section.title}`} disabled={activeOperation !== undefined || hasFailedWrites || finishSucceeded} label="加入分享" onPress={() => setVisibility(sectionId, "included")} role="radio" selected={field.visibility === "included"} />
-              <SecondaryButton disabled={activeOperation !== undefined || hasFailedWrites || finishSucceeded} label={`编辑：${section.title}`} onPress={() => { setEditingId(sectionId); setEditingText(text); }} />
+              <SecondaryButton disabled={activeOperation !== undefined || hasFailedWrites || finishSucceeded} label={`编辑：${section.title}`} onPress={() => {
+                setEditingId(sectionId);
+                setEditingText(text);
+                reveal(`final-preparation-editor-${section.id}`);
+              }} />
               <Button accessibilityLabel={`保持私密：${section.title}`} disabled={activeOperation !== undefined || hasFailedWrites || finishSucceeded} label="只留给自己" onPress={() => setVisibility(sectionId, "private")} role="radio" selected={field.visibility === "private"} />
               <Button accessibilityLabel={`删除：${section.title}`} disabled={activeOperation !== undefined || hasFailedWrites || finishSucceeded} label="删除这一段" onPress={() => setVisibility(sectionId, "deleted")} role="radio" selected={field.visibility === "deleted"} />
             </Card>
+            </JourneyScrollTarget>
           );
         })}
       </View>
 
-      <Button label="预览分享卡" onPress={() => setPreviewVisible(true)} />
+      <JourneyScrollTarget targetId="final-preparation-preview-action">
+      <Button label="预览分享卡" onPress={showPreview} />
+      </JourneyScrollTarget>
       {previewVisible ? (
+        <JourneyScrollTarget targetId="final-preparation-preview">
         <View collapsable={false} ref={previewRef}>
           <SharePreview card={confirmed} />
         </View>
+        </JourneyScrollTarget>
       ) : null}
       {previewVisible ? <Text style={{ ...theme.typography.body, color: theme.color.textSecondary }}>文字会进入系统剪贴板。CAVE 不会自动发送，你可以粘贴到自己选择的应用中。</Text> : null}
       <Button disabled={activeOperation !== undefined && activeOperation !== "copy"} label={activeOperation === "copy" ? "正在复制…" : "复制已确认内容"} loading={activeOperation === "copy"} onPress={requestCopy} />
       <SecondaryButton disabled={activeOperation !== undefined} label="保存为图片" onPress={requestImageConfirmation} />
       {imageConfirmationVisible ? (
+        <JourneyScrollTarget targetId="final-preparation-image-confirmation">
         <View style={{ gap: theme.space.sm }}>
           <Text style={{ ...theme.typography.body, color: theme.color.textSecondary }}>图片会进入系统相册。如果设备开启了相册云同步，它也可能同步到你的云端账户。</Text>
           <Button
@@ -347,12 +408,22 @@ export function FinalPreparationPage({
             }}
           />
         </View>
+        </JourneyScrollTarget>
       ) : null}
       {imageSettingsRecoveryVisible && onOpenImageSettings !== undefined ? (
+        <JourneyScrollTarget targetId="final-preparation-image-settings">
         <Button label="前往系统设置" onPress={() => { void onOpenImageSettings(); }} />
+        </JourneyScrollTarget>
       ) : null}
-      <TextAction label="我想手写" onPress={() => setHandwritingVisible(true)} />
-      {handwritingVisible ? <Text style={{ ...theme.typography.body, color: theme.color.text }}>可以把确认后的内容抄写到纸上；CAVE 不会自动分享。</Text> : null}
+      <TextAction label="我想手写" onPress={() => {
+        setHandwritingVisible(true);
+        reveal("final-preparation-handwriting");
+      }} />
+      {handwritingVisible ? (
+        <JourneyScrollTarget targetId="final-preparation-handwriting">
+          <Text style={{ ...theme.typography.body, color: theme.color.text }}>可以把确认后的内容抄写到纸上；CAVE 不会自动分享。</Text>
+        </JourneyScrollTarget>
+      ) : null}
       {status ? <Text accessibilityLiveRegion="polite" style={{ ...theme.typography.body, color: theme.color.text }}>{status}</Text> : null}
       {hasFailedWrites ? <Button label="重试保存更改" loading={activeOperation === "retry-writes"} onPress={() => { void retryFailedWrites(); }} /> : null}
       <SecondaryButton
@@ -372,7 +443,9 @@ export function FinalPreparationPage({
         onPress={() => { void afterFlush("finish", onFinish, "已保存到本机。", "保存失败，请重试。"); }}
       />
       {finishSucceeded && onCompleted !== undefined ? (
+        <JourneyScrollTarget targetId="final-preparation-completed-action">
         <Button label="返回应用入口" onPress={onCompleted} />
+        </JourneyScrollTarget>
       ) : null}
     </View>
   );

@@ -17,6 +17,9 @@ import {
 } from "../../reviews/infrastructure/sql-review-history-repository";
 import type { JourneyDraft } from "../domain/types";
 import { SqlJourneyTransactionRepository } from "../infrastructure/sql-journey-transaction-repository";
+import { SqlJournalRepository } from "../../journal/infrastructure/sql-journal-repository";
+import type { AccountProfileRepository } from "../../account/infrastructure/account-profile-repository";
+import { createExpoAccountProfileRepository } from "../../account/infrastructure/expo-account-profile-dependencies";
 import {
   composeJourneyRuntime,
   createJourneyRuntime,
@@ -31,6 +34,7 @@ type CompositionDependencies = {
   createId(): string;
   now(): string;
   loadNativeAdapters: NativeAdapterLoader;
+  accountProfiles?: Pick<AccountProfileRepository, "clearAll">;
 };
 
 export function createComposedJourneyRuntime({
@@ -38,13 +42,15 @@ export function createComposedJourneyRuntime({
   clipboard,
   createId,
   now,
-  loadNativeAdapters
+  loadNativeAdapters,
+  accountProfiles = { clearAll: async () => undefined },
 }: CompositionDependencies): Promise<JourneyRuntime> {
   return createJourneyRuntime({
     executionEnvironment,
     clipboard,
     createId,
     now,
+    deleteAdditionalStorage: () => accountProfiles.clearAll(),
     createNativeRuntime: async () => {
       const adapters = await loadNativeAdapters();
       const database = createEncryptedDatabaseManager({
@@ -53,7 +59,7 @@ export function createComposedJourneyRuntime({
         secrets: adapters.secrets
       });
       if (await adapters.secrets.hasPendingLocalDataDeletion()) {
-        await deleteAllLocalData({ database, secrets: adapters.secrets });
+        await deleteAllLocalData({ accountProfiles, database, secrets: adapters.secrets });
       }
       const transactions = new SqlJourneyTransactionRepository(database);
       return composeJourneyRuntime({
@@ -68,10 +74,11 @@ export function createComposedJourneyRuntime({
         ),
         adultDeclaration: adapters.secrets,
         appearancePreferences: new SqlAppearancePreferencesRepository(database),
+        journal: new SqlJournalRepository(database),
         saveVersionedDraft: (draft, active) => transactions.saveActive(draft, active),
         completeJourney: (transaction) => transactions.complete(transaction),
         branchReview: (transaction) => transactions.branch(transaction),
-        deleteStorage: () => deleteAllLocalData({ database, secrets: adapters.secrets }),
+        deleteStorage: () => deleteAllLocalData({ accountProfiles, database, secrets: adapters.secrets }),
         clipboard: adapters.clipboard,
         createId,
         now
@@ -83,6 +90,7 @@ export function createComposedJourneyRuntime({
 let idSequence = 0;
 
 export function createExpoJourneyRuntime(): Promise<JourneyRuntime> {
+  const accountProfiles = createExpoAccountProfileRepository();
   const clipboard: ClipboardAdapter = {
     async setStringAsync(value) {
       await ExpoClipboard.setStringAsync(value);
@@ -93,6 +101,7 @@ export function createExpoJourneyRuntime(): Promise<JourneyRuntime> {
     clipboard,
     createId: () => `${Constants.sessionId}:journey:${++idSequence}`,
     now: () => new Date().toISOString(),
+    accountProfiles,
     loadNativeAdapters: async () => {
       const { createExpoJourneyAdapters } = await import("../infrastructure/expo-journey-adapters");
       return createExpoJourneyAdapters();

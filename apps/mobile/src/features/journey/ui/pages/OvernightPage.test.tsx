@@ -2,7 +2,10 @@ import type { JourneyOption, JourneySource } from "@cave/content";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react-native";
 import { AccessibilityInfo } from "react-native";
 
+import * as guidedScroll from "../guided-scroll-screen";
 import { OvernightPage } from "./OvernightPage";
+
+afterEach(() => jest.restoreAllMocks());
 
 const options = [
   { id: "expect-time", group: "expectation", label: "有更多时间待在一起", exclusive: false },
@@ -22,6 +25,27 @@ const source = {
   appliesTo: "同意原则",
   verificationStatus: "source_verified",
 } satisfies JourneySource;
+
+test("reveals each stage action only on the first choice and follows the confirmed stage", () => {
+  const reveal = jest.fn();
+  jest.spyOn(guidedScroll, "useJourneyGuidedScroll").mockReturnValue({ reveal });
+  render(<OvernightPage onContinue={jest.fn()} options={options} />);
+
+  fireEvent.press(screen.getByRole("checkbox", { name: "有更多时间待在一起" }));
+  fireEvent.press(screen.getByRole("checkbox", { name: "我还没有具体想象" }));
+  expect(reveal).toHaveBeenCalledTimes(1);
+  expect(reveal).toHaveBeenLastCalledWith("overnight-expectations-continue");
+
+  fireEvent.press(screen.getByRole("button", { name: "继续看看我的在意" }));
+  expect(reveal).toHaveBeenLastCalledWith("overnight-concerns-heading");
+  fireEvent.press(screen.getByRole("checkbox", { name: "想保留一点自己的空间" }));
+  fireEvent.press(screen.getByRole("checkbox", { name: "现在没有特别在意的" }));
+  expect(reveal).toHaveBeenLastCalledWith("overnight-final-continue");
+  expect(reveal).toHaveBeenCalledTimes(3);
+
+  expect(screen.getByTestId("journey-scroll-target-overnight-concerns-heading")).toBeTruthy();
+  expect(screen.getByTestId("journey-scroll-target-overnight-final-continue")).toBeTruthy();
+});
 
 test("moves from expectations to concerns, preserves edits, and enforces exclusive choices", () => {
   const onContinue = jest.fn();

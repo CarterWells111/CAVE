@@ -4,12 +4,12 @@ import { KeyboardAvoidingView, Text, View } from "react-native";
 import { useTheme } from "../../../core/design/theme-provider";
 import { Card } from "../../../core/ui/Card";
 import { ProgressHeader } from "../../../core/ui/ProgressHeader";
-import { Screen } from "../../../core/ui/Screen";
 import { StatusBanner } from "../../../core/ui/StatusBanner";
 import { JOURNEY_PAGE_IDS } from "../application/journey-navigation";
 import type { JourneyPageId } from "../domain/types";
 import type { JourneyAction as JourneyActionCallback } from "./journey-ui-contracts";
 import type { JourneyRuntimeNotice } from "./journey-ui-contracts";
+import { JourneyGuidedScrollScreen } from "./guided-scroll-screen";
 
 const JOURNEY_PAGE_TITLES: Record<JourneyPageId, string> = {
   "body-knowledge": "身体与安全知识",
@@ -105,7 +105,11 @@ export function JourneyScreenShell({
         style={{ flex: 1 }}
         testID="journey-keyboard-avoiding"
       >
-        <Screen keyboardDismissMode="interactive" testID="journey-scroll">
+        <JourneyGuidedScrollScreen
+          keyboardDismissMode="interactive"
+          resetKey={pageId}
+          testID="journey-scroll"
+        >
           <ProgressHeader
             backLabel={backState === "loading" ? "正在返回…" : "返回上一页"}
             backBusy={backState === "loading"}
@@ -138,7 +142,7 @@ export function JourneyScreenShell({
             <StatusBanner message="返回失败，请重试。" variant="error" />
           ) : null}
           {children}
-        </Screen>
+        </JourneyGuidedScrollScreen>
       </KeyboardAvoidingView>
     </View>
   );

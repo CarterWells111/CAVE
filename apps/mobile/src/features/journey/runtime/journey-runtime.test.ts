@@ -42,6 +42,16 @@ test("composes Expo Go without touching the native secure runtime factory", asyn
 
   await runtime.service.confirmAdult();
   expect(runtime.service.getSnapshot()).toMatchObject({ id: "journey-demo-1", ageConfirmed: true });
+
+  const accountA = runtime.createJournalService("account-a");
+  const accountB = runtime.createJournalService("account-b");
+  await accountA.createRecord({
+    title: "A 的手记",
+    occurredAt: "2026-08-27T12:00:00.000Z",
+    highlight: { kind: "feeling", text: "安心" },
+  });
+  await expect(accountA.listRecords()).resolves.toHaveLength(1);
+  await expect(accountB.listRecords()).resolves.toEqual([]);
 });
 
 test("uses the secure runtime factory for Development and Preview without a memory fallback", async () => {
@@ -62,12 +72,14 @@ test("uses the secure runtime factory for Development and Preview without a memo
 });
 
 test("deletes the Expo Go draft, cards, and completion marker together", async () => {
+  const deleteAdditionalStorage = jest.fn(async () => undefined);
   const runtime = await createJourneyRuntime({
     executionEnvironment: "storeClient",
     clipboard,
     createId: () => "delete-all-journey",
     now: () => "2026-08-27T12:00:00.000Z",
-    createNativeRuntime: jest.fn()
+    createNativeRuntime: jest.fn(),
+    deleteAdditionalStorage,
   });
   await runtime.service.confirmAdult();
   const draft = runtime.service.getSnapshot();
@@ -82,6 +94,7 @@ test("deletes the Expo Go draft, cards, and completion marker together", async (
   await expect(runtime.cards.listMetadata()).resolves.toEqual([]);
   await expect(runtime.shellState.load()).resolves.toBeNull();
   await expect(runtime.appearancePreferences.load()).resolves.toBe("system");
+  expect(deleteAdditionalStorage).toHaveBeenCalledTimes(1);
 });
 
 test("archives a completed review version and clears the active draft", async () => {

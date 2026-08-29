@@ -1,5 +1,5 @@
-import { act, fireEvent, render, screen } from "@testing-library/react-native";
-import { StyleSheet, Text } from "react-native";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react-native";
+import { Alert, StyleSheet, Text } from "react-native";
 
 import { darkTheme, lightTheme, type AppTheme } from "../../../core/design/theme";
 import { ThemeProvider } from "../../../core/design/theme-provider";
@@ -31,6 +31,7 @@ function renderScreen(overrides: Partial<React.ComponentProps<typeof SettingsScr
   const deleteAllData = jest.fn(async () => undefined);
   const onContinue = jest.fn();
   const props = {
+    account: { status: "signedOut" as const, onSignIn: jest.fn() },
     appearancePreference: "system" as const,
     appearanceSaving: false,
     deletion: { deleteAllData, onContinue },
@@ -63,23 +64,121 @@ async function renderThemedScreen(theme: AppTheme) {
   await screen.findByRole("header", { name: "设置" });
 }
 
-test("shows truthful account and local storage status without fake cloud actions", () => {
-  renderScreen();
+afterEach(() => {
+  jest.restoreAllMocks();
+});
+
+test("shows one signed-out email login action without claiming cloud sync", () => {
+  const props = renderScreen();
 
   expect(screen.getByRole("header", { name: "设置" })).toBeTruthy();
   expect(screen.getByRole("header", { name: "账户与保存" })).toBeTruthy();
-  expect(screen.getByText("未登录")).toBeTruthy();
+  expect(screen.getByLabelText("默认头像")).toBeTruthy();
   expect(screen.getByText("本机保存（当前）")).toBeTruthy();
-  expect(screen.getByText("登录与云端同步（尚未开放）")).toBeTruthy();
+  expect(screen.getByText("邮箱登录（不含同步）")).toBeTruthy();
+  expect(screen.getByText(/使用内界手记必须登录/u)).toBeTruthy();
+  expect(screen.getByText(/登录只会把本机手记与账号关联/u)).toBeTruthy();
   expect(screen.getByText("隐私与本机数据")).toBeTruthy();
   expect(screen.getByText(/能解锁这台设备的人仍可能看到/u)).toBeTruthy();
   expect(screen.queryByRole("button", { name: "更改称呼" })).toBeNull();
   expect(screen.queryByText("界面称呼")).toBeNull();
-  expect(screen.queryByRole("button", { name: /登录|云端/u })).toBeNull();
+  expect(screen.getAllByRole("button", { name: "邮箱登录" })).toHaveLength(1);
+  fireEvent.press(screen.getByRole("button", { name: "邮箱登录" }));
+  expect(props.account!.onSignIn).toHaveBeenCalledTimes(1);
+  expect(screen.queryByRole("button", { name: "管理邮箱账号" })).toBeNull();
 
   const scroll = screen.getByTestId("settings-scroll");
   expect(scroll.props.contentInsetAdjustmentBehavior).toBe("automatic");
   expect(scroll.props.keyboardShouldPersistTaps).toBe("handled");
+});
+
+test("keeps local-content boundaries explicit for a signed-in account", () => {
+  const onManageAccount = jest.fn();
+  renderScreen({
+    account: {
+      email: "person@example.com",
+      onManageAccount,
+      profile: { displayName: "阿岚" },
+      status: "ready",
+    },
+  });
+  expect(screen.getByText("阿岚")).toBeTruthy();
+  expect(screen.getByText("person@example.com")).toBeTruthy();
+  expect(screen.getByText(/登录不会上传日记、沟通卡、回顾或亲密内容/u)).toBeTruthy();
+  expect(screen.queryByRole("button", { name: "邮箱登录" })).toBeNull();
+  fireEvent.press(screen.getByRole("button", { name: "管理邮箱账号" }));
+  expect(onManageAccount).toHaveBeenCalledTimes(1);
+});
+
+test("offers avatar selection, restore-default, and cancel through a native alert", () => {
+  const chooseAvatar = jest.fn(async () => undefined);
+  const removeAvatar = jest.fn(async () => undefined);
+  const alert = jest.spyOn(Alert, "alert").mockImplementation(() => undefined);
+  renderScreen({
+    account: {
+      chooseAvatar,
+      email: "person@example.com",
+      profile: { displayName: "阿岚" },
+      removeAvatar,
+      status: "ready",
+    },
+  });
+
+  fireEvent.press(screen.getByRole("button", { name: "更改头像" }));
+  expect(alert).toHaveBeenCalledTimes(1);
+  const buttons = alert.mock.calls[0]![2]!;
+  expect(buttons.map((button) => button.text)).toEqual(["从相册选择", "恢复默认头像", "取消"]);
+  buttons[0]!.onPress?.();
+  buttons[1]!.onPress?.();
+  expect(chooseAvatar).toHaveBeenCalledTimes(1);
+  expect(removeAvatar).toHaveBeenCalledTimes(1);
+});
+
+test("validates a trimmed 1–24 Unicode-character nickname before saving", async () => {
+  const saveDisplayName = jest.fn(async () => undefined);
+  renderScreen({
+    account: {
+      email: "person@example.com",
+      profile: { displayName: "原昵称" },
+      saveDisplayName,
+      status: "ready",
+    },
+  });
+
+  fireEvent.press(screen.getByRole("button", { name: "更改昵称" }));
+  const input = screen.getByLabelText("昵称");
+  fireEvent.changeText(input, "   ");
+  fireEvent.press(screen.getByRole("button", { name: "保存昵称" }));
+  expect(screen.getByRole("alert")).toHaveTextContent("昵称需要 1–24 个字符。");
+  expect(saveDisplayName).not.toHaveBeenCalled();
+
+  fireEvent.changeText(input, "🌿".repeat(25));
+  fireEvent.press(screen.getByRole("button", { name: "保存昵称" }));
+  expect(saveDisplayName).not.toHaveBeenCalled();
+
+  fireEvent.changeText(input, "  新昵称  ");
+  fireEvent.press(screen.getByRole("button", { name: "保存昵称" }));
+  await waitFor(() => expect(saveDisplayName).toHaveBeenCalledWith("新昵称"));
+  expect(screen.queryByLabelText("昵称")).toBeNull();
+});
+
+test("keeps the nickname editor open with a neutral error when saving fails", async () => {
+  renderScreen({
+    account: {
+      email: "person@example.com",
+      profile: { displayName: "原昵称" },
+      saveDisplayName: jest.fn(async () => { throw new Error("private file path"); }),
+      status: "ready",
+    },
+  });
+
+  fireEvent.press(screen.getByRole("button", { name: "更改昵称" }));
+  fireEvent.changeText(screen.getByLabelText("昵称"), "新昵称");
+  fireEvent.press(screen.getByRole("button", { name: "保存昵称" }));
+
+  expect(await screen.findByRole("alert")).toHaveTextContent("账号资料未保存，请重试。");
+  expect(screen.getByLabelText("昵称")).toBeTruthy();
+  expect(screen.queryByText(/private file path/u)).toBeNull();
 });
 
 test("offers accessible system, light and dark appearance choices and a back action", () => {
@@ -116,6 +215,14 @@ test.each([darkTheme, lightTheme])("keeps unchecked radio boundaries at 3:1 in t
   const borderColor = StyleSheet.flatten(unchecked.props.style).borderColor as string;
   expect(borderColor).toBe(theme.color.interactiveBorder);
   expect(contrast(borderColor, theme.color.surface)).toBeGreaterThanOrEqual(3);
+});
+
+test.each([darkTheme, lightTheme])("uses the $name theme on the settings page background", async (theme) => {
+  await renderThemedScreen(theme);
+
+  expect(screen.getByTestId("settings-scroll")).toHaveStyle({
+    backgroundColor: theme.color.background,
+  });
 });
 
 test("shows a safe retryable message when an appearance choice cannot be saved", async () => {

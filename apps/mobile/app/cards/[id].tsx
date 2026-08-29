@@ -91,6 +91,7 @@ export default function SavedCardRoute() {
       }}
       onEdit={async () => { router.replace(`/cards/${record.id}?mode=edit`); }}
       onFullscreen={() => router.replace(`/cards/${record.id}${mode === "fullscreen" ? "" : "?mode=fullscreen"}`)}
+      onSaveToJournal={() => router.push({ pathname: "/journal/new", params: { cardId: record.id } })}
     />
   );
 }

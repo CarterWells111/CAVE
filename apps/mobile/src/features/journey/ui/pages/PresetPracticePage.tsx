@@ -1,5 +1,5 @@
 import type { JourneyPracticeCatalog } from "@cave/content";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Text, TextInput, View } from "react-native";
 
 import { useTheme } from "../../../../core/design/theme-provider";
@@ -29,6 +29,7 @@ import {
   type SevenScreenPracticeState
 } from "../../domain/seven-screen-practice-machine";
 import { JourneyAction } from "../components/JourneyAction";
+import { JourneyScrollTarget, useJourneyGuidedScroll } from "../guided-scroll-screen";
 
 type Props = {
   context?: "journey" | "standalone";
@@ -104,6 +105,7 @@ export function PresetPracticePage({
   initialIntent,
 }: Props) {
   const theme = useTheme();
+  const { reveal } = useJourneyGuidedScroll();
   const initial = useMemo(() => beginPractice(catalog), [catalog]);
   const [state, setState] = useState<SevenScreenPracticeState>(initial);
   const [mirrorVisible, setMirrorVisible] = useState(false);
@@ -114,12 +116,20 @@ export function PresetPracticePage({
   const [submitted, setSubmitted] = useState(false);
   const [completionFeelings, setCompletionFeelings] = useState<string[]>([]);
   const submittedRef = useRef(false);
+  const presentation = mirrorVisible ? "mirror" : state.stage;
+  const previousPresentationRef = useRef(presentation);
   const availableBehaviorOptions = behaviorOptions.filter(
     ({ attitude }) => attitude !== "not-this-time" && attitude !== "skip",
   );
   const selectedBehaviorLabel = behaviorOptions.find(({ id }) => id === state.behaviorId)?.label;
   const selectedNeedLabel = NEEDS.find(({ intent }) => intent === state.intent)?.label;
   const selectedAftercareLabel = AFTERCARE.find(({ id }) => id === state.aftercareId)?.label;
+
+  useEffect(() => {
+    if (previousPresentationRef.current === presentation) return;
+    previousPresentationRef.current = presentation;
+    reveal(`practice-stage-${presentation}`, { mode: "nearest" });
+  }, [presentation, reveal]);
 
   const chooseBehavior = (behaviorId: string | null) => {
     const selected = selectPracticeBehavior(state, behaviorId);
@@ -184,6 +194,8 @@ export function PresetPracticePage({
         <Body>一开始愿意，不代表之后必须继续。你可以放慢、暂停、换一种方式，或者结束正在发生的事。</Body>
       </Card>
 
+      <JourneyScrollTarget targetId={`practice-stage-${presentation}`}>
+      <View style={{ gap: theme.space.lg, width: "100%" }}>
       {mirrorVisible ? (
         <Card accessibilityLabel="镜前练习，不录音">
           <Heading>先对着镜子说一遍</Heading>
@@ -419,6 +431,8 @@ export function PresetPracticePage({
           {submitted && context === "journey" ? <Body>+1 回响｜你完成了一次表达练习</Body> : null}
         </Card>
       ) : null}
+      </View>
+      </JourneyScrollTarget>
     </View>
   );
 }

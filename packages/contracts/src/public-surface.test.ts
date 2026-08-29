@@ -2,6 +2,10 @@ import * as contractExports from "@cave/contracts";
 import type {
   ApiErrorCode,
   ApiErrorResponse,
+  AccountDeletionChallengeRequest,
+  AccountDeletionGrantResponse,
+  AccountDeletionRequest,
+  AuthSessionResponse,
   Course,
   DebriefDimension,
   DebriefKey,
@@ -9,16 +13,22 @@ import type {
   DebriefResponse,
   DebriefRubric,
   ExpressionCard,
+  EmailChallengeAccepted,
+  EmailChallengeRequest,
+  EmailChallengeVerifyRequest,
   Lesson,
   LessonBlock,
   PracticeTurn,
   PracticeTurnRequest,
   PracticeTurnResponse,
+  LogoutSessionRequest,
+  RefreshSessionRequest,
   QuizQuestion,
   ReviewStatus,
   SafetyDecision,
   ScenarioConfig,
   ScenarioStage,
+  SessionTokens,
   StopRule,
   StopRuleCode
 } from "@cave/contracts";
@@ -45,6 +55,16 @@ type PublicTypeInventory = [
   DebriefResponse,
   ApiErrorCode,
   ApiErrorResponse,
+  EmailChallengeRequest,
+  EmailChallengeAccepted,
+  EmailChallengeVerifyRequest,
+  SessionTokens,
+  AuthSessionResponse,
+  RefreshSessionRequest,
+  LogoutSessionRequest,
+  AccountDeletionChallengeRequest,
+  AccountDeletionGrantResponse,
+  AccountDeletionRequest,
   ScenarioConfig
 ];
 
@@ -57,6 +77,10 @@ describe("version one public contract surface", () => {
       [
         "ApiErrorCodeSchema",
         "ApiErrorResponseSchema",
+        "AccountDeletionChallengeRequestSchema",
+        "AccountDeletionGrantResponseSchema",
+        "AccountDeletionRequestSchema",
+        "AuthSessionResponseSchema",
         "CourseSchema",
         "DebriefDimensionSchema",
         "DebriefKeySchema",
@@ -64,18 +88,24 @@ describe("version one public contract surface", () => {
         "DebriefResponseSchema",
         "DebriefRubricSchema",
         "ExpressionCardSchema",
+        "EmailChallengeAcceptedSchema",
+        "EmailChallengeRequestSchema",
+        "EmailChallengeVerifyRequestSchema",
         "LessonBlockSchema",
         "LessonSchema",
         "PracticeTurnRequestSchema",
         "PracticeTurnResponseSchema",
         "PracticeTurnSchema",
+        "LogoutSessionRequestSchema",
         "QuizQuestionSchema",
         "ReviewStatusSchema",
         "SafetyDecisionSchema",
+        "RefreshSessionRequestSchema",
         "ScenarioConfigSchema",
         "ScenarioStageSchema",
         "StopRuleCodeSchema",
-        "StopRuleSchema"
+        "StopRuleSchema",
+        "SessionTokensSchema"
       ].sort()
     );
   });

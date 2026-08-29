@@ -1,5 +1,6 @@
+import { createRef, type ComponentRef } from "react";
 import { render, screen } from "@testing-library/react-native";
-import { StyleSheet, Text } from "react-native";
+import { ScrollView, StyleSheet, Text } from "react-native";
 
 import { contentHorizontalPadding, Screen, type ScreenProps } from "./Screen";
 
@@ -69,6 +70,15 @@ describe("Screen", () => {
         }),
       }),
     );
+  });
+
+  it("forwards a ref to the native scroll view", () => {
+    const ref = createRef<ComponentRef<typeof ScrollView>>();
+
+    render(<Screen ref={ref} testID="ref-screen"><Text>正文</Text></Screen>);
+
+    expect(ref.current).not.toBeNull();
+    expect(ref.current?.props.testID).toBe("ref-screen");
   });
 
   it("locks scroll invariants out of its public props", () => {

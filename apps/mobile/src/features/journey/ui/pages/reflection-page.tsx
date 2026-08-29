@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Text, TextInput, View } from "react-native";
 
 import { useTheme } from "../../../../core/design/theme-provider";
@@ -12,6 +12,7 @@ import type { BehaviorAttitude } from "../../domain/types";
 import { loadJourneyContentCatalog } from "../../infrastructure/journey-content-catalog";
 import { JourneyAction } from "../components/JourneyAction";
 import { JourneyChoice } from "../components/JourneyChoice";
+import { JourneyScrollTarget, useJourneyGuidedScroll } from "../guided-scroll-screen";
 import type { JourneyAction as JourneyActionCallback } from "../journey-ui-contracts";
 
 type PressureAnswer = "still-want" | "slow-down" | "unsure" | "less-want" | "skip";
@@ -124,6 +125,7 @@ export function ReflectionPage({
   storageMode = "device",
 }: ReflectionPageProps) {
   const theme = useTheme();
+  const { reveal } = useJourneyGuidedScroll();
   const [motivationIds, setMotivationIds] = useState(() => [...(initialValue.motivationIds ?? [])]);
   const [pressureWithoutDisappointment, setPressureWithoutDisappointment] = useState<PressureAnswer | null>(
     initialValue.pressureWithoutDisappointment ?? null,
@@ -146,6 +148,15 @@ export function ReflectionPage({
   const [journalStorageOpen, setJournalStorageOpen] = useState(false);
   const [localBehaviorAnswers, setLocalBehaviorAnswers] = useState(() => [...behaviorAnswers]);
   const [editingBehaviorId, setEditingBehaviorId] = useState<string | null>(null);
+  const motivationAdvancedRef = useRef(false);
+  const comfortAdvancedRef = useRef(false);
+  const advancedSingleGroupsRef = useRef(new Set<string>());
+
+  const revealSingleOnce = (groupId: string, targetId: string) => {
+    if (advancedSingleGroupsRef.current.has(groupId)) return;
+    advancedSingleGroupsRef.current.add(groupId);
+    reveal(targetId);
+  };
 
   const saveBehaviorAttitude = async (behaviorId: string, attitude: BehaviorAttitude) => {
     await onEditBehaviorAttitude?.(behaviorId, attitude);
@@ -153,6 +164,7 @@ export function ReflectionPage({
       ? { ...answer, attitude }
       : answer));
     setEditingBehaviorId(null);
+    reveal("reflection-motivation");
   };
 
   const toggleMotivation = (id: string) => {
@@ -161,12 +173,60 @@ export function ReflectionPage({
       const withoutSkip = current.filter((value) => value !== skipMotivationId);
       return withoutSkip.includes(id) ? withoutSkip.filter((value) => value !== id) : [...withoutSkip, id];
     });
+    if (!motivationAdvancedRef.current) {
+      motivationAdvancedRef.current = true;
+      reveal(id === disappointmentMotivationId
+        ? "reflection-pressure-question"
+        : "reflection-refusal-question");
+    }
   };
 
   const toggleComfort = (id: string) => {
     setComfortNeedIds((current) => current.includes(id)
       ? current.filter((value) => value !== id)
       : [...current, id]);
+    if (!comfortAdvancedRef.current) {
+      comfortAdvancedRef.current = true;
+      reveal("reflection-journal");
+    }
+  };
+
+  const choosePressure = (answer: PressureAnswer) => {
+    setPressureWithoutDisappointment(answer);
+    revealSingleOnce("pressure", answer === "still-want" || answer === "slow-down" || answer === "less-want"
+      ? "reflection-pressure-response"
+      : "reflection-refusal-question");
+  };
+
+  const chooseRefusalSafety = (answer: RefusalSafety) => {
+    setRefusalSafety(answer);
+    revealSingleOnce("refusal-safety", answer === "fear-reaction" || answer === "cannot-refuse" || answer === "unsure"
+      ? "reflection-refusal-support"
+      : "reflection-expression-question");
+  };
+
+  const chooseExpressionDifficulty = (answer: ExpressionDifficulty) => {
+    setExpressionDifficulty(answer);
+    revealSingleOnce("expression-difficulty", answer === "needs-phrase" || answer === "not-ready"
+      ? "reflection-expression-support"
+      : "reflection-comfort-question");
+  };
+
+  const chooseComfortClarity = (answer: ComfortClarity) => {
+    setComfortClarity(answer);
+    revealSingleOnce("comfort-clarity", "reflection-comfort-needs");
+  };
+
+  const chooseJournalPrompt = (id: string) => {
+    setJournalPromptId(id);
+    revealSingleOnce("journal-prompt", "reflection-journal-input");
+  };
+
+  const completeJournalDecision = (choice: JournalSaveChoice) => {
+    setJournalSaveChoice(choice);
+    setJournalDecisionMade(true);
+    setJournalStorageOpen(false);
+    revealSingleOnce("journal-decision", "reflection-final-action");
   };
 
   const value: ReflectionValue = {
@@ -249,6 +309,7 @@ export function ReflectionPage({
         </Card>
       ) : null}
 
+      <JourneyScrollTarget targetId="reflection-motivation">
       <Card accessible={false}>
         <SectionTitle>此刻，是什么在推动我靠近？</SectionTitle>
         <SupportingCopy>可以选择不止一个答案，也没有哪一种动机更加正确。</SupportingCopy>
@@ -263,8 +324,10 @@ export function ReflectionPage({
           ))}
         </View>
       </Card>
+      </JourneyScrollTarget>
 
       {motivationIds.includes(disappointmentMotivationId) ? (
+        <JourneyScrollTarget targetId="reflection-pressure-question">
         <Card accessible={false}>
           <InfoCard variant="pause">
             <SupportingCopy>顾及对方的感受，并不意味着你做错了什么。你仍然可以放慢、暂停或改变主意。</SupportingCopy>
@@ -277,13 +340,14 @@ export function ReflectionPage({
                 key={option.value}
                 label={option.label}
                 mode="single"
-                onSelect={() => setPressureWithoutDisappointment(option.value)}
+                onSelect={() => choosePressure(option.value)}
                 selected={pressureWithoutDisappointment === option.value}
               />
             ))}
           </View>
           <SupportingCopy>这道题不会覆盖你之前对任何行为留下的答案。</SupportingCopy>
           {pressureWithoutDisappointment === "still-want" || pressureWithoutDisappointment === "slow-down" ? (
+            <JourneyScrollTarget targetId="reflection-pressure-response">
             <InfoCard variant="education">
               <SupportingCopy>{slowDownPhrase}</SupportingCopy>
               {onUsePracticePhrase ? (
@@ -294,15 +358,20 @@ export function ReflectionPage({
                 />
               ) : null}
             </InfoCard>
+            </JourneyScrollTarget>
           ) : null}
           {pressureWithoutDisappointment === "less-want" ? (
+            <JourneyScrollTarget targetId="reflection-pressure-response">
             <InfoCard variant="pause">
               <SupportingCopy>我知道你可能有所期待，但我现在不想尝试这件事。</SupportingCopy>
             </InfoCard>
+            </JourneyScrollTarget>
           ) : null}
         </Card>
+        </JourneyScrollTarget>
       ) : null}
 
+      <JourneyScrollTarget targetId="reflection-refusal-question">
       <Card accessible={false}>
         <SectionTitle>此刻，你觉得自己可以说不、暂停或离开吗？</SectionTitle>
         <View accessibilityRole="radiogroup" style={{ gap: theme.space.compact }}>
@@ -312,12 +381,13 @@ export function ReflectionPage({
               key={option.value}
               label={option.label}
               mode="single"
-              onSelect={() => setRefusalSafety(option.value)}
+              onSelect={() => chooseRefusalSafety(option.value)}
               selected={refusalSafety === option.value}
             />
           ))}
         </View>
         {showsRefusalSafety ? (
+          <JourneyScrollTarget targetId="reflection-refusal-support">
           <InfoCard variant="safety">
             <SupportingCopy>如果说不、暂停或离开让你感到害怕，可以先把自己的安全和空间放在前面。你不需要马上作出关于亲密行为的决定。</SupportingCopy>
             <SupportingCopy>这不代表系统已经判断现实中正在发生危险。</SupportingCopy>
@@ -336,9 +406,12 @@ export function ReflectionPage({
               />
             ) : null}
           </InfoCard>
+          </JourneyScrollTarget>
         ) : null}
       </Card>
+      </JourneyScrollTarget>
 
+      <JourneyScrollTarget targetId="reflection-expression-question">
       <Card accessible={false}>
         <SectionTitle>如果感受发生变化，你觉得自己能让对方知道吗？</SectionTitle>
         <View accessibilityRole="radiogroup" style={{ gap: theme.space.compact }}>
@@ -348,17 +421,20 @@ export function ReflectionPage({
               key={option.value}
               label={option.label}
               mode="single"
-              onSelect={() => setExpressionDifficulty(option.value)}
+              onSelect={() => chooseExpressionDifficulty(option.value)}
               selected={expressionDifficulty === option.value}
             />
           ))}
         </View>
         {expressionDifficulty === "needs-phrase" ? (
+          <JourneyScrollTarget targetId="reflection-expression-support">
           <InfoCard variant="education">
             <SupportingCopy>下一步会给你几句可以直接使用、也可以修改的表达。</SupportingCopy>
           </InfoCard>
+          </JourneyScrollTarget>
         ) : null}
         {expressionDifficulty === "not-ready" ? (
+          <JourneyScrollTarget targetId="reflection-expression-support">
           <InfoCard variant="pause">
             <SupportingCopy>{`说不出口，不代表你的暂停不重要。可以先从一句很短的话开始：${stopPhrase}`}</SupportingCopy>
             {onUsePracticePhrase ? (
@@ -374,9 +450,12 @@ export function ReflectionPage({
               onAction={() => setExpressionDifficulty(null)}
             />
           </InfoCard>
+          </JourneyScrollTarget>
         ) : null}
       </Card>
+      </JourneyScrollTarget>
 
+      <JourneyScrollTarget targetId="reflection-comfort-question">
       <Card accessible={false}>
         <SectionTitle>这个夜晚，如果要继续靠近，什么会让我更安心？</SectionTitle>
         <View accessibilityRole="radiogroup" style={{ gap: theme.space.compact }}>
@@ -386,7 +465,7 @@ export function ReflectionPage({
               key={option.value}
               label={option.label}
               mode="single"
-              onSelect={() => setComfortClarity(option.value)}
+              onSelect={() => chooseComfortClarity(option.value)}
               selected={comfortClarity === option.value}
             />
           ))}
@@ -394,6 +473,7 @@ export function ReflectionPage({
         {comfortClarity === "need-space" ? (
           <SupportingCopy>不需要马上找到完整答案。可以想一想希望怎样被询问、节奏如何变化，以及暂停以后希望发生什么。</SupportingCopy>
         ) : null}
+        <JourneyScrollTarget targetId="reflection-comfort-needs">
         <View style={{ gap: theme.space.compact }}>
           {comfortOptions.map((option) => (
             <JourneyChoice
@@ -404,6 +484,7 @@ export function ReflectionPage({
             />
           ))}
         </View>
+        </JourneyScrollTarget>
         <TextInput
           accessibilityLabel="安心条件补充"
           maxLength={500}
@@ -428,7 +509,9 @@ export function ReflectionPage({
           value={comfortNote}
         />
       </Card>
+      </JourneyScrollTarget>
 
+      <JourneyScrollTarget targetId="reflection-journal">
       <Card accessible={false}>
         <SectionTitle>给此刻留一句话</SectionTitle>
         <SupportingCopy>没有标准答案，也不需要写得完整。空白也可以继续。</SupportingCopy>
@@ -439,11 +522,12 @@ export function ReflectionPage({
               key={prompt.id}
               label={prompt.label}
               mode="single"
-              onSelect={() => setJournalPromptId(prompt.id)}
+              onSelect={() => chooseJournalPrompt(prompt.id)}
               selected={journalPromptId === prompt.id}
             />
           ))}
         </View>
+        <JourneyScrollTarget targetId="reflection-journal-input">
         <TextInput
           accessibilityLabel="给此刻留一句话"
           maxLength={1200}
@@ -467,6 +551,7 @@ export function ReflectionPage({
           }}
           value={journalText}
         />
+        </JourneyScrollTarget>
         {storageMode === "session-only" ? (
           <SupportingCopy>仅用于本次回顾，离开后内容会清除。</SupportingCopy>
         ) : (
@@ -481,11 +566,11 @@ export function ReflectionPage({
         <TextAction
           label="暂时不写"
           onPress={() => {
-            setJournalSaveChoice("not-saved");
-            setJournalDecisionMade(true);
+            completeJournalDecision("not-saved");
           }}
         />
       </Card>
+      </JourneyScrollTarget>
 
       {storageMode === "device" && journalDecisionMade ? <Card accessible={false}>
         <SectionTitle>这条记录要放在哪里？</SectionTitle>
@@ -495,6 +580,7 @@ export function ReflectionPage({
         {journalSaveChoice === "not-saved" ? <SupportingCopy>这次不会保存记录正文。</SupportingCopy> : null}
       </Card> : null}
 
+      <JourneyScrollTarget targetId="reflection-final-action">
       <JourneyAction
         accessibilityLabel={storageMode === "session-only" ? "完成本次回顾" : "带着这些发现去练习"}
         errorMessage={storageMode === "session-only" ? "完成回顾失败，请重试。" : "保存反思失败，请重试。"}
@@ -502,6 +588,7 @@ export function ReflectionPage({
         loadingLabel={storageMode === "session-only" ? "正在完成回顾…" : "正在保存这些发现…"}
         onAction={() => onComplete(submissionValue)}
       />
+      </JourneyScrollTarget>
 
       {storageMode === "device" ? (
         <BottomSheet
@@ -514,9 +601,7 @@ export function ReflectionPage({
           <SecondaryButton
             label="确认只保存在这台设备"
             onPress={() => {
-              setJournalSaveChoice("device");
-              setJournalDecisionMade(true);
-              setJournalStorageOpen(false);
+              completeJournalDecision("device");
             }}
           />
           <TextAction label="返回修改" onPress={() => setJournalStorageOpen(false)} />
