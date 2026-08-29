@@ -31,11 +31,13 @@ export default function WelcomeRoute() {
     <Screen
       alwaysBounceVertical={false}
       contentContainerStyle={{ paddingVertical: layout.screenPaddingVertical }}
+      contentSafeAreaTop
       onLayout={({ nativeEvent }) => setViewport({
         height: nativeEvent.layout.height,
         width: nativeEvent.layout.width,
       })}
       scrollEnabled={false}
+      testID="journey-welcome-scroll"
     >
       <WelcomePage
         brandPaddingTop={layout.brandPaddingTop}

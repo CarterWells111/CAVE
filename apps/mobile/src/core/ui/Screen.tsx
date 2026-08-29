@@ -11,15 +11,27 @@ import {
   type PropsWithChildren,
   type ReactNode,
 } from "react";
-import { ScrollView, StyleSheet, type ScrollViewProps, useWindowDimensions, View } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import {
+  Dimensions,
+  ScrollView,
+  StyleSheet,
+  type ScrollViewProps,
+  useWindowDimensions,
+  View,
+} from "react-native";
+import { SafeAreaInsetsContext } from "react-native-safe-area-context";
 
 import { useTheme } from "../design/theme-provider";
 import { space } from "../design/tokens";
 
-type LockedScrollProp = "horizontal" | "contentInsetAdjustmentBehavior" | "keyboardShouldPersistTaps";
+type LockedScrollProp =
+  | "automaticallyAdjustContentInsets"
+  | "contentInsetAdjustmentBehavior"
+  | "horizontal"
+  | "keyboardShouldPersistTaps";
 
 export type ScreenProps = Omit<ScrollViewProps, LockedScrollProp> & {
+  contentSafeAreaTop?: boolean;
   fixedHeader?: ReactNode;
   scrollResetKey?: string | number | boolean;
 };
@@ -49,12 +61,41 @@ export function contentHorizontalPadding(width: number): number {
   return width < 375 ? space.md : space.card;
 }
 
+export function safeContentEdgePadding(
+  contentPadding: number,
+  safeAreaInset: number,
+  mode: "additive" | "minimum",
+): number {
+  return mode === "additive"
+    ? contentPadding + safeAreaInset
+    : safeAreaInset > 0
+      ? Math.max(contentPadding, safeAreaInset + space.sm)
+      : contentPadding;
+}
+
+function fixedHeaderTopGap(height: number): number {
+  if (height < 700) return space.md;
+  if (height < 900) return space.lg;
+  return space.xl;
+}
+
 export const Screen = forwardRef<ComponentRef<typeof ScrollView>, ScreenProps>(function Screen(
-  { children, contentContainerStyle, fixedHeader, scrollResetKey, style, ...props },
+  {
+    children,
+    contentContainerStyle,
+    contentSafeAreaTop = false,
+    fixedHeader,
+    scrollResetKey,
+    style,
+    ...props
+  },
   forwardedRef,
 ) {
   const theme = useTheme();
   const { width } = useWindowDimensions();
+  const safeAreaInsets = useContext(SafeAreaInsetsContext);
+  const safeAreaBottom = safeAreaInsets?.bottom ?? 0;
+  const safeAreaTop = safeAreaInsets?.top ?? 0;
   const scrollRef = useRef<ScrollView>(null);
   const horizontalPadding = contentHorizontalPadding(width);
   const scrollToTop = useCallback(() => {
@@ -68,16 +109,35 @@ export const Screen = forwardRef<ComponentRef<typeof ScrollView>, ScreenProps>(f
   ] as const) {
     delete callerPresentation[lockedKey];
   }
+  const requestedContentTopPadding = callerPresentation.paddingTop
+    ?? callerPresentation.paddingVertical
+    ?? theme.space.xl;
+  const contentTopPadding = typeof requestedContentTopPadding === "number"
+    ? requestedContentTopPadding
+    : theme.space.xl;
+  const requestedContentBottomPadding = callerPresentation.paddingBottom
+    ?? callerPresentation.paddingVertical
+    ?? theme.space.xl;
+  const contentBottomPadding = typeof requestedContentBottomPadding === "number"
+    ? requestedContentBottomPadding
+    : theme.space.xl;
+  const manuallyInsetContent = contentSafeAreaTop
+    ? safeContentEdgePadding(contentTopPadding, safeAreaTop, "additive")
+    : fixedHeader === undefined && process.env.EXPO_OS === "android"
+      ? safeContentEdgePadding(contentTopPadding, safeAreaTop, "minimum")
+      : undefined;
+  const manuallyInsetContentBottom = contentSafeAreaTop || process.env.EXPO_OS === "android"
+    ? safeContentEdgePadding(contentBottomPadding, safeAreaBottom, "minimum")
+    : undefined;
 
   useEffect(() => {
     if (scrollResetKey !== undefined) scrollRef.current?.scrollTo({ animated: false, y: 0 });
   }, [scrollResetKey]);
 
   return (
-    <SafeAreaView
-      edges={["top", "bottom"]}
+    <View
       style={{ backgroundColor: theme.color.background, flex: 1 }}
-      testID="screen-safe-area"
+      testID="screen-container"
     >
       {fixedHeader ? (
         <View
@@ -87,7 +147,7 @@ export const Screen = forwardRef<ComponentRef<typeof ScrollView>, ScreenProps>(f
             maxWidth: theme.size.readableContentMax,
             paddingBottom: theme.space.sm,
             paddingHorizontal: horizontalPadding,
-            paddingTop: theme.space.compact,
+            paddingTop: safeAreaTop + fixedHeaderTopGap(Dimensions.get("screen").height),
             width: "100%",
             zIndex: 1,
           }}
@@ -99,28 +159,37 @@ export const Screen = forwardRef<ComponentRef<typeof ScrollView>, ScreenProps>(f
       <ScrollView
         {...props}
         ref={scrollRef}
-      automaticallyAdjustKeyboardInsets
-      horizontal={false}
-      contentInsetAdjustmentBehavior="automatic"
-      keyboardShouldPersistTaps="handled"
-      style={[{ flex: 1, backgroundColor: theme.color.background }, style]}
-      contentContainerStyle={[
-        {
-          alignSelf: "center",
-          flexGrow: 1,
-          gap: theme.space.lg,
-          paddingVertical: theme.space.xl,
-        },
-        callerPresentation,
-        {
-          maxWidth: theme.size.readableContentMax,
-          paddingHorizontal: horizontalPadding,
-          width: "100%",
-        },
-      ]}
-    >
+        automaticallyAdjustContentInsets={!contentSafeAreaTop}
+        automaticallyAdjustKeyboardInsets
+        horizontal={false}
+        contentInsetAdjustmentBehavior={contentSafeAreaTop ? "never" : "automatic"}
+        keyboardShouldPersistTaps="handled"
+        style={[{ flex: 1, backgroundColor: theme.color.background }, style]}
+        contentContainerStyle={[
+          {
+            alignSelf: "center",
+            flexGrow: 1,
+            gap: theme.space.lg,
+            paddingVertical: theme.space.xl,
+          },
+          callerPresentation,
+          manuallyInsetContent === undefined && manuallyInsetContentBottom === undefined
+            ? null
+            : {
+                ...(manuallyInsetContent === undefined ? {} : { paddingTop: manuallyInsetContent }),
+                ...(manuallyInsetContentBottom === undefined
+                  ? {}
+                  : { paddingBottom: manuallyInsetContentBottom }),
+              },
+          {
+            maxWidth: theme.size.readableContentMax,
+            paddingHorizontal: horizontalPadding,
+            width: "100%",
+          },
+        ]}
+      >
         <ScreenScrollProvider controller={scrollController}>{children}</ScreenScrollProvider>
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 });

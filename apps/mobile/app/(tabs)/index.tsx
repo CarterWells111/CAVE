@@ -49,6 +49,7 @@ function FirstRunHomeRoute({ runtime }: { runtime: JourneyRuntimeContextValue | 
     <Screen
       alwaysBounceVertical={false}
       contentContainerStyle={{ paddingVertical: layout.screenPaddingVertical }}
+      contentSafeAreaTop
       onLayout={({ nativeEvent }) => setViewport({
         height: nativeEvent.layout.height,
         width: nativeEvent.layout.width,

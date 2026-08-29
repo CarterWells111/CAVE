@@ -1,5 +1,6 @@
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react-native";
 import * as ReactNative from "react-native";
+import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import HomeRoute from "../../../app/(tabs)/index";
 import { createJourneyDraft, type JourneyDraft } from "../journey/domain/types";
@@ -159,7 +160,8 @@ test("renders the public first-run home without reading private repositories", (
   expect(mockPush.mock.calls).toEqual([["/journey/adult-gate"], ["/settings"]]);
 
   const scroll = screen.getByTestId("first-run-home-scroll");
-  expect(scroll.props.contentInsetAdjustmentBehavior).toBe("automatic");
+  expect(scroll.props.contentInsetAdjustmentBehavior).toBe("never");
+  expect(scroll.props.automaticallyAdjustContentInsets).toBe(false);
   expect(scroll.props.alwaysBounceVertical).toBe(false);
   expect(scroll.props.scrollEnabled).toBe(false);
   expect(typeof scroll.props.onLayout).toBe("function");
@@ -182,6 +184,46 @@ test("wires the real tab viewport measurement while keeping scroll disabled", ()
   ).toBe(0);
   expect(ReactNative.StyleSheet.flatten(screen.getByTestId("welcome-brand").props.style).paddingTop).toBe(0);
   expect(ReactNative.StyleSheet.flatten(screen.getByTestId("welcome-brand-names").props.style).flexDirection).toBe("row");
+});
+
+test("keeps the first-entry brand page below the same device top inset as the journey route", () => {
+  render(
+    <SafeAreaProvider initialMetrics={{
+      frame: { height: 844, width: 390, x: 0, y: 0 },
+      insets: { bottom: 34, left: 0, right: 0, top: 47 },
+    }}>
+      <HomeRoute />
+    </SafeAreaProvider>,
+  );
+
+  const contentStyle = ReactNative.StyleSheet.flatten(
+    screen.getByTestId("first-run-home-scroll").props.contentContainerStyle,
+  );
+  expect(contentStyle.paddingTop).toBe(47);
+});
+
+test("keeps the resumable first-journey brand page below the same device top inset", async () => {
+  const snapshot = {
+    ...createJourneyDraft({ id: "initial-journey", now: "2026-08-28T12:00:00.000Z" }),
+    ageConfirmed: true,
+  };
+  mockShellStateLoad.mockResolvedValueOnce(null);
+  mockRuntime = authorizedRuntime(snapshot);
+
+  render(
+    <SafeAreaProvider initialMetrics={{
+      frame: { height: 844, width: 390, x: 0, y: 0 },
+      insets: { bottom: 34, left: 0, right: 0, top: 47 },
+    }}>
+      <HomeRoute />
+    </SafeAreaProvider>,
+  );
+
+  await screen.findByRole("button", { name: "继续旅程" });
+  const contentStyle = ReactNative.StyleSheet.flatten(
+    screen.getByTestId("first-run-home-scroll").props.contentContainerStyle,
+  );
+  expect(contentStyle.paddingTop).toBe(47);
 });
 
 test("keeps the authorized home in its page-local loading state until completion resolves", async () => {
