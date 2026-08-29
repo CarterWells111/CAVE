@@ -7,14 +7,14 @@ import BaseLayout from "../layouts/BaseLayout.astro";
 
 <BaseLayout
   title="隐私说明｜CAVE 内界"
-  description="了解 CAVE 首版如何在本机保留与删除数据，以及系统相册、剪贴板和设备备份的边界。"
+  description="了解 CAVE 如何在本机保留、编辑与删除数据，以及邮箱登录、系统剪贴板和设备备份的边界。"
   path="/privacy/"
 >
   <section class="section page-section" aria-labelledby="privacy-title">
     <PageHero
       eyebrow="Privacy"
       title="隐私说明"
-      description="你的私密探索默认留在自己的设备上，也应当由你决定何时保留、删除或导出。"
+      description="你的私密探索默认留在自己的设备上，也应当由你决定何时保留、编辑或删除。"
       headingId="privacy-title"
     />
 
@@ -31,8 +31,8 @@ import BaseLayout from "../layouts/BaseLayout.astro";
         <p>要主动删除，请在“设置”中选择“删除全部本机数据”，并在二次确认后完成清除。</p>
       </ContentCard>
       <ContentCard title="系统服务边界" eyebrow="设备与 Apple">
-        <p>系统相册、系统剪贴板、设备备份与相册同步由 Apple 和你的设备设置控制，不属于 CAVE 自有服务器。</p>
-        <p>导出后，请按自己的设备与账号安全需要管理这些副本。</p>
+        <p>当前版本不会把沟通草稿写入系统相册，也不提供复制全文或系统分享入口。</p>
+        <p>预设练习里主动复制支持号码时，号码会进入系统剪贴板。设备备份与剪贴板由操作系统和你的设备设置控制，不属于 CAVE 自有服务器。</p>
       </ContentCard>
       <ContentCard title="邮箱账户" eyebrow="可选登录">
         <p>验证码邮件用于登录和账户安全。访问令牌短时保存在内存，刷新令牌保存在设备安全存储中。</p>

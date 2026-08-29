@@ -41,6 +41,7 @@ describe("built home page", () => {
       indexHtml.match(/<nav[^>]+aria-label=["']主要导航["'][^>]*>(.*?)<\/nav>/su)?.[1] ?? "";
     const destinations = [
       ["/", "了解 CAVE"],
+      ["/demo/", "App 演示"],
       ["/privacy/", "隐私"],
       ["/support/", "支持"],
       ["/safety/", "安全"],
@@ -48,7 +49,7 @@ describe("built home page", () => {
     ] as const;
 
     expect(primaryNavigation).not.toBe("");
-    expect([...primaryNavigation.matchAll(/<a\b/gu)]).toHaveLength(5);
+    expect([...primaryNavigation.matchAll(/<a\b/gu)]).toHaveLength(6);
 
     for (const [href, label] of destinations) {
       expect(primaryNavigation).toMatch(
@@ -68,6 +69,16 @@ describe("built home page", () => {
     expect(globalCss).toMatch(
       /\.site-header a,\s*\.site-footer a\s*\{[^}]*min-height:\s*var\(--target-min\);[^}]*min-width:\s*var\(--target-min\);/su
     );
+  });
+
+  it("keeps the demo grid shrinkable at mobile widths", () => {
+    expect(globalCss).toMatch(
+      /\.demo-grid\s*\{[^}]*width:\s*100%;[^}]*min-width:\s*0;/su
+    );
+    expect(globalCss).toMatch(
+      /\.demo-media\s*\{[^}]*width:\s*min\(100%,\s*28rem\);[^}]*max-width:\s*100%;[^}]*min-width:\s*0;/su
+    );
+    expect(globalCss).toMatch(/\.demo-features\s*\{[^}]*min-width:\s*0;/su);
   });
 
   it("does not include scripts, analytics, or tracking vendors", () => {
