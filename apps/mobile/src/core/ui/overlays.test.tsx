@@ -4,6 +4,10 @@ import { AccessibilityInfo, Text } from "react-native";
 import { BottomSheet } from "./bottom-sheet";
 import { SourceDrawer } from "./source-drawer";
 
+afterEach(() => {
+  jest.restoreAllMocks();
+});
+
 test("BottomSheet exposes modal semantics, explicit close, back close, and scroll-safe content", () => {
   const onClose = jest.fn();
   render(<BottomSheet onClose={onClose} title="选择称呼" visible><Text>内容</Text></BottomSheet>);
@@ -32,8 +36,19 @@ test("BottomSheet exposes verifiable initial-focus and focus-restore callbacks",
 test("BottomSheet moves initial accessibility focus to close and supports accessibility escape", () => {
   const onClose = jest.fn();
   const focus = jest.spyOn(AccessibilityInfo, "setAccessibilityFocus").mockImplementation(jest.fn());
-  render(<BottomSheet onClose={onClose} resolveFocusHandle={() => 42} title="来源" visible />);
+  let resolvedFocusTarget: { label?: unknown; role?: unknown } = {};
+  const resolveFocusHandle = jest.fn((target) => {
+    const closeTarget = target as Text | null;
+    resolvedFocusTarget = {
+      label: closeTarget?.props.accessibilityLabel,
+      role: closeTarget?.props.accessibilityRole,
+    };
+    return 42;
+  });
+  render(<BottomSheet onClose={onClose} resolveFocusHandle={resolveFocusHandle} title="来源" visible />);
   fireEvent(screen.getByTestId("bottom-sheet-modal"), "show");
+  expect(resolveFocusHandle).toHaveBeenCalledTimes(1);
+  expect(resolvedFocusTarget).toEqual({ label: "关闭来源", role: "button" });
   expect(focus).toHaveBeenCalledWith(42);
   fireEvent(screen.getByTestId("bottom-sheet-panel"), "accessibilityEscape");
   expect(onClose).toHaveBeenCalledTimes(1);
