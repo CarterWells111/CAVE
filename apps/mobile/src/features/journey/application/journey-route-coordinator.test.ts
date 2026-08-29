@@ -68,6 +68,43 @@ test("refuses to persist or render a future route whose prerequisites are missin
   expect(router.replace).not.toHaveBeenCalled();
 });
 
+test("persists an explicit progress jump after onboarding without completing skipped pages", async () => {
+  const welcomed = {
+    ...activeDraft("body-knowledge"),
+    readKnowledgeCardIds: [],
+    pointEventKeys: [],
+    behaviorAttitudes: {},
+    explicitContentConsent: null,
+    journal: { text: "", saveChoice: "not-saved" as const },
+    practice: { ...activeDraft().practice, completed: false },
+  };
+  const { coordinator, navigateTo, router, service } = harness(welcomed);
+
+  await coordinator.jumpToProgress("final-preparation");
+
+  expect(service.navigateTo).toHaveBeenCalledWith("final-preparation");
+  expect(router.replace).toHaveBeenCalledWith("/journey/final-preparation");
+  expect(navigateTo.mock.invocationCallOrder[0]).toBeLessThan(router.replace.mock.invocationCallOrder[0]!);
+});
+
+test("does not replace the route when progress-jump persistence fails", async () => {
+  const { coordinator, navigateTo, router } = harness(activeDraft("body-knowledge"));
+  navigateTo.mockRejectedValueOnce(new Error("storage unavailable"));
+
+  await expect(coordinator.jumpToProgress("final-preparation")).rejects.toThrow("storage unavailable");
+  expect(router.replace).not.toHaveBeenCalled();
+});
+
+test("refuses a progress jump before adult, address, and preface onboarding are complete", async () => {
+  const adultOnly = { ...createJourneyDraft({ id: "journey-locked", now: "now" }), ageConfirmed: true };
+  const { coordinator, router, service } = harness(adultOnly);
+
+  await expect(coordinator.jumpToProgress("final-preparation"))
+    .rejects.toThrow("journey-progress-jump-locked");
+  expect(service.navigateTo).not.toHaveBeenCalled();
+  expect(router.replace).not.toHaveBeenCalled();
+});
+
 test("resumes at the snapshot page and restarts only after deleting the active draft", async () => {
   const { coordinator, resetJourney, router, service } = harness(activeDraft("final-preparation"));
 

@@ -26,6 +26,14 @@ export class JourneyRouteCoordinator {
     this.router.replace(`/journey/${page}`);
   }
 
+  async jumpToProgress(page: JourneyPageId): Promise<void> {
+    if (!canAccessJourneyPage(this.service.getSnapshot(), "body-knowledge")) {
+      throw new Error("journey-progress-jump-locked");
+    }
+    await this.service.navigateTo(page);
+    this.router.replace(`/journey/${page}`);
+  }
+
   async backFrom(page: JourneyPageId): Promise<void> {
     const previous = getAdjacentJourneyPage(page, -1);
     if (previous === null) return;

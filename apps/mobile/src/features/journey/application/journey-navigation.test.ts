@@ -111,6 +111,23 @@ test("keeps address, preface, and sequential prerequisites after the adult decla
   expect(canAccessJourneyPage(practiced, "final-preparation")).toBe(true);
 });
 
+test("allows only the persisted progress-jump target after onboarding is complete", () => {
+  const welcomed = {
+    ...createJourneyDraft({ id: "journey-demo", now: "now" }),
+    ageConfirmed: true,
+    addressPreference: "你" as const,
+    prefaceRead: true,
+    currentPage: "final-preparation" as const,
+  };
+
+  expect(canAccessJourneyPage(welcomed, "final-preparation")).toBe(true);
+  expect(canAccessJourneyPage(welcomed, "reflection")).toBe(false);
+  expect(getResumePath(welcomed)).toBe("/journey/final-preparation");
+  expect(canAccessJourneyPage({ ...welcomed, prefaceRead: false }, "final-preparation")).toBe(false);
+  expect(canAccessJourneyPage({ ...welcomed, addressPreference: null }, "final-preparation")).toBe(false);
+  expect(canAccessJourneyPage({ ...welcomed, ageConfirmed: false }, "final-preparation")).toBe(false);
+});
+
 test("does not unlock the behavior map merely by entering concerns", () => {
   const concernsStage = {
     ...createJourneyDraft({ id: "journey-1", now: "now" }),

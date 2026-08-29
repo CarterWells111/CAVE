@@ -11,7 +11,7 @@ import type { JourneyAction as JourneyActionCallback } from "./journey-ui-contra
 import type { JourneyRuntimeNotice } from "./journey-ui-contracts";
 import { JourneyGuidedScrollScreen } from "./guided-scroll-screen";
 
-const JOURNEY_PAGE_TITLES: Record<JourneyPageId, string> = {
+export const JOURNEY_PAGE_TITLES: Record<JourneyPageId, string> = {
   "body-knowledge": "身体与安全知识",
   overnight: "过夜期待与在意",
   "behavior-map": "行为地图与边界",
