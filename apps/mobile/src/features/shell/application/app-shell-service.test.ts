@@ -35,7 +35,7 @@ test("initializes and refreshes the persisted completion snapshot", async () => 
   const { repository, service, setStored } = harness();
 
   await expect(service.initialize()).resolves.toEqual({ status: "ready", completion: null });
-  expect(resolveShellLaunchPath(service.getSnapshot())).toBe("/journey/welcome");
+  expect(resolveShellLaunchPath(service.getSnapshot())).toBe("/(tabs)");
 
   setStored(firstCompletion);
   await expect(service.refresh()).resolves.toEqual({ status: "ready", completion: firstCompletion });
@@ -74,11 +74,11 @@ test("completes once, refreshes from the repository result, and clears", async (
   expect(repository.clear).toHaveBeenCalledTimes(1);
 });
 
-test("keeps long-term tabs available before completion while preserving cold-launch routing", () => {
+test("launches the public tab shell with or without a completion marker", () => {
   const incomplete = { status: "ready", completion: null } as const;
   const completed = { status: "ready", completion: firstCompletion } as const;
 
-  expect(resolveShellLaunchPath(incomplete)).toBe("/journey/welcome");
+  expect(resolveShellLaunchPath(incomplete)).toBe("/(tabs)");
   expect(resolveShellLaunchPath(completed)).toBe("/(tabs)");
   expect(guardLongTermPath(incomplete, "/(tabs)/reviews")).toBe("/(tabs)/reviews");
   expect(guardLongTermPath(incomplete, "/settings/privacy")).toBe("/settings/privacy");

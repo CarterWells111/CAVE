@@ -1,35 +1,95 @@
 import { useRouter } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
+import { useWindowDimensions } from "react-native";
 
 import { Screen } from "../../src/core/ui/Screen";
 import { getResumePath } from "../../src/features/journey/application/journey-navigation";
-import { useJourneyRuntime } from "../../src/features/journey/runtime/JourneyRuntimeProvider";
-import { HomeScreen } from "../../src/features/shell/ui/HomeScreen";
+import {
+  type JourneyRuntimeContextValue,
+  useOptionalJourneyRuntime,
+} from "../../src/features/journey/runtime/JourneyRuntimeProvider";
+import { WelcomePage } from "../../src/features/journey/ui/pages/WelcomePage";
+import { resolveFirstRunLayout } from "../../src/features/journey/ui/first-run-layout";
 import { classifyActiveJourney } from "../../src/features/shell/application/app-shell-service";
 import type { AppShellState } from "../../src/features/shell/domain/app-shell-state";
+import { HomeScreen } from "../../src/features/shell/ui/HomeScreen";
 import type { ShellMetadataItem } from "../../src/features/shell/ui/shell-ui-components";
 
+type HomeLoadState = "loading" | "ready" | "error";
+
 export default function HomeRoute() {
+  const runtime = useOptionalJourneyRuntime();
+  return runtime === null
+    ? <FirstRunHomeRoute runtime={null} />
+    : <AuthorizedHomeRoute runtime={runtime} />;
+}
+
+function FirstRunHomeRoute({ runtime }: { runtime: JourneyRuntimeContextValue | null }) {
   const router = useRouter();
-  const runtime = useJourneyRuntime();
-  const [loadState, setLoadState] = useState<"loading" | "ready" | "error">("loading");
+  const { fontScale, height, width } = useWindowDimensions();
+  const [viewport, setViewport] = useState<{ height: number; width: number } | null>(null);
+  const layout = resolveFirstRunLayout({
+    fontScale,
+    height: viewport?.height ?? height,
+    width: viewport?.width ?? width,
+  });
+  const snapshot = runtime?.snapshot ?? null;
+  const resumeAvailable = snapshot?.ageConfirmed === true;
+  const resume = () => {
+    if (snapshot === null || snapshot.addressPreference === null || !snapshot.prefaceRead) {
+      router.push("/journey/preface");
+      return;
+    }
+    router.push(getResumePath(snapshot));
+  };
+
+  return (
+    <Screen
+      alwaysBounceVertical={false}
+      contentContainerStyle={{ paddingVertical: layout.screenPaddingVertical }}
+      onLayout={({ nativeEvent }) => setViewport({
+        height: nativeEvent.layout.height,
+        width: nativeEvent.layout.width,
+      })}
+      scrollEnabled={false}
+      testID="first-run-home-scroll"
+    >
+      <WelcomePage
+        brandPaddingTop={layout.brandPaddingTop}
+        layout={layout.brandLayout}
+        onOpenSettings={() => router.push("/settings")}
+        onResume={resume}
+        onStart={() => router.push("/journey/adult-gate")}
+        resumeAvailable={resumeAvailable}
+      />
+    </Screen>
+  );
+}
+
+function AuthorizedHomeRoute({ runtime }: { runtime: JourneyRuntimeContextValue }) {
+  const router = useRouter();
+  const [loadState, setLoadState] = useState<HomeLoadState>("loading");
   const [cards, setCards] = useState<ShellMetadataItem[]>([]);
   const [completion, setCompletion] = useState<AppShellState | null>(null);
 
   const load = useCallback(async () => {
     setLoadState("loading");
     try {
-      const [records, completion] = await Promise.all([
-        runtime.cards.listMetadata(),
-        runtime.shellState.load(),
-      ]);
+      const nextCompletion = await runtime.shellState.load();
+      if (nextCompletion === null) {
+        setCards([]);
+        setCompletion(null);
+        setLoadState("ready");
+        return;
+      }
+      const records = await runtime.cards.listMetadata();
       setCards(records.map((record) => ({
         id: record.id,
         title: "沟通草稿",
         dateLabel: record.savedAt.slice(0, 10),
-        statusLabel: "已保存到本机"
+        statusLabel: "已保存到本机",
       })));
-      setCompletion(completion);
+      setCompletion(nextCompletion);
       setLoadState("ready");
     } catch {
       setLoadState("error");
@@ -38,6 +98,10 @@ export default function HomeRoute() {
 
   useEffect(() => { void load(); }, [load]);
 
+  if (loadState === "ready" && completion === null) {
+    return <FirstRunHomeRoute runtime={runtime} />;
+  }
+
   const activeKind = classifyActiveJourney(runtime.snapshot, completion);
   const activeJourney = activeKind !== null && runtime.snapshot
     ? {
@@ -45,7 +109,7 @@ export default function HomeRoute() {
         kind: activeKind,
         title: activeKind === "initial" ? "首次旅程" : "本次回顾",
         dateLabel: runtime.snapshot.updatedAt.slice(0, 10),
-        statusLabel: "进行中"
+        statusLabel: "进行中",
       }
     : null;
 

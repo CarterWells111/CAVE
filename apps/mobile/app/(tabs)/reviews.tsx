@@ -3,20 +3,48 @@ import { useCallback, useEffect, useState } from "react";
 
 import { Screen } from "../../src/core/ui/Screen";
 import { getResumePath } from "../../src/features/journey/application/journey-navigation";
-import { useJourneyRuntime } from "../../src/features/journey/runtime/JourneyRuntimeProvider";
-import { ReviewsHubScreen } from "../../src/features/shell/ui/ReviewsHubScreen";
+import {
+  type JourneyRuntimeContextValue,
+  useOptionalJourneyRuntime,
+} from "../../src/features/journey/runtime/JourneyRuntimeProvider";
 import { classifyActiveJourney } from "../../src/features/shell/application/app-shell-service";
 import type { AppShellState } from "../../src/features/shell/domain/app-shell-state";
+import { ReviewsHubScreen } from "../../src/features/shell/ui/ReviewsHubScreen";
 
 const topics = [
   { id: "body", label: "身体感受" },
   { id: "boundaries", label: "边界与表达" },
-  { id: "practice", label: "沟通练习" }
+  { id: "practice", label: "沟通练习" },
 ];
 
 export default function ReviewsRoute() {
+  const runtime = useOptionalJourneyRuntime();
+  return runtime === null
+    ? <PublicReviewsRoute />
+    : <AuthorizedReviewsRoute runtime={runtime} />;
+}
+
+function openTopic(router: ReturnType<typeof useRouter>, id: string) {
+  router.push(id === "practice" ? "/practice/session" : `/reviews/topic/${id}`);
+}
+
+function PublicReviewsRoute() {
   const router = useRouter();
-  const runtime = useJourneyRuntime();
+  return (
+    <Screen>
+      <ReviewsHubScreen
+        activeJourney={null}
+        loadState="ready"
+        onStartFullReview={() => router.push("/journey/adult-gate")}
+        onStartTopic={(id) => openTopic(router, id)}
+        topics={topics}
+      />
+    </Screen>
+  );
+}
+
+function AuthorizedReviewsRoute({ runtime }: { runtime: JourneyRuntimeContextValue }) {
+  const router = useRouter();
   const [completion, setCompletion] = useState<AppShellState | null>(null);
   const [loadState, setLoadState] = useState<"loading" | "ready" | "error">("loading");
   const load = useCallback(async () => {
@@ -25,7 +53,9 @@ export default function ReviewsRoute() {
       const state = await runtime.shellState.load();
       setCompletion(state);
       setLoadState("ready");
-    } catch { setLoadState("error"); }
+    } catch {
+      setLoadState("error");
+    }
   }, [runtime.shellState]);
   useEffect(() => {
     void load();
@@ -55,7 +85,7 @@ export default function ReviewsRoute() {
         loadState={loadState}
         onContinueJourney={() => router.push(getResumePath(runtime.snapshot))}
         onStartFullReview={startFullReview}
-        onStartTopic={(id) => router.push(id === "practice" ? "/practice/session" : `/reviews/topic/${id}`)}
+        onStartTopic={(id) => openTopic(router, id)}
         onRetry={() => { void load(); }}
         topics={topics}
       />

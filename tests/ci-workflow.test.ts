@@ -117,8 +117,18 @@ describe("foundation CI workflow", () => {
       command.startsWith("pnpm validate:content")
     );
 
-    expect(workflow).toContain("actions/checkout@v4");
-    expect(workflow).toContain("pnpm/action-setup@v4");
+    expect(workflow).toMatch(
+      /^\s*(?:-\s+)?uses:\s+actions\/checkout@v7(?:\s+#.*)?$/mu
+    );
+    expect(workflow).toMatch(
+      /^\s*(?:-\s+)?uses:\s+pnpm\/action-setup@v6(?:\s+#.*)?$/mu
+    );
+    expect(workflow).toMatch(
+      /^\s*(?:-\s+)?uses:\s+actions\/setup-node@v7(?:\s+#.*)?$/mu
+    );
+    expect(workflow).not.toMatch(
+      /^\s*(?:-\s+)?uses:\s+(?:actions\/checkout|actions\/setup-node|pnpm\/action-setup)@v4(?:\.\d+)*(?:\s+#.*)?$/mu
+    );
     expect(workflow).toContain('version: "10.34.5"');
     expect(workflow).toContain('node-version: "22"');
     expect(runCommands).toContain("pnpm install --frozen-lockfile");

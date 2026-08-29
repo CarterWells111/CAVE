@@ -7,14 +7,17 @@ const mockCardsListMetadata = jest.fn();
 const mockReviewsListMetadata = jest.fn();
 const mockCards = { listMetadata: mockCardsListMetadata };
 const mockReviewHistory = { listMetadata: mockReviewsListMetadata };
-let mockRuntime = { cards: mockCards, reviewHistory: mockReviewHistory };
+let mockRuntime: { cards: typeof mockCards; reviewHistory: typeof mockReviewHistory } | null = {
+  cards: mockCards,
+  reviewHistory: mockReviewHistory,
+};
 
 jest.mock("expo-router", () => ({
   useRouter: () => ({ push: mockPush }),
 }));
 
 jest.mock("../journey/runtime/JourneyRuntimeProvider", () => ({
-  useJourneyRuntime: () => mockRuntime,
+  useOptionalJourneyRuntime: () => mockRuntime,
 }));
 
 beforeEach(() => {

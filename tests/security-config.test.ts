@@ -75,6 +75,12 @@ describe("repository security configuration", () => {
       "utf8"
     );
 
+    expect(workflow).toMatch(
+      /^\s*(?:-\s+)?uses:\s+actions\/checkout@v7(?:\s+#.*)?$/mu
+    );
+    expect(workflow).not.toMatch(
+      /^\s*(?:-\s+)?uses:\s+actions\/checkout@v4(?:\.\d+)*(?:\s+#.*)?$/mu
+    );
     expect(workflow).toContain("github/codeql-action/init@v4");
     expect(workflow).toContain("languages: javascript-typescript");
     expect(workflow).toContain("github/codeql-action/analyze@v4");

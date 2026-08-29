@@ -10,18 +10,26 @@ import { InfoCard } from "../../../core/ui/info-card";
 import { IconTextAction } from "../../../core/ui/icon-text-action";
 import { SecondaryButton } from "../../../core/ui/secondary-button";
 
+type DeleteCapability = {
+  deleteAllData(): Promise<void>;
+  onContinue(): void;
+};
+
+type PrivacySettingsCapability = {
+  changeJournalSaveNotice(enabled: boolean): Promise<void>;
+  retry(): void;
+  showLocalJournalSaveNotice: boolean;
+  status: "loading" | "ready" | "error";
+};
+
 export type SettingsScreenProps = {
   appearancePreference: ThemePreference;
   appearanceSaving: boolean;
+  deletion?: DeleteCapability | undefined;
+  privacy?: PrivacySettingsCapability | undefined;
   resolvedTheme: ResolvedTheme;
   onAppearancePreferenceChange(preference: ThemePreference): Promise<void>;
   onBack(): void;
-  onChangeJournalSaveNotice(enabled: boolean): Promise<void>;
-  onDeleteAllData(): Promise<void>;
-  onContinueAfterDelete(): void;
-  onRetryPrivacySettings(): void;
-  privacySettingsStatus: "loading" | "ready" | "error";
-  showLocalJournalSaveNotice: boolean;
 };
 
 type DeleteState = "idle" | "confirming" | "deleting" | "error" | "success";
@@ -137,15 +145,11 @@ function DestructiveButton({
 export function SettingsScreen({
   appearancePreference,
   appearanceSaving,
+  deletion,
   onAppearancePreferenceChange,
   onBack,
+  privacy,
   resolvedTheme,
-  onChangeJournalSaveNotice,
-  onContinueAfterDelete,
-  onDeleteAllData,
-  onRetryPrivacySettings,
-  privacySettingsStatus,
-  showLocalJournalSaveNotice,
 }: SettingsScreenProps) {
   const theme = useTheme();
   const [deleteState, setDeleteState] = useState<DeleteState>("idle");
@@ -154,11 +158,11 @@ export function SettingsScreen({
   const deletionInFlight = useRef(false);
 
   const deleteAll = async () => {
-    if (deletionInFlight.current) return;
+    if (!deletion || deletionInFlight.current) return;
     deletionInFlight.current = true;
     setDeleteState("deleting");
     try {
-      await onDeleteAllData();
+      await deletion.deleteAllData();
       setDeleteState("success");
     } catch {
       setDeleteState("error");
@@ -178,10 +182,10 @@ export function SettingsScreen({
   };
 
   const changeJournalSaveNotice = async (enabled: boolean) => {
-    if (privacySaveState === "saving") return;
+    if (!privacy || privacySaveState === "saving") return;
     setPrivacySaveState("saving");
     try {
-      await onChangeJournalSaveNotice(enabled);
+      await privacy.changeJournalSaveNotice(enabled);
       setPrivacySaveState("idle");
     } catch {
       setPrivacySaveState("error");
@@ -285,44 +289,48 @@ export function SettingsScreen({
         <Text selectable style={{ ...theme.typography.body, color: theme.color.textSecondary }}>
           旅程、练习和沟通草稿保存在本机。能解锁这台设备的人仍可能看到这些内容，请按自己的情况决定是否保留。
         </Text>
-        <View style={{ alignItems: "center", flexDirection: "row", gap: theme.space.md, justifyContent: "space-between" }}>
-          <Text selectable style={{ ...theme.typography.body, color: theme.color.text, flex: 1 }}>
-            保存私人记录前显示本机提示
-          </Text>
-          <Switch
-            accessibilityLabel="保存私人记录前显示本机提示"
-            disabled={privacySettingsStatus !== "ready" || privacySaveState === "saving"}
-            onValueChange={(enabled) => { void changeJournalSaveNotice(enabled); }}
-            trackColor={{ false: theme.color.disabled, true: theme.color.brandSoft }}
-            value={showLocalJournalSaveNotice}
-          />
-        </View>
-        {privacySettingsStatus === "loading" ? (
-          <Text accessibilityLiveRegion="polite" selectable style={{ ...theme.typography.caption, color: theme.color.textSecondary }}>
-            正在读取本机隐私设置…
-          </Text>
-        ) : null}
-        {privacySaveState === "saving" ? (
-          <Text accessibilityLiveRegion="polite" selectable style={{ ...theme.typography.caption, color: theme.color.textSecondary }}>
-            正在保存设置…
-          </Text>
-        ) : null}
-        {privacySettingsStatus === "error" ? (
-          <View style={{ gap: theme.space.sm }}>
-            <Text accessibilityRole="alert" selectable style={{ ...theme.typography.caption, color: theme.color.error }}>
-              暂时无法读取本机隐私设置；保存提示会保持开启。
-            </Text>
-            <SecondaryButton label="重试读取隐私设置" onPress={onRetryPrivacySettings} />
-          </View>
-        ) : null}
-        {privacySaveState === "error" ? (
-          <Text accessibilityRole="alert" selectable style={{ ...theme.typography.caption, color: theme.color.error }}>
-            设置尚未保存，请重试。
-          </Text>
+        {privacy ? (
+          <>
+            <View style={{ alignItems: "center", flexDirection: "row", gap: theme.space.md, justifyContent: "space-between" }}>
+              <Text selectable style={{ ...theme.typography.body, color: theme.color.text, flex: 1 }}>
+                保存私人记录前显示本机提示
+              </Text>
+              <Switch
+                accessibilityLabel="保存私人记录前显示本机提示"
+                disabled={privacy.status !== "ready" || privacySaveState === "saving"}
+                onValueChange={(enabled) => { void changeJournalSaveNotice(enabled); }}
+                trackColor={{ false: theme.color.disabled, true: theme.color.brandSoft }}
+                value={privacy.showLocalJournalSaveNotice}
+              />
+            </View>
+            {privacy.status === "loading" ? (
+              <Text accessibilityLiveRegion="polite" selectable style={{ ...theme.typography.caption, color: theme.color.textSecondary }}>
+                正在读取本机隐私设置…
+              </Text>
+            ) : null}
+            {privacySaveState === "saving" ? (
+              <Text accessibilityLiveRegion="polite" selectable style={{ ...theme.typography.caption, color: theme.color.textSecondary }}>
+                正在保存设置…
+              </Text>
+            ) : null}
+            {privacy.status === "error" ? (
+              <View style={{ gap: theme.space.sm }}>
+                <Text accessibilityRole="alert" selectable style={{ ...theme.typography.caption, color: theme.color.error }}>
+                  暂时无法读取本机隐私设置；保存提示会保持开启。
+                </Text>
+                <SecondaryButton label="重试读取隐私设置" onPress={privacy.retry} />
+              </View>
+            ) : null}
+            {privacySaveState === "error" ? (
+              <Text accessibilityRole="alert" selectable style={{ ...theme.typography.caption, color: theme.color.error }}>
+                设置尚未保存，请重试。
+              </Text>
+            ) : null}
+          </>
         ) : null}
       </InfoCard>
 
-      <Card accessible={false} style={{ borderColor: theme.color.danger }}>
+      {deletion ? <Card accessible={false} style={{ borderColor: theme.color.danger }}>
         <Text accessibilityRole="header" selectable style={{ ...theme.typography.heading, color: theme.color.text }}>
           删除本机数据
         </Text>
@@ -368,10 +376,10 @@ export function SettingsScreen({
             <Text accessibilityRole="alert" selectable style={{ ...theme.typography.body, color: theme.color.success }}>
               本机数据已删除。
             </Text>
-            <Button label="返回欢迎页" onPress={onContinueAfterDelete} />
+            <Button label="返回首页" onPress={deletion.onContinue} />
           </View>
         ) : null}
-      </Card>
+      </Card> : null}
     </ScrollView>
   );
 }

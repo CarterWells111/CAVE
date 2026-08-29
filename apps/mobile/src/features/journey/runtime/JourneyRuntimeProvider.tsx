@@ -108,9 +108,6 @@ function RuntimeContextProvider({
 
   return (
     <JourneyRuntimeContext.Provider value={context}>
-      {runtime.mode === "expo-go-demo"
-        ? <Text>Expo Go 演示模式，数据仅在本次打开期间暂存</Text>
-        : null}
       {children}
     </JourneyRuntimeContext.Provider>
   );
@@ -354,9 +351,6 @@ export function JourneyRuntimeProvider({
     return (
       <PublicBoundary>
         <AdultDeclarationContext.Provider value={adultDeclaration}>
-          {state.runtime.mode === "expo-go-demo"
-            ? <Text>Expo Go 演示模式，数据仅在本次打开期间暂存</Text>
-            : null}
           {children}
         </AdultDeclarationContext.Provider>
       </PublicBoundary>

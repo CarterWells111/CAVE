@@ -19,10 +19,10 @@ beforeEach(() => {
   jest.clearAllMocks();
 });
 
-test("always opens the public landing without reading private shell state", async () => {
+test("always opens the public tabs without reading private shell state", async () => {
   render(<IndexRoute />);
 
   expect(screen.getByText("正在打开内界 CAVE…")).toBeTruthy();
-  await waitFor(() => expect(mockReplace).toHaveBeenCalledWith("/journey/welcome"));
+  await waitFor(() => expect(mockReplace).toHaveBeenCalledWith("/(tabs)"));
   expect(mockLoad).not.toHaveBeenCalled();
 });

@@ -27,38 +27,47 @@ function deferred() {
   return { promise, reject, resolve };
 }
 
+function privacyCapability(
+  overrides: Partial<NonNullable<React.ComponentProps<typeof SettingsScreen>["privacy"]>> = {},
+) {
+  return {
+    changeJournalSaveNotice: jest.fn(async () => undefined),
+    retry: jest.fn(),
+    showLocalJournalSaveNotice: true,
+    status: "ready" as const,
+    ...overrides,
+  };
+}
+
 function renderScreen(overrides: Partial<React.ComponentProps<typeof SettingsScreen>> = {}) {
+  const deleteAllData = jest.fn(async () => undefined);
+  const onContinue = jest.fn();
   const props: React.ComponentProps<typeof SettingsScreen> = {
     appearancePreference: "system" as const,
     appearanceSaving: false,
+    deletion: { deleteAllData, onContinue },
     onAppearancePreferenceChange: jest.fn(async () => undefined),
     onBack: jest.fn(),
-    onChangeJournalSaveNotice: jest.fn(async () => undefined),
-    onContinueAfterDelete: jest.fn(),
-    onDeleteAllData: jest.fn(async () => undefined),
-    onRetryPrivacySettings: jest.fn(),
-    privacySettingsStatus: "ready",
+    privacy: privacyCapability(),
     resolvedTheme: "dark" as const,
-    showLocalJournalSaveNotice: true,
     ...overrides
   };
   render(<SettingsScreen {...props} />);
-  return props;
+  return { ...props, deleteAllData, onContinue };
 }
 
 async function renderThemedScreen(theme: AppTheme) {
   const props = {
     appearancePreference: "system" as const,
     appearanceSaving: false,
+    deletion: {
+      deleteAllData: jest.fn(async () => undefined),
+      onContinue: jest.fn(),
+    },
     onAppearancePreferenceChange: jest.fn(async () => undefined),
     onBack: jest.fn(),
-    onChangeJournalSaveNotice: jest.fn(async () => undefined),
-    onContinueAfterDelete: jest.fn(),
-    onDeleteAllData: jest.fn(async () => undefined),
-    onRetryPrivacySettings: jest.fn(),
-    privacySettingsStatus: "ready" as const,
+    privacy: privacyCapability(),
     resolvedTheme: theme.name,
-    showLocalJournalSaveNotice: true,
   };
   render(
     <ThemeProvider repository={{ load: async () => theme.name, save: async () => undefined }}>
@@ -105,6 +114,22 @@ test("offers accessible system, light and dark appearance choices and a back act
   expect(props.onBack).toHaveBeenCalledTimes(1);
 });
 
+test("does not render a deletion action when no real deletion capability is supplied", () => {
+  renderScreen({ deletion: undefined });
+
+  expect(screen.getByRole("header", { name: "设置" })).toBeTruthy();
+  expect(screen.getByText("隐私与本机数据")).toBeTruthy();
+  expect(screen.queryByRole("header", { name: "删除本机数据" })).toBeNull();
+  expect(screen.queryByRole("button", { name: "删除全部本机数据" })).toBeNull();
+});
+
+test("does not expose a private journal preference without an authorized runtime", () => {
+  renderScreen({ privacy: undefined });
+
+  expect(screen.getByText("隐私与本机数据")).toBeTruthy();
+  expect(screen.queryByRole("switch", { name: "保存私人记录前显示本机提示" })).toBeNull();
+});
+
 test.each([darkTheme, lightTheme])("keeps unchecked radio boundaries at 3:1 in the $name theme", async (theme) => {
   await renderThemedScreen(theme);
 
@@ -133,17 +158,17 @@ test("requires an explicit second confirmation and supports cancellation", () =>
   fireEvent.press(screen.getByRole("button", { name: "删除全部本机数据" }));
 
   expect(screen.getByRole("alert")).toHaveTextContent(/无法恢复/u);
-  expect(props.onDeleteAllData).not.toHaveBeenCalled();
+  expect(props.deleteAllData).not.toHaveBeenCalled();
   expect(screen.getByRole("button", { name: "确认删除全部本机数据" })).toBeTruthy();
   fireEvent.press(screen.getByRole("button", { name: "取消删除" }));
   expect(screen.queryByRole("button", { name: "确认删除全部本机数据" })).toBeNull();
-  expect(props.onDeleteAllData).not.toHaveBeenCalled();
+  expect(props.deleteAllData).not.toHaveBeenCalled();
 });
 
 test("keeps deletion pending, blocks duplicate confirmation and never reports optimistic success", async () => {
   const deletion = deferred();
   const onDeleteAllData = jest.fn(() => deletion.promise);
-  renderScreen({ onDeleteAllData });
+  renderScreen({ deletion: { deleteAllData: onDeleteAllData, onContinue: jest.fn() } });
   fireEvent.press(screen.getByRole("button", { name: "删除全部本机数据" }));
 
   const confirm = screen.getByRole("button", { name: "确认删除全部本机数据" });
@@ -164,7 +189,8 @@ test("keeps the settings screen on failure, hides private errors and retries tru
   const onDeleteAllData = jest.fn()
     .mockRejectedValueOnce(new Error("private database path"))
     .mockResolvedValueOnce(undefined);
-  const props = renderScreen({ onDeleteAllData });
+  const onContinue = jest.fn();
+  renderScreen({ deletion: { deleteAllData: onDeleteAllData, onContinue } });
   fireEvent.press(screen.getByRole("button", { name: "删除全部本机数据" }));
   fireEvent.press(screen.getByRole("button", { name: "确认删除全部本机数据" }));
 
@@ -174,8 +200,8 @@ test("keeps the settings screen on failure, hides private errors and retries tru
   fireEvent.press(screen.getByRole("button", { name: "重试删除" }));
 
   expect(await screen.findByText("本机数据已删除。")).toBeTruthy();
-  fireEvent.press(screen.getByRole("button", { name: "返回欢迎页" }));
-  expect(props.onContinueAfterDelete).toHaveBeenCalledTimes(1);
+  fireEvent.press(screen.getByRole("button", { name: "返回首页" }));
+  expect(onContinue).toHaveBeenCalledTimes(1);
 });
 
 test("keeps every interactive control at least 44 points and allows text to wrap", () => {
@@ -195,7 +221,9 @@ test("keeps every interactive control at least 44 points and allows text to wrap
 test("persists the private-journal notice switch without optimistic changes", async () => {
   const change = deferred();
   const onChangeJournalSaveNotice = jest.fn(() => change.promise);
-  renderScreen({ onChangeJournalSaveNotice, showLocalJournalSaveNotice: true });
+  renderScreen({
+    privacy: privacyCapability({ changeJournalSaveNotice: onChangeJournalSaveNotice }),
+  });
 
   const noticeSwitch = screen.getByRole("switch", { name: "保存私人记录前显示本机提示" });
   expect(noticeSwitch).toHaveProp("value", true);
@@ -210,7 +238,12 @@ test("persists the private-journal notice switch without optimistic changes", as
 
 test("keeps the original journal preference and shows a retryable error when saving fails", async () => {
   const onChangeJournalSaveNotice = jest.fn(async () => { throw new Error("private path"); });
-  renderScreen({ onChangeJournalSaveNotice, showLocalJournalSaveNotice: false });
+  renderScreen({
+    privacy: privacyCapability({
+      changeJournalSaveNotice: onChangeJournalSaveNotice,
+      showLocalJournalSaveNotice: false,
+    }),
+  });
 
   const noticeSwitch = screen.getByRole("switch", { name: "保存私人记录前显示本机提示" });
   fireEvent(noticeSwitch, "valueChange", true);
@@ -222,7 +255,9 @@ test("keeps the original journal preference and shows a retryable error when sav
 
 test("falls back visibly when privacy settings cannot be read", () => {
   const onRetryPrivacySettings = jest.fn();
-  renderScreen({ onRetryPrivacySettings, privacySettingsStatus: "error" });
+  renderScreen({
+    privacy: privacyCapability({ retry: onRetryPrivacySettings, status: "error" }),
+  });
 
   expect(screen.getByRole("alert")).toHaveTextContent("暂时无法读取本机隐私设置；保存提示会保持开启。");
   fireEvent.press(screen.getByRole("button", { name: "重试读取隐私设置" }));

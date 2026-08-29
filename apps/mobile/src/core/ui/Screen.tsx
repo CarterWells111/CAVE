@@ -90,8 +90,8 @@ export function Screen({ children, contentContainerStyle, fixedHeader, scrollRes
         </View>
       ) : null}
       <ScrollView
-      {...props}
-      ref={scrollRef}
+        {...props}
+        ref={scrollRef}
       automaticallyAdjustKeyboardInsets
       horizontal={false}
       contentInsetAdjustmentBehavior="automatic"
@@ -112,7 +112,7 @@ export function Screen({ children, contentContainerStyle, fixedHeader, scrollRes
         },
       ]}
     >
-      <ScreenScrollProvider controller={scrollController}>{children}</ScreenScrollProvider>
+        <ScreenScrollProvider controller={scrollController}>{children}</ScreenScrollProvider>
       </ScrollView>
     </SafeAreaView>
   );

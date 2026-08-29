@@ -1,29 +1,36 @@
 import { useCallback, useEffect, useState } from "react";
-import { Redirect, useRouter } from "expo-router";
+import { useRouter } from "expo-router";
 
 import { useThemePreference } from "../../src/core/design/theme-provider";
 import { DEFAULT_PRIVACY_SETTINGS, type PrivacySettings } from "../../src/core/storage/types";
 import {
   type JourneyRuntimeContextValue,
-  useOptionalJourneyRuntime
+  useOptionalJourneyRuntime,
 } from "../../src/features/journey/runtime/JourneyRuntimeProvider";
 import { SettingsScreen } from "../../src/features/shell/ui/SettingsScreen";
 
 export default function SettingsRoute() {
   const runtime = useOptionalJourneyRuntime();
-  if (runtime === null) return <Redirect href="/journey/welcome" />;
+  return runtime ? <AuthorizedSettingsRoute runtime={runtime} /> : <PublicSettingsRoute />;
+}
 
-  return <AuthorizedSettingsRoute runtime={runtime} />;
+function PublicSettingsRoute() {
+  const router = useRouter();
+  const { preference, resolvedTheme, saving, setPreference } = useThemePreference();
+  return (
+    <SettingsScreen
+      appearancePreference={preference}
+      appearanceSaving={saving}
+      onAppearancePreferenceChange={setPreference}
+      onBack={() => router.back()}
+      resolvedTheme={resolvedTheme}
+    />
+  );
 }
 
 function AuthorizedSettingsRoute({ runtime }: { runtime: JourneyRuntimeContextValue }) {
   const router = useRouter();
-  const {
-    preference,
-    resolvedTheme,
-    saving,
-    setPreference,
-  } = useThemePreference();
+  const { preference, resolvedTheme, saving, setPreference } = useThemePreference();
   const [privacySettings, setPrivacySettings] = useState<PrivacySettings>({ ...DEFAULT_PRIVACY_SETTINGS });
   const [privacySettingsStatus, setPrivacySettingsStatus] = useState<"loading" | "ready" | "error">("loading");
   const loadPrivacySettings = useCallback(async () => {
@@ -51,15 +58,22 @@ function AuthorizedSettingsRoute({ runtime }: { runtime: JourneyRuntimeContextVa
     <SettingsScreen
       appearancePreference={preference}
       appearanceSaving={saving}
+      deletion={{
+        deleteAllData: async () => {
+          await runtime.deleteAllData();
+          router.replace("/(tabs)");
+        },
+        onContinue: () => router.replace("/(tabs)"),
+      }}
       onAppearancePreferenceChange={setPreference}
       onBack={() => router.back()}
-      onChangeJournalSaveNotice={changeJournalSaveNotice}
-      onContinueAfterDelete={() => router.replace("/journey/welcome")}
-      onDeleteAllData={async () => { await runtime.deleteAllData(); }}
-      onRetryPrivacySettings={() => { void loadPrivacySettings(); }}
-      privacySettingsStatus={privacySettingsStatus}
+      privacy={{
+        changeJournalSaveNotice,
+        retry: () => { void loadPrivacySettings(); },
+        showLocalJournalSaveNotice: privacySettings.showLocalJournalSaveNotice,
+        status: privacySettingsStatus,
+      }}
       resolvedTheme={resolvedTheme}
-      showLocalJournalSaveNotice={privacySettings.showLocalJournalSaveNotice}
     />
   );
 }

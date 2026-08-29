@@ -22,7 +22,7 @@ export type AppShellSnapshot =
       error: Readonly<{ code: AppShellServiceErrorCode }>;
     }>;
 
-export type ShellLaunchPath = "/journey/welcome" | "/(tabs)";
+export type ShellLaunchPath = "/(tabs)";
 export type ShellLongTermPath =
   | "/(tabs)"
   | `/(tabs)/${string}`
@@ -48,7 +48,8 @@ function cloneSnapshot(snapshot: AppShellSnapshot): AppShellSnapshot {
 export function resolveShellLaunchPath(
   snapshot: Pick<AppShellSnapshot, "completion">,
 ): ShellLaunchPath {
-  return snapshot.completion === null ? "/journey/welcome" : "/(tabs)";
+  void snapshot;
+  return "/(tabs)";
 }
 
 export function guardLongTermPath<Path extends ShellLongTermPath>(
