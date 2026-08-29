@@ -13,20 +13,25 @@ export default function PrefaceRoute() {
   const preference = runtime.snapshot?.addressPreference ?? null;
   const prefaceRead = runtime.snapshot?.prefaceRead === true;
   const completed = eligible && preference !== null && prefaceRead;
-  const navigationDestination = !eligible
-    ? "/journey/welcome"
-    : completed ? "/journey/body-knowledge" : null;
-  const replacedDestination = useRef<string | null>(null);
+  const replacedDestination = useRef<
+    "/journey/welcome" | "/journey/body-knowledge" | null
+  >(null);
 
   useEffect(() => {
-    if (navigationDestination === null) {
-      replacedDestination.current = null;
+    if (!eligible) {
+      if (replacedDestination.current === "/journey/welcome") return;
+      replacedDestination.current = "/journey/welcome";
+      router.replace("/journey/welcome");
       return;
     }
-    if (replacedDestination.current === navigationDestination) return;
-    replacedDestination.current = navigationDestination;
-    router.replace(navigationDestination);
-  }, [navigationDestination, router]);
+    if (completed) {
+      if (replacedDestination.current === "/journey/body-knowledge") return;
+      replacedDestination.current = "/journey/body-knowledge";
+      router.replace("/journey/body-knowledge");
+      return;
+    }
+    replacedDestination.current = null;
+  }, [completed, eligible, router]);
 
   if (!eligible || completed) return null;
   return (
