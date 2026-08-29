@@ -12,7 +12,7 @@ import {
   type ReactNode,
 } from "react";
 import { ScrollView, StyleSheet, type ScrollViewProps, useWindowDimensions, View } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaInsetsContext } from "react-native-safe-area-context";
 
 import { useTheme } from "../design/theme-provider";
 import { space } from "../design/tokens";
@@ -20,6 +20,7 @@ import { space } from "../design/tokens";
 type LockedScrollProp = "horizontal" | "contentInsetAdjustmentBehavior" | "keyboardShouldPersistTaps";
 
 export type ScreenProps = Omit<ScrollViewProps, LockedScrollProp> & {
+  contentSafeAreaTop?: boolean;
   fixedHeader?: ReactNode;
   scrollResetKey?: string | number | boolean;
 };
@@ -49,13 +50,29 @@ export function contentHorizontalPadding(width: number): number {
   return width < 375 ? space.md : space.card;
 }
 
+function fixedHeaderTopGap(height: number): number {
+  if (height < 700) return space.md;
+  if (height < 900) return space.lg;
+  return space.xl;
+}
+
 export const Screen = forwardRef<ComponentRef<typeof ScrollView>, ScreenProps>(function Screen(
-  { children, contentContainerStyle, fixedHeader, scrollResetKey, style, ...props },
+  {
+    children,
+    contentContainerStyle,
+    contentSafeAreaTop = false,
+    fixedHeader,
+    scrollResetKey,
+    style,
+    ...props
+  },
   forwardedRef,
 ) {
   const theme = useTheme();
-  const { width } = useWindowDimensions();
+  const { height, width } = useWindowDimensions();
+  const safeAreaTop = useContext(SafeAreaInsetsContext)?.top ?? 0;
   const scrollRef = useRef<ScrollView>(null);
+  const initialWindowHeightRef = useRef(height);
   const horizontalPadding = contentHorizontalPadding(width);
   const scrollToTop = useCallback(() => {
     scrollRef.current?.scrollTo({ animated: false, y: 0 });
@@ -68,16 +85,21 @@ export const Screen = forwardRef<ComponentRef<typeof ScrollView>, ScreenProps>(f
   ] as const) {
     delete callerPresentation[lockedKey];
   }
+  const requestedContentTopPadding = callerPresentation.paddingTop
+    ?? callerPresentation.paddingVertical
+    ?? theme.space.xl;
+  const contentTopPadding = typeof requestedContentTopPadding === "number"
+    ? requestedContentTopPadding
+    : theme.space.xl;
 
   useEffect(() => {
     if (scrollResetKey !== undefined) scrollRef.current?.scrollTo({ animated: false, y: 0 });
   }, [scrollResetKey]);
 
   return (
-    <SafeAreaView
-      edges={["top", "bottom"]}
+    <View
       style={{ backgroundColor: theme.color.background, flex: 1 }}
-      testID="screen-safe-area"
+      testID="screen-container"
     >
       {fixedHeader ? (
         <View
@@ -87,7 +109,7 @@ export const Screen = forwardRef<ComponentRef<typeof ScrollView>, ScreenProps>(f
             maxWidth: theme.size.readableContentMax,
             paddingBottom: theme.space.sm,
             paddingHorizontal: horizontalPadding,
-            paddingTop: theme.space.compact,
+            paddingTop: safeAreaTop + fixedHeaderTopGap(initialWindowHeightRef.current),
             width: "100%",
             zIndex: 1,
           }}
@@ -99,28 +121,29 @@ export const Screen = forwardRef<ComponentRef<typeof ScrollView>, ScreenProps>(f
       <ScrollView
         {...props}
         ref={scrollRef}
-      automaticallyAdjustKeyboardInsets
-      horizontal={false}
-      contentInsetAdjustmentBehavior="automatic"
-      keyboardShouldPersistTaps="handled"
-      style={[{ flex: 1, backgroundColor: theme.color.background }, style]}
-      contentContainerStyle={[
-        {
-          alignSelf: "center",
-          flexGrow: 1,
-          gap: theme.space.lg,
-          paddingVertical: theme.space.xl,
-        },
-        callerPresentation,
-        {
-          maxWidth: theme.size.readableContentMax,
-          paddingHorizontal: horizontalPadding,
-          width: "100%",
-        },
-      ]}
-    >
+        automaticallyAdjustKeyboardInsets
+        horizontal={false}
+        contentInsetAdjustmentBehavior="automatic"
+        keyboardShouldPersistTaps="handled"
+        style={[{ flex: 1, backgroundColor: theme.color.background }, style]}
+        contentContainerStyle={[
+          {
+            alignSelf: "center",
+            flexGrow: 1,
+            gap: theme.space.lg,
+            paddingVertical: theme.space.xl,
+          },
+          callerPresentation,
+          contentSafeAreaTop ? { paddingTop: contentTopPadding + safeAreaTop } : null,
+          {
+            maxWidth: theme.size.readableContentMax,
+            paddingHorizontal: horizontalPadding,
+            width: "100%",
+          },
+        ]}
+      >
         <ScreenScrollProvider controller={scrollController}>{children}</ScreenScrollProvider>
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 });

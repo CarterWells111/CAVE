@@ -1,4 +1,6 @@
 import { fireEvent, render, screen } from "@testing-library/react-native";
+import { StyleSheet } from "react-native";
+import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import SettingsRoute from "../../../app/settings/index";
 import WelcomeRoute from "../../../app/journey/welcome";
@@ -159,4 +161,20 @@ test("the journey welcome route exposes settings before authorization", () => {
 
   expect(mockPush).toHaveBeenCalledWith("/settings");
   expect(mockDeleteAllData).not.toHaveBeenCalled();
+});
+
+test("the standalone journey welcome keeps its brand content below the device top inset", () => {
+  render(
+    <SafeAreaProvider initialMetrics={{
+      frame: { height: 844, width: 390, x: 0, y: 0 },
+      insets: { bottom: 34, left: 0, right: 0, top: 47 },
+    }}>
+      <WelcomeRoute />
+    </SafeAreaProvider>,
+  );
+
+  const contentStyle = StyleSheet.flatten(
+    screen.getByTestId("journey-welcome-scroll").props.contentContainerStyle,
+  );
+  expect(contentStyle.paddingTop).toBeGreaterThanOrEqual(47);
 });
