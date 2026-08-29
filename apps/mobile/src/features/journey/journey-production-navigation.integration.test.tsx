@@ -254,12 +254,13 @@ test("underage action opens the blocking route without writing a declaration", a
   view.unmount();
 });
 
-test("preface persists the chosen address after the adult declaration", async () => {
+test("preface persists the chosen address before the welcome note can complete", async () => {
   const journeyRuntime = runtime();
   await journeyRuntime.service.confirmAdult();
   const originalId = journeyRuntime.service.getSnapshot()?.id;
   const view = await openRoute(<PrefaceRoute />, journeyRuntime);
 
+  expect(await screen.findByRole("header", { name: "开始前，想告诉你" })).toBeTruthy();
   fireEvent.press(screen.getByRole("radio", { name: "妳｜明确称呼女性，更有书信感。" }));
   fireEvent.press(screen.getByRole("button", { name: "这样称呼我" }));
 
@@ -267,10 +268,66 @@ test("preface persists the chosen address after the adult declaration", async ()
     id: originalId,
     addressPreference: "妳",
     ageConfirmed: true,
-    prefaceRead: true,
+    prefaceRead: false,
     currentPage: "body-knowledge",
   }));
-  expect(mockRouter.replace).toHaveBeenCalledWith("/journey/body-knowledge");
+  expect(await screen.findByRole("header", { name: "欢迎来到内界 CAVE" })).toBeTruthy();
+  expect(mockRouter.replace.mock.calls.filter(([path]) => path === "/journey/body-knowledge")).toHaveLength(0);
+
+  fireEvent.press(screen.getByRole("button", { name: "我已了解，开始旅程" }));
+  await waitFor(() => expect(journeyRuntime.service.getSnapshot()).toMatchObject({
+    prefaceRead: true,
+  }));
+  await waitFor(() => {
+    expect(mockRouter.replace.mock.calls.filter(([path]) => path === "/journey/body-knowledge")).toHaveLength(1);
+  });
+  view.unmount();
+});
+
+test("an unread persisted preface resumes directly at the welcome note", async () => {
+  const journeyRuntime = runtime();
+  await journeyRuntime.service.confirmAdult();
+  await journeyRuntime.service.dispatch({ type: "set-address-preference", preference: "你" });
+  const view = await openRoute(<PrefaceRoute />, journeyRuntime);
+
+  expect(await screen.findByRole("header", { name: "欢迎来到内界 CAVE" })).toBeTruthy();
+  expect(screen.queryAllByRole("radio")).toEqual([]);
+  expect(mockRouter.replace).not.toHaveBeenCalledWith("/journey/body-knowledge");
+  view.unmount();
+});
+
+test("a completed preface deep-link navigates to body knowledge exactly once", async () => {
+  const journeyRuntime = runtime();
+  await journeyRuntime.service.confirmAdult();
+  await journeyRuntime.service.dispatch({ type: "set-address-preference", preference: "妳" });
+  await journeyRuntime.service.dispatch({ type: "set-preface-read", read: true });
+  const view = await openRoute(<PrefaceRoute />, journeyRuntime);
+
+  await waitFor(() => {
+    expect(mockRouter.replace.mock.calls.filter(([path]) => path === "/journey/body-knowledge")).toHaveLength(1);
+  });
+  expect(screen.queryByRole("header", { name: "开始前，想告诉你" })).toBeNull();
+  expect(screen.queryByRole("header", { name: "欢迎来到内界 CAVE" })).toBeNull();
+  view.unmount();
+});
+
+test("an inconsistent read preface without an address cannot skip the welcome note", async () => {
+  const journeyRuntime = runtime();
+  await journeyRuntime.service.confirmAdult();
+  await journeyRuntime.service.dispatch({ type: "set-preface-read", read: true });
+  const view = await openRoute(<PrefaceRoute />, journeyRuntime);
+
+  expect(await screen.findByRole("header", { name: "开始前，想告诉你" })).toBeTruthy();
+  fireEvent.press(screen.getByRole("radio", { name: "妳｜明确称呼女性，更有书信感。" }));
+  fireEvent.press(screen.getByRole("button", { name: "这样称呼我" }));
+
+  await waitFor(() => expect(journeyRuntime.service.getSnapshot()).toMatchObject({
+    addressPreference: "妳",
+    ageConfirmed: true,
+    prefaceRead: false,
+  }));
+  expect(await screen.findByRole("header", { name: "欢迎来到内界 CAVE" })).toBeTruthy();
+  expect(mockRouter.replace.mock.calls.filter(([path]) => path === "/journey/body-knowledge")).toHaveLength(0);
   view.unmount();
 });
 
