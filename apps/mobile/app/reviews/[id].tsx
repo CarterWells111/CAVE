@@ -57,5 +57,6 @@ function AuthorizedReviewDetailRoute() {
     }}
     onContinueAfterDelete={() => router.replace("/(tabs)/profile")}
     onDelete={async (reviewId) => { await runtime.reviewHistory.deleteVersion(reviewId); }}
+    onSaveToJournal={() => router.push({ pathname: "/journal/new", params: { reviewId: detail.id } })}
   />;
 }

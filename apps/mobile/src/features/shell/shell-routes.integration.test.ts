@@ -43,7 +43,9 @@ test("keeps settings outside tabs and available before journey completion", () =
   expect(source("settings/index.tsx")).not.toContain('<Redirect href="/journey/welcome"');
   expect(source("settings/index.tsx")).toContain("runtime.deleteAllData()");
   expect(source("journey/welcome.tsx")).toContain('router.push("/settings")');
-  expect(source("../src/features/shell/ui/SettingsScreen.tsx")).toContain("登录与云端同步（尚未开放）");
+  expect(source("../src/features/shell/ui/SettingsScreen.tsx")).toContain("邮箱登录（不含同步）");
+  expect(source("../src/features/shell/ui/SettingsScreen.tsx")).toContain("登录不会上传日记、沟通卡、回顾或亲密内容");
+  expect(source("../src/features/shell/ui/SettingsScreen.tsx")).toContain("使用内界手记必须登录");
 });
 
 test("keeps the long-term navigation available during later full reviews", () => {

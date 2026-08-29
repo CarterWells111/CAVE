@@ -7,7 +7,9 @@ export type DeleteAllDataStage =
   | "quiesce"
   | "delete-key"
   | "remove-files"
+  | "delete-account-profiles"
   | "delete-token"
+  | "delete-auth-session"
   | "clear-intent";
 
 export class DeleteAllDataIncompleteError extends Error {
@@ -22,17 +24,19 @@ export class DeleteAllDataIncompleteError extends Error {
 
 type DeleteAllDataDependencies = {
   database: EncryptedDatabaseManager;
+  accountProfiles: { clearAll(): Promise<void> };
   secrets: Pick<
     DatabaseSecretRepository,
     | "recordPendingLocalDataDeletion"
     | "deleteAdultDeclaration"
     | "deleteDatabaseKey"
     | "deleteInstallationToken"
+    | "deleteAuthSession"
     | "clearPendingLocalDataDeletion"
   >;
 };
 
-export async function deleteAllData({ database, secrets }: DeleteAllDataDependencies) {
+export async function deleteAllData({ accountProfiles, database, secrets }: DeleteAllDataDependencies) {
   async function run(stage: DeleteAllDataStage, operation: () => Promise<void>) {
     try {
       await operation();
@@ -52,6 +56,8 @@ export async function deleteAllData({ database, secrets }: DeleteAllDataDependen
     if (error instanceof DeleteAllDataIncompleteError) throw error;
     throw new DeleteAllDataIncompleteError("quiesce", error);
   }
+  await run("delete-account-profiles", () => accountProfiles.clearAll());
   await run("delete-token", () => secrets.deleteInstallationToken());
+  await run("delete-auth-session", () => secrets.deleteAuthSession());
   await run("clear-intent", () => secrets.clearPendingLocalDataDeletion());
 }

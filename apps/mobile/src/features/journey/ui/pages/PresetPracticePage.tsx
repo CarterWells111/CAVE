@@ -9,7 +9,6 @@ import { ChoiceChip } from "../../../../core/ui/ChoiceChip";
 import { InfoCard } from "../../../../core/ui/info-card";
 import { SecondaryButton } from "../../../../core/ui/secondary-button";
 import { TextAction } from "../../../../core/ui/text-action";
-import { useScreenScroll } from "../../../../core/ui/Screen";
 import type { PracticeIntent } from "../../domain/practice-types";
 import {
   beginPractice,
@@ -29,6 +28,7 @@ import {
   type SevenScreenPracticeState
 } from "../../domain/seven-screen-practice-machine";
 import { JourneyAction } from "../components/JourneyAction";
+import { JourneyScrollTarget, useJourneyGuidedScroll } from "../guided-scroll-screen";
 
 type Props = {
   context?: "journey" | "standalone";
@@ -97,7 +97,7 @@ export function PresetPracticePage({
   initialIntent,
 }: Props) {
   const theme = useTheme();
-  const { scrollToTop } = useScreenScroll();
+  const { reveal } = useJourneyGuidedScroll();
   const initial = useMemo(() => beginPractice(catalog), [catalog]);
   const [state, setState] = useState<SevenScreenPracticeState>(initial);
   const [mirrorVisible, setMirrorVisible] = useState(false);
@@ -121,9 +121,8 @@ export function PresetPracticePage({
   useEffect(() => {
     if (previousVisibleStepRef.current === visibleStep) return;
     previousVisibleStepRef.current = visibleStep;
-    const frame = requestAnimationFrame(scrollToTop);
-    return () => cancelAnimationFrame(frame);
-  }, [scrollToTop, visibleStep]);
+    reveal(`practice-stage-${visibleStep}`, { mode: "nearest" });
+  }, [reveal, visibleStep]);
 
   const startPractice = () => {
     const started = startScenario(state);
@@ -180,6 +179,9 @@ export function PresetPracticePage({
         <Text style={{ ...theme.typography.caption, color: theme.color.info }}>预设对话，不使用 AI</Text>
         {context === "standalone" ? <Text style={{ ...theme.typography.caption, color: theme.color.textMuted }}>独立练习</Text> : null}
       </View>
+
+      <JourneyScrollTarget targetId={`practice-stage-${visibleStep}`}>
+      <View style={{ gap: theme.space.lg, width: "100%" }}>
 
       {state.stage === "entry" ? (
         <>
@@ -423,6 +425,8 @@ export function PresetPracticePage({
           </Card>
         )
       ) : null}
+      </View>
+      </JourneyScrollTarget>
     </View>
   );
 }

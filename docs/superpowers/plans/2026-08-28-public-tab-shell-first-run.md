@@ -119,7 +119,7 @@ node .\node_modules\jest\bin\jest.js src/features/shell/shell-routes.integration
 - authorized completion 读取失败：显示可重试错误；重试成功后继续。
 - authorized completion `null`：显示 `WelcomePage`；没有草稿时显示“开启旅程”，有已确认成年草稿时沿用原有“继续旅程”并按 `getResumePath`/preface 规则恢复。
 - authorized completion value：显示现有 `HomeScreen`，并读取 metadata-only cards。
-- 首次首页 `Screen` 带 `testID="first-run-home-scroll"` 和 `onLayout`，以已扣除底栏的真实内容区选择 32/16/0pt 外层垂直留白；`contentInsetAdjustmentBehavior="automatic"` 保持，所有视口 `scrollEnabled=false`。
+- 首次首页 `Screen` 带 `testID="first-run-home-scroll"`，保留默认 32pt 垂直留白和 `contentInsetAdjustmentBehavior="automatic"`；所有视口 `scrollEnabled=false`，受限视口只重排品牌锁定区。
 
 **Step 2: 最小实现**
 
@@ -256,8 +256,8 @@ node .\node_modules\jest\bin\jest.js src/features/shell/settings-route.test.tsx 
 **Step 1: 写 RED 样式测试**
 
 - 给 brand/actions 增加 `testID="welcome-brand"`、`testID="welcome-actions"`。
-- `StyleSheet.flatten` 断言：landing gap 仍为 24、actions gap 为 12，且 `marginTop` 未定义；受限视口也保持 Card padding 24/gap 16 和按钮 52。
-- `resolveFirstRunLayout` 断言真实内容区 360×700 使用原纵排与 32/20 外层留白；360×620 使用横排与 16/0；320×500 或放大字体使用横排与 0/0。
+- `StyleSheet.flatten` 断言：landing gap 仍为 24、brand `paddingTop` 仍为 20、actions gap 为 12，且 `marginTop` 未定义。
+- `resolveFirstRunLayout` 断言 360×780 使用原纵排；360×667、320 宽或字体缩放超过 1.1 时只把 CAVE/内界改成横排。
 - `开启旅程` 按钮最小高度继续为 52；不得通过压缩触摸目标达成首屏。
 
 **Step 2: 最小实现**
@@ -277,7 +277,7 @@ brand: {
 actions: { gap: theme.space.compact },
 ```
 
-不修改文案、字号、通用 Card、模块间距或按钮尺寸。首页始终关闭滚动和 iOS 垂直回弹；受限视口只通过品牌中英文横向重排和回收外层顶部/Screen 留白减少占高，不统一压缩页面。
+不修改文案、字号、通用 Card 或品牌留白。首页始终关闭滚动和 iOS 垂直回弹；受限视口通过品牌中英文横向重排减少占高，不统一压缩页面。
 
 **Step 3: 跑测试**
 

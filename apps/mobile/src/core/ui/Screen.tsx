@@ -1,10 +1,13 @@
 import {
   createContext,
+  forwardRef,
   useCallback,
   useContext,
   useEffect,
+  useImperativeHandle,
   useMemo,
   useRef,
+  type ComponentRef,
   type PropsWithChildren,
   type ReactNode,
 } from "react";
@@ -48,7 +51,10 @@ export function contentHorizontalPadding(width: number): number {
   return width < 375 ? space.md : space.card;
 }
 
-export function Screen({ children, contentContainerStyle, fixedHeader, scrollResetKey, style, ...props }: ScreenProps) {
+export const Screen = forwardRef<ComponentRef<typeof ScrollView>, ScreenProps>(function Screen(
+  { children, contentContainerStyle, fixedHeader, scrollResetKey, style, ...props },
+  forwardedRef,
+) {
   const theme = useTheme();
   const { width } = useWindowDimensions();
   const scrollRef = useRef<ScrollView>(null);
@@ -73,6 +79,7 @@ export function Screen({ children, contentContainerStyle, fixedHeader, scrollRes
     () => ({ scrollToNode, scrollToTop }),
     [scrollToNode, scrollToTop],
   );
+  useImperativeHandle(forwardedRef, () => scrollRef.current as ComponentRef<typeof ScrollView>);
   const callerPresentation = { ...(StyleSheet.flatten(contentContainerStyle) ?? {}) };
   for (const lockedKey of [
     "maxWidth", "minWidth", "width", "paddingHorizontal", "paddingLeft", "paddingRight", "paddingStart", "paddingEnd",
@@ -135,4 +142,4 @@ export function Screen({ children, contentContainerStyle, fixedHeader, scrollRes
       </ScrollView>
     </SafeAreaView>
   );
-}
+});

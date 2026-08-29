@@ -58,7 +58,8 @@ test.each([
 test("composes the shared 06A screen, card, progress and status primitives", () => {
   const source = readFileSync(join(__dirname, "JourneyScreenShell.tsx"), "utf8");
 
-  expect(source).toContain('from "../../../core/ui/Screen"');
+  expect(source).toContain('from "./guided-scroll-screen"');
+  expect(source).toContain("<JourneyGuidedScrollScreen");
   expect(source).toContain('from "../../../core/ui/Card"');
   expect(source).toContain('from "../../../core/ui/ProgressHeader"');
   expect(source).toContain('from "../../../core/ui/StatusBanner"');
@@ -68,6 +69,7 @@ test("composes the shared 06A screen, card, progress and status primitives", () 
   expect(source).not.toContain("SafeAreaView");
   expect(source).not.toContain("Platform.OS");
   expect(source).not.toContain("<ScrollView");
+  expect(source).not.toContain("<Screen");
 });
 
 test("keeps one keyboard-aware vertical screen scroll for long content on small screens", () => {

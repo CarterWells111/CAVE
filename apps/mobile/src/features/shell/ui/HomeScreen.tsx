@@ -20,6 +20,11 @@ import {
 import { ReplaceReviewConfirmation } from "./ReplaceReviewConfirmation";
 
 type Props = {
+  account?: {
+    status: "signedOut" | "loading" | "ready" | "error";
+    displayName?: string;
+    onOpen(): void;
+  };
   loadState?: ShellLoadState;
   activeJourney?: ActiveJourneyMetadataItem | null;
   currentCard?: ShellMetadataItem | null;
@@ -28,19 +33,20 @@ type Props = {
   onContinueJourney?: (id: string) => void;
   onOpenCurrentCard?: (id: string) => void;
   onOpenRecord?: (id: string) => void;
-  onOpenSettings?: () => void;
+  onOpenJournal?: () => void;
   onStartPractice: () => void;
   onStartReview: () => void;
 };
 
 export function HomeScreen({
+  account,
   activeJourney,
   currentCard,
   loadState = "ready",
   onContinueJourney,
   onOpenCurrentCard,
   onOpenRecord,
-  onOpenSettings,
+  onOpenJournal,
   onRetry,
   onStartPractice,
   onStartReview,
@@ -54,7 +60,21 @@ export function HomeScreen({
   };
   return (
     <ShellFrame title="首页">
-      <SecondaryButton disabled={!onOpenSettings} label="打开设置" onPress={() => onOpenSettings?.()} />
+      {account?.status === "signedOut" ? (
+        <Button label="去登录，享受更多功能" onPress={account.onOpen} />
+      ) : null}
+      {account?.status === "loading" ? (
+        <SecondaryButton disabled label="正在检查账号状态…" onPress={account.onOpen} />
+      ) : null}
+      {account?.status === "ready" ? (
+        <SecondaryButton
+          label={`查看${account.displayName ?? "内界用户"}的账号`}
+          onPress={account.onOpen}
+        />
+      ) : null}
+      {account?.status === "error" ? (
+        <SecondaryButton label="打开账号" onPress={account.onOpen} />
+      ) : null}
       {loadState === "loading" ? <ShellLoading /> : null}
       {loadState === "error" ? (
         <ErrorState
@@ -94,6 +114,7 @@ export function HomeScreen({
               {activeJourney?.kind !== "initial" ? (
                 <SecondaryButton label="开始一次回顾" onPress={requestReview} />
               ) : null}
+              <SecondaryButton disabled={!onOpenJournal} label="记下一件事" onPress={() => onOpenJournal?.()} />
             </View>
           </Card>
           <View style={{ gap: theme.space.md }}>
@@ -105,7 +126,7 @@ export function HomeScreen({
             )}
           </View>
           <View style={{ gap: theme.space.md }}>
-            <SectionHeading>最近记录</SectionHeading>
+            <SectionHeading>最近手记</SectionHeading>
             {recentRecords.length > 0 ? recentRecords.map((record) => (
               <MetadataCard
                 actionLabel={`打开${record.title}`}
@@ -113,7 +134,7 @@ export function HomeScreen({
                 key={record.id}
                 onAction={onOpenRecord}
               />
-            )) : <EmptyState message="开始回顾后，这里只显示标题、日期和状态。" title="还没有最近记录" />}
+            )) : <EmptyState message="记录后，这里只显示标题、日期和重点提要。" title="还没有最近手记" />}
           </View>
         </>
       ) : null}

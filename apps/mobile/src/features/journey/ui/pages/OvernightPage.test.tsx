@@ -2,7 +2,10 @@ import type { JourneyOption } from "@cave/content";
 import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react-native";
 import { Animated, StyleSheet } from "react-native";
 
+import * as guidedScroll from "../guided-scroll-screen";
 import { OvernightPage } from "./OvernightPage";
+
+afterEach(() => jest.restoreAllMocks());
 
 const options = [
   { id: "expect-time", group: "expectation", label: "有更多时间待在一起", exclusive: false, order: 1 },
@@ -15,6 +18,38 @@ async function openCard(testId: string, backTestId: string) {
   fireEvent.press(screen.getByTestId(testId));
   await waitFor(() => expect(screen.getByTestId(backTestId)).toBeTruthy());
 }
+
+test("guides only after each saved card is explicitly returned to the overview", async () => {
+  const reveal = jest.fn();
+  jest.spyOn(guidedScroll, "useJourneyGuidedScroll").mockReturnValue({ reveal });
+  const onProgress = jest.fn(async () => undefined);
+  render(<OvernightPage onContinue={jest.fn()} onProgress={onProgress} options={options} reducedMotion />);
+
+  await openCard("overnight-card-front-expectations", "overnight-card-back-expectations");
+  fireEvent.press(screen.getByRole("checkbox", { name: "有更多时间待在一起" }));
+  await waitFor(() => expect(onProgress).toHaveBeenCalledTimes(2));
+  expect(reveal).not.toHaveBeenCalled();
+  const expectationReturn = screen.getByRole("button", { name: "带着这些感受继续" });
+  await waitFor(() => expect(expectationReturn).toHaveProp(
+    "accessibilityState", expect.objectContaining({ disabled: false }),
+  ));
+  fireEvent.press(expectationReturn);
+  await waitFor(() => expect(reveal).toHaveBeenCalledWith("overnight-concerns-heading"));
+
+  await openCard("overnight-card-front-concerns", "overnight-card-back-concerns");
+  fireEvent.press(screen.getByRole("checkbox", { name: "想保留一点自己的空间" }));
+  await waitFor(() => expect(onProgress).toHaveBeenCalledTimes(4));
+  expect(reveal).toHaveBeenCalledTimes(1);
+  const concernReturn = screen.getByRole("button", { name: "带着这些感受继续" });
+  await waitFor(() => expect(concernReturn).toHaveProp(
+    "accessibilityState", expect.objectContaining({ disabled: false }),
+  ));
+  fireEvent.press(concernReturn);
+  await waitFor(() => expect(reveal).toHaveBeenLastCalledWith("overnight-final-continue"));
+
+  expect(screen.getByTestId("journey-scroll-target-overnight-concerns-heading")).toBeTruthy();
+  expect(screen.getByTestId("journey-scroll-target-overnight-final-continue")).toBeTruthy();
+});
 
 test("shows two flip-card fronts and a clearly named cross-page action", () => {
   render(<OvernightPage onContinue={jest.fn()} options={options} reducedMotion />);
@@ -71,6 +106,8 @@ test("saves selections immediately but stays on the card back until the user exp
 });
 
 test("lets an empty card return without creating a selection", async () => {
+  const reveal = jest.fn();
+  jest.spyOn(guidedScroll, "useJourneyGuidedScroll").mockReturnValue({ reveal });
   const onProgress = jest.fn().mockResolvedValue(undefined);
   render(<OvernightPage onContinue={jest.fn()} onProgress={onProgress} options={options} reducedMotion />);
 
@@ -80,6 +117,26 @@ test("lets an empty card return without creating a selection", async () => {
 
   await waitFor(() => expect(screen.getByTestId("overnight-card-grid")).toBeTruthy());
   expect(within(screen.getByTestId("overnight-card-front-concerns")).getByText("还没有选择")).toBeTruthy();
+  expect(reveal).toHaveBeenCalledWith("overnight-final-continue");
+});
+
+test("guides after returning from an existing selection without changing it", async () => {
+  const reveal = jest.fn();
+  jest.spyOn(guidedScroll, "useJourneyGuidedScroll").mockReturnValue({ reveal });
+  render(
+    <OvernightPage
+      initialExpectationIds={["expect-time"]}
+      onContinue={jest.fn()}
+      onProgress={jest.fn().mockResolvedValue(undefined)}
+      options={options}
+      reducedMotion
+    />,
+  );
+
+  await openCard("overnight-card-front-expectations", "overnight-card-back-expectations");
+  fireEvent.press(screen.getByRole("button", { name: "带着这些感受继续" }));
+
+  await waitFor(() => expect(reveal).toHaveBeenCalledWith("overnight-concerns-heading"));
 });
 
 test("keeps a failed selection visible and blocks returning until the exact snapshot retry succeeds", async () => {

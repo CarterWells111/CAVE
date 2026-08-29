@@ -38,6 +38,49 @@ test("shows separate card and review archives with settings and detail actions",
   expect(onOpenReview).toHaveBeenCalledWith("review-1");
 });
 
+test("places the signed-in read-only account card before the journal entry", () => {
+  const onChangeAvatar = jest.fn();
+  const onChangeDisplayName = jest.fn();
+  const view = render(
+    <ProfileScreen
+      account={{
+        email: "person@example.com",
+        profile: { displayName: "阿岚", avatarUri: "file:///avatar.jpg" },
+        status: "ready",
+      }}
+      cards={[]}
+      onOpenJournal={jest.fn()}
+      onOpenSettings={jest.fn()}
+      reviews={[]}
+    />,
+  );
+
+  expect(screen.getByText("阿岚")).toBeTruthy();
+  expect(screen.getByText("person@example.com")).toBeTruthy();
+  expect(screen.queryByRole("button", { name: "更改头像" })).toBeNull();
+  expect(screen.queryByRole("button", { name: "更改昵称" })).toBeNull();
+  expect(onChangeAvatar).not.toHaveBeenCalled();
+  expect(onChangeDisplayName).not.toHaveBeenCalled();
+  const output = JSON.stringify(view.toJSON());
+  expect(output.indexOf("阿岚")).toBeLessThan(output.indexOf("内界手记"));
+});
+
+test("shows the default avatar and email login on the signed-out profile", () => {
+  const onSignIn = jest.fn();
+  render(
+    <ProfileScreen
+      account={{ onSignIn, status: "signedOut" }}
+      cards={[]}
+      onOpenSettings={jest.fn()}
+      reviews={[]}
+    />,
+  );
+
+  expect(screen.getByLabelText("默认头像")).toBeTruthy();
+  fireEvent.press(screen.getByRole("button", { name: "邮箱登录" }));
+  expect(onSignIn).toHaveBeenCalledTimes(1);
+});
+
 test("keeps cards available when reviews fail and retries only the failed archive", () => {
   const onRetryCards = jest.fn();
   const onRetryReviews = jest.fn();

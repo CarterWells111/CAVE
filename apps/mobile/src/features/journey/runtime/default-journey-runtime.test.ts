@@ -36,6 +36,7 @@ function nativeAdapters({ deletionPending = false } = {}): ExpoJourneyAdapters {
       recordPendingLocalDataDeletion: jest.fn(async () => { pending = true; }),
       clearPendingLocalDataDeletion: jest.fn(async () => { pending = false; }),
       deleteInstallationToken: jest.fn(async () => undefined),
+      deleteAuthSession: jest.fn(async () => undefined),
       deleteAllSecrets: jest.fn(async () => undefined)
     },
     clipboard
@@ -60,18 +61,22 @@ test("Expo Go composition returns memory-only before loading secure native adapt
 test("Development and Preview compose SQLCipher repositories and propagate adapter failures", async () => {
   const adapters = nativeAdapters();
   const loadNativeAdapters = jest.fn(async () => adapters);
+  const accountProfiles = { clearAll: jest.fn(async () => undefined) };
 
   const runtime = await createComposedJourneyRuntime({
     executionEnvironment: "standalone",
     clipboard,
     createId: () => "native-journey",
     now: () => "2026-08-27T12:00:00.000Z",
-    loadNativeAdapters
+    loadNativeAdapters,
+    accountProfiles,
   });
 
   expect(runtime.persistence).toBe("sqlcipher-secure-store");
   await expect(runtime.service.initialize()).resolves.toBe("ready");
   expect(adapters.native.openDatabaseAsync).toHaveBeenCalledWith("cave.db");
+  await runtime.deleteAllData();
+  expect(accountProfiles.clearAll).toHaveBeenCalledTimes(1);
 
   const failure = new Error("native-adapters-unavailable");
   await expect(createComposedJourneyRuntime({
@@ -85,19 +90,22 @@ test("Development and Preview compose SQLCipher repositories and propagate adapt
 
 test("resumes a pending local-data deletion before exposing the native runtime", async () => {
   const adapters = nativeAdapters({ deletionPending: true });
+  const accountProfiles = { clearAll: jest.fn(async () => undefined) };
 
   const runtime = await createComposedJourneyRuntime({
     executionEnvironment: "standalone",
     clipboard,
     createId: () => "native-after-cleanup",
     now: () => "2026-08-28T12:00:00.000Z",
-    loadNativeAdapters: async () => adapters
+    loadNativeAdapters: async () => adapters,
+    accountProfiles,
   });
 
   expect(runtime.persistence).toBe("sqlcipher-secure-store");
   expect(adapters.secrets.deleteAdultDeclaration).toHaveBeenCalledTimes(1);
   expect(adapters.secrets.deleteDatabaseKey).toHaveBeenCalledTimes(1);
   expect(adapters.files.removeDatabaseFiles).toHaveBeenCalledTimes(1);
+  expect(accountProfiles.clearAll).toHaveBeenCalledTimes(1);
   expect(adapters.secrets.deleteInstallationToken).toHaveBeenCalledTimes(1);
   expect(adapters.secrets.clearPendingLocalDataDeletion).toHaveBeenCalledTimes(1);
   expect(adapters.native.openDatabaseAsync).not.toHaveBeenCalled();

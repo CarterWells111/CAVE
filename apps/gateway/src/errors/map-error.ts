@@ -29,6 +29,14 @@ const MESSAGE_KEYS: Record<ApiErrorCode, string> = {
   MODEL_UNAVAILABLE: "gateway.model_unavailable",
   UNSAFE_CONTEXT: "gateway.unsafe_context",
   INVALID_MODEL_OUTPUT: "gateway.invalid_model_output",
+  AUTH_INVALID_CODE: "auth.invalid_code",
+  AUTH_CODE_EXPIRED: "auth.code_expired",
+  AUTH_TOO_MANY_ATTEMPTS: "auth.too_many_attempts",
+  AUTH_SESSION_EXPIRED: "auth.session_expired",
+  AUTH_UNAUTHORIZED: "auth.unauthorized",
+  AUTH_REAUTH_REQUIRED: "auth.reauth_required",
+  AUTH_DELIVERY_UNAVAILABLE: "auth.delivery_unavailable",
+  AUTH_CHALLENGE_INVALID: "auth.challenge_invalid",
   INTERNAL_ERROR: "gateway.internal_error"
 };
 

@@ -2,6 +2,7 @@ import { COMMUNICATION_SECTION_IDS, type SavedCommunicationCardRecord } from "..
 import {
   applySavedCardSectionUpdates,
   buildEditableSavedCardSections,
+  buildRetainedLocalDraftSections,
 } from "./saved-card-edit";
 
 function record(): SavedCommunicationCardRecord {
@@ -63,6 +64,25 @@ test("applies only submitted section updates while preserving generated text and
   expect(updated.id).toBe(original.id);
   expect(updated.savedAt).toBe(original.savedAt);
   expect(updated.sharingPolicyVersion).toBeUndefined();
+});
+
+test("builds a private journal snapshot from retained pending and private fields without mutating the card", () => {
+  const original = record();
+  original.card["communication-night-expectations"].visibility = "pending";
+  original.card["communication-possible-closeness"].visibility = "private";
+  original.card["communication-decide-in-moment"].visibility = "deleted";
+  original.card["communication-not-this-time"].generatedText = "   ";
+  const before = structuredClone(original);
+
+  const sections = buildRetainedLocalDraftSections(original);
+
+  expect(sections).toEqual(expect.arrayContaining([
+    { id: "communication-night-expectations", text: "generated-0" },
+    { id: "communication-possible-closeness", text: "custom-text" },
+  ]));
+  expect(sections.map(({ id }) => id)).not.toContain("communication-decide-in-moment");
+  expect(sections.map(({ id }) => id)).not.toContain("communication-not-this-time");
+  expect(original).toEqual(before);
 });
 
 test("moves an edited included saved-card field back to pending", () => {

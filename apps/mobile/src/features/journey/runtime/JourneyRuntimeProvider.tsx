@@ -30,6 +30,7 @@ export type JourneyRuntimeContextValue = {
   service: JourneyRuntime["service"];
   shellState: JourneyRuntime["shellState"];
   reviewHistory: JourneyRuntime["reviewHistory"];
+  createJournalService: JourneyRuntime["createJournalService"];
   privacySettings: JourneyRuntime["privacySettings"];
   deleteAllData(): Promise<void>;
   runAndRefresh<T>(action: () => Promise<T>): Promise<T>;
@@ -98,6 +99,7 @@ function RuntimeContextProvider({
     service: runtime.service,
     shellState: runtime.shellState,
     reviewHistory: runtime.reviewHistory,
+    createJournalService: runtime.createJournalService,
     privacySettings: runtime.privacySettings,
     deleteAllData,
     runAndRefresh,

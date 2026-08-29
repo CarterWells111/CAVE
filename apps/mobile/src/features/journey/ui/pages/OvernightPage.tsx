@@ -17,6 +17,7 @@ import { useTheme } from "../../../../core/design/theme-provider";
 import { ChoiceChip } from "../../../../core/ui/ChoiceChip";
 import { InfoCard } from "../../../../core/ui/info-card";
 import { JourneyAction } from "../components/JourneyAction";
+import { JourneyScrollTarget, useJourneyGuidedScroll } from "../guided-scroll-screen";
 
 type ActionResult = void | Promise<void>;
 type Stage = "expectations" | "concerns";
@@ -80,6 +81,7 @@ export function OvernightPage({
   resolveFocusHandle = findNodeHandle,
 }: OvernightPageProps) {
   const theme = useTheme();
+  const { reveal } = useJourneyGuidedScroll();
   const systemReducedMotion = useReducedMotion();
   const shouldReduceMotion = reducedMotion ?? systemReducedMotion;
   const styles = createStyles(theme);
@@ -103,6 +105,9 @@ export function OvernightPage({
     input: ProgressInput;
     resumeOpening: Panel | null;
   } | null>(null);
+  const stageChangeInFlightRef = useRef(false);
+  const advancedPanelsRef = useRef(new Set<Panel>());
+  const pendingRevealTargetRef = useRef<string | null>(null);
   const progressLocked = stagePending || failedProgress !== null;
   const interactionsLocked = progressLocked || completionNavigationLocked || animating;
   const navigationLocked = progressLocked || completionNavigationLocked;
@@ -160,6 +165,14 @@ export function OvernightPage({
     if (node !== null) AccessibilityInfo.setAccessibilityFocus(node);
   };
 
+  const queueGuidedReveal = (panel: Panel) => {
+    if (advancedPanelsRef.current.has(panel)) return;
+    advancedPanelsRef.current.add(panel);
+    pendingRevealTargetRef.current = panel === "expectations"
+      ? "overnight-concerns-heading"
+      : "overnight-final-continue";
+  };
+
   const revealPanel = async (panel: Panel) => {
     setActivePanel(panel);
     onCardVisibilityChange?.(true);
@@ -168,6 +181,7 @@ export function OvernightPage({
       AccessibilityInfo.announceForAccessibility(`${PANEL_TITLES[panel]}，已展开`);
       await frame();
       if (mountedRef.current) focusQuestion();
+      stageChangeInFlightRef.current = false;
       return;
     }
     setAnimating(true);
@@ -186,22 +200,26 @@ export function OvernightPage({
     setAnimating(false);
     AccessibilityInfo.announceForAccessibility(`${PANEL_TITLES[panel]}，已展开`);
     focusQuestion();
+    stageChangeInFlightRef.current = false;
   };
 
   const openPanel = (panel: Panel) => {
-    if (interactionsLocked || activePanel !== null) return;
+    if (interactionsLocked || activePanel !== null || stageChangeInFlightRef.current) return;
+    stageChangeInFlightRef.current = true;
     if (onProgress === undefined) {
       void revealPanel(panel);
       return;
     }
     void saveProgress(progressInput(panel), panel).then((saved) => {
       if (saved) void revealPanel(panel);
+      else stageChangeInFlightRef.current = false;
     });
   };
 
   const returnToOverview = async () => {
     if (interactionsLocked || activePanel === null) return;
     const panel = activePanel;
+    queueGuidedReveal(panel);
     pendingFocusPanelRef.current = panel;
     if (shouldReduceMotion) {
       setCardFace("front");
@@ -223,6 +241,9 @@ export function OvernightPage({
       onCardVisibilityChange?.(false);
       await frame();
     }
+    const revealTarget = pendingRevealTargetRef.current;
+    pendingRevealTargetRef.current = null;
+    if (revealTarget !== null) reveal(revealTarget);
     AccessibilityInfo.announceForAccessibility(`${PANEL_TITLES[panel]}，已返回两张卡片`);
   };
 
@@ -248,9 +269,8 @@ export function OvernightPage({
       : concernIds;
     setExpectationIds(nextExpectationIds);
     setConcernIds(nextConcernIds);
-    if (onProgress !== undefined) {
-      void saveProgress(progressInput(panel, nextExpectationIds, nextConcernIds));
-    }
+    if (onProgress === undefined) return;
+    void saveProgress(progressInput(panel, nextExpectationIds, nextConcernIds));
   };
 
   const retryProgress = () => {
@@ -258,6 +278,7 @@ export function OvernightPage({
     const failed = failedProgress;
     void saveProgress(failed.input, failed.resumeOpening).then((saved) => {
       if (saved && failed.resumeOpening !== null) void revealPanel(failed.resumeOpening);
+      if (saved && failed.resumeOpening === null) queueGuidedReveal(failed.input.stage);
     });
   };
 
@@ -338,6 +359,8 @@ export function OvernightPage({
         <Text style={styles.body}>想象一个可能的晚上：你和正在靠近的人商量好，会在同一个空间待到明天。</Text>
       </InfoCard>
 
+      <JourneyScrollTarget targetId="overnight-expectations-heading">
+      <JourneyScrollTarget targetId="overnight-concerns-heading">
       <View style={styles.grid} testID="overnight-card-grid">
         {panels.map((panel) => {
           const summary = selectionSummary(panel.ids.length);
@@ -360,6 +383,8 @@ export function OvernightPage({
           );
         })}
       </View>
+      </JourneyScrollTarget>
+      </JourneyScrollTarget>
 
       {stageError ? (
         <>
@@ -389,13 +414,15 @@ export function OvernightPage({
         >
           <Text style={styles.sourceLink}>查看完整信息来源</Text>
         </Pressable>
-        <JourneyAction
-          disabled={progressLocked || animating}
-          errorMessage="保存失败，请重试。"
-          label="进入行为地图"
-          loadingLabel="正在进入…"
-          onAction={continueToBehaviorMap}
-        />
+        <JourneyScrollTarget targetId="overnight-final-continue">
+          <JourneyAction
+            disabled={progressLocked || animating}
+            errorMessage="保存失败，请重试。"
+            label="进入行为地图"
+            loadingLabel="正在进入…"
+            onAction={continueToBehaviorMap}
+          />
+        </JourneyScrollTarget>
       </View>
     </View>
   );

@@ -44,6 +44,14 @@ export function buildEditableSavedCardSections(
   });
 }
 
+export function buildRetainedLocalDraftSections(
+  record: SavedCommunicationCardRecord,
+): Array<Readonly<{ id: CommunicationSectionId; text: string }>> {
+  return buildEditableSavedCardSections(record)
+    .filter(({ text, visibility }) => visibility !== "deleted" && text.trim().length > 0)
+    .map(({ id, text }) => ({ id, text }));
+}
+
 export function applySavedCardSectionUpdates(
   record: SavedCommunicationCardRecord,
   updates: readonly SavedCardSectionUpdate[],

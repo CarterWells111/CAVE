@@ -23,16 +23,28 @@ export type CardDetailMetadata = Readonly<{
 export type CardDetailScreenProps = {
   metadata: CardDetailMetadata;
   sections: readonly CommunicationDraftSection[];
+  mode?: "normal" | "fullscreen";
   onBack(): void;
   onEdit(): Promise<void>;
+  onFullscreen?(): void;
+  onSaveToJournal?(): void;
 };
 
 type ActionState = "idle" | "editing" | "edit-error";
 
-export function CardDetailScreen({ metadata, onBack, onEdit, sections }: CardDetailScreenProps) {
+export function CardDetailScreen({
+  metadata,
+  mode = "normal",
+  onBack,
+  onEdit,
+  onFullscreen,
+  onSaveToJournal,
+  sections,
+}: CardDetailScreenProps) {
   const theme = useTheme();
   const [actionState, setActionState] = useState<ActionState>("idle");
   const editing = useRef(false);
+  const busy = actionState === "editing";
 
   const openEdit = async () => {
     if (editing.current) return;
@@ -52,7 +64,7 @@ export function CardDetailScreen({ metadata, onBack, onEdit, sections }: CardDet
       contentContainerStyle={{
         alignItems: "center",
         gap: theme.space.xl,
-        paddingHorizontal: theme.space.lg,
+        paddingHorizontal: mode === "fullscreen" ? theme.space.md : theme.space.lg,
         paddingVertical: theme.space.xl
       }}
       contentInsetAdjustmentBehavior="automatic"
@@ -60,7 +72,10 @@ export function CardDetailScreen({ metadata, onBack, onEdit, sections }: CardDet
       style={{ backgroundColor: theme.color.background }}
       testID="card-detail-scroll"
     >
-      <View style={{ gap: theme.space.xl, maxWidth: theme.size.readableContentMax, width: "100%" }} testID="card-detail-content">
+      <View
+        style={{ gap: theme.space.xl, maxWidth: mode === "fullscreen" ? "100%" : theme.size.readableContentMax, width: "100%" }}
+        testID="card-detail-content"
+      >
         <View style={{ gap: theme.space.sm }}>
           <Text accessibilityRole="header" selectable style={{ ...theme.typography.title, color: theme.color.text }}>
             {metadata.title}
@@ -68,6 +83,11 @@ export function CardDetailScreen({ metadata, onBack, onEdit, sections }: CardDet
           <Text selectable style={{ ...theme.typography.caption, color: theme.color.textSecondary }}>
             {`${metadata.dateLabel} · ${metadata.statusLabel}`}
           </Text>
+          {mode === "fullscreen" ? (
+            <Text accessibilityLiveRegion="polite" selectable style={{ ...theme.typography.label, color: theme.color.brandSoft }}>
+              全屏展示模式
+            </Text>
+          ) : null}
         </View>
 
         <View
@@ -112,11 +132,18 @@ export function CardDetailScreen({ metadata, onBack, onEdit, sections }: CardDet
         ) : null}
         <View style={{ gap: theme.space.md }}>
           <Button
+            disabled={busy && actionState !== "editing"}
             label={actionState === "editing" ? "正在打开编辑…" : "编辑这份草稿"}
             loading={actionState === "editing"}
             onPress={() => { void openEdit(); }}
           />
-          <SecondaryButton disabled={actionState === "editing"} label="返回我的卡片" onPress={onBack} />
+          {onSaveToJournal ? <SecondaryButton disabled={busy} label="保存到内界手记" onPress={onSaveToJournal} /> : null}
+          {onFullscreen ? <SecondaryButton
+            disabled={busy}
+            label={mode === "fullscreen" ? "退出全屏展示" : "全屏展示"}
+            onPress={onFullscreen}
+          /> : null}
+          <SecondaryButton disabled={busy} label="返回我的卡片" onPress={onBack} />
         </View>
       </View>
     </ScrollView>

@@ -54,7 +54,6 @@ export function FinalPreparationPage({ draft, onEdit, onFinish, onSetVisibility 
   const [activeOperation, setActiveOperation] = useState<ActiveOperation>();
   const [hasPendingWrites, setHasPendingWrites] = useState(false);
   const [hasFailedWrites, setHasFailedWrites] = useState(false);
-
   const reportStatus = (message: string, announce = false) => {
     setStatus(message);
     if (announce) AccessibilityInfo.announceForAccessibility(message);
@@ -84,7 +83,6 @@ export function FinalPreparationPage({ draft, onEdit, onFinish, onSetVisibility 
     queueRef.current = next;
     return next;
   };
-
   const editSection = (sectionId: CommunicationSectionId, userText: string) => {
     if (operationRef.current !== undefined || pendingWritesRef.current > 0 || failedWritesRef.current.length > 0) return;
     updateLocal((current) => ({
@@ -116,7 +114,6 @@ export function FinalPreparationPage({ draft, onEdit, onFinish, onSetVisibility 
     }));
     return enqueue(() => onSetVisibility(sectionId, visibility));
   };
-
   const retryFailedWrites = async () => {
     if (operationRef.current !== undefined || failedWritesRef.current.length === 0) return;
     operationRef.current = "retry-writes";

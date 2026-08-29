@@ -4,7 +4,8 @@ export const SECRET_NAMES = {
   databaseKey: "db.key.v1",
   installationToken: "installation.token.v1",
   adultDeclaration: "adult.declaration.v1",
-  deletionPending: "local-data.deletion-pending.v1"
+  deletionPending: "local-data.deletion-pending.v1",
+  authSession: "auth.session.v1"
 } as const;
 
 const ADULT_DECLARATION_VALUE = "confirmed";
@@ -34,6 +35,7 @@ export interface DatabaseSecretRepository extends SecretRepository {
   recordPendingLocalDataDeletion(): Promise<void>;
   clearPendingLocalDataDeletion(): Promise<void>;
   deleteInstallationToken(): Promise<void>;
+  deleteAuthSession(): Promise<void>;
 }
 
 type SecretRepositoryDependencies = {
@@ -130,10 +132,12 @@ export function createSecretRepository({
     deleteInstallationToken: () => secureStore.deleteItemAsync(
       SECRET_NAMES.installationToken
     ),
+    deleteAuthSession: () => secureStore.deleteItemAsync(SECRET_NAMES.authSession),
     async deleteAllSecrets() {
       await secureStore.deleteItemAsync(SECRET_NAMES.adultDeclaration);
       await secureStore.deleteItemAsync(SECRET_NAMES.databaseKey);
       await secureStore.deleteItemAsync(SECRET_NAMES.installationToken);
+      await secureStore.deleteItemAsync(SECRET_NAMES.authSession);
     }
   };
 }

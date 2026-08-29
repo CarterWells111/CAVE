@@ -1,4 +1,5 @@
 import * as ExpoClipboard from "expo-clipboard";
+import * as ExpoCrypto from "expo-crypto";
 import * as ExpoFileSystem from "expo-file-system";
 import * as ExpoSecureStore from "expo-secure-store";
 import * as ExpoSQLite from "expo-sqlite";
@@ -11,7 +12,6 @@ import type {
 import {
   createExpoSecureStoreAdapter,
   createSecretRepository,
-  systemRandomBytes,
   type DatabaseSecretRepository
 } from "../../../core/storage/key-store";
 import type { ClipboardAdapter } from "../application/page-controllers";
@@ -63,7 +63,7 @@ const defaultDependencies: ExpoJourneyAdapterDependencies = {
   fileSystem: ExpoFileSystem,
   secureStore: ExpoSecureStore as unknown as ExpoSecureStoreModule,
   clipboard: ExpoClipboard,
-  randomBytes: systemRandomBytes
+  randomBytes: ExpoCrypto.getRandomBytes
 };
 
 function encodeBareFilePath(path: string): string {

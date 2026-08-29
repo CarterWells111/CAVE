@@ -75,6 +75,16 @@ afterEach(() => {
 });
 
 describe("mobile Demo source policy", () => {
+  it("allows fetch only in the explicit email authentication API adapter", () => {
+    const root = mkdtempSync(join(tmpdir(), "mobile-policy-auth-adapter-"));
+    const allowed = join(root, "features/auth/infrastructure/auth-api-client.ts");
+    mkdirSync(dirname(allowed), { recursive: true });
+    writeFileSync(allowed, "export const request = () => fetch('https://auth.example/v1');\n");
+
+    const result = spawnSync(process.execPath, [scanner, allowed], { encoding: "utf8" });
+
+    expect(result.status).toBe(0);
+  });
   it("exposes the deterministic repository scan as a root script", () => {
     expect(packageJson.scripts?.["verify:mobile-policy"]).toBe(
       "node scripts/verify-mobile-source-policy.mjs"

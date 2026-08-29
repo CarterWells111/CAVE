@@ -4,6 +4,7 @@ import { useTheme } from "../../../core/design/theme-provider";
 import { EmptyState } from "../../../core/ui/EmptyState";
 import { ErrorState } from "../../../core/ui/ErrorState";
 import { IconTextAction } from "../../../core/ui/icon-text-action";
+import { AccountProfileCard } from "../../account/ui/AccountProfileCard";
 import {
   MetadataCard,
   SectionHeading,
@@ -13,11 +14,19 @@ import {
 } from "./shell-ui-components";
 
 export type ProfileScreenProps = Readonly<{
+  account?: {
+    status: "signedOut" | "loading" | "ready" | "error";
+    email?: string;
+    profile?: { displayName: string; avatarUri?: string };
+    onSignIn?(): void;
+    onRetry?(): void;
+  };
   cards: ReadonlyArray<ShellMetadataItem>;
   cardsLoadState?: ShellLoadState;
   onOpenCard?: (id: string) => void;
   onOpenReview?: (id: string) => void;
   onOpenSettings: () => void;
+  onOpenJournal?: () => void;
   onRetryCards?: () => void;
   onRetryReviews?: () => void;
   reviews: ReadonlyArray<ShellMetadataItem>;
@@ -25,11 +34,13 @@ export type ProfileScreenProps = Readonly<{
 }>;
 
 export function ProfileScreen({
+  account,
   cards,
   cardsLoadState = "ready",
   onOpenCard,
   onOpenReview,
   onOpenSettings,
+  onOpenJournal,
   onRetryCards,
   onRetryReviews,
   reviews,
@@ -44,6 +55,25 @@ export function ProfileScreen({
         </Text>
         <IconTextAction icon="settings-outline" label="设置" onPress={onOpenSettings} />
       </View>
+
+      {account ? (
+        <AccountProfileCard
+          {...(account.profile?.avatarUri === undefined ? {} : { avatarUri: account.profile.avatarUri })}
+          {...(account.profile?.displayName === undefined ? {} : { displayName: account.profile.displayName })}
+          {...(account.email === undefined ? {} : { email: account.email })}
+          {...(account.onSignIn === undefined ? {} : { onSignIn: account.onSignIn })}
+          {...(account.onRetry === undefined ? {} : { onRetry: account.onRetry })}
+          readOnly
+          status={account.status}
+        />
+      ) : null}
+
+      {onOpenJournal ? (
+        <View style={{ gap: theme.space.md }}>
+          <SectionHeading>内界手记</SectionHeading>
+          <IconTextAction icon="book-outline" label="打开关键事件与阶段回顾" onPress={onOpenJournal} />
+        </View>
+      ) : null}
 
       <View style={{ gap: theme.space.md }}>
         <SectionHeading>我的卡片</SectionHeading>

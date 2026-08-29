@@ -49,6 +49,14 @@ jest.mock("expo-router", () => ({
   useRouter: () => mockRouter
 }));
 
+jest.mock("../../account/runtime/AccountProfileProvider", () => ({
+  useAccountProfile: () => ({
+    status: "signedOut",
+    error: null,
+    retry: jest.fn(),
+  }),
+}));
+
 beforeEach(() => {
   jest.clearAllMocks();
   mockPathname = "/journey/welcome";
@@ -134,7 +142,8 @@ function nativePersistenceHarness({
       hasPendingLocalDataDeletion: jest.fn(async () => deletionPending),
       recordPendingLocalDataDeletion: jest.fn(async () => { deletionPending = true; }),
       clearPendingLocalDataDeletion: jest.fn(async () => { deletionPending = false; }),
-      deleteInstallationToken: jest.fn(async () => undefined)
+      deleteInstallationToken: jest.fn(async () => undefined),
+      deleteAuthSession: jest.fn(async () => undefined)
     },
     clipboard: { setStringAsync: jest.fn(async () => undefined) }
   } as unknown as ExpoJourneyAdapters;

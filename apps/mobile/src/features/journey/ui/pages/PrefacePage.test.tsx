@@ -1,6 +1,30 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react-native";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 
+import * as guidedScroll from "../guided-scroll-screen";
 import { PrefacePage } from "./preface-page";
+
+afterEach(() => jest.restoreAllMocks());
+
+test("reveals the enabled continue action after choosing a form of address", () => {
+  const reveal = jest.fn();
+  jest.spyOn(guidedScroll, "useJourneyGuidedScroll").mockReturnValue({ reveal });
+  render(<PrefacePage onContinue={jest.fn()} />);
+
+  fireEvent.press(screen.getByRole("radio", { name: "你｜日常、自然，不限定性别。" }));
+  fireEvent.press(screen.getByRole("radio", { name: "妳｜明确称呼女性，更有书信感。" }));
+
+  expect(reveal).toHaveBeenCalledWith("preface-continue");
+  expect(reveal).toHaveBeenCalledTimes(1);
+  expect(screen.getByTestId("journey-scroll-target-preface-continue")).toBeTruthy();
+});
+
+test("mounts the preface inside the shared guided scroll screen", () => {
+  const route = readFileSync(join(__dirname, "../../../../../app/journey/preface.tsx"), "utf8");
+  expect(route).toContain("JourneyGuidedScrollScreen");
+  expect(route).not.toContain("<Screen>");
+});
 
 test("requires a chosen form of address before saving it", async () => {
   const onContinue = jest.fn(async () => undefined);

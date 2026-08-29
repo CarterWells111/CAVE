@@ -13,6 +13,7 @@ import { InfoCard } from "../../../../core/ui/info-card";
 import { SecondaryButton } from "../../../../core/ui/secondary-button";
 import { TextAction } from "../../../../core/ui/text-action";
 import { JourneyAction } from "../components/JourneyAction";
+import { JourneyScrollTarget, useJourneyGuidedScroll } from "../guided-scroll-screen";
 
 type ActionResult = void | Promise<void>;
 
@@ -40,6 +41,7 @@ export function BodyKnowledgePage({
   reducedMotion,
 }: BodyKnowledgePageProps) {
   const theme = useTheme();
+  const { reveal } = useJourneyGuidedScroll();
   const styles = createStyles(theme);
   const sortedCards = [...cards].sort((a, b) => a.order - b.order).slice(0, 3);
   const [consentOpen, setConsentOpen] = useState(false);
@@ -49,6 +51,7 @@ export function BodyKnowledgePage({
   const [imageAttempt, setImageAttempt] = useState(0);
   const [imageError, setImageError] = useState(false);
   const [imageStatus, setImageStatus] = useState("");
+  const diagramAdvancedRef = useRef(false);
 
   const complete = async () => {
     for (const card of sortedCards) await onRead?.(card.id);
@@ -62,6 +65,10 @@ export function BodyKnowledgePage({
     setImageStatus("");
     setConsentOpen(false);
     setDiagramOpen(true);
+    if (!diagramAdvancedRef.current) {
+      diagramAdvancedRef.current = true;
+      reveal("body-knowledge-diagram");
+    }
   };
   const zoomPercent = Math.round(diagramZoom * 100);
 
@@ -80,6 +87,7 @@ export function BodyKnowledgePage({
         <SecondaryButton ref={diagramTriggerRef} label="查看外阴结构图" onPress={() => setConsentOpen(true)} />
         <Text style={styles.secondary}>可选，不查看也可以继续</Text>
         {diagramOpen ? (
+          <JourneyScrollTarget targetId="body-knowledge-diagram">
           <View style={styles.diagram}>
             {diagramSource ? (
               <>
@@ -142,6 +150,7 @@ export function BodyKnowledgePage({
             ) : null}
             <Text style={styles.reviewLabel}>医学图审核稿</Text>
           </View>
+          </JourneyScrollTarget>
         ) : null}
       </Card>
 

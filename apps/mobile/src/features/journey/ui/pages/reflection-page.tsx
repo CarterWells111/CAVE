@@ -21,6 +21,7 @@ import type { JournalSaveChoice } from "../../domain/types";
 import { loadJourneyContentCatalog } from "../../infrastructure/journey-content-catalog";
 import { JourneyAction } from "../components/JourneyAction";
 import { JourneyChoice } from "../components/JourneyChoice";
+import { JourneyScrollTarget, useJourneyGuidedScroll } from "../guided-scroll-screen";
 import type { JourneyAction as JourneyActionCallback } from "../journey-ui-contracts";
 
 type PressureAnswer = "still-want" | "slow-down" | "unsure" | "less-want" | "skip";
@@ -204,6 +205,7 @@ export function ReflectionPage({
   storageMode = "device",
 }: ReflectionPageProps) {
   const theme = useTheme();
+  const { reveal } = useJourneyGuidedScroll();
   const systemReducedMotion = useReducedMotion();
   const shouldReduceMotion = reducedMotion ?? systemReducedMotion;
   const styles = createStyles(theme);
@@ -228,6 +230,7 @@ export function ReflectionPage({
   const [journalStorageOpen, setJournalStorageOpen] = useState(false);
   const [hideFutureJournalNotice, setHideFutureJournalNotice] = useState(false);
   const [clearConfirmationOpen, setClearConfirmationOpen] = useState(false);
+  const advancedCardsRef = useRef(new Set<ReflectionCardId>());
   const flipDuration = Math.round(theme.motion.duration.slow / 2);
 
   useEffect(() => () => {
@@ -384,6 +387,10 @@ export function ReflectionPage({
           : null,
       };
     });
+    if (activeCardId !== null && !advancedCardsRef.current.has(activeCardId)) {
+      advancedCardsRef.current.add(activeCardId);
+      reveal("reflection-card-active-action");
+    }
   };
 
   const toggleComfort = (id: string) => {
@@ -393,6 +400,21 @@ export function ReflectionPage({
         ? current.comfortNeedIds.filter((value) => value !== id)
         : [...current.comfortNeedIds, id],
     }));
+    if (activeCardId !== null && !advancedCardsRef.current.has(activeCardId)) {
+      advancedCardsRef.current.add(activeCardId);
+      reveal("reflection-card-active-action");
+    }
+  };
+
+  const updateSingleCard = <Key extends "pressureWithoutDisappointment" | "refusalSafety" | "expressionDifficulty" | "comfortClarity" | "journalPromptId">(
+    key: Key,
+    value: ReflectionValue[Key],
+  ) => {
+    setDraftValue((current) => ({ ...current, [key]: value }));
+    if (activeCardId !== null && !advancedCardsRef.current.has(activeCardId)) {
+      advancedCardsRef.current.add(activeCardId);
+      reveal("reflection-card-active-action");
+    }
   };
 
   const activeCard = cards.find(({ id }) => id === activeCardId);
@@ -411,6 +433,7 @@ export function ReflectionPage({
 
   if (activeCardId !== null && activeCard) {
     return (
+      <JourneyScrollTarget targetId="reflection-card-active">
       <Animated.View
         accessibilityState={{ busy: animating }}
         style={[styles.fullPage, { minHeight: Math.max(520, height - 180) }, shouldReduceMotion ? undefined : { transform: [{ perspective: 1000 }, { rotateY: rotation }] }]}
@@ -445,7 +468,7 @@ export function ReflectionPage({
                           key={option.value}
                           label={option.label}
                           mode="single"
-                          onSelect={() => setDraftValue((current) => ({ ...current, pressureWithoutDisappointment: option.value }))}
+                          onSelect={() => updateSingleCard("pressureWithoutDisappointment", option.value)}
                           selected={draftValue.pressureWithoutDisappointment === option.value}
                         />
                       ))}
@@ -481,7 +504,7 @@ export function ReflectionPage({
                       key={option.value}
                       label={option.label}
                       mode="single"
-                      onSelect={() => setDraftValue((current) => ({ ...current, refusalSafety: option.value }))}
+                      onSelect={() => updateSingleCard("refusalSafety", option.value)}
                       selected={draftValue.refusalSafety === option.value}
                     />
                   ))}
@@ -511,7 +534,7 @@ export function ReflectionPage({
                       key={option.value}
                       label={option.label}
                       mode="single"
-                      onSelect={() => setDraftValue((current) => ({ ...current, expressionDifficulty: option.value }))}
+                      onSelect={() => updateSingleCard("expressionDifficulty", option.value)}
                       selected={draftValue.expressionDifficulty === option.value}
                     />
                   ))}
@@ -549,7 +572,7 @@ export function ReflectionPage({
                       key={option.value}
                       label={option.label}
                       mode="single"
-                      onSelect={() => setDraftValue((current) => ({ ...current, comfortClarity: option.value }))}
+                      onSelect={() => updateSingleCard("comfortClarity", option.value)}
                       selected={draftValue.comfortClarity === option.value}
                     />
                   ))}
@@ -587,7 +610,7 @@ export function ReflectionPage({
                       key={prompt.id}
                       label={prompt.label}
                       mode="single"
-                      onSelect={() => setDraftValue((current) => ({ ...current, journalPromptId: prompt.id }))}
+                      onSelect={() => updateSingleCard("journalPromptId", prompt.id)}
                       selected={draftValue.journalPromptId === prompt.id}
                     />
                   ))}
@@ -609,14 +632,16 @@ export function ReflectionPage({
               </>
             ) : null}
 
-            <JourneyAction
-              disabled={!activeDraftHasContent || animating}
-              errorMessage="保存反思失败，请重试。"
-              label={activeCardId === "journal" ? "保存这句话并返回" : "保存这张卡并返回"}
-              loadingLabel="正在保存…"
-              onAction={activeCardId === "journal" ? startJournalSave : saveActiveCard}
-              ref={activeCardId === "journal" ? journalStorageReturnFocusRef : undefined}
-            />
+            <JourneyScrollTarget targetId="reflection-card-active-action">
+              <JourneyAction
+                disabled={!activeDraftHasContent || animating}
+                errorMessage="保存反思失败，请重试。"
+                label={activeCardId === "journal" ? "保存这句话并返回" : "保存这张卡并返回"}
+                loadingLabel="正在保存…"
+                onAction={activeCardId === "journal" ? startJournalSave : saveActiveCard}
+                ref={activeCardId === "journal" ? journalStorageReturnFocusRef : undefined}
+              />
+            </JourneyScrollTarget>
             <TextAction disabled={animating} label="暂不记录，返回所有卡牌" onPress={() => { void returnToGallery(); }} />
             {activeHasSavedContent ? <TextAction ref={clearReturnFocusRef} disabled={animating} label="清除此卡的记录" onPress={() => setClearConfirmationOpen(true)} /> : null}
           </View>
@@ -642,6 +667,7 @@ export function ReflectionPage({
           <TextAction label="保留这张卡" onPress={() => setClearConfirmationOpen(false)} />
         </BottomSheet>
       </Animated.View>
+      </JourneyScrollTarget>
     );
   }
 
@@ -672,6 +698,7 @@ export function ReflectionPage({
           );
         })}
       </View>
+      <JourneyScrollTarget targetId="reflection-final-action">
       <JourneyAction
         accessibilityLabel={storageMode === "session-only" ? "完成本次回顾" : "带着这些发现去练习"}
         errorMessage={storageMode === "session-only" ? "完成回顾失败，请重试。" : "保存反思失败，请重试。"}
@@ -679,6 +706,7 @@ export function ReflectionPage({
         loadingLabel={storageMode === "session-only" ? "正在完成回顾…" : "正在保存这些发现…"}
         onAction={() => onComplete(persistedValue(savedValue))}
       />
+      </JourneyScrollTarget>
     </View>
   );
 }
