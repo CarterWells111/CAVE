@@ -149,4 +149,12 @@ describe("Screen", () => {
 
     expect(() => fireEvent.press(screen.getByRole("button", { name: "回到顶部" }))).not.toThrow();
   });
+
+  it("retains a native inner-view ref for measuring automatic scroll targets", () => {
+    render(<Screen testID="measurable-screen"><Text>自动滚动目标</Text></Screen>);
+
+    expect(screen.getByTestId("measurable-screen").props.innerViewRef).toEqual(
+      expect.objectContaining({ current: null }),
+    );
+  });
 });

@@ -22,10 +22,12 @@ export type ScreenProps = Omit<ScrollViewProps, LockedScrollProp> & {
 };
 
 export type ScreenScrollController = Readonly<{
+  scrollToNode(node: View, animated: boolean): void;
   scrollToTop(): void;
 }>;
 
 const fallbackScrollController: ScreenScrollController = Object.freeze({
+  scrollToNode: () => undefined,
   scrollToTop: () => undefined,
 });
 
@@ -50,11 +52,27 @@ export function Screen({ children, contentContainerStyle, fixedHeader, scrollRes
   const theme = useTheme();
   const { width } = useWindowDimensions();
   const scrollRef = useRef<ScrollView>(null);
+  const innerViewRef = useRef<View>(null!);
   const horizontalPadding = contentHorizontalPadding(width);
   const scrollToTop = useCallback(() => {
     scrollRef.current?.scrollTo({ animated: false, y: 0 });
   }, []);
-  const scrollController = useMemo<ScreenScrollController>(() => ({ scrollToTop }), [scrollToTop]);
+  const scrollToNode = useCallback((node: View, animated: boolean) => {
+    requestAnimationFrame(() => {
+      const scrollView = scrollRef.current;
+      const innerViewNode = innerViewRef.current;
+      if (!scrollView || !innerViewNode) return;
+      node.measureLayout(
+        innerViewNode,
+        (_left, top) => scrollView.scrollTo({ animated, y: top }),
+        () => undefined,
+      );
+    });
+  }, []);
+  const scrollController = useMemo<ScreenScrollController>(
+    () => ({ scrollToNode, scrollToTop }),
+    [scrollToNode, scrollToTop],
+  );
   const callerPresentation = { ...(StyleSheet.flatten(contentContainerStyle) ?? {}) };
   for (const lockedKey of [
     "maxWidth", "minWidth", "width", "paddingHorizontal", "paddingLeft", "paddingRight", "paddingStart", "paddingEnd",
@@ -91,6 +109,7 @@ export function Screen({ children, contentContainerStyle, fixedHeader, scrollRes
       ) : null}
       <ScrollView
         {...props}
+        innerViewRef={innerViewRef}
         ref={scrollRef}
       automaticallyAdjustKeyboardInsets
       horizontal={false}

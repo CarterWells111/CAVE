@@ -94,6 +94,24 @@ test("BottomSheet uses bottom safe-area insets and disables motion when requeste
   });
 });
 
+test("BottomSheet can remove its fixed visual header without losing modal dismissal", () => {
+  const onClose = jest.fn();
+  const onInitialFocus = jest.fn();
+  render(
+    <BottomSheet hideHeader onClose={onClose} onInitialFocus={onInitialFocus} title="编辑沟通草稿" visible>
+      <Text>编辑内容</Text>
+    </BottomSheet>,
+  );
+
+  expect(screen.queryByRole("header", { name: "编辑沟通草稿" })).toBeNull();
+  expect(screen.queryByRole("button", { name: "关闭编辑沟通草稿" })).toBeNull();
+  const modal = screen.getByTestId("bottom-sheet-modal");
+  fireEvent(modal, "show");
+  expect(onInitialFocus).toHaveBeenCalledTimes(1);
+  fireEvent(screen.getByTestId("bottom-sheet-panel"), "accessibilityEscape");
+  expect(onClose).toHaveBeenCalledTimes(1);
+});
+
 test("supports a non-dismissible reading sheet without exposing a skip action", () => {
   const onClose = jest.fn();
   const focus = jest.spyOn(AccessibilityInfo, "setAccessibilityFocus").mockImplementation(jest.fn());

@@ -232,6 +232,32 @@ test("atomically saves an overnight progress snapshot and completes it idempoten
   }).pointEventKeys).toEqual(["progress:overnight-complete:v1"]);
 });
 
+test("updates a grouped behavior choice atomically with one source revision", () => {
+  const original = {
+    ...adultDraft(),
+    behaviorAttitudes: {
+      "behavior-my-nudity": "unsure" as const,
+      "behavior-partner-nudity": "not-this-time" as const,
+    },
+  };
+
+  const result = reduceJourneyDraft(original, {
+    type: "set-behavior-attitudes",
+    behaviorIds: ["behavior-my-nudity", "behavior-partner-nudity", "behavior-my-nudity"],
+    attitude: "decide-in-moment",
+  });
+
+  expect(result.behaviorAttitudes).toEqual({
+    "behavior-my-nudity": "decide-in-moment",
+    "behavior-partner-nudity": "decide-in-moment",
+  });
+  expect(result.sourceRevision).toBe(original.sourceRevision + 1);
+  expect(original.behaviorAttitudes).toEqual({
+    "behavior-my-nudity": "unsure",
+    "behavior-partner-nudity": "not-this-time",
+  });
+});
+
 test("persists an edited included communication field as pending", () => {
   const draft = adultDraft();
   draft.communicationCard["communication-not-this-time"] = { generatedText: "old", sourceRevision: 1, needsReview: false, visibility: "included" };

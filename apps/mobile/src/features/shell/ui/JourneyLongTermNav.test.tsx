@@ -53,3 +53,13 @@ test("routes each public tab destination", () => {
   ]);
   expect(mockLoad).not.toHaveBeenCalled();
 });
+
+test("does not replace the route while journey persistence is locked", () => {
+  render(<JourneyLongTermNav activeTab="home" disabled />);
+
+  for (const tab of screen.getAllByRole("tab")) {
+    expect(tab).toHaveProp("accessibilityState", expect.objectContaining({ disabled: true }));
+    fireEvent.press(tab);
+  }
+  expect(mockReplace).not.toHaveBeenCalled();
+});

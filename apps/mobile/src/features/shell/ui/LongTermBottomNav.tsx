@@ -9,10 +9,11 @@ export type { LongTermTab } from "./long-term-navigation";
 
 export type LongTermBottomNavProps = Readonly<{
   activeTab?: LongTermTab | undefined;
+  disabled?: boolean | undefined;
   navigate: (tab: LongTermTab) => void;
 }>;
 
-export function LongTermBottomNav({ activeTab, navigate }: LongTermBottomNavProps) {
+export function LongTermBottomNav({ activeTab, disabled = false, navigate }: LongTermBottomNavProps) {
   const theme = useTheme();
   return (
     <SafeAreaView
@@ -42,7 +43,8 @@ export function LongTermBottomNav({ activeTab, navigate }: LongTermBottomNavProp
               accessibilityHint={`切换到${label}`}
               accessibilityLabel={label}
               accessibilityRole="tab"
-              accessibilityState={{ selected }}
+              accessibilityState={{ disabled, selected }}
+              disabled={disabled}
               key={tab}
               onPress={() => navigate(tab)}
               style={{
@@ -54,6 +56,7 @@ export function LongTermBottomNav({ activeTab, navigate }: LongTermBottomNavProp
                 justifyContent: "center",
                 minHeight: theme.size.minimumTouchTarget,
                 minWidth: theme.size.minimumTouchTarget,
+                opacity: disabled ? 0.55 : 1,
                 paddingHorizontal: theme.space.xs,
                 paddingVertical: theme.space.none
               }}

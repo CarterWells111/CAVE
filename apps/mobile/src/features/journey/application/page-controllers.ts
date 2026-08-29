@@ -117,6 +117,17 @@ export class JourneyPageController {
     return this.dependencies.service.dispatch({ type: "set-behavior-attitude", behaviorId, attitude });
   }
 
+  setBehaviorAttitudes(behaviorIds: string[], attitude: BehaviorAttitude) {
+    return this.dependencies.service.dispatch({ type: "set-behavior-attitudes", behaviorIds, attitude });
+  }
+
+  completeBehaviorMap() {
+    return this.dependencies.service.dispatch({
+      type: "record-point-event",
+      key: "progress:behavior-map-complete:v1",
+    });
+  }
+
   async saveReflection(input: ReflectionInput) {
     const draft = this.requireDraft();
     const expressionSupportNeeded = input.expressionSupportNeeded !== undefined

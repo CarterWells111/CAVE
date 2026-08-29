@@ -52,6 +52,8 @@ test("shows all seven local draft sections in the same two-column editor", () =>
   renderScreen();
 
   expect(screen.getByRole("header", { name: "编辑沟通草稿" })).toBeTruthy();
+  expect(screen.getAllByTestId(/communication-draft-row-/u)).toHaveLength(4);
+  expect(StyleSheet.flatten(screen.getByTestId("communication-draft-row-0").props.style)).toMatchObject({ flexDirection: "row" });
   expect(screen.getAllByText("保留在沟通草稿中")).toHaveLength(6);
   expect(screen.getByText("已从草稿中删除")).toBeTruthy();
   expect(screen.getByText("前面的回答有变化，请再检查一下这段文字。")).toBeTruthy();

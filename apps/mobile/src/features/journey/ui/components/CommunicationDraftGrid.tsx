@@ -6,6 +6,7 @@ import { BottomSheet } from "../../../../core/ui/bottom-sheet";
 import { Button } from "../../../../core/ui/Button";
 import { Card } from "../../../../core/ui/Card";
 import { SecondaryButton } from "../../../../core/ui/secondary-button";
+import { TextAction } from "../../../../core/ui/text-action";
 import type { CommunicationSectionId } from "../../domain/types";
 
 export type CommunicationDraftGridSection = Readonly<{
@@ -18,6 +19,7 @@ export type CommunicationDraftGridSection = Readonly<{
 
 type Props = Readonly<{
   sections: readonly CommunicationDraftGridSection[];
+  dense?: boolean;
   disabled?: boolean;
   onEdit(sectionId: CommunicationSectionId, text: string): void | Promise<void>;
   onSetDeleted(sectionId: CommunicationSectionId, deleted: boolean): void | Promise<void>;
@@ -29,13 +31,14 @@ function pairs<T>(items: readonly T[]): T[][] {
   return rows;
 }
 
-export function CommunicationDraftGrid({ disabled = false, onEdit, onSetDeleted, sections }: Props) {
+export function CommunicationDraftGrid({ dense = false, disabled = false, onEdit, onSetDeleted, sections }: Props) {
   const theme = useTheme();
   const [editingId, setEditingId] = useState<CommunicationSectionId>();
   const [editingText, setEditingText] = useState("");
   const [editingError, setEditingError] = useState<string>();
   const [saving, setSaving] = useState(false);
   const editorReturnFocusRef = useRef<View>(null);
+  const editorInputRef = useRef<TextInput>(null);
   const editorTriggerRefs = useRef(new Map<CommunicationSectionId, View | null>());
   const editingSection = sections.find(({ id }) => id === editingId);
 
@@ -75,7 +78,7 @@ export function CommunicationDraftGrid({ disabled = false, onEdit, onSetDeleted,
   return (
     <>
       <View style={{ gap: theme.space.sm }} testID="communication-draft-grid">
-        {pairs(sections).map((row, rowIndex) => (
+        {(dense ? sections.map((section) => [section]) : pairs(sections)).map((row, rowIndex) => (
           <View
             key={`draft-row-${rowIndex}`}
             style={{ alignItems: "stretch", flexDirection: "row", gap: theme.space.sm }}
@@ -100,13 +103,15 @@ export function CommunicationDraftGrid({ disabled = false, onEdit, onSetDeleted,
                     <Text accessibilityRole="header" selectable style={{ ...theme.typography.cardTitle, color: textColor }}>
                       {section.title}
                     </Text>
-                    <Text
-                      accessibilityLiveRegion="polite"
-                      selectable
-                      style={{ ...theme.typography.label, color: section.deleted ? theme.color.disabledText : theme.color.textSecondary }}
-                    >
-                      {section.deleted ? "已从草稿中删除" : "保留在沟通草稿中"}
-                    </Text>
+                    {section.deleted || !dense ? (
+                      <Text
+                        accessibilityLiveRegion="polite"
+                        selectable
+                        style={{ ...theme.typography.label, color: section.deleted ? theme.color.disabledText : theme.color.textSecondary }}
+                      >
+                        {section.deleted ? "已从草稿中删除" : "保留在沟通草稿中"}
+                      </Text>
+                    ) : null}
                     {section.needsReview ? (
                       <Text selectable style={{ ...theme.typography.caption, color: theme.color.warning }}>
                         前面的回答有变化，请再检查一下这段文字。
@@ -115,45 +120,86 @@ export function CommunicationDraftGrid({ disabled = false, onEdit, onSetDeleted,
                     <Text selectable style={{ ...theme.typography.body, color: textColor, flexShrink: 1 }}>
                       {body}
                     </Text>
-                    <SecondaryButton
-                      accessibilityLabel={`编辑：${section.title}`}
-                      disabled={disabled || saving}
-                      label="编辑"
-                      onPress={() => openEditor(section)}
-                      ref={(node) => { editorTriggerRefs.current.set(section.id, node); }}
-                    />
-                    {section.deleted ? (
-                      <Button
-                        disabled={disabled || saving || missingText}
-                        accessibilityLabel={`恢复到草稿：${section.title}`}
-                        label="恢复到草稿"
-                        onPress={() => { void onSetDeleted(section.id, false); }}
-                      />
-                    ) : (
-                      <SecondaryButton
-                        disabled={disabled || saving}
-                        accessibilityLabel={`从草稿中删除：${section.title}`}
-                        label="从草稿中删除"
-                        onPress={() => { void onSetDeleted(section.id, true); }}
-                      />
-                    )}
+                    <View
+                      style={dense ? {
+                        alignItems: "center",
+                        alignSelf: "flex-end",
+                        flexDirection: "row",
+                        flexWrap: "wrap",
+                        gap: theme.space.compact,
+                        justifyContent: "flex-end",
+                      } : { gap: theme.space.compact, width: "100%" }}
+                      testID={dense ? `communication-draft-actions-${section.id}` : undefined}
+                    >
+                      {dense ? (
+                        <TextAction
+                          accessibilityLabel={`编辑：${section.title}`}
+                          disabled={disabled || saving}
+                          label="编辑"
+                          onPress={() => openEditor(section)}
+                          ref={(node) => { editorTriggerRefs.current.set(section.id, node); }}
+                        />
+                      ) : (
+                        <SecondaryButton
+                          accessibilityLabel={`编辑：${section.title}`}
+                          disabled={disabled || saving}
+                          label="编辑"
+                          onPress={() => openEditor(section)}
+                          ref={(node) => { editorTriggerRefs.current.set(section.id, node); }}
+                        />
+                      )}
+                      {section.deleted ? (
+                        dense ? (
+                          <TextAction
+                            disabled={disabled || saving || missingText}
+                            accessibilityLabel={`恢复到草稿：${section.title}`}
+                            label="恢复到草稿"
+                            onPress={() => { void onSetDeleted(section.id, false); }}
+                          />
+                        ) : (
+                          <Button
+                            disabled={disabled || saving || missingText}
+                            accessibilityLabel={`恢复到草稿：${section.title}`}
+                            label="恢复到草稿"
+                            onPress={() => { void onSetDeleted(section.id, false); }}
+                          />
+                        )
+                      ) : dense ? (
+                        <TextAction
+                          disabled={disabled || saving}
+                          accessibilityLabel={`从草稿中删除：${section.title}`}
+                          label="从草稿中删除"
+                          onPress={() => { void onSetDeleted(section.id, true); }}
+                        />
+                      ) : (
+                        <SecondaryButton
+                          disabled={disabled || saving}
+                          accessibilityLabel={`从草稿中删除：${section.title}`}
+                          label="从草稿中删除"
+                          onPress={() => { void onSetDeleted(section.id, true); }}
+                        />
+                      )}
+                    </View>
                   </Card>
                 </View>
               );
             })}
-            {row.length === 1 ? <View accessibilityElementsHidden style={{ flex: 1, minWidth: 0 }} /> : null}
+            {!dense && row.length === 1 ? <View accessibilityElementsHidden style={{ flex: 1, minWidth: 0 }} /> : null}
           </View>
         ))}
       </View>
 
       <BottomSheet
-        closeLabel="取消编辑"
+        {...(dense ? { onInitialFocus: () => editorInputRef.current?.focus() } : {})}
+        closeLabel={dense ? "取消" : "取消编辑"}
+        hideHeader={dense}
         onClose={closeEditor}
         returnFocusRef={editorReturnFocusRef}
-        title={editingSection ? `编辑：${editingSection.title}` : "编辑沟通草稿"}
+        title={dense ? "编辑沟通草稿" : editingSection ? `编辑：${editingSection.title}` : "编辑沟通草稿"}
         visible={editingSection !== undefined}
       >
         <TextInput
+          ref={editorInputRef}
           accessibilityHint={editingError}
           accessibilityLabel={editingSection ? `草稿内容：${editingSection.title}` : "沟通草稿内容"}
           editable={!saving}

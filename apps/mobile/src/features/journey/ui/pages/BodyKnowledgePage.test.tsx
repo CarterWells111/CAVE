@@ -134,6 +134,30 @@ test("offers labelled button-only zoom with bounded state and reset", async () =
   );
 });
 
+test("uses precise vaginal anatomy copy and reveals supplemental knowledge outside the diagram card", async () => {
+  render(
+    <BodyKnowledgePage
+      cards={cards}
+      definition={definition}
+      diagramSource={{ uri: "medical-review" }}
+      onContinue={jest.fn()}
+      onOpenDiagram={jest.fn()}
+    />,
+  );
+
+  expect(screen.getByText(
+    "外阴是身体外部可见的区域；阴道是一条从阴道口延伸到宫颈、富有弹性的肌性管道；阴蒂的大部分结构位于身体内部。",
+  )).toBeTruthy();
+  expect(screen.queryByTestId("body-supplemental-knowledge")).toBeNull();
+
+  fireEvent.press(screen.getByRole("button", { name: "查看外阴结构图" }));
+  fireEvent.press(screen.getByRole("button", { name: "我愿意查看" }));
+
+  const supplement = await screen.findByTestId("body-supplemental-knowledge");
+  expect(supplement.findByProps({ children: "补充知识" })).toBeTruthy();
+  expect(screen.getByTestId("body-diagram-card").findAllByProps({ children: "补充知识" })).toHaveLength(0);
+});
+
 test("keeps the 100–200% anatomy image in a pannable viewport and retries image loading", async () => {
   render(
     <BodyKnowledgePage

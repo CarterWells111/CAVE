@@ -31,6 +31,10 @@ test("root layout mounts one runtime composition provider shared by journey and 
   expect(layout).toContain("<JourneyRuntimeProvider");
   expect(journeyLayout).not.toContain("<JourneyRuntimeProvider");
   expect(journeyLayout).toContain("JourneyLongTermNav");
+  expect(journeyLayout).toContain("JourneyNavigationLockProvider");
+  expect(journeyLayout).toContain("gestureEnabled: !locked");
+  expect(journeyLayout).toContain("<JourneyLongTermNav disabled={locked}");
+  expect(routeSource("overnight.tsx")).toContain("useJourneyNavigationLock");
 });
 
 test("exactly seven production routes consume runtime state without no-op callbacks", () => {

@@ -120,6 +120,8 @@ test("translates Page 2-5 events into page-owned commands and idempotent task ke
   await controller.saveOvernight({ expectationIds: ["draft-rest"], concernIds: [], customNote: "" });
   await controller.readKnowledge("draft-knowledge-consent");
   await controller.setBehaviorAttitude("draft-kissing", "unsure");
+  await controller.setBehaviorAttitudes(["behavior-my-nudity", "behavior-partner-nudity"], "decide-in-moment");
+  await controller.completeBehaviorMap();
   await controller.saveReflection({ motivationIds: ["draft-curious"], comfortNeedIds: ["draft-privacy"], expressionSupportNeeded: true, journalSaveChoice: "device" });
 
   expect(service.dispatch).toHaveBeenCalledWith({
@@ -133,6 +135,15 @@ test("translates Page 2-5 events into page-owned commands and idempotent task ke
   expect(service.dispatch).toHaveBeenCalledWith({ type: "record-point-event", key: "learning:draft-knowledge-consent:v1" });
   expect(service.dispatch).toHaveBeenCalledWith({ type: "record-point-event", key: "reflection:page-5:v1" });
   expect(service.dispatch).toHaveBeenCalledWith({ type: "set-behavior-attitude", behaviorId: "draft-kissing", attitude: "unsure" });
+  expect(service.dispatch).toHaveBeenCalledWith({
+    type: "set-behavior-attitudes",
+    behaviorIds: ["behavior-my-nudity", "behavior-partner-nudity"],
+    attitude: "decide-in-moment",
+  });
+  expect(service.dispatch).toHaveBeenCalledWith({
+    type: "record-point-event",
+    key: "progress:behavior-map-complete:v1",
+  });
 });
 
 test("marks overnight complete in the same persisted selection snapshot", async () => {

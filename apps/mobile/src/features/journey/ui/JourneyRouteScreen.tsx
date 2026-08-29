@@ -21,10 +21,12 @@ type JourneyRouteRenderProps = {
 export function JourneyRouteScreen({
   pageId,
   immersiveContent = false,
+  navigationLocked = false,
   children
 }: {
   pageId: JourneyPageId;
   immersiveContent?: boolean;
+  navigationLocked?: boolean;
   children(props: JourneyRouteRenderProps): ReactNode;
 }) {
   const theme = useTheme();
@@ -85,6 +87,7 @@ export function JourneyRouteScreen({
       return runAndRefresh(() => activeCoordinator.backFrom(pageId));
     };
   const exitJourney = () => {
+    if (navigationLocked) return;
     navigationActiveRef.current = false;
     navigationGenerationRef.current += 1;
     router.replace("/(tabs)");
@@ -112,8 +115,9 @@ export function JourneyRouteScreen({
     <>
       <JourneyScreenShell
         immersiveContent={immersiveContent}
+        navigationLocked={navigationLocked}
         pageId={pageId}
-        onExit={() => setOptionsOpen(true)}
+        onExit={() => { if (!navigationLocked) setOptionsOpen(true); }}
         exitRef={optionsReturnFocusRef}
         {...(onBack === undefined ? {} : { onBack })}
       >

@@ -209,28 +209,6 @@ test("restores an interrupted reflection and submits the complete local-only pay
   });
 });
 
-test("edits a prior behavior attitude without replacing the five reflection cards", async () => {
-  const onEditBehaviorAttitude = jest.fn();
-  renderPage({
-    behaviorAnswers: [
-      { attitude: "not-this-time", behaviorId: "direct", behaviorLabel: "直接触摸" },
-      { attitude: "looking-forward", behaviorId: "hug", behaviorLabel: "拥抱或依偎" },
-      { attitude: "unsure", behaviorId: "kiss", behaviorLabel: "接吻" },
-    ],
-    onEditBehaviorAttitude,
-  });
-
-  expect(screen.getByText("这是你刚才留下的答案")).toBeTruthy();
-  expect(screen.getAllByText("尚未记录")).toHaveLength(5);
-  fireEvent.press(screen.getByRole("button", { name: "修改拥抱或依偎的答案" }));
-  expect(screen.getAllByRole("radio", { name: /^修改拥抱或依偎：/u })).toHaveLength(6);
-  fireEvent.press(screen.getByRole("radio", { name: "修改拥抱或依偎：我还没想清楚" }));
-
-  await waitFor(() => expect(onEditBehaviorAttitude).toHaveBeenCalledWith("hug", "unsure"));
-  expect(screen.queryByText("正在修改：拥抱或依偎")).toBeNull();
-  expect(screen.getByText("此页的其他反思仍保留在当前页面。")).toBeTruthy();
-});
-
 test("offers safety, journal, and practice phrase callbacks inside flipped cards", async () => {
   const onOpenComfort = jest.fn();
   const onOpenJournal = jest.fn();

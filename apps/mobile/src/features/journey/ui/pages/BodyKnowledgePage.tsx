@@ -71,7 +71,7 @@ export function BodyKnowledgePage({
       <Text style={styles.body}>认识身体，不是为了找到一条必须走完的路线。它帮助{addressPreference}分清身体正在发生什么，以及自己是否愿意。</Text>
 
       <InfoCard testID="body-anatomy-education" title="先认识外阴、阴道与阴蒂" variant="medical">
-        <Text selectable style={styles.body}>外阴是身体外部可见的区域；阴道是通向身体内部的管道；阴蒂的大部分结构延伸在身体内部。</Text>
+        <Text selectable style={styles.body}>外阴是身体外部可见的区域；阴道是一条从阴道口延伸到宫颈、富有弹性的肌性管道；阴蒂的大部分结构位于身体内部。</Text>
         <Text selectable style={styles.body}>阴唇长度、左右不对称和颜色差异可能属于常见个体差异。</Text>
         <Text selectable style={styles.body}>持续疼痛、瘙痒、灼热、破损、肿块、异常分泌物或明显新变化时可咨询医疗专业人员。</Text>
       </InfoCard>
@@ -141,14 +141,16 @@ export function BodyKnowledgePage({
               </>
             ) : null}
             <Text style={styles.reviewLabel}>医学图审核稿</Text>
-            <View accessibilityRole="summary" style={styles.paperTip}>
-              <Text style={styles.paperTitle}>温馨提示</Text>
-              <Text style={styles.paperBody}>每个人的外阴外观都不相同。阴唇左右不完全对称、其中一侧更长，或颜色与周围皮肤、另一侧不完全一致，都可能属于常见的正常差异。外阴颜色也会因个体肤色、激素等因素有所不同；不能仅凭颜色或是否发生过摩擦判断健康状况。</Text>
-              <Text style={styles.paperBody}>如果较长的一侧因衣物、运动或其他摩擦带来持续不适，或者出现持续疼痛、瘙痒、灼热、破损、肿块、异常分泌物或明显的新变化，可以咨询妇科或其他合适的医疗专业人员。即使没有这些情况，只要{addressPreference}仍然担心，也可以就医。就诊前可以询问是否能安排女性医生；在医疗机构允许的情况下，也可以请一位信任的人陪同。具体以医疗机构安排为准。</Text>
-            </View>
           </View>
         ) : null}
       </Card>
+
+      {diagramOpen ? (
+        <InfoCard testID="body-supplemental-knowledge" title="补充知识" variant="medical">
+          <Text selectable style={styles.body}>每个人的外阴外观都不相同。阴唇左右不完全对称、其中一侧更长，或颜色与周围皮肤、另一侧不完全一致，都可能属于常见的正常差异。外阴颜色也会因个体肤色、激素等因素有所不同；不能仅凭颜色或是否发生过摩擦判断健康状况。</Text>
+          <Text selectable style={styles.body}>如果较长的一侧因衣物、运动或其他摩擦带来持续不适，或者出现持续疼痛、瘙痒、灼热、破损、肿块、异常分泌物或明显的新变化，可以咨询妇科或其他合适的医疗专业人员。即使没有这些情况，只要{addressPreference}仍然担心，也可以就医。就诊前可以询问是否能安排女性医生；在医疗机构允许的情况下，也可以请一位信任的人陪同。具体以医疗机构安排为准。</Text>
+        </InfoCard>
+      ) : null}
 
       <InfoCard
         testID="body-sexual-activity-definition"
@@ -225,15 +227,6 @@ function createStyles(theme: AppTheme) {
     padding: theme.space.card,
   },
   paperBody: { ...theme.typography.body, color: theme.color.paperText, flexShrink: 1 },
-  paperTitle: { ...theme.typography.cardTitle, color: theme.color.paperText, flexShrink: 1 },
-  paperTip: {
-    borderColor: theme.color.brandDeep,
-    borderCurve: "continuous" as const,
-    borderRadius: theme.radius.control,
-    borderWidth: theme.border.width,
-    gap: theme.space.compact,
-    padding: theme.space.md,
-  },
   reviewLabel: { ...theme.typography.label, color: theme.color.paperSecondary },
   imageViewport: {
     aspectRatio: 1,

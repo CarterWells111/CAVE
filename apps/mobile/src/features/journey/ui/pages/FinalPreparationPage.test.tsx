@@ -1,14 +1,12 @@
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react-native";
 import { loadCatalog } from "@cave/content";
 import type { ComponentProps } from "react";
+import { AccessibilityInfo } from "react-native";
 
 import { darkTheme as theme } from "../../../../core/design/theme";
+import { BottomSheet } from "../../../../core/ui/bottom-sheet";
 import { createJourneyDraft, type CommunicationSectionId } from "../../domain/types";
 import { FinalPreparationPage } from "./FinalPreparationPage";
-
-jest.mock("react-native-view-shot", () => ({
-  captureRef: jest.fn(async () => "file:///local/export.png"),
-}));
 
 function draft() {
   const value = createJourneyDraft({ id: "journey-1", now: "now" });
@@ -24,50 +22,35 @@ function renderPage(overrides: Partial<ComponentProps<typeof FinalPreparationPag
     onEdit: jest.fn(async () => undefined),
     onFinish: jest.fn(async () => "card:journey-1"),
     onSetVisibility: jest.fn(async () => undefined),
-    ...overrides
+    ...overrides,
   };
   render(<FinalPreparationPage {...props} />);
   return props;
 }
 
-test("renders all seven v4 pending drafts and their explicit confirmation controls", () => {
+test("renders all seven draft cards in one column with one private-draft save action", () => {
   renderPage();
 
-  expect(screen.queryByText("7 / 7")).toBeNull();
-  expect(screen.getAllByText("待确认")).toHaveLength(7);
+  expect(screen.getAllByTestId(/communication-draft-row-/u)).toHaveLength(7);
+  expect(screen.queryByText("保留在沟通草稿中")).toBeNull();
   expect(screen.getAllByText("从草稿中删除")).toHaveLength(7);
   expect(screen.getAllByText("编辑")).toHaveLength(7);
-  expect(screen.getAllByTestId(/communication-draft-row-/u)).toHaveLength(4);
+  expect(screen.getAllByTestId(/communication-draft-actions-/u)).toHaveLength(7);
   for (const section of loadCatalog().journey.uiCopy.communicationSections) {
-    expect(screen.getAllByText(section.title).length).toBeGreaterThan(0);
+    expect(screen.getByText(section.title)).toBeTruthy();
   }
-  expect(screen.getByText("只给自己看的准备")).toBeTruthy();
-  expect(screen.getByText("只给自己的回答")).toBeTruthy();
-  expect(screen.getByText("表达句")).toBeTruthy();
-  expect(screen.getByText("安心需要")).toBeTruthy();
-  expect(screen.getByText("条件式健康准备")).toBeTruthy();
-  expect(screen.getByText("事后照顾")).toBeTruthy();
-  expect(screen.getAllByText("加入分享")).toHaveLength(7);
-});
 
-test("restores private preparation, per-section confirmation, warm preview, and explicit export entry points", () => {
-  const value = draft();
-  value.privatePreparation.items = [{
-    id: "checklist:expression",
-    category: "expression",
-    sourceIds: [],
-    status: "prepare-more",
-  }];
-  renderPage({ draft: value });
-
-  expect(screen.getByText("只给自己看的准备")).toBeTruthy();
-  expect(screen.getByText("表达与暂停")).toBeTruthy();
-  expect(screen.getByRole("radio", { name: "加入分享：我对这个夜晚的期待" })).toBeTruthy();
-  expect(screen.getByRole("button", { name: "预览分享卡" })).toBeTruthy();
-  expect(screen.getByRole("button", { name: "复制已确认内容" })).toBeTruthy();
-  expect(screen.getByRole("button", { name: "保存为图片" })).toBeTruthy();
-  expect(screen.getByRole("button", { name: "保存给自己" })).toBeTruthy();
-  expect(screen.getByRole("button", { name: "我想手写" })).toBeTruthy();
+  expect(screen.queryByText("只给自己看的准备")).toBeNull();
+  expect(screen.queryByText("逐段确认沟通内容")).toBeNull();
+  expect(screen.queryByText("加入分享")).toBeNull();
+  expect(screen.queryByText("只留给自己")).toBeNull();
+  expect(screen.queryByRole("button", { name: "预览分享卡" })).toBeNull();
+  expect(screen.queryByRole("button", { name: "复制已确认内容" })).toBeNull();
+  expect(screen.queryByRole("button", { name: "保存为图片" })).toBeNull();
+  expect(screen.queryByRole("button", { name: "保存给自己" })).toBeNull();
+  expect(screen.queryByRole("button", { name: "我想手写" })).toBeNull();
+  expect(screen.getByText("保存后，所有未删除的段落会进入“我的沟通草稿”，只保存在本机。")).toBeTruthy();
+  expect(screen.getByRole("button", { name: "保存并查看我的沟通草稿" })).toBeTruthy();
 });
 
 test("deletes a card in place, announces the state, and restores it", async () => {
@@ -84,41 +67,7 @@ test("deletes a card in place, announces the state, and restores it", async () =
 
   fireEvent.press(screen.getByText("恢复到草稿"));
   await waitFor(() => expect(onSetVisibility).toHaveBeenLastCalledWith(sectionId, "pending"));
-  expect(screen.getAllByText("待确认")).toHaveLength(7);
-});
-
-test("requires explicit confirmation before writing an immutable preview snapshot to the clipboard", async () => {
-  const onCopy = jest.fn<Promise<void>, [Parameters<NonNullable<ComponentProps<typeof FinalPreparationPage>["onCopy"]>>[0]]>(async () => undefined);
-  const value = draft();
-  value.communicationCard["communication-night-expectations"].visibility = "included";
-  renderPage({ draft: value, onCopy });
-
-  fireEvent.press(screen.getByRole("button", { name: "复制已确认内容" }));
-  expect(onCopy).not.toHaveBeenCalled();
-  expect(screen.getByText(/复制会写入系统剪贴板/u)).toBeTruthy();
-
-  fireEvent.press(screen.getByRole("button", { name: "确认复制到剪贴板" }));
-  await waitFor(() => expect(onCopy).toHaveBeenCalledTimes(1));
-  expect(Object.isFrozen(onCopy.mock.calls[0]![0])).toBe(true);
-});
-
-test("uses the same frozen snapshot for preview, copy, and PNG save until content changes", async () => {
-  const onCopy = jest.fn<Promise<void>, [Parameters<NonNullable<ComponentProps<typeof FinalPreparationPage>["onCopy"]>>[0]]>(async () => undefined);
-  const onSaveImage = jest.fn<Promise<void>, [Parameters<NonNullable<ComponentProps<typeof FinalPreparationPage>["onSaveImage"]>>[0], string]>(async () => undefined);
-  const value = draft();
-  value.communicationCard["communication-night-expectations"].visibility = "included";
-  renderPage({ draft: value, onCopy, onSaveImage });
-
-  fireEvent.press(screen.getByRole("button", { name: "预览分享卡" }));
-  fireEvent.press(screen.getByRole("button", { name: "复制已确认内容" }));
-  fireEvent.press(screen.getByRole("button", { name: "确认复制到剪贴板" }));
-  await waitFor(() => expect(onCopy).toHaveBeenCalledTimes(1));
-
-  fireEvent.press(screen.getByRole("button", { name: "保存为图片" }));
-  fireEvent.press(screen.getByRole("button", { name: "确认并保存图片" }));
-  await waitFor(() => expect(onSaveImage).toHaveBeenCalledTimes(1));
-  expect(onSaveImage.mock.calls[0]![0]).toBe(onCopy.mock.calls[0]![0]);
-  expect(Object.isFrozen(onSaveImage.mock.calls[0]![0])).toBe(true);
+  expect(screen.queryByText("保留在沟通草稿中")).toBeNull();
 });
 
 test("edits in a bottom sheet and rejects blank text without deleting", async () => {
@@ -126,6 +75,11 @@ test("edits in a bottom sheet and rejects blank text without deleting", async ()
   renderPage({ onEdit });
 
   fireEvent.press(screen.getAllByText("编辑")[0]!);
+  expect(screen.UNSAFE_getByType(BottomSheet).props).toMatchObject({
+    closeLabel: "取消",
+    hideHeader: true,
+    title: "编辑沟通草稿",
+  });
   const input = screen.getByLabelText("草稿内容：我对这个夜晚的期待");
   fireEvent.changeText(input, "   ");
   fireEvent.press(screen.getByText("保存编辑"));
@@ -139,21 +93,6 @@ test("edits in a bottom sheet and rejects blank text without deleting", async ()
   expect(screen.getByText("更新后的草稿。")).toBeTruthy();
 });
 
-test("returns an included section to pending when its text is edited", async () => {
-  const value = draft();
-  const sectionId: CommunicationSectionId = "communication-night-expectations";
-  value.communicationCard[sectionId].visibility = "included";
-  const onEdit = jest.fn(async () => undefined);
-  renderPage({ draft: value, onEdit });
-
-  fireEvent.press(screen.getAllByText("编辑")[0]!);
-  fireEvent.changeText(screen.getByLabelText("草稿内容：我对这个夜晚的期待"), "新的确认文字");
-  fireEvent.press(screen.getByText("保存编辑"));
-
-  await waitFor(() => expect(onEdit).toHaveBeenCalledWith(sectionId, "新的确认文字"));
-  expect(screen.getAllByText("待确认")).toHaveLength(7);
-});
-
 test("flushes pending edits before saving and guards duplicate completion", async () => {
   let resolveEdit!: () => void;
   const pendingEdit = new Promise<void>((resolve) => { resolveEdit = resolve; });
@@ -164,15 +103,16 @@ test("flushes pending edits before saving and guards duplicate completion", asyn
   fireEvent.press(screen.getAllByText("编辑")[0]!);
   fireEvent.changeText(screen.getByLabelText("草稿内容：我对这个夜晚的期待"), "最新文字");
   fireEvent.press(screen.getByText("保存编辑"));
-  fireEvent.press(screen.getByText("保存沟通草稿"));
+  const confirmation = screen.getByRole("button", { name: "保存并查看我的沟通草稿" });
+  fireEvent.press(confirmation);
+  fireEvent.press(confirmation);
   expect(onFinish).not.toHaveBeenCalled();
 
   await act(async () => { resolveEdit(); });
   await waitFor(() => expect(onFinish).toHaveBeenCalledTimes(1));
-  expect(await screen.findByText("沟通草稿已保存到本机。")).toBeTruthy();
 });
 
-test("blocks completion after a failed write and retries the queued change", async () => {
+test("blocks final save after a failed write and retries the queued change", async () => {
   const onSetVisibility = jest.fn()
     .mockRejectedValueOnce(new Error("disk full"))
     .mockResolvedValueOnce(undefined);
@@ -181,21 +121,66 @@ test("blocks completion after a failed write and retries the queued change", asy
 
   fireEvent.press(screen.getAllByText("从草稿中删除")[0]!);
   expect(await screen.findByText("保存更改失败，请重试。")).toBeTruthy();
-  expect(screen.getByRole("button", { name: "保存沟通草稿" }).props.accessibilityState.disabled).toBe(true);
+  expect(screen.getByRole("button", { name: "保存并查看我的沟通草稿" }))
+    .toHaveProp("accessibilityState", expect.objectContaining({ disabled: true }));
   fireEvent.press(screen.getByText("重试保存更改"));
   await waitFor(() => expect(onSetVisibility).toHaveBeenCalledTimes(2));
-  fireEvent.press(screen.getByText("保存沟通草稿"));
+  fireEvent.press(screen.getByText("保存并查看我的沟通草稿"));
   await waitFor(() => expect(onFinish).toHaveBeenCalledTimes(1));
 });
 
-test("allows an empty communication draft", async () => {
+test("blocks an opposite visibility change until the pending write settles", async () => {
+  let rejectWrite!: (reason: Error) => void;
+  const pendingWrite = new Promise<void>((_resolve, reject) => { rejectWrite = reject; });
+  const onSetVisibility = jest.fn()
+    .mockImplementationOnce(() => pendingWrite)
+    .mockResolvedValueOnce(undefined);
   const onFinish = jest.fn(async () => "card:journey-1");
-  renderPage({ onFinish });
+  renderPage({ onFinish, onSetVisibility });
+
+  fireEvent.press(screen.getAllByText("从草稿中删除")[0]!);
+  await waitFor(() => expect(onSetVisibility).toHaveBeenCalledTimes(1));
+  const restore = screen.getByRole("button", { name: "恢复到草稿：我对这个夜晚的期待" });
+  expect(restore).toHaveProp("accessibilityState", expect.objectContaining({ disabled: true }));
+  fireEvent.press(restore);
+  expect(onSetVisibility).toHaveBeenCalledTimes(1);
+
+  await act(async () => { rejectWrite(new Error("disk full")); });
+  expect(await screen.findByText("保存更改失败，请重试。")).toBeTruthy();
+  fireEvent.press(screen.getByText("重试保存更改"));
+  await waitFor(() => expect(onSetVisibility).toHaveBeenLastCalledWith("communication-night-expectations", "deleted"));
+  expect(await screen.findByText("更改已保存。")).toBeTruthy();
+  fireEvent.press(screen.getByText("保存并查看我的沟通草稿"));
+  await waitFor(() => expect(onFinish).toHaveBeenCalledTimes(1));
+  expect(screen.getByText("已从草稿中删除")).toBeTruthy();
+});
+
+test("allows an empty communication draft to be saved and viewed", async () => {
+  const onFinish = jest.fn(async () => "card:journey-1");
+  const onSetVisibility = jest.fn(async () => undefined);
+  renderPage({ onFinish, onSetVisibility });
 
   for (let index = 0; index < 7; index += 1) {
     fireEvent.press(screen.getAllByText("从草稿中删除")[0]!);
+    await waitFor(() => expect(onSetVisibility).toHaveBeenCalledTimes(index + 1));
+    await waitFor(() => expect(screen.getAllByText("已从草稿中删除")).toHaveLength(index + 1));
   }
   expect(screen.getAllByText("已从草稿中删除")).toHaveLength(7);
-  fireEvent.press(screen.getByText("保存沟通草稿"));
+  fireEvent.press(screen.getByText("保存并查看我的沟通草稿"));
   await waitFor(() => expect(onFinish).toHaveBeenCalledTimes(1));
+});
+
+test("keeps the user on 6/6 when saving fails and allows retry", async () => {
+  const announce = jest.spyOn(AccessibilityInfo, "announceForAccessibility").mockImplementation(() => undefined);
+  const onFinish = jest.fn()
+    .mockRejectedValueOnce(new Error("completion failed"))
+    .mockResolvedValueOnce("card:journey-1");
+  renderPage({ onFinish });
+
+  fireEvent.press(screen.getByText("保存并查看我的沟通草稿"));
+  expect(await screen.findByText("保存失败，请重试。")).toBeTruthy();
+  expect(announce).toHaveBeenCalledWith("保存失败，请重试。");
+  fireEvent.press(screen.getByText("保存并查看我的沟通草稿"));
+  await waitFor(() => expect(onFinish).toHaveBeenCalledTimes(2));
+  announce.mockRestore();
 });

@@ -15,10 +15,9 @@ import type { AppTheme } from "../../../../core/design/theme";
 import { useTheme } from "../../../../core/design/theme-provider";
 import { useReducedMotion } from "../../../../core/design/motion-preferences";
 import { BottomSheet } from "../../../../core/ui/bottom-sheet";
-import { Card } from "../../../../core/ui/Card";
 import { InfoCard } from "../../../../core/ui/info-card";
 import { TextAction } from "../../../../core/ui/text-action";
-import type { BehaviorAttitude, JournalSaveChoice } from "../../domain/types";
+import type { JournalSaveChoice } from "../../domain/types";
 import { loadJourneyContentCatalog } from "../../infrastructure/journey-content-catalog";
 import { JourneyAction } from "../components/JourneyAction";
 import { JourneyChoice } from "../components/JourneyChoice";
@@ -46,9 +45,7 @@ export type ReflectionValue = {
 
 export type ReflectionPageProps = {
   initialValue?: Partial<ReflectionValue>;
-  behaviorAnswers?: Array<{ behaviorId: string; behaviorLabel: string; attitude: BehaviorAttitude }>;
   onCardVisibilityChange?(visible: boolean): void;
-  onEditBehaviorAttitude?(behaviorId: string, attitude: BehaviorAttitude): ReturnType<JourneyActionCallback>;
   onOpenComfort?(): ReturnType<JourneyActionCallback>;
   onOpenJournal?(): ReturnType<JourneyActionCallback>;
   onSetJournalSaveNotice?(enabled: boolean): ReturnType<JourneyActionCallback>;
@@ -79,15 +76,6 @@ const cards: Array<{ id: ReflectionCardId; title: string }> = [
   { id: "expression", title: "我能表达变化吗" },
   { id: "comfort", title: "什么让我更安心" },
   { id: "journal", title: "给此刻留一句话" },
-];
-
-const reviewGroups: Array<{ attitude: BehaviorAttitude; label: string }> = [
-  { attitude: "looking-forward", label: "我有些期待" },
-  { attitude: "familiar-enjoyed", label: "我已经习惯 / 我享受这类亲密行为" },
-  { attitude: "decide-in-moment", label: "我想留到当时再感受" },
-  { attitude: "unsure", label: "我还没想清楚" },
-  { attitude: "not-this-time", label: "这次我不希望发生" },
-  { attitude: "skip", label: "我暂时留白了" },
 ];
 
 const pressureOptions: Array<{ value: PressureAnswer; label: string }> = [
@@ -203,9 +191,7 @@ function SupportingCopy({ children }: { children: string }) {
 
 export function ReflectionPage({
   initialValue = {},
-  behaviorAnswers = [],
   onCardVisibilityChange,
-  onEditBehaviorAttitude,
   onOpenComfort,
   onOpenJournal,
   onSetJournalSaveNotice,
@@ -242,8 +228,6 @@ export function ReflectionPage({
   const [journalStorageOpen, setJournalStorageOpen] = useState(false);
   const [hideFutureJournalNotice, setHideFutureJournalNotice] = useState(false);
   const [clearConfirmationOpen, setClearConfirmationOpen] = useState(false);
-  const [localBehaviorAnswers, setLocalBehaviorAnswers] = useState(() => [...behaviorAnswers]);
-  const [editingBehaviorId, setEditingBehaviorId] = useState<string | null>(null);
   const flipDuration = Math.round(theme.motion.duration.slow / 2);
 
   useEffect(() => () => {
@@ -409,14 +393,6 @@ export function ReflectionPage({
         ? current.comfortNeedIds.filter((value) => value !== id)
         : [...current.comfortNeedIds, id],
     }));
-  };
-
-  const saveBehaviorAttitude = async (behaviorId: string, attitude: BehaviorAttitude) => {
-    await onEditBehaviorAttitude?.(behaviorId, attitude);
-    setLocalBehaviorAnswers((current) => current.map((answer) => answer.behaviorId === behaviorId
-      ? { ...answer, attitude }
-      : answer));
-    setEditingBehaviorId(null);
   };
 
   const activeCard = cards.find(({ id }) => id === activeCardId);
@@ -675,48 +651,6 @@ export function ReflectionPage({
         <Text accessibilityRole="header" selectable style={styles.introTitle}>你准备了多少，不代表你做得好不好。</Text>
         <SupportingCopy>答案可以随时改变；这里不会生成分数或准备度结论。</SupportingCopy>
       </View>
-      {localBehaviorAnswers.length > 0 ? (
-        <Card accessible={false}>
-          <SectionTitle>这是你刚才留下的答案</SectionTitle>
-          {reviewGroups.map((group) => {
-            const answers = localBehaviorAnswers.filter(({ attitude }) => attitude === group.attitude);
-            return answers.length > 0 ? (
-              <View key={group.attitude} style={styles.options}>
-                <Text selectable style={styles.frontTitle}>{group.label}</Text>
-                {answers.map((answer) => (
-                  <View key={answer.behaviorId} style={styles.options}>
-                    <JourneyAction
-                      accessibilityLabel={`修改${answer.behaviorLabel}的答案`}
-                      label={answer.behaviorLabel}
-                      loadingLabel="正在展开…"
-                      onAction={onEditBehaviorAttitude
-                        ? () => setEditingBehaviorId((current) => current === answer.behaviorId ? null : answer.behaviorId)
-                        : undefined}
-                    />
-                    {editingBehaviorId === answer.behaviorId ? (
-                      <View accessibilityRole="radiogroup" style={styles.options}>
-                        <SupportingCopy>{`正在修改：${answer.behaviorLabel}`}</SupportingCopy>
-                        {reviewGroups.map((option) => (
-                          <JourneyChoice
-                            accessibilityLabel={`修改${answer.behaviorLabel}：${option.label}`}
-                            key={option.attitude}
-                            label={option.label}
-                            mode="single"
-                            onSelect={() => saveBehaviorAttitude(answer.behaviorId, option.attitude)}
-                            selected={answer.attitude === option.attitude}
-                          />
-                        ))}
-                      </View>
-                    ) : null}
-                  </View>
-                ))}
-              </View>
-            ) : null;
-          })}
-          <SupportingCopy>这是你此刻的感受，不需要整齐，也可以随时改变。</SupportingCopy>
-          <SupportingCopy>此页的其他反思仍保留在当前页面。</SupportingCopy>
-        </Card>
-      ) : null}
       <View style={styles.grid} testID="reflection-card-grid">
         {cards.map((card) => {
           const recorded = cardHasContent(card.id, savedValue, storageMode === "session-only");
