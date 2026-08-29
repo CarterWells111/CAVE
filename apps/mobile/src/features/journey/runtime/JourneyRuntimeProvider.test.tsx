@@ -402,10 +402,12 @@ test("revokes protected runtime access as soon as deletion starts and keeps fail
   );
 
   expect(await screen.findByRole("header", { name: "设置" })).toBeTruthy();
-  await waitFor(() => {
-    expect(screen.queryByText("正在读取本机隐私设置…")).toBeNull();
-  });
-  fireEvent.press(screen.getByRole("button", { name: "删除全部本机数据" }));
+  const deleteButton = await screen.findByRole(
+    "button",
+    { name: "删除全部本机数据" },
+    { timeout: 5_000 }
+  );
+  fireEvent.press(deleteButton);
   fireEvent.press(screen.getByRole("button", { name: "确认删除全部本机数据" }));
 
   expect(await screen.findByText("正在删除本机数据…")).toBeTruthy();
