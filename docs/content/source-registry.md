@@ -12,7 +12,7 @@
 
 ## 来源清单
 
-| ID | 类型 | 标题 | 机构 | 链接 | 适用内容 | 发布/复核日期 | 访问日期 | 内部状态 |
+| ID | 类型 | 标题 | 机构 | 链接 | 适用内容 | 发布/复核日期 | 访问日期 | 复核状态 |
 |---|---|---|---|---|---|---|---|---|
 | SRC-001 | EDU | Comprehensive sexuality education | World Health Organization | https://www.who.int/news-room/questions-and-answers/item/comprehensive-sexuality-education | 准确、适龄的性教育；身体认识、同意与身体自主权 | 2023-05-18 | 2026-08-27 | source_verified; expert_review_pending |
 | SRC-002 | EDU | International technical guidance on sexuality education: an evidence-informed approach | UNESCO, UNAIDS, UNFPA, UNICEF, UN Women, WHO | https://cdn.who.int/media/docs/default-source/reproductive-health/sexual-health/international-technical-guidance-on-sexuality-education.pdf | 15—18+ 岁同意、隐私、身体完整性与表达技能 | 2018 | 2026-08-27 | source_verified; expert_review_pending |
@@ -42,7 +42,7 @@
 - 只在出现 `MED` 或 `EDU` 内容的卡片上显示轻量“来源与说明”入口。
 - 首层只显示机构名和来源数量；展开后显示标题、直达链接、发布/复核日期和访问日期。
 - `UX` 文案不伪装成医学建议，不为了“看起来科学”强行附会来源。
-- 某条内容对应多个来源时，在内部记录主来源与辅助来源，界面不堆叠引用。
+- 某条内容对应多个来源时，在内容台账中记录主来源与辅助来源，界面不堆叠引用。
 - 所有 `MED` 文案在上线前必须从 `expert_review_pending` 变为 `reviewed`。
 
 ## 专家复核记录模板
