@@ -61,14 +61,16 @@ export function contentHorizontalPadding(width: number): number {
   return width < 375 ? space.md : space.card;
 }
 
-export function safeContentTopPadding(
+export function safeContentEdgePadding(
   contentPadding: number,
-  safeAreaTop: number,
+  safeAreaInset: number,
   mode: "additive" | "minimum",
 ): number {
   return mode === "additive"
-    ? contentPadding + safeAreaTop
-    : Math.max(contentPadding, safeAreaTop + space.sm);
+    ? contentPadding + safeAreaInset
+    : safeAreaInset > 0
+      ? Math.max(contentPadding, safeAreaInset + space.sm)
+      : contentPadding;
 }
 
 function fixedHeaderTopGap(height: number): number {
@@ -91,7 +93,9 @@ export const Screen = forwardRef<ComponentRef<typeof ScrollView>, ScreenProps>(f
 ) {
   const theme = useTheme();
   const { width } = useWindowDimensions();
-  const safeAreaTop = useContext(SafeAreaInsetsContext)?.top ?? 0;
+  const safeAreaInsets = useContext(SafeAreaInsetsContext);
+  const safeAreaBottom = safeAreaInsets?.bottom ?? 0;
+  const safeAreaTop = safeAreaInsets?.top ?? 0;
   const scrollRef = useRef<ScrollView>(null);
   const horizontalPadding = contentHorizontalPadding(width);
   const scrollToTop = useCallback(() => {
@@ -111,11 +115,20 @@ export const Screen = forwardRef<ComponentRef<typeof ScrollView>, ScreenProps>(f
   const contentTopPadding = typeof requestedContentTopPadding === "number"
     ? requestedContentTopPadding
     : theme.space.xl;
+  const requestedContentBottomPadding = callerPresentation.paddingBottom
+    ?? callerPresentation.paddingVertical
+    ?? theme.space.xl;
+  const contentBottomPadding = typeof requestedContentBottomPadding === "number"
+    ? requestedContentBottomPadding
+    : theme.space.xl;
   const manuallyInsetContent = contentSafeAreaTop
-    ? safeContentTopPadding(contentTopPadding, safeAreaTop, "additive")
+    ? safeContentEdgePadding(contentTopPadding, safeAreaTop, "additive")
     : fixedHeader === undefined && process.env.EXPO_OS === "android"
-      ? safeContentTopPadding(contentTopPadding, safeAreaTop, "minimum")
+      ? safeContentEdgePadding(contentTopPadding, safeAreaTop, "minimum")
       : undefined;
+  const manuallyInsetContentBottom = contentSafeAreaTop || process.env.EXPO_OS === "android"
+    ? safeContentEdgePadding(contentBottomPadding, safeAreaBottom, "minimum")
+    : undefined;
 
   useEffect(() => {
     if (scrollResetKey !== undefined) scrollRef.current?.scrollTo({ animated: false, y: 0 });
@@ -160,7 +173,14 @@ export const Screen = forwardRef<ComponentRef<typeof ScrollView>, ScreenProps>(f
             paddingVertical: theme.space.xl,
           },
           callerPresentation,
-          manuallyInsetContent === undefined ? null : { paddingTop: manuallyInsetContent },
+          manuallyInsetContent === undefined && manuallyInsetContentBottom === undefined
+            ? null
+            : {
+                ...(manuallyInsetContent === undefined ? {} : { paddingTop: manuallyInsetContent }),
+                ...(manuallyInsetContentBottom === undefined
+                  ? {}
+                  : { paddingBottom: manuallyInsetContentBottom }),
+              },
           {
             maxWidth: theme.size.readableContentMax,
             paddingHorizontal: horizontalPadding,

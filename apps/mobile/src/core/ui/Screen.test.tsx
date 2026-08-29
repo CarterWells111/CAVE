@@ -5,7 +5,7 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import {
   contentHorizontalPadding,
-  safeContentTopPadding,
+  safeContentEdgePadding,
   Screen,
   type ScreenProps,
   useScreenScroll,
@@ -13,7 +13,10 @@ import {
 
 type LockedScrollKey = Extract<
   keyof ScreenProps,
-  "horizontal" | "contentInsetAdjustmentBehavior" | "keyboardShouldPersistTaps"
+  | "automaticallyAdjustContentInsets"
+  | "contentInsetAdjustmentBehavior"
+  | "horizontal"
+  | "keyboardShouldPersistTaps"
 >;
 
 const screenPropsLockScrollInvariants: [LockedScrollKey] extends [never] ? true : false = true;
@@ -167,6 +170,7 @@ describe("Screen", () => {
     );
     expect(contentStyle.paddingVertical).toBe(16);
     expect(contentStyle.paddingTop).toBe(63);
+    expect(contentStyle.paddingBottom).toBe(42);
     expect(screen.getByTestId("safe-content-screen")).toHaveProp(
       "contentInsetAdjustmentBehavior",
       "never",
@@ -179,9 +183,10 @@ describe("Screen", () => {
   });
 
   it("keeps Android content below tall cutouts without adding redundant ordinary spacing", () => {
-    expect(safeContentTopPadding(32, 24, "minimum")).toBe(32);
-    expect(safeContentTopPadding(16, 40, "minimum")).toBe(48);
-    expect(safeContentTopPadding(16, 47, "additive")).toBe(63);
+    expect(safeContentEdgePadding(32, 24, "minimum")).toBe(32);
+    expect(safeContentEdgePadding(16, 40, "minimum")).toBe(48);
+    expect(safeContentEdgePadding(0, 0, "minimum")).toBe(0);
+    expect(safeContentEdgePadding(16, 47, "additive")).toBe(63);
   });
 
   it("uses physical screen height when a fixed-header route mounts while the keyboard has shrunk the window", () => {
