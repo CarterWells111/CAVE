@@ -58,3 +58,32 @@ test("SourceDrawer presents metadata and invokes only the passed user action", (
   fireEvent.press(screen.getByRole("button", { name: "在浏览器中打开" }));
   expect(onAction).toHaveBeenCalledTimes(1);
 });
+
+test("supports a non-dismissible reading sheet without exposing a skip action", () => {
+  const onClose = jest.fn();
+  const focus = jest.spyOn(AccessibilityInfo, "setAccessibilityFocus").mockImplementation(jest.fn());
+  let resolvedFocusTarget: { role?: unknown; text?: unknown } = {};
+  const resolveFocusHandle = jest.fn((target) => {
+    const textTarget = target as Text | null;
+    resolvedFocusTarget = {
+      role: textTarget?.props.accessibilityRole,
+      text: textTarget?.props.children,
+    };
+    return 84;
+  });
+  render(
+    <BottomSheet dismissible={false} onClose={onClose} resolveFocusHandle={resolveFocusHandle} title="欢迎来到内界 CAVE" visible>
+      <Text>必读内容</Text>
+    </BottomSheet>,
+  );
+
+  expect(screen.queryByRole("button", { name: "关闭欢迎来到内界 CAVE" })).toBeNull();
+  fireEvent(screen.getByTestId("bottom-sheet-modal"), "show");
+  expect(resolveFocusHandle).toHaveBeenCalledTimes(1);
+  expect(resolvedFocusTarget).toEqual({ role: "header", text: "欢迎来到内界 CAVE" });
+  expect(focus).toHaveBeenCalledWith(84);
+
+  fireEvent(screen.getByTestId("bottom-sheet-modal"), "requestClose");
+  fireEvent(screen.getByTestId("bottom-sheet-panel"), "accessibilityEscape");
+  expect(onClose).not.toHaveBeenCalled();
+});
