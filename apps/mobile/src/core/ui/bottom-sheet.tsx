@@ -20,6 +20,7 @@ export type BottomSheetProps = PropsWithChildren<{
   onInitialFocus?: () => void;
   onRestoreFocus?: () => void;
   closeLabel?: string;
+  dismissible?: boolean;
   reducedMotion?: boolean;
   resolveFocusHandle?: typeof findNodeHandle;
 }>;
@@ -32,12 +33,14 @@ export function BottomSheet({
   onInitialFocus,
   onRestoreFocus,
   closeLabel = `关闭${title}`,
+  dismissible = true,
   reducedMotion = false,
   resolveFocusHandle = findNodeHandle,
 }: BottomSheetProps) {
   const theme = useTheme();
   const wasVisible = useRef(false);
   const closeRef = useRef<View>(null);
+  const titleRef = useRef<Text>(null);
 
   useEffect(() => {
     if (wasVisible.current && !visible) onRestoreFocus?.();
@@ -45,15 +48,20 @@ export function BottomSheet({
   }, [onRestoreFocus, visible]);
 
   const handleShow = () => {
-    const closeNode = resolveFocusHandle(closeRef.current);
-    if (closeNode !== null) AccessibilityInfo.setAccessibilityFocus(closeNode);
+    const focusTarget = dismissible ? closeRef.current : titleRef.current;
+    const focusNode = resolveFocusHandle(focusTarget);
+    if (focusNode !== null) AccessibilityInfo.setAccessibilityFocus(focusNode);
     onInitialFocus?.();
+  };
+
+  const handleDismiss = () => {
+    if (dismissible) onClose();
   };
 
   return (
     <Modal
       animationType={reducedMotion ? "none" : "slide"}
-      onRequestClose={onClose}
+      onRequestClose={handleDismiss}
       onShow={handleShow}
       testID="bottom-sheet-modal"
       transparent
@@ -78,15 +86,15 @@ export function BottomSheet({
           <View
             accessibilityLabel={title}
             accessibilityViewIsModal
-            onAccessibilityEscape={onClose}
+            onAccessibilityEscape={handleDismiss}
             style={{ flexShrink: 1, paddingHorizontal: theme.space.card, paddingTop: theme.space.md }}
             testID="bottom-sheet-panel"
           >
             <View style={{ alignItems: "center", flexDirection: "row", gap: theme.space.sm, justifyContent: "space-between" }}>
-              <Text accessibilityRole="header" style={{ ...theme.typography.heading, color: theme.color.text, flex: 1, flexShrink: 1 }}>
+              <Text ref={titleRef} accessibilityRole="header" style={{ ...theme.typography.heading, color: theme.color.text, flex: 1, flexShrink: 1 }}>
                 {title}
               </Text>
-              <TextAction ref={closeRef} label={closeLabel} onPress={onClose} />
+              {dismissible ? <TextAction ref={closeRef} label={closeLabel} onPress={handleDismiss} /> : null}
             </View>
             <ScrollView
               automaticallyAdjustKeyboardInsets

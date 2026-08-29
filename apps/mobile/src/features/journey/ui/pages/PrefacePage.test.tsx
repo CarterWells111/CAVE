@@ -2,7 +2,7 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react-nativ
 
 import { PrefacePage } from "./preface-page";
 
-test("presents the preface and requires a chosen form of address before continuing", async () => {
+test("requires a chosen form of address before saving it", async () => {
   const onContinue = jest.fn(async () => undefined);
   render(<PrefacePage onContinue={onContinue} />);
 
