@@ -43,6 +43,15 @@ test("shows the restored welcome note for the persisted form of address", () => 
   expect(screen.queryByRole("button", { name: /关闭/u })).toBeNull();
 });
 
+test("substitutes the persisted 你 preference throughout the approved note", () => {
+  render(<PrefaceWelcomeSheet onConfirm={jest.fn()} preference="你" visible />);
+
+  for (const paragraph of welcomeParagraphs) {
+    expect(screen.getByText(paragraph.replaceAll("妳", "你"))).toBeTruthy();
+  }
+  expect(screen.queryByText(/妳/u)).toBeNull();
+});
+
 test("keeps the sheet open, shows a safe error, and allows a loading retry", async () => {
   const retry = deferred<void>();
   const onConfirm = jest.fn()
