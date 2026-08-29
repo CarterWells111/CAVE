@@ -3,37 +3,22 @@ import { useRouter } from "expo-router";
 
 import { useThemePreference } from "../../src/core/design/theme-provider";
 import { DEFAULT_PRIVACY_SETTINGS, type PrivacySettings } from "../../src/core/storage/types";
-import {
-  type JourneyRuntimeContextValue,
-  useOptionalJourneyRuntime,
-} from "../../src/features/journey/runtime/JourneyRuntimeProvider";
+import { useAccountProfile } from "../../src/features/account/runtime/AccountProfileProvider";
+import { useOptionalAuth } from "../../src/features/auth/runtime/AuthProvider";
+import { useAdultDeclaration, useOptionalJourneyRuntime } from "../../src/features/journey/runtime/JourneyRuntimeProvider";
 import { SettingsScreen } from "../../src/features/shell/ui/SettingsScreen";
 
 export default function SettingsRoute() {
   const runtime = useOptionalJourneyRuntime();
-  return runtime ? <AuthorizedSettingsRoute runtime={runtime} /> : <PublicSettingsRoute />;
-}
-
-function PublicSettingsRoute() {
-  const router = useRouter();
-  const { preference, resolvedTheme, saving, setPreference } = useThemePreference();
-  return (
-    <SettingsScreen
-      appearancePreference={preference}
-      appearanceSaving={saving}
-      onAppearancePreferenceChange={setPreference}
-      onBack={() => router.back()}
-      resolvedTheme={resolvedTheme}
-    />
-  );
-}
-
-function AuthorizedSettingsRoute({ runtime }: { runtime: JourneyRuntimeContextValue }) {
+  const auth = useOptionalAuth();
+  const accountProfile = useAccountProfile();
+  const adult = useAdultDeclaration();
   const router = useRouter();
   const { preference, resolvedTheme, saving, setPreference } = useThemePreference();
   const [privacySettings, setPrivacySettings] = useState<PrivacySettings>({ ...DEFAULT_PRIVACY_SETTINGS });
   const [privacySettingsStatus, setPrivacySettingsStatus] = useState<"loading" | "ready" | "error">("loading");
   const loadPrivacySettings = useCallback(async () => {
+    if (runtime === null) return;
     setPrivacySettingsStatus("loading");
     try {
       setPrivacySettings(await runtime.privacySettings.getPrivacySettings());
@@ -42,11 +27,14 @@ function AuthorizedSettingsRoute({ runtime }: { runtime: JourneyRuntimeContextVa
       setPrivacySettings({ ...DEFAULT_PRIVACY_SETTINGS });
       setPrivacySettingsStatus("error");
     }
-  }, [runtime.privacySettings]);
+  }, [runtime]);
 
-  useEffect(() => { void loadPrivacySettings(); }, [loadPrivacySettings]);
+  useEffect(() => {
+    if (runtime !== null) void loadPrivacySettings();
+  }, [loadPrivacySettings, runtime]);
 
   const changeJournalSaveNotice = async (enabled: boolean) => {
+    if (runtime === null) throw new Error("journey-runtime-unavailable");
     const current = await runtime.privacySettings.getPrivacySettings();
     const next = { ...current, showLocalJournalSaveNotice: enabled };
     await runtime.privacySettings.setPrivacySettings(next);
@@ -56,10 +44,29 @@ function AuthorizedSettingsRoute({ runtime }: { runtime: JourneyRuntimeContextVa
 
   return (
     <SettingsScreen
+      account={{
+        status: accountProfile.status,
+        ...(accountProfile.email === undefined ? {} : { email: accountProfile.email }),
+        ...(accountProfile.profile === undefined ? {} : { profile: accountProfile.profile }),
+        ...(accountProfile.status === "signedOut" ? {
+          onSignIn: () => router.push(
+            adult.status === "authorized" ? "/auth/email" : "/journey/adult-gate",
+          ),
+        } : {}),
+        ...(accountProfile.status === "ready" ? {
+          onManageAccount: () => router.push("/auth/email"),
+          chooseAvatar: accountProfile.chooseAvatar,
+          removeAvatar: accountProfile.removeAvatar,
+          saveDisplayName: accountProfile.saveDisplayName,
+        } : {}),
+        ...(accountProfile.status === "error" ? { onRetry: accountProfile.retry } : {}),
+        error: accountProfile.error,
+      }}
       appearancePreference={preference}
       appearanceSaving={saving}
-      deletion={{
+      deletion={runtime === null ? undefined : {
         deleteAllData: async () => {
+          await auth?.clearLocalSession();
           await runtime.deleteAllData();
           router.replace("/(tabs)");
         },
@@ -67,7 +74,7 @@ function AuthorizedSettingsRoute({ runtime }: { runtime: JourneyRuntimeContextVa
       }}
       onAppearancePreferenceChange={setPreference}
       onBack={() => router.back()}
-      privacy={{
+      privacy={runtime === null ? undefined : {
         changeJournalSaveNotice,
         retry: () => { void loadPrivacySettings(); },
         showLocalJournalSaveNotice: privacySettings.showLocalJournalSaveNotice,

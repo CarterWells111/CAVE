@@ -11,6 +11,7 @@ function createWorkerEnv() {
     MODEL_MODE: "mock",
     PROMPT_VERSION: "2026-08-26.1",
     POLICY_VERSION: "2026-08-26.1",
+    AUTH_DB: {} as D1Database,
     TURN_RATE_LIMITER: {
       limit: vi.fn(async () => ({ success: true }))
     },

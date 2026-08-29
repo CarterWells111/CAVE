@@ -4,7 +4,10 @@ import type { ComponentProps } from "react";
 
 import { darkTheme as theme } from "../../../../core/design/theme";
 import { createJourneyDraft, type CommunicationSectionId } from "../../domain/types";
+import * as guidedScroll from "../guided-scroll-screen";
 import { FinalPreparationPage } from "./FinalPreparationPage";
+
+afterEach(() => jest.restoreAllMocks());
 
 jest.mock("react-native-view-shot", () => ({
   captureRef: jest.fn(async () => "file:///local/export.png"),
@@ -29,6 +32,19 @@ function renderPage(overrides: Partial<ComponentProps<typeof FinalPreparationPag
   render(<FinalPreparationPage {...props} />);
   return props;
 }
+
+test("advances confirmed preparation and sharing groups after their writes succeed", async () => {
+  const reveal = jest.fn();
+  jest.spyOn(guidedScroll, "useJourneyGuidedScroll").mockReturnValue({ reveal });
+  const value = draft();
+  value.privatePreparation.items = [{ id: "checklist:expression", category: "expression", sourceIds: [], status: "prepare-more" }];
+  renderPage({ draft: value, onUpdatePreparation: jest.fn(async () => undefined) });
+
+  fireEvent.press(screen.getByRole("radio", { name: "表达与暂停：considered" }));
+  await waitFor(() => expect(reveal).toHaveBeenCalledWith("final-preparation-section-communication-night-expectations"));
+  fireEvent.press(screen.getByRole("radio", { name: "加入分享：我对这个夜晚的期待" }));
+  await waitFor(() => expect(reveal).toHaveBeenLastCalledWith("final-preparation-section-communication-possible-closeness"));
+});
 
 test("renders all seven v4 pending drafts and their explicit confirmation controls", () => {
   renderPage();

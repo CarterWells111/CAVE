@@ -2,7 +2,10 @@ import type { JourneyOption } from "@cave/content";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react-native";
 import { StyleSheet } from "react-native";
 
+import * as guidedScroll from "../guided-scroll-screen";
 import { OvernightPage } from "./OvernightPage";
+
+afterEach(() => jest.restoreAllMocks());
 
 const options = [
   { id: "expect-time", group: "expectation", label: "有更多时间待在一起", exclusive: false, order: 1 },
@@ -10,6 +13,26 @@ const options = [
   { id: "concern-space", group: "concern", label: "想保留一点自己的空间", exclusive: false, order: 3 },
   { id: "concern-none", group: "concern", label: "现在没有特别在意的", exclusive: true, order: 4 },
 ] as JourneyOption[];
+
+test("guides from a saved expectation to concerns and then to the final action", async () => {
+  const reveal = jest.fn();
+  jest.spyOn(guidedScroll, "useJourneyGuidedScroll").mockReturnValue({ reveal });
+  const onProgress = jest.fn(async () => undefined);
+  render(<OvernightPage onContinue={jest.fn()} onProgress={onProgress} options={options} />);
+
+  fireEvent.press(screen.getByRole("button", { name: "你有一点期待的是……，点击展开" }));
+  await screen.findByRole("checkbox", { name: "有更多时间待在一起" });
+  fireEvent.press(screen.getByRole("checkbox", { name: "有更多时间待在一起" }));
+  await waitFor(() => expect(reveal).toHaveBeenCalledWith("overnight-concerns-heading"));
+
+  fireEvent.press(screen.getByRole("button", { name: "你有一点在意的是……，点击展开" }));
+  await screen.findByRole("checkbox", { name: "想保留一点自己的空间" });
+  fireEvent.press(screen.getByRole("checkbox", { name: "想保留一点自己的空间" }));
+  await waitFor(() => expect(reveal).toHaveBeenLastCalledWith("overnight-final-continue"));
+
+  expect(screen.getByTestId("journey-scroll-target-overnight-concerns-heading")).toBeTruthy();
+  expect(screen.getByTestId("journey-scroll-target-overnight-final-continue")).toBeTruthy();
+});
 
 test("fills the collapsed view with education, two summaries, footer guidance, and continuation", () => {
   render(<OvernightPage onContinue={jest.fn()} options={options} />);

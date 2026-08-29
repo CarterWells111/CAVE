@@ -11,6 +11,11 @@ let mockRuntime: { cards: typeof mockCards; reviewHistory: typeof mockReviewHist
   cards: mockCards,
   reviewHistory: mockReviewHistory,
 };
+let mockAccountProfile = {
+  status: "signedOut" as "signedOut" | "loading" | "ready" | "error",
+  email: undefined as string | undefined,
+  profile: undefined as { displayName: string; avatarUri?: string } | undefined,
+};
 
 jest.mock("expo-router", () => ({
   useRouter: () => ({ push: mockPush }),
@@ -20,9 +25,33 @@ jest.mock("../journey/runtime/JourneyRuntimeProvider", () => ({
   useOptionalJourneyRuntime: () => mockRuntime,
 }));
 
+jest.mock("../account/runtime/AccountProfileProvider", () => ({
+  useAccountProfile: () => mockAccountProfile,
+}));
+
 beforeEach(() => {
   jest.clearAllMocks();
   mockRuntime = { cards: mockCards, reviewHistory: mockReviewHistory };
+  mockAccountProfile = { status: "signedOut", email: undefined, profile: undefined };
+});
+
+test("wires the profile account card as read-only and signs in from the public profile", () => {
+  mockRuntime = null;
+  const view = render(<ProfileRoute />);
+
+  fireEvent.press(screen.getByRole("button", { name: "邮箱登录" }));
+  expect(mockPush).toHaveBeenCalledWith("/auth/email");
+
+  mockAccountProfile = {
+    status: "ready",
+    email: "person@example.com",
+    profile: { displayName: "阿岚", avatarUri: "file:///avatar.jpg" },
+  };
+  view.rerender(<ProfileRoute />);
+  expect(screen.getByText("阿岚")).toBeTruthy();
+  expect(screen.getByText("person@example.com")).toBeTruthy();
+  expect(screen.queryByRole("button", { name: "更改头像" })).toBeNull();
+  expect(screen.queryByRole("button", { name: "更改昵称" })).toBeNull();
 });
 
 test("loads metadata-only card and review archives and opens their destinations", async () => {

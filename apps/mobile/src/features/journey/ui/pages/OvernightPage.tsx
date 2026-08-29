@@ -8,6 +8,7 @@ import { Card } from "../../../../core/ui/Card";
 import { ChoiceChip } from "../../../../core/ui/ChoiceChip";
 import { InfoCard } from "../../../../core/ui/info-card";
 import { JourneyAction } from "../components/JourneyAction";
+import { JourneyScrollTarget, useJourneyGuidedScroll } from "../guided-scroll-screen";
 
 type ActionResult = void | Promise<void>;
 type Stage = "expectations" | "concerns";
@@ -117,6 +118,7 @@ export function OvernightPage({
   onOpenSources,
 }: OvernightPageProps) {
   const theme = useTheme();
+  const { reveal } = useJourneyGuidedScroll();
   const styles = createStyles(theme);
   const expectations = options.filter((item) => item.group === "expectation").sort((a, b) => a.order - b.order);
   const concerns = options.filter((item) => item.group === "concern").sort((a, b) => a.order - b.order);
@@ -139,6 +141,7 @@ export function OvernightPage({
     resumeOpening: Panel | null;
   } | null>(null);
   const stageChangeInFlightRef = useRef(false);
+  const advancedPanelsRef = useRef(new Set<Panel>());
   const persistedStageRef = useRef<Stage>(initialStage);
   const bothCollapsed = !expanded.expectations && !expanded.concerns;
   const interactionsLocked = stagePending || failedProgress !== null;
@@ -148,6 +151,7 @@ export function OvernightPage({
     setExpanded((current) => ({ ...current, [panel]: true }));
     setStagePending(false);
     stageChangeInFlightRef.current = false;
+    reveal(`overnight-${panel}-heading`);
   };
 
   const saveProgress = async (
@@ -168,6 +172,12 @@ export function OvernightPage({
     } finally {
       setStagePending(false);
     }
+  };
+
+  const revealAfterSelection = (panel: Panel) => {
+    if (advancedPanelsRef.current.has(panel)) return;
+    advancedPanelsRef.current.add(panel);
+    reveal(panel === "expectations" ? "overnight-concerns-heading" : "overnight-final-continue");
   };
 
   const progressInput = (nextStage: Stage, nextExpectationIds = expectationIds, nextConcernIds = concernIds) => ({
@@ -207,9 +217,12 @@ export function OvernightPage({
     setExpectationIds(nextExpectationIds);
     setConcernIds(nextConcernIds);
     if (onProgress === undefined) {
+      revealAfterSelection(panel);
       return;
     }
-    void saveProgress(progressInput(panel, nextExpectationIds, nextConcernIds));
+    void saveProgress(progressInput(panel, nextExpectationIds, nextConcernIds)).then((saved) => {
+      if (saved) revealAfterSelection(panel);
+    });
   };
 
   const retryProgress = () => {
@@ -231,6 +244,7 @@ export function OvernightPage({
       ) : null}
 
       <View style={styles.accordions}>
+        <JourneyScrollTarget targetId="overnight-expectations-heading">
         <AccordionPanel
           busy={stagePending}
           disabled={interactionsLocked}
@@ -241,6 +255,8 @@ export function OvernightPage({
           options={expectations}
           title="你有一点期待的是……"
         />
+        </JourneyScrollTarget>
+        <JourneyScrollTarget targetId="overnight-concerns-heading">
         <AccordionPanel
           busy={stagePending}
           disabled={interactionsLocked}
@@ -251,6 +267,7 @@ export function OvernightPage({
           options={concerns}
           title="你有一点在意的是……"
         />
+        </JourneyScrollTarget>
       </View>
 
       {stageError ? (
@@ -285,13 +302,15 @@ export function OvernightPage({
         >
           <Text style={styles.sourceLink}>查看完整信息来源</Text>
         </Pressable>
-        <JourneyAction
-          errorMessage="保存失败，请重试。"
-          label="带着这些感受继续"
-          loadingLabel="正在继续…"
-          disabled={interactionsLocked}
-          onAction={() => onContinue({ expectationIds, concernIds, customNote: initialCustomNote })}
-        />
+        <JourneyScrollTarget targetId="overnight-final-continue">
+          <JourneyAction
+            errorMessage="保存失败，请重试。"
+            label="带着这些感受继续"
+            loadingLabel="正在继续…"
+            disabled={interactionsLocked}
+            onAction={() => onContinue({ expectationIds, concernIds, customNote: initialCustomNote })}
+          />
+        </JourneyScrollTarget>
       </View>
     </View>
   );

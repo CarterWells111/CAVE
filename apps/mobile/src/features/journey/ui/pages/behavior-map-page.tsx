@@ -19,6 +19,7 @@ import type { BehaviorAttitude } from "../../domain/types";
 import { loadJourneyContentCatalog } from "../../infrastructure/journey-content-catalog";
 import { JourneyAction } from "../components/JourneyAction";
 import { JourneyChoice } from "../components/JourneyChoice";
+import { JourneyScrollTarget, useJourneyGuidedScroll } from "../guided-scroll-screen";
 import type { JourneyAction as JourneyActionCallback } from "../journey-ui-contracts";
 
 type CustomBehavior = { id: string; label: string };
@@ -88,6 +89,7 @@ export function BehaviorMapPage({
   resolveFocusHandle = findNodeHandle,
 }: BehaviorMapPageProps) {
   const theme = useTheme();
+  const { reveal } = useJourneyGuidedScroll();
   const systemReducedMotion = useReducedMotion();
   const shouldReduceMotion = reducedMotion ?? systemReducedMotion;
   const styles = createStyles(theme);
@@ -108,6 +110,7 @@ export function BehaviorMapPage({
     initialSensitiveContentConsent === true ? "confirmed" : "intro",
   );
   const [sensitiveConfirmationChecked, setSensitiveConfirmationChecked] = useState(false);
+  const advancedCardsRef = useRef(new Set<string>());
 
   useEffect(() => () => {
     mountedRef.current = false;
@@ -138,7 +141,15 @@ export function BehaviorMapPage({
     ...(addCustomPoint ? [{ kind: "add-custom" as const, id: "behavior-map-custom" as const, frontLabel: addCustomPoint.label }] : []),
   ];
   const baseComplete = requiredBaseBehaviorIds.every((id) => attitudes[id] !== undefined);
+  const previousBaseCompleteRef = useRef(baseComplete);
   const flipDuration = Math.round(theme.motion.duration.slow / 2);
+
+  useEffect(() => {
+    if (baseComplete && !previousBaseCompleteRef.current) {
+      reveal("behavior-map-final-continue");
+    }
+    previousBaseCompleteRef.current = baseComplete;
+  }, [baseComplete, reveal]);
 
   const animateTo = (toValue: number) => new Promise<void>((resolve) => {
     Animated.timing(flipRotation, {
@@ -238,6 +249,13 @@ export function BehaviorMapPage({
     await returnToGallery();
   };
 
+  const chooseDraftAttitude = (behaviorId: string, attitude: BehaviorAttitude) => {
+    setDraftAttitude(attitude);
+    if (advancedCardsRef.current.has(behaviorId)) return;
+    advancedCardsRef.current.add(behaviorId);
+    reveal("behavior-map-active-action");
+  };
+
   const persistSensitiveConsent = async (consented: boolean) => {
     await onSetSensitiveContentConsent?.(consented);
     setSensitiveConsent(consented);
@@ -274,6 +292,7 @@ export function BehaviorMapPage({
 
   if (activeCard) {
     return (
+      <JourneyScrollTarget targetId="behavior-map-active-card">
       <Animated.View
         style={[
           styles.fullPage,
@@ -302,7 +321,7 @@ export function BehaviorMapPage({
                       disabled={animating}
                       label={attitude.label}
                       mode="single"
-                      onSelect={() => setDraftAttitude(domainAttitude)}
+                      onSelect={() => chooseDraftAttitude(activeCard.id, domainAttitude)}
                       selected={draftAttitude === domainAttitude}
                     />
                     <Text selectable style={styles.feedback}>{attitude.feedback}</Text>
@@ -310,13 +329,15 @@ export function BehaviorMapPage({
                 );
               })}
             </View>
-            <JourneyAction
-              disabled={draftAttitude === undefined || animating}
-              errorMessage="暂时无法保存，请重试。"
-              label="带着这些感受继续"
-              loadingLabel="正在保存…"
-              onAction={saveActiveBehavior}
-            />
+            <JourneyScrollTarget targetId="behavior-map-active-action">
+              <JourneyAction
+                disabled={draftAttitude === undefined || animating}
+                errorMessage="暂时无法保存，请重试。"
+                label="带着这些感受继续"
+                loadingLabel="正在保存…"
+                onAction={saveActiveBehavior}
+              />
+            </JourneyScrollTarget>
           </View>
         ) : activeCard.kind === "more" ? (
           <View style={styles.fullBack} testID="behavior-card-back-more">
@@ -334,9 +355,14 @@ export function BehaviorMapPage({
                 <Text selectable style={styles.supporting}>部分内容可能让人不舒服。你可以随时返回；不查看不会影响后续流程或积分。</Text>
                 <JourneyChoice
                   label="我知道接下来会看到更具体的健康教育内容，并愿意继续"
-                  onSelect={() => setSensitiveConfirmationChecked((current) => !current)}
+                  onSelect={() => {
+                    const next = !sensitiveConfirmationChecked;
+                    setSensitiveConfirmationChecked(next);
+                    if (next) reveal("behavior-map-sensitive-confirm");
+                  }}
                   selected={sensitiveConfirmationChecked}
                 />
+                <JourneyScrollTarget targetId="behavior-map-sensitive-confirm">
                 <JourneyAction
                   disabled={!sensitiveConfirmationChecked}
                   errorMessage="暂时无法记录，请重试。"
@@ -344,6 +370,7 @@ export function BehaviorMapPage({
                   loadingLabel="正在记录选择…"
                   onAction={() => persistSensitiveConsent(true)}
                 />
+                </JourneyScrollTarget>
                 <TextAction label="返回更多具体行为" onPress={() => setSensitiveStage("intro")} />
               </>
             ) : (
@@ -379,6 +406,7 @@ export function BehaviorMapPage({
           </View>
         )}
       </Animated.View>
+      </JourneyScrollTarget>
     );
   }
 
@@ -407,12 +435,14 @@ export function BehaviorMapPage({
         })}
       </View>
       {baseComplete ? (
+        <JourneyScrollTarget targetId="behavior-map-final-continue">
         <JourneyAction
           accessibilityLabel="完成这些卡牌，继续整理感受"
           label="完成这些卡牌，继续整理感受"
           loadingLabel="正在继续…"
           onAction={() => onComplete({ participated: true })}
         />
+        </JourneyScrollTarget>
       ) : null}
     </View>
   );

@@ -1,23 +1,50 @@
 {
-  "$schema": "../../node_modules/wrangler/config-schema.json",
-  "name": "neijie-cave-gateway",
-  "main": "src/index.ts",
-  "compatibility_date": "2026-08-26",
-  "vars": {
-    "MODEL_MODE": "mock",
-    "PROMPT_VERSION": "2026-08-26.1",
-    "POLICY_VERSION": "2026-08-26.1"
-  },
-  "ratelimits": [
-    {
-      "name": "TURN_RATE_LIMITER",
-      "namespace_id": "1001",
-      "simple": { "limit": 10, "period": 60 }
-    },
-    {
-      "name": "DEBRIEF_RATE_LIMITER",
-      "namespace_id": "1002",
-      "simple": { "limit": 5, "period": 60 }
-    }
-  ]
+	"$schema": "../../node_modules/wrangler/config-schema.json",
+	"name": "neijie-cave-gateway",
+	"main": "src/index.ts",
+	"compatibility_date": "2026-08-26",
+	"workers_dev": true,
+	"vars": {
+		"MODEL_MODE": "mock",
+		"PROMPT_VERSION": "2026-08-26.1",
+		"POLICY_VERSION": "2026-08-26.1"
+	},
+	"routes": [
+		{
+			"pattern": "api.neijiecave.com",
+			"zone_name": "neijiecave.com",
+			"custom_domain": true
+		}
+	],
+	"d1_databases": [
+		{
+			"binding": "AUTH_DB",
+			"database_name": "neijie-cave-auth",
+			"database_id": "91e935db-f104-4bcf-b6e0-964006c7b4e8",
+			"migrations_dir": "migrations"
+		}
+	],
+	"triggers": {
+		"crons": [
+			"17 3 * * *"
+		]
+	},
+	"ratelimits": [
+		{
+			"name": "TURN_RATE_LIMITER",
+			"namespace_id": "1001",
+			"simple": {
+				"limit": 10,
+				"period": 60
+			}
+		},
+		{
+			"name": "DEBRIEF_RATE_LIMITER",
+			"namespace_id": "1002",
+			"simple": {
+				"limit": 5,
+				"period": 60
+			}
+		}
+	]
 }

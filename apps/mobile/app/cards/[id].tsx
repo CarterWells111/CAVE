@@ -97,6 +97,9 @@ export default function SavedCardRoute() {
       sections={retainedSections}
       onBack={() => router.replace("/(tabs)/profile")}
       onEdit={async () => { router.replace(`/cards/${record.id}?mode=edit`); }}
+      mode={mode === "fullscreen" ? "fullscreen" : "normal"}
+      onFullscreen={() => router.replace(`/cards/${record.id}${mode === "fullscreen" ? "" : "?mode=fullscreen"}`)}
+      onSaveToJournal={() => router.push({ pathname: "/journal/new", params: { cardId: record.id } })}
       onReconfirm={async () => {
         const confirmedRecord = confirmSavedCardSharingPolicy(record);
         await runtime.cards.save(confirmedRecord);

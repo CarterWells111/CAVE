@@ -12,6 +12,7 @@ const targets = explicitTargets.length > 0
     ];
 const sourceExtensions = new Set([".js", ".jsx", ".mjs", ".ts", ".tsx"]);
 const imageSaveAdapter = "features/journey/infrastructure/expo-card-image-adapter.ts";
+const authApiAdapter = "features/auth/infrastructure/auth-api-client.ts";
 const permissionMethods = new Set([
   "requestCameraPermissionsAsync",
   "requestMediaLibraryPermissionsAsync",
@@ -142,7 +143,7 @@ function isFetchReference(node) {
     && accessedName(node) === "fetch";
 }
 
-function integrationFindings(sourceFile, file) {
+function integrationFindings(sourceFile, file, allowNetworkFetch = false) {
   const findings = [];
   const visit = (node) => {
     const specifier = moduleSpecifier(node);
@@ -160,7 +161,7 @@ function integrationFindings(sourceFile, file) {
         line: sourceFile.getLineAndCharacterOfPosition(node.getStart(sourceFile)).line + 1
       });
     }
-    if (isFetchReference(node)) {
+    if (!allowNetworkFetch && isFetchReference(node)) {
       findings.push({
         file,
         label: "AI/model/Gateway integration",
@@ -350,7 +351,11 @@ for (const file of files) {
   const reportPath = normalizePath(relative(workspaceRoot, file)) || basename(file);
   const sourceFile = ts.createSourceFile(reportPath, source, ts.ScriptTarget.Latest, true);
 
-  findings.push(...integrationFindings(sourceFile, reportPath));
+  findings.push(...integrationFindings(
+    sourceFile,
+    reportPath,
+    normalizePath(file).endsWith(authApiAdapter)
+  ));
   findings.push(...recordingFindings(sourceFile, reportPath));
 
   findings.push(...permissionFindings(

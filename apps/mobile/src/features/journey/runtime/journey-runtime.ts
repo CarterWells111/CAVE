@@ -26,6 +26,9 @@ import {
   InMemoryAppearancePreferencesRepository,
   type AppearancePreferencesRepository,
 } from "../../../core/design/appearance-preferences";
+import { JournalService } from "../../journal/application/journal-service";
+import { InMemoryJournalRepository } from "../../journal/infrastructure/in-memory-journal-repository";
+import type { JournalRepository } from "../../journal/infrastructure/journal-repository";
 import {
   DEFAULT_PRIVACY_SETTINGS,
   type PrivacySettings,
@@ -61,6 +64,8 @@ export type JourneyRuntime = {
   reviewHistory: ReviewHistoryRepository<JourneyDraft>;
   adultDeclaration: AdultDeclarationRepository;
   appearancePreferences: AppearancePreferencesRepository;
+  journal: JournalRepository;
+  createJournalService(ownerAccountId: string): JournalService;
   privacySettings: PrivacySettingsRepository;
   deleteAllData(): Promise<void>;
   replaceActiveReview(): Promise<void>;
@@ -81,8 +86,10 @@ type ComposeDependencies = RuntimeDependencies & {
   shellState?: AppShellStateRepository;
   reviewHistory?: ReviewHistoryRepository<JourneyDraft>;
   appearancePreferences?: AppearancePreferencesRepository;
+  journal?: JournalRepository;
   privacySettings?: PrivacySettingsRepository;
   deleteStorage?: () => Promise<void>;
+  deleteAdditionalStorage?: () => Promise<void>;
   saveVersionedDraft?: (draft: JourneyDraft, active: ActiveReview<JourneyDraft>) => Promise<void>;
   completeJourney?: (transaction: JourneyCompletionTransaction) => Promise<void>;
   branchReview?: (transaction: JourneyBranchTransaction) => Promise<void>;
@@ -91,6 +98,7 @@ type ComposeDependencies = RuntimeDependencies & {
 
 type CreateDependencies = RuntimeDependencies & {
   executionEnvironment: string;
+  deleteAdditionalStorage?: () => Promise<void>;
   createNativeRuntime(): Promise<JourneyRuntime>;
 };
 
@@ -106,6 +114,7 @@ export function composeJourneyRuntime({
   shellState = new InMemoryAppShellStateRepository(),
   reviewHistory = new InMemoryPayloadReviewHistoryRepository<JourneyDraft>(),
   appearancePreferences = new InMemoryAppearancePreferencesRepository(),
+  journal = new InMemoryJournalRepository(),
   privacySettings = new InMemoryPrivacySettingsRepository(),
   saveVersionedDraft,
   completeJourney,
@@ -117,6 +126,7 @@ export function composeJourneyRuntime({
     hasPendingLocalDataDeletion: async () => false
   },
   deleteStorage,
+  deleteAdditionalStorage,
   clipboard,
   createId,
   now
@@ -133,6 +143,11 @@ export function composeJourneyRuntime({
     practice: new LocalPresetPracticeEngine(loadJourneyContentCatalog().practice),
     now
   });
+  const createJournalService = (ownerAccountId: string) => new JournalService(
+    journal,
+    { createId, now },
+    ownerAccountId,
+  );
   const deleteAllData = async () => {
     if (deleteStorage !== undefined) {
       await deleteStorage();
@@ -143,9 +158,11 @@ export function composeJourneyRuntime({
     await Promise.all(savedCards.map(({ id }) => cards.delete(id)));
     await shellState.clear();
     await reviewHistory.clearAll();
+    await journal.clearAll();
     await appearancePreferences.save("system");
     await privacySettings.resetPrivacySettings();
     await service.resetJourney();
+    await deleteAdditionalStorage?.();
   };
   const replaceActiveReview = async () => {
     const persistedActive = await reviewHistory.loadActive();
@@ -181,7 +198,7 @@ export function composeJourneyRuntime({
     }
     service.adoptPersistedJourney(draft);
   };
-  return { mode, persistence, service, controller, drafts: versionedDrafts, cards, shellState, reviewHistory, adultDeclaration, appearancePreferences, privacySettings, deleteAllData, replaceActiveReview, branchFromReview };
+  return { mode, persistence, service, controller, drafts: versionedDrafts, cards, shellState, reviewHistory, adultDeclaration, appearancePreferences, journal, createJournalService, privacySettings, deleteAllData, replaceActiveReview, branchFromReview };
 }
 
 export async function createJourneyRuntime({
@@ -189,6 +206,7 @@ export async function createJourneyRuntime({
   clipboard,
   createId,
   now,
+  deleteAdditionalStorage,
   createNativeRuntime
 }: CreateDependencies): Promise<JourneyRuntime> {
   if (resolveJourneyRuntimeMode(executionEnvironment) === "expo-go-demo") {
@@ -199,7 +217,8 @@ export async function createJourneyRuntime({
       cards: new InMemoryCommunicationCardRepository(),
       clipboard,
       createId,
-      now
+      now,
+      ...(deleteAdditionalStorage === undefined ? {} : { deleteAdditionalStorage }),
     });
   }
   return createNativeRuntime();

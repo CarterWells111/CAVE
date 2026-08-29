@@ -19,6 +19,14 @@ jest.mock("../journey/runtime/JourneyRuntimeProvider", () => ({
   useOptionalJourneyRuntime: () => mockRuntime,
 }));
 
+jest.mock("../account/runtime/AccountProfileProvider", () => ({
+  useAccountProfile: () => ({
+    status: "signedOut",
+    error: null,
+    retry: jest.fn(),
+  }),
+}));
+
 beforeEach(() => {
   jest.clearAllMocks();
   mockCardsListMetadata.mockReset();

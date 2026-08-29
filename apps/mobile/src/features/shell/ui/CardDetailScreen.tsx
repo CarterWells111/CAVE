@@ -25,6 +25,7 @@ export type CardDetailMetadata = Readonly<{
 export type CardDetailScreenProps = {
   metadata: CardDetailMetadata;
   sections: readonly CommunicationDraftSection[];
+  mode?: "normal" | "fullscreen";
   onBack(): void;
   onEdit(): Promise<void>;
   exportEligible?: boolean;
@@ -33,16 +34,36 @@ export type CardDetailScreenProps = {
   onCopy?(model: CommunicationCardExportModel): Promise<void>;
   onSaveImage?(model: CommunicationCardExportModel, imageUri: string): Promise<void>;
   onOpenImageSettings?(): void | Promise<void>;
+  onFullscreen?(): void;
+  onSaveToJournal?(): void;
 };
 
 type ActionState = "idle" | "editing" | "edit-error" | "reconfirming" | "reconfirm-error" | "copying" | "copy-error" | "saving-image" | "save-image-error";
 
-export function CardDetailScreen({ exportModel, metadata, onBack, onCopy, onEdit, onOpenImageSettings, onReconfirm, onSaveImage, exportEligible = false, sections }: CardDetailScreenProps) {
+export function CardDetailScreen({
+  exportEligible = false,
+  exportModel,
+  metadata,
+  mode = "normal",
+  onBack,
+  onCopy,
+  onEdit,
+  onOpenImageSettings,
+  onReconfirm,
+  onSaveImage,
+  onFullscreen,
+  onSaveToJournal,
+  sections,
+}: CardDetailScreenProps) {
   const theme = useTheme();
   const [actionState, setActionState] = useState<ActionState>("idle");
   const [imageSettingsRecoveryVisible, setImageSettingsRecoveryVisible] = useState(false);
   const editing = useRef(false);
   const exportPaperRef = useRef<View>(null);
+  const busy = actionState === "editing"
+    || actionState === "reconfirming"
+    || actionState === "copying"
+    || actionState === "saving-image";
 
   const openEdit = async () => {
     if (editing.current) return;
@@ -95,7 +116,7 @@ export function CardDetailScreen({ exportModel, metadata, onBack, onCopy, onEdit
       contentContainerStyle={{
         alignItems: "center",
         gap: theme.space.xl,
-        paddingHorizontal: theme.space.lg,
+        paddingHorizontal: mode === "fullscreen" ? theme.space.md : theme.space.lg,
         paddingVertical: theme.space.xl
       }}
       contentInsetAdjustmentBehavior="automatic"
@@ -103,7 +124,10 @@ export function CardDetailScreen({ exportModel, metadata, onBack, onCopy, onEdit
       style={{ backgroundColor: theme.color.background }}
       testID="card-detail-scroll"
     >
-      <View style={{ gap: theme.space.xl, maxWidth: theme.size.readableContentMax, width: "100%" }} testID="card-detail-content">
+      <View
+        style={{ gap: theme.space.xl, maxWidth: mode === "fullscreen" ? "100%" : theme.size.readableContentMax, width: "100%" }}
+        testID="card-detail-content"
+      >
         <View style={{ gap: theme.space.sm }}>
           <Text accessibilityRole="header" selectable style={{ ...theme.typography.title, color: theme.color.text }}>
             {metadata.title}
@@ -111,6 +135,11 @@ export function CardDetailScreen({ exportModel, metadata, onBack, onCopy, onEdit
           <Text selectable style={{ ...theme.typography.caption, color: theme.color.textSecondary }}>
             {`${metadata.dateLabel} · ${metadata.statusLabel}`}
           </Text>
+          {mode === "fullscreen" ? (
+            <Text accessibilityLiveRegion="polite" selectable style={{ ...theme.typography.label, color: theme.color.brandSoft }}>
+              全屏展示模式
+            </Text>
+          ) : null}
         </View>
 
         <View
@@ -179,11 +208,18 @@ export function CardDetailScreen({ exportModel, metadata, onBack, onCopy, onEdit
 
         <View style={{ gap: theme.space.md }}>
           <Button
+            disabled={busy && actionState !== "editing"}
             label={actionState === "editing" ? "正在打开编辑…" : "编辑这份草稿"}
             loading={actionState === "editing"}
             onPress={() => { void openEdit(); }}
           />
-          <SecondaryButton disabled={actionState === "editing"} label="返回我的卡片" onPress={onBack} />
+          {onSaveToJournal ? <SecondaryButton disabled={busy} label="保存到内界手记" onPress={onSaveToJournal} /> : null}
+          {onFullscreen ? <SecondaryButton
+            disabled={busy}
+            label={mode === "fullscreen" ? "退出全屏展示" : "全屏展示"}
+            onPress={onFullscreen}
+          /> : null}
+          <SecondaryButton disabled={busy} label="返回我的卡片" onPress={onBack} />
         </View>
       </View>
     </ScrollView>

@@ -1,7 +1,10 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react-native";
 import { AccessibilityInfo, Animated, StyleSheet } from "react-native";
 
+import * as guidedScroll from "../guided-scroll-screen";
 import { ReflectionPage, type ReflectionPageProps } from "./reflection-page";
+
+afterEach(() => jest.restoreAllMocks());
 
 function renderPage(overrides: Partial<ReflectionPageProps> = {}) {
   const props: ReflectionPageProps = {
@@ -20,6 +23,20 @@ async function openCard(title: string, cardId: string) {
   await waitFor(() => expect(screen.getByTestId("reflection-card-fullscreen"))
     .toHaveProp("accessibilityState", expect.objectContaining({ busy: false })));
 }
+
+test("reveals the active card action only after the first answer", async () => {
+  const reveal = jest.fn();
+  jest.spyOn(guidedScroll, "useJourneyGuidedScroll").mockReturnValue({ reveal });
+  renderPage();
+  await openCard("我能说不、暂停或离开吗", "safety");
+
+  fireEvent.press(screen.getByRole("radio", { name: "拒绝或离开：可以" }));
+  fireEvent.press(screen.getByRole("radio", { name: "拒绝或离开：我还不确定" }));
+
+  expect(reveal).toHaveBeenCalledTimes(1);
+  expect(reveal).toHaveBeenCalledWith("reflection-card-active-action");
+  expect(screen.getByTestId("journey-scroll-target-reflection-card-active-action")).toBeTruthy();
+});
 
 test("renders exactly five ordered fronts with a full-width final card and no Page 4 review", () => {
   renderPage();

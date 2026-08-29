@@ -1,7 +1,10 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react-native";
 import { AccessibilityInfo, Animated, StyleSheet } from "react-native";
 
+import * as guidedScroll from "../guided-scroll-screen";
 import { BehaviorMapPage } from "./behavior-map-page";
+
+afterEach(() => jest.restoreAllMocks());
 
 const completeBaseAttitudes = {
   "behavior-hug": "looking-forward",
@@ -17,6 +20,20 @@ async function openCard(frontTestId: string, backTestId: string) {
   fireEvent.press(screen.getByTestId(frontTestId));
   await waitFor(() => expect(screen.getByTestId(backTestId)).toBeTruthy());
 }
+
+test("reveals a full-screen card action once after the first answer", async () => {
+  const reveal = jest.fn();
+  jest.spyOn(guidedScroll, "useJourneyGuidedScroll").mockReturnValue({ reveal });
+  render(<BehaviorMapPage onComplete={jest.fn()} onSetAttitude={jest.fn()} reducedMotion />);
+  await openCard("behavior-card-front-behavior-hug", "behavior-card-back-behavior-hug");
+
+  fireEvent.press(screen.getByRole("radio", { name: "拥抱或依偎：我还没想清楚" }));
+  fireEvent.press(screen.getByRole("radio", { name: "拥抱或依偎：这不是我这次想要的" }));
+
+  expect(reveal).toHaveBeenCalledTimes(1);
+  expect(reveal).toHaveBeenCalledWith("behavior-map-active-action");
+  expect(screen.getByTestId("journey-scroll-target-behavior-map-active-action")).toBeTruthy();
+});
 
 test("renders all base actions as an independent two-column card grid", () => {
   render(<BehaviorMapPage onComplete={jest.fn()} onSetAttitude={jest.fn()} reducedMotion />);

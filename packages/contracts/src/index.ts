@@ -27,6 +27,30 @@ export type {
 export { ApiErrorCodeSchema, ApiErrorResponseSchema } from "./errors";
 export type { ApiErrorCode, ApiErrorResponse } from "./errors";
 export {
+  AccountDeletionChallengeRequestSchema,
+  AccountDeletionGrantResponseSchema,
+  AccountDeletionRequestSchema,
+  AuthSessionResponseSchema,
+  EmailChallengeAcceptedSchema,
+  EmailChallengeRequestSchema,
+  EmailChallengeVerifyRequestSchema,
+  LogoutSessionRequestSchema,
+  RefreshSessionRequestSchema,
+  SessionTokensSchema,
+} from "./auth";
+export type {
+  AccountDeletionChallengeRequest,
+  AccountDeletionGrantResponse,
+  AccountDeletionRequest,
+  AuthSessionResponse,
+  EmailChallengeAccepted,
+  EmailChallengeRequest,
+  EmailChallengeVerifyRequest,
+  LogoutSessionRequest,
+  RefreshSessionRequest,
+  SessionTokens,
+} from "./auth";
+export {
   DebriefDimensionSchema,
   DebriefRequestSchema,
   DebriefResponseSchema,

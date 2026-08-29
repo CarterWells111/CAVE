@@ -1,5 +1,6 @@
+import { createRef, type ComponentRef } from "react";
 import { fireEvent, render, screen, within } from "@testing-library/react-native";
-import { Pressable, StyleSheet, Text } from "react-native";
+import { Pressable, ScrollView, StyleSheet, Text } from "react-native";
 
 import { contentHorizontalPadding, Screen, type ScreenProps, useScreenScroll } from "./Screen";
 
@@ -102,6 +103,15 @@ describe("Screen", () => {
 
   it("locks scroll invariants out of its public props", () => {
     expect(screenPropsLockScrollInvariants).toBe(true);
+  });
+
+  it("forwards a ref to the native scroll view", () => {
+    const ref = createRef<ComponentRef<typeof ScrollView>>();
+
+    render(<Screen ref={ref} testID="ref-screen"><Text>正文</Text></Screen>);
+
+    expect(ref.current).not.toBeNull();
+    expect(ref.current?.props.testID).toBe("ref-screen");
   });
 
   it("lets caller presentation styles through without overriding readable width or gutters", () => {

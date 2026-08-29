@@ -2,16 +2,26 @@ import { act, fireEvent, render, screen, waitFor } from "@testing-library/react-
 import { loadCatalog } from "@cave/content";
 import { StyleSheet } from "react-native";
 
+import * as guidedScroll from "../guided-scroll-screen";
 import { PresetPracticePage } from "./PresetPracticePage";
 
-const mockScrollToTop = jest.fn();
-
-jest.mock("../../../../core/ui/Screen", () => ({
-  ...jest.requireActual("../../../../core/ui/Screen"),
-  useScreenScroll: () => ({ scrollToTop: mockScrollToTop }),
-}));
+afterEach(() => jest.restoreAllMocks());
 
 const catalog = loadCatalog().journey.practice;
+
+test("keeps each replacement stage card visible with the nearest correction", async () => {
+  const reveal = jest.fn();
+  jest.spyOn(guidedScroll, "useJourneyGuidedScroll").mockReturnValue({ reveal });
+  render(<PresetPracticePage catalog={catalog} onComplete={jest.fn()} />);
+
+  fireEvent.press(screen.getByText("开始情境练习"));
+  await waitFor(() => expect(reveal).toHaveBeenLastCalledWith("practice-stage-need", { mode: "nearest" }));
+  fireEvent.press(screen.getByText("整体推进得有点快"));
+  await waitFor(() => expect(reveal).toHaveBeenLastCalledWith("practice-stage-editable-phrase", { mode: "nearest" }));
+  fireEvent.press(screen.getByText("先对着镜子说一遍"));
+  await waitFor(() => expect(reveal).toHaveBeenLastCalledWith("practice-stage-mirror", { mode: "nearest" }));
+  expect(screen.getByTestId("journey-scroll-target-practice-stage-mirror")).toBeTruthy();
+});
 
 beforeEach(() => {
   jest.clearAllMocks();
@@ -293,21 +303,23 @@ test("keeps the editable phrase keyboard-friendly and text-scalable", () => {
   expect(screen.getByText("把需要说出来").props.numberOfLines).toBeUndefined();
 });
 
-test("returns to the top only when the visible practice step changes", async () => {
+test("reveals only when the visible practice step changes", async () => {
+  const reveal = jest.fn();
+  jest.spyOn(guidedScroll, "useJourneyGuidedScroll").mockReturnValue({ reveal });
   render(<PresetPracticePage catalog={catalog} onComplete={jest.fn()} />);
-  expect(mockScrollToTop).not.toHaveBeenCalled();
+  expect(reveal).not.toHaveBeenCalled();
 
   fireEvent.press(screen.getByText("开始情境练习"));
-  await waitFor(() => expect(mockScrollToTop).toHaveBeenCalledTimes(1));
+  await waitFor(() => expect(reveal).toHaveBeenCalledTimes(1));
   fireEvent.press(screen.getByText("整体推进得有点快"));
-  await waitFor(() => expect(mockScrollToTop).toHaveBeenCalledTimes(2));
+  await waitFor(() => expect(reveal).toHaveBeenCalledTimes(2));
 
   fireEvent.press(screen.getByText("改成我的说法"));
   fireEvent.changeText(screen.getByLabelText("我的表达句"), "请慢一点。 ");
-  expect(mockScrollToTop).toHaveBeenCalledTimes(2);
+  expect(reveal).toHaveBeenCalledTimes(2);
 
   fireEvent.press(screen.getByText("先对着镜子说一遍"));
-  await waitFor(() => expect(mockScrollToTop).toHaveBeenCalledTimes(3));
+  await waitFor(() => expect(reveal).toHaveBeenCalledTimes(3));
   fireEvent.press(screen.getByText("暂时跳过"));
-  await waitFor(() => expect(mockScrollToTop).toHaveBeenCalledTimes(4));
+  await waitFor(() => expect(reveal).toHaveBeenCalledTimes(4));
 });

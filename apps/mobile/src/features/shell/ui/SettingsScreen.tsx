@@ -1,6 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { type ComponentProps, useRef, useState } from "react";
-import { Pressable, ScrollView, Switch, Text, View } from "react-native";
+import { Alert, Modal, Pressable, ScrollView, Switch, Text, TextInput, View } from "react-native";
 
 import { useTheme } from "../../../core/design/theme-provider";
 import type { ResolvedTheme, ThemePreference } from "../../../core/design/theme";
@@ -9,10 +9,24 @@ import { Card } from "../../../core/ui/Card";
 import { InfoCard } from "../../../core/ui/info-card";
 import { IconTextAction } from "../../../core/ui/icon-text-action";
 import { SecondaryButton } from "../../../core/ui/secondary-button";
+import { AccountProfileCard } from "../../account/ui/AccountProfileCard";
 
 type DeleteCapability = {
   deleteAllData(): Promise<void>;
   onContinue(): void;
+};
+
+type AccountCapability = {
+  status: "signedOut" | "loading" | "ready" | "error";
+  email?: string;
+  profile?: { displayName: string; avatarUri?: string };
+  error?: "load" | "save" | "permission" | "picker" | null;
+  onSignIn?(): void;
+  onManageAccount?(): void;
+  onRetry?(): void;
+  chooseAvatar?(): Promise<void>;
+  removeAvatar?(): Promise<void>;
+  saveDisplayName?(value: string): Promise<void>;
 };
 
 type PrivacySettingsCapability = {
@@ -23,6 +37,7 @@ type PrivacySettingsCapability = {
 };
 
 export type SettingsScreenProps = {
+  account?: AccountCapability | undefined;
   appearancePreference: ThemePreference;
   appearanceSaving: boolean;
   deletion?: DeleteCapability | undefined;
@@ -143,6 +158,7 @@ function DestructiveButton({
 }
 
 export function SettingsScreen({
+  account,
   appearancePreference,
   appearanceSaving,
   deletion,
@@ -154,6 +170,11 @@ export function SettingsScreen({
   const theme = useTheme();
   const [deleteState, setDeleteState] = useState<DeleteState>("idle");
   const [appearanceError, setAppearanceError] = useState(false);
+  const [nicknameDraft, setNicknameDraft] = useState("");
+  const [nicknameEditorOpen, setNicknameEditorOpen] = useState(false);
+  const [nicknameError, setNicknameError] = useState<"invalid" | "save" | null>(null);
+  const [nicknameSaving, setNicknameSaving] = useState(false);
+  const [profileActionError, setProfileActionError] = useState(false);
   const [privacySaveState, setPrivacySaveState] = useState<"idle" | "saving" | "error">("idle");
   const deletionInFlight = useRef(false);
 
@@ -181,6 +202,50 @@ export function SettingsScreen({
     }
   };
 
+  const runProfileAction = async (action?: () => Promise<void>) => {
+    if (action === undefined) return;
+    setProfileActionError(false);
+    try {
+      await action();
+    } catch {
+      setProfileActionError(true);
+    }
+  };
+
+  const openAvatarActions = () => {
+    Alert.alert("更改头像", undefined, [
+      { text: "从相册选择", onPress: () => { void runProfileAction(account?.chooseAvatar); } },
+      { text: "恢复默认头像", onPress: () => { void runProfileAction(account?.removeAvatar); } },
+      { text: "取消", style: "cancel" },
+    ]);
+  };
+
+  const openNicknameEditor = () => {
+    setNicknameDraft(account?.profile?.displayName ?? "");
+    setNicknameError(null);
+    setNicknameEditorOpen(true);
+  };
+
+  const saveNickname = async () => {
+    if (nicknameSaving || account?.saveDisplayName === undefined) return;
+    const trimmed = nicknameDraft.trim();
+    const length = Array.from(trimmed).length;
+    if (length < 1 || length > 24) {
+      setNicknameError("invalid");
+      return;
+    }
+    setNicknameError(null);
+    setNicknameSaving(true);
+    try {
+      await account.saveDisplayName(trimmed);
+      setNicknameEditorOpen(false);
+    } catch {
+      setNicknameError("save");
+    } finally {
+      setNicknameSaving(false);
+    }
+  };
+
   const changeJournalSaveNotice = async (enabled: boolean) => {
     if (!privacy || privacySaveState === "saving") return;
     setPrivacySaveState("saving");
@@ -205,6 +270,7 @@ export function SettingsScreen({
       contentInsetAdjustmentBehavior="automatic"
       keyboardDismissMode="interactive"
       keyboardShouldPersistTaps="handled"
+      style={{ backgroundColor: theme.color.background, flex: 1 }}
       testID="settings-scroll"
     >
       <IconTextAction icon="arrow-back" label="返回" onPress={onBack} />
@@ -217,31 +283,127 @@ export function SettingsScreen({
         </Text>
       </View>
 
+      {account ? (
+        <>
+          <AccountProfileCard
+            {...(account.profile?.avatarUri === undefined ? {} : { avatarUri: account.profile.avatarUri })}
+            {...(account.profile?.displayName === undefined ? {} : { displayName: account.profile.displayName })}
+            {...(account.email === undefined ? {} : { email: account.email })}
+            {...(account.status === "signedOut" && account.onSignIn !== undefined
+              ? { onSignIn: account.onSignIn }
+              : {})}
+            {...(account.onRetry === undefined ? {} : { onRetry: account.onRetry })}
+            {...(account.status === "ready" && account.chooseAvatar !== undefined
+              ? { onChangeAvatar: openAvatarActions }
+              : {})}
+            {...(account.status === "ready" && account.saveDisplayName !== undefined
+              ? { onChangeDisplayName: openNicknameEditor }
+              : {})}
+            status={account.status}
+          />
+          {profileActionError || account.error === "save" || account.error === "picker" ? (
+            <Text accessibilityRole="alert" selectable style={{ ...theme.typography.body, color: theme.color.textSecondary }}>
+              账号资料未保存，请重试。
+            </Text>
+          ) : null}
+          {account.error === "permission" ? (
+            <Text accessibilityRole="alert" selectable style={{ ...theme.typography.body, color: theme.color.textSecondary }}>
+              暂时无法访问相册，请检查系统权限后重试。
+            </Text>
+          ) : null}
+        </>
+      ) : null}
+
+      <Modal
+        animationType="fade"
+        onRequestClose={() => { if (!nicknameSaving) setNicknameEditorOpen(false); }}
+        transparent
+        visible={nicknameEditorOpen}
+      >
+        <View
+          accessibilityViewIsModal
+          style={{
+            alignItems: "center",
+            backgroundColor: "rgba(0, 0, 0, 0.55)",
+            flex: 1,
+            justifyContent: "center",
+            padding: theme.space.lg,
+          }}
+        >
+          <Card accessible={false} style={{ maxWidth: theme.size.readableContentMax, width: "100%" }}>
+            <Text accessibilityRole="header" selectable style={{ ...theme.typography.heading, color: theme.color.text }}>
+              更改昵称
+            </Text>
+            <TextInput
+              accessibilityLabel="昵称"
+              autoCapitalize="none"
+              editable={!nicknameSaving}
+              maxLength={48}
+              onChangeText={(value) => {
+                setNicknameDraft(value);
+                setNicknameError(null);
+              }}
+              style={{
+                ...theme.typography.body,
+                backgroundColor: theme.color.surfaceMuted,
+                borderColor: nicknameError === "invalid" ? theme.color.error : theme.color.interactiveBorder,
+                borderRadius: theme.radius.control,
+                borderWidth: theme.border.width,
+                color: theme.color.text,
+                minHeight: theme.size.minimumTouchTarget,
+                paddingHorizontal: theme.space.md,
+                paddingVertical: theme.space.compact,
+              }}
+              value={nicknameDraft}
+            />
+            {nicknameError === "invalid" ? (
+              <Text accessibilityRole="alert" selectable style={{ ...theme.typography.caption, color: theme.color.error }}>
+                昵称需要 1–24 个字符。
+              </Text>
+            ) : null}
+            {nicknameError === "save" ? (
+              <Text accessibilityRole="alert" selectable style={{ ...theme.typography.caption, color: theme.color.textSecondary }}>
+                账号资料未保存，请重试。
+              </Text>
+            ) : null}
+            <Button label="保存昵称" loading={nicknameSaving} onPress={() => { void saveNickname(); }} />
+            <SecondaryButton
+              disabled={nicknameSaving}
+              label="取消"
+              onPress={() => setNicknameEditorOpen(false)}
+            />
+          </Card>
+        </View>
+      </Modal>
+
       <Card accessible={false}>
         <Text accessibilityRole="header" selectable style={{ ...theme.typography.heading, color: theme.color.text }}>
           账户与保存
         </Text>
         <View style={{ gap: theme.space.compact }}>
-          <View style={{ gap: theme.space.xs }}>
-            <Text selectable style={{ ...theme.typography.cardTitle, color: theme.color.text }}>未登录</Text>
-            <Text selectable style={{ ...theme.typography.caption, color: theme.color.textSecondary }}>
-              当前不需要账户即可使用本机功能。
-            </Text>
-          </View>
+          <Text selectable style={{ ...theme.typography.caption, color: theme.color.textSecondary }}>
+            旅程、练习、沟通卡和普通回顾无需账户；使用内界手记必须登录。已登录账号离线时仍可使用自己的本机手记。
+          </Text>
           <View style={{ gap: theme.space.xs }}>
             <Text selectable style={{ ...theme.typography.cardTitle, color: theme.color.primary }}>本机保存（当前）</Text>
             <Text selectable style={{ ...theme.typography.caption, color: theme.color.textSecondary }}>
-              卡片、回顾和设置只保存在这台设备上。
+              手记、卡片、回顾和设置只保存在这台设备上；登录只会把本机手记与账号关联，不会同步私密正文。
             </Text>
           </View>
           <View style={{ gap: theme.space.xs }}>
             <Text selectable style={{ ...theme.typography.cardTitle, color: theme.color.textSecondary }}>
-              登录与云端同步（尚未开放）
+              邮箱登录（不含同步）
             </Text>
             <Text selectable style={{ ...theme.typography.caption, color: theme.color.textSecondary }}>
-              这里不会假装登录或上传任何内容。
+              登录不会上传日记、沟通卡、回顾或亲密内容。
             </Text>
           </View>
+          {account?.status === "ready" && account.onManageAccount ? (
+            <Button
+              label="管理邮箱账号"
+              onPress={account.onManageAccount}
+            />
+          ) : null}
         </View>
       </Card>
 
@@ -287,7 +449,7 @@ export function SettingsScreen({
 
       <InfoCard title="隐私与本机数据">
         <Text selectable style={{ ...theme.typography.body, color: theme.color.textSecondary }}>
-          旅程、练习和沟通草稿保存在本机。能解锁这台设备的人仍可能看到这些内容，请按自己的情况决定是否保留。
+          旅程、练习、手记、沟通卡和回顾保存在本机。永久删除后无法恢复；能解锁这台设备的人仍可能看到这些内容，请按自己的情况决定是否保留。
         </Text>
         {privacy ? (
           <>
@@ -335,7 +497,7 @@ export function SettingsScreen({
           删除本机数据
         </Text>
         <Text selectable style={{ ...theme.typography.body, color: theme.color.textSecondary }}>
-          删除后，当前旅程、已保存内容和本机设置都需要重新开始。
+          删除后，当前旅程、手记、卡片、回顾和本机设置都需要重新开始。
         </Text>
 
         {deleteState === "idle" ? (

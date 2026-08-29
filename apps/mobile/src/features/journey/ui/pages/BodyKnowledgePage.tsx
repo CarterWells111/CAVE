@@ -13,6 +13,7 @@ import { InfoCard } from "../../../../core/ui/info-card";
 import { SecondaryButton } from "../../../../core/ui/secondary-button";
 import { TextAction } from "../../../../core/ui/text-action";
 import { JourneyAction } from "../components/JourneyAction";
+import { JourneyScrollTarget, useJourneyGuidedScroll } from "../guided-scroll-screen";
 
 type ActionResult = void | Promise<void>;
 
@@ -40,6 +41,7 @@ export function BodyKnowledgePage({
   reducedMotion,
 }: BodyKnowledgePageProps) {
   const theme = useTheme();
+  const { reveal } = useJourneyGuidedScroll();
   const styles = createStyles(theme);
   const sortedCards = [...cards].sort((a, b) => a.order - b.order).slice(0, 3);
   const [consentOpen, setConsentOpen] = useState(false);
@@ -49,6 +51,7 @@ export function BodyKnowledgePage({
   const [imageAttempt, setImageAttempt] = useState(0);
   const [imageError, setImageError] = useState(false);
   const [imageStatus, setImageStatus] = useState("");
+  const diagramAdvancedRef = useRef(false);
 
   const complete = async () => {
     for (const card of sortedCards) await onRead?.(card.id);
@@ -62,6 +65,10 @@ export function BodyKnowledgePage({
     setImageStatus("");
     setConsentOpen(false);
     setDiagramOpen(true);
+    if (!diagramAdvancedRef.current) {
+      diagramAdvancedRef.current = true;
+      reveal("body-knowledge-diagram");
+    }
   };
   const zoomPercent = Math.round(diagramZoom * 100);
 
@@ -80,6 +87,7 @@ export function BodyKnowledgePage({
         <SecondaryButton ref={diagramTriggerRef} label="查看外阴结构图" onPress={() => setConsentOpen(true)} />
         <Text style={styles.secondary}>可选，不查看也可以继续</Text>
         {diagramOpen ? (
+          <JourneyScrollTarget targetId="body-knowledge-diagram">
           <View style={styles.diagram}>
             {diagramSource ? (
               <>
@@ -147,6 +155,7 @@ export function BodyKnowledgePage({
               <Text style={styles.paperBody}>如果较长的一侧因衣物、运动或其他摩擦带来持续不适，或者出现持续疼痛、瘙痒、灼热、破损、肿块、异常分泌物或明显的新变化，可以咨询妇科或其他合适的医疗专业人员。即使没有这些情况，只要{addressPreference}仍然担心，也可以就医。就诊前可以询问是否能安排女性医生；在医疗机构允许的情况下，也可以请一位信任的人陪同。具体以医疗机构安排为准。</Text>
             </View>
           </View>
+          </JourneyScrollTarget>
         ) : null}
       </Card>
 

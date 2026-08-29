@@ -8,7 +8,9 @@ type FailureStage =
   | "quiesce"
   | "delete-key"
   | "remove-files"
+  | "delete-account-profiles"
   | "delete-token"
+  | "delete-auth-session"
   | "clear-intent";
 
 function makeHarness(failOnceAt?: FailureStage) {
@@ -68,6 +70,13 @@ function makeHarness(failOnceAt?: FailureStage) {
         throw new Error("delete-token-failed");
       }
     }),
+    deleteAuthSession: jest.fn(async () => {
+      order.push("delete-auth-session");
+      if (failure === "delete-auth-session") {
+        failure = undefined;
+        throw new Error("delete-auth-session-failed");
+      }
+    }),
     clearPendingLocalDataDeletion: jest.fn(async () => {
       order.push("clear-intent");
       if (failure === "clear-intent") {
@@ -77,7 +86,16 @@ function makeHarness(failOnceAt?: FailureStage) {
       pending = false;
     })
   } as unknown as DatabaseSecretRepository;
-  return { database, secrets, order, isPending: () => pending };
+  const accountProfiles = {
+    clearAll: jest.fn(async () => {
+      order.push("delete-account-profiles");
+      if (failure === "delete-account-profiles") {
+        failure = undefined;
+        throw new Error("delete-account-profiles-failed");
+      }
+    }),
+  };
+  return { accountProfiles, database, secrets, order, isPending: () => pending };
 }
 
 test("records intent, fails closed, and monotonically deletes local storage", async () => {
@@ -91,7 +109,9 @@ test("records intent, fails closed, and monotonically deletes local storage", as
     "quiesce",
     "delete-key",
     "remove-files",
+    "delete-account-profiles",
     "delete-token",
+    "delete-auth-session",
     "clear-intent"
   ]);
   expect(harness.isPending()).toBe(false);
@@ -109,13 +129,15 @@ test("keeps durable intent after partial failure and converges on retry", async 
 
   await expect(deleteAllData(harness)).resolves.toBeUndefined();
   expect(harness.isPending()).toBe(false);
-  expect(harness.order.slice(-7)).toEqual([
+  expect(harness.order.slice(-9)).toEqual([
     "record-intent",
     "clear-gate",
     "quiesce",
     "delete-key",
     "remove-files",
+    "delete-account-profiles",
     "delete-token",
+    "delete-auth-session",
     "clear-intent"
   ]);
 });
@@ -136,7 +158,9 @@ test.each<FailureStage>([
   "clear-gate",
   "quiesce",
   "delete-key",
+  "delete-account-profiles",
   "delete-token",
+  "delete-auth-session",
   "clear-intent"
 ])("keeps deletion pending when %s fails and completes on retry", async (stage) => {
   const harness = makeHarness(stage);
