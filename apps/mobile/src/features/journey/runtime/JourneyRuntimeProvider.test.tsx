@@ -75,13 +75,27 @@ function nativePersistenceHarness({
   let shouldFailFileRemoval = failFileRemovalOnce;
   let shouldFailAdultClear = failAdultClearOnce;
   let shouldFailAdultRecord = failAdultRecordOnce;
+  let savedDraftRow: { payload: string; schema_version: number } | null = null;
   const sqlCalls: string[] = [];
   const database = {
     execAsync: jest.fn(async (sql: string) => { sqlCalls.push(sql); }),
-    runAsync: jest.fn(async (sql: string) => { sqlCalls.push(sql); return { changes: 0 }; }),
+    runAsync: jest.fn(async (sql: string, ...params: unknown[]) => {
+      sqlCalls.push(sql);
+      if (sql.startsWith("INSERT INTO journey_drafts_v4")) {
+        savedDraftRow = {
+          schema_version: params[1] as number,
+          payload: params[2] as string,
+        };
+      }
+      if (sql === "DELETE FROM journey_drafts_v4") savedDraftRow = null;
+      return { changes: 0 };
+    }),
     getAllAsync: jest.fn(async <T,>(sql: string) => { sqlCalls.push(sql); return [] as T[]; }),
     getFirstAsync: jest.fn(async <T,>(sql: string) => {
       sqlCalls.push(sql);
+      if (sql.startsWith("SELECT schema_version, payload FROM journey_drafts_v4")) {
+        return savedDraftRow as T | null;
+      }
       return (sql === "PRAGMA user_version" ? { user_version: 0 } : null) as T | null;
     }),
     closeAsync: jest.fn(async () => undefined)
@@ -101,6 +115,7 @@ function nativePersistenceHarness({
           throw new Error("remove-failed");
         }
         databaseExists = false;
+        savedDraftRow = null;
       })
     },
     secrets: {
@@ -395,8 +410,13 @@ test("revokes protected runtime access as soon as deletion starts and keeps fail
     </JourneyRuntimeProvider>
   );
 
-  expect(await screen.findByText("设置")).toBeTruthy();
-  fireEvent.press(screen.getByRole("button", { name: "删除全部本机数据" }));
+  expect(await screen.findByRole("header", { name: "设置" })).toBeTruthy();
+  const deleteButton = await screen.findByRole(
+    "button",
+    { name: "删除全部本机数据" },
+    { timeout: 5_000 }
+  );
+  fireEvent.press(deleteButton);
   fireEvent.press(screen.getByRole("button", { name: "确认删除全部本机数据" }));
 
   expect(await screen.findByText("正在删除本机数据…")).toBeTruthy();
@@ -646,7 +666,7 @@ test("does not confirm adulthood or write its marker when an existing draft need
 test("a successful first native declaration remounts the authorized route and opens the preface", async () => {
   const harness = nativePersistenceHarness();
 
-  render(
+  const view = render(
     <JourneyRuntimeProvider createRuntime={harness.createRuntime}>
       <AdultGateRoute />
     </JourneyRuntimeProvider>
@@ -657,6 +677,19 @@ test("a successful first native declaration remounts the authorized route and op
   await waitFor(() => expect(mockRouter.replace.mock.calls).toEqual([["/journey/preface"]]));
   expect(harness.adapters.secrets.recordAdultDeclaration).toHaveBeenCalledTimes(1);
   expect(harness.adapters.native.openDatabaseAsync).toHaveBeenCalledTimes(1);
+
+  mockPathname = "/journey/preface";
+  mockStackContent = <PrefaceRoute />;
+  view.rerender(
+    <JourneyRuntimeProvider createRuntime={harness.createRuntime}>
+      <JourneyLayout />
+    </JourneyRuntimeProvider>
+  );
+
+  expect(await screen.findByTestId("journey-preface")).toBeTruthy();
+  expect(mockStackRender).toHaveBeenCalled();
+  expect(mockRedirect).not.toHaveBeenCalledWith({ href: "/journey/welcome" });
+  expect(mockRouter.replace).not.toHaveBeenCalledWith("/journey/welcome");
 });
 
 test("a failed first native declaration marker stays public and retries the marker before opening the preface", async () => {

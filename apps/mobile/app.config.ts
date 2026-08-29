@@ -42,18 +42,17 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       ],
       ["expo-sqlite", { useSQLCipher: true }],
       [
+        "expo-media-library",
+        {
+          photosPermission: "允许内界 CAVE 仅在你主动保存沟通卡图片时写入照片。",
+          savePhotosPermission: "允许内界 CAVE 将你确认的沟通卡图片保存到本机相册。"
+        }
+      ],
+      [
         "expo-secure-store",
         {
           configureAndroidBackup: false,
           faceIDPermission: "允许内界 CAVE 保护仅存储在此设备上的私密练习数据。"
-        }
-      ],
-      [
-        "expo-media-library",
-        {
-          photosPermission: "允许内界 CAVE 访问你选择的照片，以便管理你主动保存的沟通卡图片。",
-          savePhotosPermission: "允许内界 CAVE 将你确认的沟通卡图片保存到本机相册。",
-          granularPermissions: ["photo"]
         }
       ],
       [

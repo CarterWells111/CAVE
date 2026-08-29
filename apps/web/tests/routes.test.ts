@@ -290,7 +290,7 @@ describe("official site routes", () => {
     ).toBe(true);
     expect(sourceCards).toHaveLength(JOURNEY_SOURCE_REGISTRY.length);
 
-    const expectedGroupCounts = { EDU: 3, MED: 7, SAFE: 3 } as const;
+    const expectedGroupCounts = { EDU: 3, MED: 8, SAFE: 3 } as const;
     const sourceGroups = Array.from(
       html.matchAll(
         /<section\b([^>]*)\bdata-source-group=["'](EDU|MED|SAFE)["']([^>]*)>([\s\S]*?)<\/section>/gu

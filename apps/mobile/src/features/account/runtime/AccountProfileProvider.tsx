@@ -18,7 +18,6 @@ import { createExpoAccountProfileRepository } from "../infrastructure/expo-accou
 export type AccountProfileError = "load" | "save" | "permission" | "picker";
 
 export type AccountProfilePicker = {
-  requestMediaLibraryPermissionsAsync(): Promise<{ granted: boolean }>;
   launchImageLibraryAsync(options: {
     allowsEditing: true;
     aspect: [number, number];
@@ -157,30 +156,6 @@ export function AccountProfileProvider({
     setState((current) => (
       current.accountId === accountId ? { ...current, error: null } : current
     ));
-    let permission: { granted: boolean };
-    try {
-      permission = await picker.requestMediaLibraryPermissionsAsync();
-    } catch {
-      if (
-        currentAccountIdRef.current === accountId
-        && pickerTokenRef.current === pickerToken
-      ) {
-        setState((current) => (
-          current.accountId === accountId ? { ...current, error: "permission" } : current
-        ));
-      }
-      return;
-    }
-    if (
-      currentAccountIdRef.current !== accountId
-      || pickerTokenRef.current !== pickerToken
-    ) return;
-    if (!permission.granted) {
-      setState((current) => (
-        current.accountId === accountId ? { ...current, error: "permission" } : current
-      ));
-      return;
-    }
     try {
       const result = await picker.launchImageLibraryAsync({
         allowsEditing: true,

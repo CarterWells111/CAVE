@@ -15,6 +15,7 @@ import {
   journeyDraftReviewPayloadCodec,
   SqlReviewHistoryRepository
 } from "../../reviews/infrastructure/sql-review-history-repository";
+import { SqlLocalDataRepository } from "../../../core/storage/local-data-repository";
 import type { JourneyDraft } from "../domain/types";
 import { SqlJourneyTransactionRepository } from "../infrastructure/sql-journey-transaction-repository";
 import { SqlJournalRepository } from "../../journal/infrastructure/sql-journal-repository";
@@ -75,6 +76,7 @@ export function createComposedJourneyRuntime({
         adultDeclaration: adapters.secrets,
         appearancePreferences: new SqlAppearancePreferencesRepository(database),
         journal: new SqlJournalRepository(database),
+        privacySettings: new SqlLocalDataRepository(database),
         saveVersionedDraft: (draft, active) => transactions.saveActive(draft, active),
         completeJourney: (transaction) => transactions.complete(transaction),
         branchReview: (transaction) => transactions.branch(transaction),

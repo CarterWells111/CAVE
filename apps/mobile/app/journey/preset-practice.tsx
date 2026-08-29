@@ -9,15 +9,8 @@ export default function PresetPracticeRoute() {
   const catalog = loadJourneyContentCatalog();
   return (
     <JourneyRouteScreen pageId="preset-practice">
-      {({ controller, goTo, runAndRefresh, snapshot }) => {
+      {({ controller, goTo, runAndRefresh }) => {
         return <PresetPracticePage
-          behaviorOptions={Object.entries(snapshot?.behaviorAttitudes ?? {}).map(([id, attitude]) => ({
-            attitude,
-            id,
-            label: catalog.options.find((option) => option.id === id)?.label
-              ?? snapshot?.customBehaviors.find((behavior) => behavior.id === id)?.label
-              ?? "自定义行为"
-          }))}
           catalog={catalog.practice}
           onComplete={(input) => runAndRefresh(() => controller.completePractice({
             behaviorId: input.behaviorId,
@@ -31,7 +24,7 @@ export default function PresetPracticeRoute() {
           }))
             .then(() => goTo("final-preparation"))}
           onCopySupportNumber={async (number) => { await ExpoClipboard.setStringAsync(number); }}
-          onOpenSources={(sourceIds) => openJourneySources(catalog.sources, sourceIds)}
+          onOpenSources={openJourneySources}
         />;
       }}
     </JourneyRouteScreen>

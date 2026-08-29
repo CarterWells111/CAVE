@@ -105,7 +105,14 @@ test("dispatches reducer then builders and performs one atomic save", async () =
   await app.confirmAdult();
   jest.mocked(repo.saveActive).mockClear();
 
-  await app.dispatch({ type: "set-expectation-ids", ids: ["draft-rest"] });
+  await app.dispatch({
+    type: "save-overnight-progress",
+    completed: false,
+    stage: "expectations",
+    expectationIds: ["draft-rest"],
+    concernIds: [],
+    customNote: "",
+  });
 
   expect(repo.saveActive).toHaveBeenCalledTimes(1);
   expect(app.getSnapshot()).toMatchObject({
@@ -126,7 +133,14 @@ test("does not advance the in-memory snapshot when persistence fails", async () 
   const before = app.getSnapshot();
   jest.mocked(repo.saveActive).mockRejectedValueOnce(new Error("disk full"));
 
-  await expect(app.dispatch({ type: "set-concern-ids", ids: ["draft-pressure"] }))
+  await expect(app.dispatch({
+    type: "save-overnight-progress",
+    completed: false,
+    stage: "concerns",
+    expectationIds: [],
+    concernIds: ["draft-pressure"],
+    customNote: "",
+  }))
     .rejects.toThrow("disk full");
   expect(app.getSnapshot()).toBe(before);
 });
@@ -135,8 +149,22 @@ test("serializes concurrent commands so later updates cannot overwrite earlier o
   const repo = repository();
   const app = service(repo);
   await app.confirmAdult();
-  const first = app.dispatch({ type: "set-expectation-ids", ids: ["draft-rest"] });
-  const second = app.dispatch({ type: "set-concern-ids", ids: ["draft-pressure"] });
+  const first = app.dispatch({
+    type: "save-overnight-progress",
+    completed: false,
+    stage: "expectations",
+    expectationIds: ["draft-rest"],
+    concernIds: [],
+    customNote: "",
+  });
+  const second = app.dispatch({
+    type: "save-overnight-progress",
+    completed: false,
+    stage: "concerns",
+    expectationIds: ["draft-rest"],
+    concernIds: ["draft-pressure"],
+    customNote: "",
+  });
 
   await Promise.all([first, second]);
 

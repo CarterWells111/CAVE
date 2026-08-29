@@ -89,5 +89,12 @@ export const JOURNEY_SOURCE_REGISTRY: readonly JourneySource[] = [
     url: "https://m.dayi.org.cn/qa/42340.html",
     appliesTo: "先天差异及长期摩擦可能与小阴唇一侧增生、左右不对称有关；作为 SRC-004 的中国大陆辅助来源",
     publicationOrReviewDate: "2026-03-07", accessedAt: "2026-08-27", verificationStatus: "source_verified"
+  },
+  {
+    id: "SRC-014", sourceType: "MED", title: "You and Your Sexuality",
+    organization: "American College of Obstetricians and Gynecologists",
+    url: "https://www.acog.org/womens-health/faqs/you-and-your-sexuality",
+    appliesTo: "性行为不限于阴道性交；触摸、口腔、阴道和肛门等不同性活动方式",
+    publicationOrReviewDate: "页面未列明", accessedAt: "2026-08-28", verificationStatus: "source_verified"
   }
 ];

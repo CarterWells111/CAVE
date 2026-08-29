@@ -1,4 +1,15 @@
-export const CURRENT_SCHEMA_VERSION = 9;
+export const CURRENT_SCHEMA_VERSION = 12;
+
+export type MigrationCallbackConnection = {
+  runAsync(sql: string, ...params: unknown[]): Promise<{ changes: number }>;
+  getAllAsync<T>(sql: string, ...params: unknown[]): Promise<T[]>;
+};
+
+export type DatabaseMigration = {
+  version: number;
+  schema: string;
+  afterSchema?: (connection: MigrationCallbackConnection) => Promise<void>;
+};
 
 export const SCHEMA_V1 = `
 CREATE TABLE IF NOT EXISTS course_progress (
@@ -103,6 +114,31 @@ CREATE TABLE IF NOT EXISTS journey_drafts_v3 (
 );`;
 
 export const SCHEMA_V8 = `
+CREATE TABLE IF NOT EXISTS app_preferences (
+  singleton_id INTEGER PRIMARY KEY NOT NULL CHECK (singleton_id = 1),
+  theme_preference TEXT NOT NULL CHECK (theme_preference IN ('system', 'light', 'dark'))
+);
+CREATE TABLE IF NOT EXISTS local_journal_preferences (
+  singleton_id INTEGER PRIMARY KEY NOT NULL CHECK (singleton_id = 1),
+  show_save_notice INTEGER NOT NULL CHECK (show_save_notice IN (0, 1))
+);`;
+
+export const SCHEMA_V9 = `
+CREATE TABLE IF NOT EXISTS local_journal_preferences (
+  singleton_id INTEGER PRIMARY KEY NOT NULL CHECK (singleton_id = 1),
+  show_save_notice INTEGER NOT NULL CHECK (show_save_notice IN (0, 1))
+);`;
+
+export const SCHEMA_V10 = `
+CREATE TABLE IF NOT EXISTS journey_drafts_v4 (
+  id TEXT PRIMARY KEY NOT NULL,
+  schema_version INTEGER NOT NULL CHECK (schema_version = 4),
+  payload TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);`;
+
+export const SCHEMA_V11 = `
 CREATE TABLE IF NOT EXISTS journal_records (
   id TEXT PRIMARY KEY NOT NULL,
   title TEXT NOT NULL,
@@ -115,7 +151,8 @@ CREATE TABLE IF NOT EXISTS journal_records (
   body TEXT NOT NULL,
   topics_json TEXT NOT NULL,
   source_json TEXT NOT NULL,
-  card_snapshot_json TEXT
+  card_snapshot_json TEXT,
+  owner_account_id TEXT
 );
 CREATE INDEX IF NOT EXISTS journal_records_occurred_at_idx ON journal_records(occurred_at DESC);
 CREATE TABLE IF NOT EXISTS journal_entries (
@@ -139,18 +176,58 @@ CREATE TABLE IF NOT EXISTS journal_period_reviews (
   editable_until TEXT NOT NULL,
   title TEXT NOT NULL,
   body TEXT NOT NULL,
-  source_record_ids_json TEXT NOT NULL
+  source_record_ids_json TEXT NOT NULL,
+  owner_account_id TEXT
 );`;
 
-export const SCHEMA_V9 = `
-ALTER TABLE journal_records ADD COLUMN owner_account_id TEXT;
-ALTER TABLE journal_period_reviews ADD COLUMN owner_account_id TEXT;
-CREATE INDEX IF NOT EXISTS journal_records_owner_date_idx
-  ON journal_records(owner_account_id, occurred_at DESC, created_at DESC);
-CREATE INDEX IF NOT EXISTS journal_period_reviews_owner_created_idx
-  ON journal_period_reviews(owner_account_id, created_at DESC);`;
+export const SCHEMA_V12 = `SELECT 1;`;
 
-export const DATABASE_MIGRATIONS = [
+type TableInfoRow = { name: string };
+
+async function copyLegacyJournalPreference(
+  connection: MigrationCallbackConnection
+): Promise<void> {
+  const columns = await connection.getAllAsync<TableInfoRow>(
+    "PRAGMA table_info(privacy_settings)"
+  );
+  if (!columns.some(({ name }) => name === "show_local_journal_save_notice")) return;
+
+  await connection.runAsync(`
+INSERT INTO local_journal_preferences (singleton_id, show_save_notice)
+SELECT singleton_id, show_local_journal_save_notice
+FROM privacy_settings
+WHERE singleton_id = 1
+ON CONFLICT(singleton_id) DO NOTHING`);
+}
+
+async function ensureJournalOwnership(
+  connection: MigrationCallbackConnection
+): Promise<void> {
+  const recordColumns = await connection.getAllAsync<TableInfoRow>(
+    "PRAGMA table_info(journal_records)"
+  );
+  if (!recordColumns.some(({ name }) => name === "owner_account_id")) {
+    await connection.runAsync(
+      "ALTER TABLE journal_records ADD COLUMN owner_account_id TEXT"
+    );
+  }
+
+  const reviewColumns = await connection.getAllAsync<TableInfoRow>(
+    "PRAGMA table_info(journal_period_reviews)"
+  );
+  if (!reviewColumns.some(({ name }) => name === "owner_account_id")) {
+    await connection.runAsync(
+      "ALTER TABLE journal_period_reviews ADD COLUMN owner_account_id TEXT"
+    );
+  }
+
+  await connection.runAsync(`CREATE INDEX IF NOT EXISTS journal_records_owner_date_idx
+ON journal_records(owner_account_id, occurred_at DESC, created_at DESC)`);
+  await connection.runAsync(`CREATE INDEX IF NOT EXISTS journal_period_reviews_owner_created_idx
+ON journal_period_reviews(owner_account_id, created_at DESC)`);
+}
+
+export const DATABASE_MIGRATIONS: readonly DatabaseMigration[] = [
   { version: 1, schema: SCHEMA_V1 },
   { version: 2, schema: SCHEMA_V2 },
   { version: 3, schema: SCHEMA_V3 },
@@ -159,5 +236,8 @@ export const DATABASE_MIGRATIONS = [
   { version: 6, schema: SCHEMA_V6 },
   { version: 7, schema: SCHEMA_V7 },
   { version: 8, schema: SCHEMA_V8 },
-  { version: 9, schema: SCHEMA_V9 }
-] as const;
+  { version: 9, schema: SCHEMA_V9, afterSchema: copyLegacyJournalPreference },
+  { version: 10, schema: SCHEMA_V10 },
+  { version: 11, schema: SCHEMA_V11 },
+  { version: 12, schema: SCHEMA_V12, afterSchema: ensureJournalOwnership }
+];

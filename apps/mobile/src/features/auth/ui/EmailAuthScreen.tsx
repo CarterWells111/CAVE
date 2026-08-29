@@ -38,27 +38,8 @@ export function EmailAuthScreen(props: Props) {
     inFlight.current = true;
     setPending(true);
     setError(null);
-    try { await action(); } catch (cause) {
-      if (__DEV__) {
-        const diagnostic: { name: "AuthActionError"; code?: string; status?: number } = {
-          name: "AuthActionError",
-        };
-        if (cause !== null && typeof cause === "object") {
-          if (
-            "code" in cause
-            && typeof cause.code === "string"
-            && /^[A-Z0-9_]{1,64}$/u.test(cause.code)
-          ) diagnostic.code = cause.code;
-          if (
-            "status" in cause
-            && typeof cause.status === "number"
-            && Number.isInteger(cause.status)
-            && cause.status >= 0
-            && cause.status <= 599
-          ) diagnostic.status = cause.status;
-        }
-        console.warn("auth.action.failed", diagnostic);
-      }
+    try { await action(); } catch {
+      if (__DEV__) console.warn("auth.action.failed");
       setError("操作未完成。请检查网络、邮箱或验证码后重试。");
     } finally {
       inFlight.current = false;

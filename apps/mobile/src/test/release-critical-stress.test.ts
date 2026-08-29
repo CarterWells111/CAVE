@@ -1,4 +1,3 @@
-import { selectConfirmedCommunicationCard } from "../features/journey/domain/derive-communication-card";
 import {
   JOURNEY_PAGE_IDS,
   type JourneyDraft,
@@ -280,7 +279,7 @@ describe("release-critical deterministic production-runtime stress", () => {
     for (let cycle = 1; cycle <= 10; cycle += 1) {
       await runtime.service.confirmAdult();
       const rootDraft = runtime.service.getSnapshot()!;
-      await runtime.controller.completeInitialJourney(selectConfirmedCommunicationCard(rootDraft));
+      await runtime.controller.completeInitialJourney();
       const rootId = `review:${rootDraft.id}:completed`;
       const seed = await runtime.reviewHistory.loadBranchSeed(rootId);
       expect(seed).not.toBeNull();
@@ -295,7 +294,7 @@ describe("release-critical deterministic production-runtime stress", () => {
         sourceVersionId: seed!.sourceVersionId,
         title: `分支 ${cycle}`
       });
-      await runtime.controller.completeInitialJourney(selectConfirmedCommunicationCard(branch));
+      await runtime.controller.completeInitialJourney();
       const childId = `review:${branch.id}:completed`;
       await expect(runtime.reviewHistory.loadDetail(childId)).resolves.toMatchObject({
         parentVersionId: rootId
@@ -317,7 +316,14 @@ describe("release-critical deterministic production-runtime stress", () => {
     const longText = "界".repeat(16_384);
 
     await runtime.service.confirmAdult();
-    await runtime.service.dispatch({ type: "set-overnight-custom-note", note: longText });
+    await runtime.service.dispatch({
+      type: "save-overnight-progress",
+      completed: false,
+      stage: "expectations",
+      expectationIds: [],
+      concernIds: [],
+      customNote: longText,
+    });
     for (const page of JOURNEY_PAGE_IDS) await runtime.service.navigateTo(page);
 
     const draft = runtime.service.getSnapshot()!;
@@ -325,7 +331,7 @@ describe("release-critical deterministic production-runtime stress", () => {
       currentPage: "final-preparation",
       overnightCustomNote: longText
     });
-    await runtime.controller.completeInitialJourney(selectConfirmedCommunicationCard(draft));
+    await runtime.controller.completeInitialJourney();
 
     const metadata = await reviewMetadata();
     expect(metadata).toHaveLength(1);
@@ -340,10 +346,9 @@ describe("release-critical deterministic production-runtime stress", () => {
       createProductionRuntimeStressHarness();
     await runtime.service.confirmAdult();
     const draft = runtime.service.getSnapshot()!;
-    const confirmedCard = selectConfirmedCommunicationCard(draft);
     boundary.failNextCompletion = true;
 
-    await expect(runtime.controller.completeInitialJourney(confirmedCard))
+    await expect(runtime.controller.completeInitialJourney())
       .rejects.toThrow("injected-completion-failure");
     await expect(reviewMetadata()).resolves.toEqual([]);
     await expect(cardMetadata()).resolves.toEqual([]);
@@ -351,11 +356,11 @@ describe("release-critical deterministic production-runtime stress", () => {
     await expect(boundary.loadShell()).resolves.toBeNull();
     expect(runtime.service.getSnapshot()?.id).toBe(draft.id);
 
-    await expect(runtime.controller.completeInitialJourney(confirmedCard)).resolves.toBeUndefined();
+    await expect(runtime.controller.completeInitialJourney()).resolves.toBe(`card:${draft.id}`);
     await expect(reviewMetadata()).resolves.toHaveLength(1);
     await expect(cardMetadata()).resolves.toHaveLength(1);
     await expect(activeReview()).resolves.toBeNull();
-    await expect(runtime.controller.completeInitialJourney(confirmedCard))
+    await expect(runtime.controller.completeInitialJourney())
       .rejects.toThrow("journey-not-active");
     await expect(reviewMetadata()).resolves.toHaveLength(1);
     await expect(cardMetadata()).resolves.toHaveLength(1);

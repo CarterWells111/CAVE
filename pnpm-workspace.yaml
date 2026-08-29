@@ -3,7 +3,13 @@ packages:
   - "packages/*"
 
 overrides:
+  fastq: "1.20.1"
   postcss: "8.5.26"
+
+allowBuilds:
+  esbuild: true
+  unrs-resolver: true
+  workerd: true
 
 patchedDependencies:
   image-size@1.2.1: "patches/image-size@1.2.1.patch"

@@ -26,7 +26,7 @@ test("mounts the preface inside the shared guided scroll screen", () => {
   expect(route).not.toContain("<Screen>");
 });
 
-test("presents the preface and requires a chosen form of address before continuing", async () => {
+test("requires a chosen form of address before saving it", async () => {
   const onContinue = jest.fn(async () => undefined);
   render(<PrefacePage onContinue={onContinue} />);
 

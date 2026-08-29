@@ -5,116 +5,110 @@ import { StyleSheet, Text } from "react-native";
 import { darkTheme } from "../../../core/design/theme";
 import { CardDetailScreen } from "./CardDetailScreen";
 
+jest.mock("react-native-view-shot", () => ({ captureRef: jest.fn(async () => "file:///confirmed.png") }));
+
 const metadata = {
   id: "card-1",
-  title: "过夜前想说的话",
+  title: "沟通草稿",
   dateLabel: "2026 年 8 月 27 日",
-  statusLabel: "已保存"
+  statusLabel: "仅存本机"
 };
-
-const confirmedSections = [{
+const sections = [{
   id: "communication-comfort",
   title: "什么会让我更安心",
-  text: "请先问我，再慢一点。",
-  privateText: "PRIVATE SHOULD NEVER RENDER",
-  deletedText: "DELETED SHOULD NEVER RENDER"
+  text: "请先问我，再慢一点。"
 }];
-
-function deferred() {
-  let resolve!: () => void;
-  const promise = new Promise<void>((resolvePromise) => { resolve = resolvePromise; });
-  return { promise, resolve };
-}
 
 function renderScreen(overrides: Partial<ComponentProps<typeof CardDetailScreen>> = {}) {
   const props = {
-    confirmedSections,
     metadata,
+    sections,
     onBack: jest.fn(),
-    onCopy: jest.fn(async () => undefined),
     onEdit: jest.fn(async () => undefined),
-    onFullscreen: jest.fn(),
     ...overrides
   };
   render(<CardDetailScreen {...props} />);
   return props;
 }
 
-test("renders only explicitly supplied confirmed section fields in normal mode", () => {
+test("renders retained sections as one continuous private paper draft", () => {
   const props = renderScreen();
 
-  expect(screen.getByRole("header", { name: metadata.title })).toBeTruthy();
-  expect(screen.getByText(`${metadata.dateLabel} · ${metadata.statusLabel}`)).toBeTruthy();
-  expect(screen.getByRole("summary", { name: "什么会让我更安心。请先问我，再慢一点。" })).toBeTruthy();
+  expect(screen.getByTestId("communication-draft-paper")).toBeTruthy();
+  expect(screen.getByText("什么会让我更安心")).toBeTruthy();
   expect(screen.getByText("请先问我，再慢一点。")).toBeTruthy();
-  expect(screen.queryByText(/PRIVATE|DELETED/u)).toBeNull();
+  expect(screen.queryByRole("button", { name: /复制文字|保存图片/u })).toBeNull();
   fireEvent.press(screen.getByRole("button", { name: "返回我的卡片" }));
   expect(props.onBack).toHaveBeenCalledTimes(1);
   expect(screen.getByTestId("card-detail-content")).toHaveStyle({ maxWidth: 600 });
 });
 
-test("supports a full-width fullscreen presentation and explicit exit action", () => {
-  const props = renderScreen({ mode: "fullscreen" });
-
-  expect(screen.getByTestId("card-detail-content")).toHaveStyle({ maxWidth: "100%" });
-  fireEvent.press(screen.getByRole("button", { name: "退出全屏展示" }));
-  expect(props.onFullscreen).toHaveBeenCalledTimes(1);
+test("renders an explicit empty paper draft", () => {
+  renderScreen({ sections: [] });
+  expect(screen.getByText("这次没有保留沟通草稿。")).toBeTruthy();
 });
 
-test("keeps copy visibly busy, blocks competing actions and reports success only after completion", async () => {
-  const copying = deferred();
-  const onCopy = jest.fn(() => copying.promise);
-  const props = renderScreen({ onCopy });
+test("requires an explicit persisted re-confirmation before legacy cards expose export", async () => {
+  const onReconfirm = jest.fn(async () => undefined);
+  renderScreen({ exportEligible: false, onReconfirm });
 
-  const copy = screen.getByRole("button", { name: "复制确认内容" });
-  fireEvent.press(copy);
-  fireEvent.press(copy);
-
-  expect(onCopy).toHaveBeenCalledTimes(1);
-  expect(onCopy).toHaveBeenCalledWith(props.confirmedSections);
-  expect(screen.getByRole("button", { name: "正在复制确认内容…" }).props.accessibilityState)
-    .toEqual(expect.objectContaining({ busy: true, disabled: true }));
-  expect(screen.getByRole("button", { name: "编辑这张卡" }).props.accessibilityState.disabled).toBe(true);
-  expect(screen.queryByText("已复制确认内容。")).toBeNull();
-
-  await act(async () => { copying.resolve(); });
-  expect(await screen.findByText("已复制确认内容。")).toBeTruthy();
+  expect(screen.getByText("旧版本沟通草稿需要先重新确认，才可以复制或保存图片。")).toBeTruthy();
+  fireEvent.press(screen.getByRole("button", { name: "重新确认分享内容" }));
+  await screen.findByRole("button", { name: "重新确认分享内容" });
+  expect(onReconfirm).toHaveBeenCalledTimes(1);
+  expect(screen.queryByRole("button", { name: /复制|保存为图片/u })).toBeNull();
 });
 
-test("shows safe copy error text and retries without leaking the failure", async () => {
-  const onCopy = jest.fn()
-    .mockRejectedValueOnce(new Error("private clipboard details"))
-    .mockResolvedValueOnce(undefined);
-  renderScreen({ onCopy });
+test("shows copy and image actions only after a saved card is export eligible", () => {
+  renderScreen({ exportEligible: true });
 
-  fireEvent.press(screen.getByRole("button", { name: "复制确认内容" }));
-
-  expect(await screen.findByRole("alert")).toBeTruthy();
-  expect(screen.getByText("复制失败，请重试。")).toBeTruthy();
-  expect(screen.queryByText(/private clipboard details/u)).toBeNull();
-  fireEvent.press(screen.getByRole("button", { name: "重试复制" }));
-  expect(await screen.findByText("已复制确认内容。")).toBeTruthy();
-  expect(onCopy).toHaveBeenCalledTimes(2);
+  expect(screen.getByRole("button", { name: "复制文字" })).toBeTruthy();
+  expect(screen.getByRole("button", { name: "保存图片" })).toBeTruthy();
 });
 
-test("shows an independent safe edit error and retry state", async () => {
+test("captures only the confirmed export paper, never mixed private card text", async () => {
+  const onSaveImage = jest.fn(async () => undefined);
+  renderScreen({
+    exportEligible: true,
+    exportModel: Object.freeze({ title: "靠近之前，我想告诉你" as const, sections: Object.freeze([{ id: "communication-comfort" as const, title: "什么会让我更安心", text: "确认的文字" }]), consentFooter: "这张卡只代表我整理它时的感受。任何人都可以随时改变主意，每一种靠近仍然需要当时再次确认。" as const }),
+    onSaveImage,
+    sections: [...sections, { id: "communication-not-this-time", title: "私密段落", text: "PRIVATE-CANARY" }],
+  });
+
+  expect(screen.getByTestId("confirmed-card-export-paper")).toBeTruthy();
+  expect(screen.queryByTestId("communication-draft-paper")?.props.ref).toBeUndefined();
+  fireEvent.press(screen.getByRole("button", { name: "保存图片" }));
+  await screen.findByText("保存图片");
+  expect(onSaveImage).toHaveBeenCalledWith(expect.objectContaining({ sections: [expect.objectContaining({ text: "确认的文字" })] }), "file:///confirmed.png");
+});
+
+test("reveals Settings only after a permanent photo denial and only opens it when pressed", async () => {
+  const onOpenImageSettings = jest.fn(async () => undefined);
+  const onSaveImage = jest.fn(async () => { throw Object.assign(new Error("safe"), { recovery: "open-settings" }); });
+  renderScreen({ exportEligible: true, exportModel: Object.freeze({ title: "靠近之前，我想告诉你" as const, sections: Object.freeze([]), consentFooter: "这张卡只代表我整理它时的感受。任何人都可以随时改变主意，每一种靠近仍然需要当时再次确认。" as const }), onOpenImageSettings, onSaveImage });
+
+  fireEvent.press(screen.getByRole("button", { name: "保存图片" }));
+  expect(await screen.findByRole("button", { name: "打开系统设置" })).toBeTruthy();
+  expect(onOpenImageSettings).not.toHaveBeenCalled();
+  fireEvent.press(screen.getByRole("button", { name: "打开系统设置" }));
+  expect(onOpenImageSettings).toHaveBeenCalledTimes(1);
+});
+
+test("shows a safe edit error and retry state", async () => {
   const onEdit = jest.fn()
     .mockRejectedValueOnce(new Error("private storage details"))
     .mockResolvedValueOnce(undefined);
   renderScreen({ onEdit });
 
-  fireEvent.press(screen.getByRole("button", { name: "编辑这张卡" }));
-
-  expect(await screen.findByRole("alert")).toBeTruthy();
-  expect(screen.getByText("暂时无法打开编辑，请重试。")).toBeTruthy();
+  fireEvent.press(screen.getByRole("button", { name: "编辑这份草稿" }));
+  expect(await screen.findByText("暂时无法打开编辑，请重试。")).toBeTruthy();
   expect(screen.queryByText(/private storage details/u)).toBeNull();
   await act(async () => { fireEvent.press(screen.getByRole("button", { name: "重试编辑" })); });
   expect(onEdit).toHaveBeenCalledTimes(2);
 });
 
-test("keeps the detail scrollable, text-wrapping and all controls at least 44 points", () => {
+test("keeps the detail themed, scrollable, text-wrapping and controls accessible", () => {
   renderScreen();
-
   const scroll = screen.getByTestId("card-detail-scroll");
   expect(scroll.props.contentInsetAdjustmentBehavior).toBe("automatic");
   expect(scroll.props.keyboardShouldPersistTaps).toBe("handled");

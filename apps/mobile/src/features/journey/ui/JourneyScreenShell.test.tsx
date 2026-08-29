@@ -47,7 +47,7 @@ test("numbers the first knowledge page and exposes journey options", () => {
 
 test.each([
   ["behavior-map", "行为地图与边界"],
-  ["final-preparation", "私密准备与沟通草稿"]
+  ["final-preparation", "我的沟通草稿"]
 ] as const)("names the canonical %s screen without legacy page titles", (pageId, title) => {
   render(<JourneyScreenShell pageId={pageId} onExit={onExit} />);
 

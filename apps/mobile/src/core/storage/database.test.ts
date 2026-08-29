@@ -47,15 +47,22 @@ function makeHarness(options: {
   advanceVersionOnBegin?: number;
   advanceVersionOnBeginCall?: number;
   existingTables?: string[];
+  legacyJournalPreference?: 0 | 1;
+  canonicalJournalPreference?: 0 | 1;
+  failJournalPreferenceCopyOnce?: boolean;
 } = {}) {
   let exists = options.databaseExists ?? false;
   let key = options.key ?? null;
   let failVersionOnce = options.failVersionOnce ?? false;
   const failSqlQueue = options.failSqlOnce === undefined ? [] : [options.failSqlOnce];
   let userVersion = options.userVersion ?? 0;
+  let canonicalJournalPreference = options.canonicalJournalPreference ?? null;
+  let failJournalPreferenceCopyOnce = options.failJournalPreferenceCopyOnce ?? false;
   let beginCount = 0;
   const tables = new Set(options.existingTables ?? []);
   let transactionTables: Set<string> | null = null;
+  let transactionUserVersion: number | null = null;
+  let transactionJournalPreference: 0 | 1 | null = null;
   const calls: string[] = [];
   const database = {
     execAsync: jest.fn(async (sql: string) => {
@@ -63,6 +70,8 @@ function makeHarness(options: {
       if (sql === "BEGIN IMMEDIATE") {
         beginCount += 1;
         transactionTables = new Set(tables);
+        transactionUserVersion = userVersion;
+        transactionJournalPreference = canonicalJournalPreference;
         if (
           options.advanceVersionOnBegin !== undefined
           && beginCount === (options.advanceVersionOnBeginCall ?? 1)
@@ -77,20 +86,46 @@ function makeHarness(options: {
       for (const match of sql.matchAll(/CREATE TABLE IF NOT EXISTS ([a-z0-9_]+)/gu)) {
         if (match[1] !== undefined) tables.add(match[1]);
       }
-      if (sql === "COMMIT") transactionTables = null;
+      if (sql === "COMMIT") {
+        transactionTables = null;
+        transactionUserVersion = null;
+        transactionJournalPreference = null;
+      }
       if (sql === "ROLLBACK" && transactionTables !== null) {
         tables.clear();
         for (const table of transactionTables) tables.add(table);
+        userVersion = transactionUserVersion ?? userVersion;
+        canonicalJournalPreference = transactionJournalPreference;
         transactionTables = null;
+        transactionUserVersion = null;
+        transactionJournalPreference = null;
       }
       const version = /^PRAGMA user_version = (\d+)$/u.exec(sql);
       if (version?.[1] !== undefined) userVersion = Number(version[1]);
     }),
     runAsync: jest.fn(async (sql: string) => {
-      void sql;
+      calls.push(sql);
+      if (sql.includes("INSERT INTO local_journal_preferences")) {
+        if (failJournalPreferenceCopyOnce) {
+          failJournalPreferenceCopyOnce = false;
+          throw new Error("legacy preference copy failed");
+        }
+        if (
+          canonicalJournalPreference === null
+          && options.legacyJournalPreference !== undefined
+        ) canonicalJournalPreference = options.legacyJournalPreference;
+      }
       return { changes: 0 };
     }),
-    getAllAsync: jest.fn(async () => []),
+    getAllAsync: jest.fn(async (sql: string) => {
+      calls.push(sql);
+      if (sql === "PRAGMA table_info(privacy_settings)") {
+        return options.legacyJournalPreference === undefined
+          ? []
+          : [{ name: "show_local_journal_save_notice" }];
+      }
+      return [];
+    }),
     getFirstAsync: jest.fn(async (sql: string) => {
       calls.push(sql);
       if (failVersionOnce) { failVersionOnce = false; throw new Error("file is encrypted"); }
@@ -121,7 +156,9 @@ function makeHarness(options: {
     files,
     native,
     secrets,
-    tables
+    tables,
+    getCanonicalJournalPreference: () => canonicalJournalPreference,
+    getUserVersion: () => userVersion
   };
 }
 
@@ -241,11 +278,15 @@ function makeLifecycleHarness() {
 
 describe("encrypted database lifecycle", () => {
   test("registers the private journal schema and account ownership migration", () => {
-    expect(CURRENT_SCHEMA_VERSION).toBe(9);
-    expect(DATABASE_MIGRATIONS.at(-1)?.schema).toContain("owner_account_id");
-    expect(DATABASE_MIGRATIONS.at(-2)).toMatchObject({ version: 8 });
+    expect(CURRENT_SCHEMA_VERSION).toBe(12);
+    expect(DATABASE_MIGRATIONS.at(-2)).toMatchObject({ version: 11 });
     expect(DATABASE_MIGRATIONS.at(-2)?.schema).toContain("CREATE TABLE IF NOT EXISTS journal_records");
+    expect(DATABASE_MIGRATIONS.at(-2)?.schema).toContain("owner_account_id");
     expect(DATABASE_MIGRATIONS.at(-2)?.schema).toContain("ON DELETE CASCADE");
+    expect(DATABASE_MIGRATIONS.at(-1)).toMatchObject({
+      version: 12,
+      afterSchema: expect.any(Function)
+    });
   });
   test("keeps the shared migration registry contiguous through the current version", () => {
     expect(DATABASE_MIGRATIONS.map(({ version }) => version)).toEqual(
@@ -273,7 +314,7 @@ describe("encrypted database lifecycle", () => {
     expect(harness.calls.join("\n")).not.toContain("transcript_history");
   });
 
-  test("migrates a new encrypted database through v1-v7 without replacing tables", async () => {
+  test("migrates a new encrypted database through v1-v12 without replacing tables", async () => {
     const harness = makeHarness();
     const manager = createEncryptedDatabaseManager(
       harness as unknown as Parameters<typeof createEncryptedDatabaseManager>[0]
@@ -295,6 +336,11 @@ describe("encrypted database lifecycle", () => {
     expect(schemaSql).toContain("CREATE TABLE IF NOT EXISTS journey_review_versions");
     expect(schemaSql).toContain("CREATE TABLE IF NOT EXISTS app_preferences");
     expect(schemaSql).toContain("theme_preference IN ('system', 'light', 'dark')");
+    expect(schemaSql).toContain("CREATE TABLE IF NOT EXISTS local_journal_preferences");
+    expect(schemaSql).toContain("CREATE TABLE IF NOT EXISTS journal_records");
+    expect(schemaSql).toContain("CREATE TABLE IF NOT EXISTS journal_entries");
+    expect(schemaSql).toContain("CREATE TABLE IF NOT EXISTS journal_period_reviews");
+    expect(schemaSql).not.toContain("ALTER TABLE privacy_settings");
     expect(harness.calls.filter((call) => call.startsWith("PRAGMA user_version ="))).toEqual([
       "PRAGMA user_version = 1",
       "PRAGMA user_version = 2",
@@ -304,11 +350,14 @@ describe("encrypted database lifecycle", () => {
       "PRAGMA user_version = 6",
       "PRAGMA user_version = 7",
       "PRAGMA user_version = 8",
-      "PRAGMA user_version = 9"
+      "PRAGMA user_version = 9",
+      "PRAGMA user_version = 10",
+      "PRAGMA user_version = 11",
+      "PRAGMA user_version = 12"
     ]);
   });
 
-  test("applies v2 through v7 when opening a v1 database", async () => {
+  test("applies v2 through v12 when opening a v1 database", async () => {
     const harness = makeHarness({ databaseExists: true, key: VALID_DATABASE_KEY, userVersion: 1 });
 
     await createEncryptedDatabaseManager(
@@ -329,7 +378,10 @@ describe("encrypted database lifecycle", () => {
       "PRAGMA user_version = 6",
       "PRAGMA user_version = 7",
       "PRAGMA user_version = 8",
-      "PRAGMA user_version = 9"
+      "PRAGMA user_version = 9",
+      "PRAGMA user_version = 10",
+      "PRAGMA user_version = 11",
+      "PRAGMA user_version = 12"
     ]);
   });
 
@@ -350,6 +402,7 @@ describe("encrypted database lifecycle", () => {
     expect(harness.calls).toContain("PRAGMA user_version = 5");
     expect(harness.calls).toContain("PRAGMA user_version = 6");
     expect(harness.calls).toContain("PRAGMA user_version = 7");
+    expect(harness.calls).toContain("PRAGMA user_version = 8");
   });
 
   test("applies the v3 migration in its own transaction", async () => {
@@ -385,6 +438,7 @@ describe("encrypted database lifecycle", () => {
     expect(harness.calls).toContain("PRAGMA user_version = 5");
     expect(harness.calls).toContain("PRAGMA user_version = 6");
     expect(harness.calls).toContain("PRAGMA user_version = 7");
+    expect(harness.calls).toContain("PRAGMA user_version = 8");
     const schema = harness.calls.findIndex((call) => call.includes("app_shell_state"));
     const begin = harness.calls.lastIndexOf("BEGIN IMMEDIATE", schema);
     const version = harness.calls.indexOf("PRAGMA user_version = 4");
@@ -407,6 +461,7 @@ describe("encrypted database lifecycle", () => {
     expect(harness.calls).toContain("PRAGMA user_version = 5");
     expect(harness.calls).toContain("PRAGMA user_version = 6");
     expect(harness.calls).toContain("PRAGMA user_version = 7");
+    expect(harness.calls).toContain("PRAGMA user_version = 8");
   });
 
   test("adds the schema-v3 draft table when opening a v5 database", async () => {
@@ -424,10 +479,14 @@ describe("encrypted database lifecycle", () => {
     expect(schemaSql.indexOf("CREATE TABLE IF NOT EXISTS app_preferences"))
       .toBeLessThan(schemaSql.indexOf("CREATE TABLE IF NOT EXISTS journey_drafts_v3"));
     expect(harness.calls.filter((call) => call.startsWith("PRAGMA user_version =")))
-      .toEqual(["PRAGMA user_version = 6", "PRAGMA user_version = 7", "PRAGMA user_version = 8", "PRAGMA user_version = 9"]);
+      .toEqual([
+        "PRAGMA user_version = 6", "PRAGMA user_version = 7", "PRAGMA user_version = 8",
+        "PRAGMA user_version = 9", "PRAGMA user_version = 10",
+        "PRAGMA user_version = 11", "PRAGMA user_version = 12"
+      ]);
   });
 
-  test("upgrades a published main v6 preferences database by adding only v7 draft storage", async () => {
+  test("upgrades a published main v6 preferences database through v7 and v8", async () => {
     const harness = makeHarness({
       databaseExists: true,
       key: VALID_DATABASE_KEY,
@@ -442,12 +501,164 @@ describe("encrypted database lifecycle", () => {
     const schemaSql = harness.calls.join("\n");
     expect(schemaSql).toContain("CREATE TABLE IF NOT EXISTS journey_drafts_v3");
     expect(schemaSql).toContain("CHECK (schema_version = 3)");
-    expect(schemaSql).not.toContain("CREATE TABLE IF NOT EXISTS app_preferences");
+    expect(schemaSql).toContain("CREATE TABLE IF NOT EXISTS app_preferences");
+    expect(schemaSql).toContain("CREATE TABLE IF NOT EXISTS local_journal_preferences");
     expect(harness.tables).toEqual(new Set([
-      "app_preferences", "journey_drafts_v3", "journal_records", "journal_entries", "journal_period_reviews"
+      "app_preferences",
+      "journey_drafts_v3",
+      "journey_drafts_v4",
+      "local_journal_preferences",
+      "journal_records",
+      "journal_entries",
+      "journal_period_reviews"
     ]));
     expect(harness.calls.filter((call) => call.startsWith("PRAGMA user_version =")))
-      .toEqual(["PRAGMA user_version = 7", "PRAGMA user_version = 8", "PRAGMA user_version = 9"]);
+      .toEqual([
+        "PRAGMA user_version = 7", "PRAGMA user_version = 8",
+        "PRAGMA user_version = 9", "PRAGMA user_version = 10",
+        "PRAGMA user_version = 11", "PRAGMA user_version = 12"
+      ]);
+  });
+
+  test("repairs a legacy local v6 version collision without replaying an ALTER TABLE", async () => {
+    const harness = makeHarness({
+      databaseExists: true,
+      key: VALID_DATABASE_KEY,
+      userVersion: 6,
+      existingTables: ["privacy_settings"]
+    });
+
+    await createEncryptedDatabaseManager(
+      harness as unknown as Parameters<typeof createEncryptedDatabaseManager>[0]
+    ).initialize();
+
+    const schemaSql = harness.calls.join("\n");
+    expect(schemaSql).toContain("CREATE TABLE IF NOT EXISTS app_preferences");
+    expect(schemaSql).toContain("CREATE TABLE IF NOT EXISTS journey_drafts_v3");
+    expect(schemaSql).toContain("CREATE TABLE IF NOT EXISTS local_journal_preferences");
+    expect(schemaSql).not.toContain("ALTER TABLE privacy_settings");
+    expect(schemaSql).not.toContain("DROP TABLE");
+    expect(harness.tables).toEqual(new Set([
+      "privacy_settings",
+      "app_preferences",
+      "journey_drafts_v3",
+      "journey_drafts_v4",
+      "local_journal_preferences",
+      "journal_records",
+      "journal_entries",
+      "journal_period_reviews"
+    ]));
+    expect(harness.calls.filter((call) => call.startsWith("PRAGMA user_version =")))
+      .toEqual([
+        "PRAGMA user_version = 7", "PRAGMA user_version = 8",
+        "PRAGMA user_version = 9", "PRAGMA user_version = 10",
+        "PRAGMA user_version = 11", "PRAGMA user_version = 12"
+      ]);
+  });
+
+  test.each([0, 1] as const)(
+    "v9 copies the legacy journal preference value %s into the canonical table",
+    async (legacyJournalPreference) => {
+      const harness = makeHarness({
+        databaseExists: true,
+        key: VALID_DATABASE_KEY,
+        userVersion: 8,
+        existingTables: ["privacy_settings"],
+        legacyJournalPreference
+      });
+
+      await createEncryptedDatabaseManager(
+        harness as unknown as Parameters<typeof createEncryptedDatabaseManager>[0]
+      ).initialize();
+
+      expect(harness.getCanonicalJournalPreference()).toBe(legacyJournalPreference);
+      expect(harness.calls).toContain("PRAGMA table_info(privacy_settings)");
+      expect(harness.calls.join("\n")).toContain("show_local_journal_save_notice");
+      expect(harness.getUserVersion()).toBe(12);
+    }
+  );
+
+  test("v9 preserves an existing canonical preference when legacy data conflicts", async () => {
+    const harness = makeHarness({
+      databaseExists: true,
+      key: VALID_DATABASE_KEY,
+      userVersion: 8,
+      existingTables: ["privacy_settings", "local_journal_preferences"],
+      legacyJournalPreference: 1,
+      canonicalJournalPreference: 0
+    });
+
+    await createEncryptedDatabaseManager(
+      harness as unknown as Parameters<typeof createEncryptedDatabaseManager>[0]
+    ).initialize();
+
+    expect(harness.getCanonicalJournalPreference()).toBe(0);
+  });
+
+  test("v9 never references a missing legacy preference column", async () => {
+    const harness = makeHarness({
+      databaseExists: true,
+      key: VALID_DATABASE_KEY,
+      userVersion: 8
+    });
+
+    await createEncryptedDatabaseManager(
+      harness as unknown as Parameters<typeof createEncryptedDatabaseManager>[0]
+    ).initialize();
+
+    expect(harness.calls).toContain("PRAGMA table_info(privacy_settings)");
+    expect(harness.calls.join("\n")).not.toContain("show_local_journal_save_notice");
+  });
+
+  test("v9 rolls schema, copied data, and user_version back together and retries", async () => {
+    const harness = makeHarness({
+      databaseExists: true,
+      key: VALID_DATABASE_KEY,
+      userVersion: 8,
+      existingTables: ["privacy_settings"],
+      legacyJournalPreference: 1,
+      failJournalPreferenceCopyOnce: true
+    });
+    const manager = createEncryptedDatabaseManager(
+      harness as unknown as Parameters<typeof createEncryptedDatabaseManager>[0]
+    );
+
+    await expect(manager.initialize()).rejects.toThrow("legacy preference copy failed");
+    expect(harness.getUserVersion()).toBe(8);
+    expect(harness.getCanonicalJournalPreference()).toBeNull();
+    expect(harness.tables).not.toContain("local_journal_preferences");
+    expect(harness.calls).toContain("ROLLBACK");
+
+    await expect(manager.initialize()).resolves.toBeDefined();
+    expect(harness.getUserVersion()).toBe(12);
+    expect(harness.getCanonicalJournalPreference()).toBe(1);
+  });
+
+  test("v10 appends the v4 draft table without deleting or rewriting v3", async () => {
+    const harness = makeHarness({
+      databaseExists: true,
+      key: VALID_DATABASE_KEY,
+      userVersion: 9,
+      existingTables: ["journey_drafts_v3"]
+    });
+
+    await createEncryptedDatabaseManager(
+      harness as unknown as Parameters<typeof createEncryptedDatabaseManager>[0]
+    ).initialize();
+
+    const sql = harness.calls.join("\n");
+    expect(sql).toContain("CREATE TABLE IF NOT EXISTS journey_drafts_v4");
+    expect(sql).toContain("CHECK (schema_version = 4)");
+    expect(sql).not.toContain("DROP TABLE");
+    expect(sql).not.toContain("DELETE FROM journey_drafts_v3");
+    expect(harness.tables).toEqual(new Set([
+      "journey_drafts_v3",
+      "journey_drafts_v4",
+      "journal_records",
+      "journal_entries",
+      "journal_period_reviews"
+    ]));
+    expect(harness.getUserVersion()).toBe(12);
   });
 
   test("rolls back a failed published v6 preferences migration, then applies v7 once", async () => {
@@ -469,7 +680,7 @@ describe("encrypted database lifecycle", () => {
     await manager.initialize();
 
     expect(harness.calls.filter((call) => call.includes("CREATE TABLE IF NOT EXISTS app_preferences")))
-      .toHaveLength(2);
+      .toHaveLength(3);
     expect(harness.calls.filter((call) => call === "PRAGMA user_version = 6")).toHaveLength(2);
     expect(harness.calls.filter((call) => call.includes("CREATE TABLE IF NOT EXISTS journey_drafts_v3")))
       .toHaveLength(1);
@@ -478,12 +689,12 @@ describe("encrypted database lifecycle", () => {
   });
 
   test("rejects a database created by a future app version without mutating it", async () => {
-    const harness = makeHarness({ databaseExists: true, key: VALID_DATABASE_KEY, userVersion: 10 });
+    const harness = makeHarness({ databaseExists: true, key: VALID_DATABASE_KEY, userVersion: 13 });
     const manager = createEncryptedDatabaseManager(
       harness as unknown as Parameters<typeof createEncryptedDatabaseManager>[0]
     );
 
-    await expect(manager.initialize()).rejects.toThrow("Unsupported database version: 10");
+    await expect(manager.initialize()).rejects.toThrow("Unsupported database version: 13");
     expect(harness.calls.join("\n")).not.toContain("CREATE TABLE");
     expect(harness.calls).not.toContain("PRAGMA user_version = 2");
     expect(harness.files.removeDatabaseFiles).not.toHaveBeenCalled();
@@ -493,14 +704,14 @@ describe("encrypted database lifecycle", () => {
     const harness = makeHarness({
       databaseExists: true,
       key: VALID_DATABASE_KEY,
-      userVersion: 9,
-      advanceVersionOnBegin: 10
+      userVersion: 12,
+      advanceVersionOnBegin: 13
     });
     const manager = createEncryptedDatabaseManager(
       harness as unknown as Parameters<typeof createEncryptedDatabaseManager>[0]
     );
 
-    await expect(manager.initialize()).rejects.toThrow("Unsupported database version: 10");
+    await expect(manager.initialize()).rejects.toThrow("Unsupported database version: 13");
     expect(harness.calls).toContain("BEGIN IMMEDIATE");
     expect(harness.calls).toContain("ROLLBACK");
     expect(harness.files.removeDatabaseFiles).not.toHaveBeenCalled();
@@ -511,7 +722,7 @@ describe("encrypted database lifecycle", () => {
       databaseExists: true,
       key: VALID_DATABASE_KEY,
       userVersion: 0,
-      advanceVersionOnBegin: 9,
+      advanceVersionOnBegin: 12,
       advanceVersionOnBeginCall: 2
     });
 
@@ -631,8 +842,8 @@ describe("encrypted database lifecycle", () => {
     expect(first).toBe(second);
     expect(harness.secrets.getOrCreateDatabaseKey).toHaveBeenCalledTimes(1);
     expect(harness.native.openDatabaseAsync).toHaveBeenCalledTimes(1);
-    expect(harness.calls.filter((call) => call === "PRAGMA user_version")).toHaveLength(10);
-    expect(harness.calls.filter((call) => call.includes("CREATE TABLE"))).toHaveLength(8);
+    expect(harness.calls.filter((call) => call === "PRAGMA user_version")).toHaveLength(13);
+    expect(harness.calls.filter((call) => call.includes("CREATE TABLE"))).toHaveLength(11);
   });
 
   test("shares an initialization failure and allows the next caller to retry", async () => {
@@ -1027,7 +1238,12 @@ describe("encrypted database lifecycle", () => {
       "UPDATE journey_drafts_v3 SET updated_at = ?",
       "now"
     );
-    expect(harness.calls.slice(-3)).toEqual(["BEGIN IMMEDIATE", "COMMIT", "close"]);
+    expect(harness.calls.slice(-4)).toEqual([
+      "BEGIN IMMEDIATE",
+      "UPDATE journey_drafts_v3 SET updated_at = ?",
+      "COMMIT",
+      "close"
+    ]);
   });
 
   test.each(["callback", "commit"] as const)(
@@ -1319,12 +1535,12 @@ describe("encrypted database lifecycle", () => {
       key: VALID_DATABASE_KEY,
       userVersion: 7
     });
-    const failure = new Error("unawaited write failed");
-    harness.database.runAsync.mockRejectedValueOnce(failure);
     const manager = createEncryptedDatabaseManager(
       harness as unknown as Parameters<typeof createEncryptedDatabaseManager>[0]
     );
     await manager.initialize();
+    const failure = new Error("unawaited write failed");
+    harness.database.runAsync.mockRejectedValueOnce(failure);
     const transactionCallStart = harness.calls.length;
 
     const transaction = manager.withTransaction(async (connection) => {

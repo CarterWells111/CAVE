@@ -1,23 +1,30 @@
-import { useState } from "react";
-import { Pressable, Text } from "react-native";
+import { forwardRef, useState } from "react";
+import { Pressable, Text, type View } from "react-native";
 
 import { useTheme } from "../design/theme-provider";
+import { useReducedMotion } from "../design/motion-preferences";
 
 export type SecondaryButtonProps = {
   label: string;
+  accessibilityLabel?: string;
   onPress: () => void;
   disabled?: boolean;
   loading?: boolean;
   testID?: string;
 };
 
-export function SecondaryButton({ label, onPress, disabled = false, loading = false, testID }: SecondaryButtonProps) {
+export const SecondaryButton = forwardRef<View, SecondaryButtonProps>(function SecondaryButton(
+  { label, accessibilityLabel, onPress, disabled = false, loading = false, testID },
+  ref,
+) {
   const theme = useTheme();
+  const reducedMotion = useReducedMotion();
   const [focused, setFocused] = useState(false);
   const unavailable = disabled || loading;
   return (
     <Pressable
-      accessibilityLabel={label}
+      ref={ref}
+      accessibilityLabel={accessibilityLabel ?? label}
       accessibilityRole="button"
       accessibilityState={{ busy: loading, disabled: unavailable }}
       disabled={unavailable}
@@ -39,7 +46,7 @@ export function SecondaryButton({ label, onPress, disabled = false, loading = fa
         maxWidth: "100%",
         minHeight: theme.size.secondaryActionHeight,
         minWidth: theme.size.minimumTouchTarget,
-        opacity: disabled ? 0.65 : pressed ? 0.82 : 1,
+        opacity: disabled ? 0.65 : pressed && !reducedMotion ? 0.82 : 1,
         outlineColor: theme.color.focus,
         outlineOffset: theme.border.focusOffset,
         outlineWidth: focused ? theme.border.focusWidth : 0,
@@ -56,4 +63,4 @@ export function SecondaryButton({ label, onPress, disabled = false, loading = fa
       {disabled && !loading ? <Text style={{ ...theme.typography.caption, color: theme.color.disabledText }}>不可用</Text> : null}
     </Pressable>
   );
-}
+});

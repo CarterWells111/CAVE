@@ -65,6 +65,17 @@ describe("Expo app identity", () => {
     expect(config.android).toBeUndefined();
   });
 
+  test("declares iOS add-only photo saving without Android configuration", () => {
+    expect(configFor("production").plugins).toContainEqual([
+      "expo-media-library",
+      expect.objectContaining({
+        photosPermission: expect.stringContaining("照片"),
+        savePhotosPermission: expect.stringContaining("保存"),
+      }),
+    ]);
+    expect(configFor("production").android).toBeUndefined();
+  });
+
   it("is linked to one EAS project", () => {
     const projectId = configFor("development").extra?.eas?.projectId;
 

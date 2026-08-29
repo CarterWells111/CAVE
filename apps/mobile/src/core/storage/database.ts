@@ -1,7 +1,9 @@
 import type { DatabaseSecretRepository } from "./key-store";
 import {
   DATABASE_MIGRATIONS,
-  CURRENT_SCHEMA_VERSION
+  CURRENT_SCHEMA_VERSION,
+  type DatabaseMigration,
+  type MigrationCallbackConnection
 } from "./migrations";
 
 export interface DatabaseConnection {
@@ -482,8 +484,7 @@ export function createEncryptedDatabaseManager({
         if (currentVersion < migration.version) {
           currentVersion = await applyMigration(
             opened,
-            migration.schema,
-            migration.version
+            migration
           );
         }
       }
@@ -665,8 +666,7 @@ async function readCurrentVersion(connection: DatabaseConnection): Promise<numbe
 
 async function applyMigration(
   connection: DatabaseConnection,
-  schema: string,
-  version: number
+  migration: DatabaseMigration
 ): Promise<number> {
   await connection.execAsync("BEGIN IMMEDIATE");
   try {
@@ -675,14 +675,25 @@ async function applyMigration(
     if (lockedVersion > CURRENT_SCHEMA_VERSION) {
       throw new UnsupportedDatabaseVersionError(lockedVersion);
     }
-    if (lockedVersion >= version) {
+    if (lockedVersion >= migration.version) {
       await connection.execAsync("COMMIT");
       return lockedVersion;
     }
-    await connection.execAsync(schema);
-    await connection.execAsync(`PRAGMA user_version = ${version}`);
+    await connection.execAsync(migration.schema);
+    const callbackConnection: MigrationCallbackConnection = {
+      runAsync: (sql, ...params) => {
+        assertDataSql(sql);
+        return connection.runAsync(sql, ...params);
+      },
+      getAllAsync: <T,>(sql: string, ...params: unknown[]) => {
+        assertDataSql(sql);
+        return connection.getAllAsync<T>(sql, ...params);
+      }
+    };
+    await migration.afterSchema?.(callbackConnection);
+    await connection.execAsync(`PRAGMA user_version = ${migration.version}`);
     await connection.execAsync("COMMIT");
-    return version;
+    return migration.version;
   } catch (error) {
     await connection.execAsync("ROLLBACK");
     throw error;

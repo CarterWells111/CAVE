@@ -4,7 +4,7 @@ import { StyleSheet } from "react-native";
 import { HomeScreen } from "./HomeScreen";
 
 const activeReview = { id: "active", kind: "review" as const, title: "八月回顾", dateLabel: "2026年8月27日", statusLabel: "进行中" };
-const currentCard = { id: "card", title: "当前沟通卡", dateLabel: "2026年8月27日", statusLabel: "仅本机" };
+const currentCard = { id: "card", title: "当前沟通草稿", dateLabel: "2026年8月27日", statusLabel: "仅本机" };
 const recent = { id: "recent", title: "周末回顾", dateLabel: "2026年8月20日", statusLabel: "已完成" };
 
 test("shows all long-term home destinations using neutral metadata only", () => {
@@ -30,7 +30,7 @@ test("shows all long-term home destinations using neutral metadata only", () => 
   expect(screen.queryByText(/正文|私密内容|昨晚/u)).toBeNull();
 
   fireEvent.press(screen.getByRole("button", { name: "继续本次回顾" }));
-  fireEvent.press(screen.getByRole("button", { name: "打开当前沟通卡" }));
+  fireEvent.press(screen.getByRole("button", { name: "打开当前沟通草稿" }));
   fireEvent.press(screen.getByRole("button", { name: "开始练习" }));
   fireEvent.press(screen.getByRole("button", { name: "开始一次回顾" }));
   expect(callbacks.onStartReview).not.toHaveBeenCalled();
@@ -125,5 +125,5 @@ test("renders loading, retryable error, and real empty destinations", () => {
 
   rerender(<HomeScreen recentRecords={[]} onStartPractice={jest.fn()} onStartReview={jest.fn()} />);
   expect(screen.getByText("还没有最近手记")).toBeTruthy();
-  expect(screen.getByText("还没有当前沟通卡")).toBeTruthy();
+  expect(screen.getByText("还没有当前沟通草稿")).toBeTruthy();
 });

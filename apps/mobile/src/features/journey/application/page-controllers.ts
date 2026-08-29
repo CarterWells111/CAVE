@@ -1,12 +1,13 @@
-import type {
-  AddressPreference,
-  BehaviorAttitude,
-  ChecklistItemStatus,
-  JournalSaveChoice,
-  JourneyDraft,
-  JourneyPracticeSubmission,
+import {
+  CURRENT_COMMUNICATION_CARD_SHARING_POLICY_VERSION,
+  type AddressPreference,
+  type BehaviorAttitude,
+  type ChecklistItemStatus,
+  type JournalSaveChoice,
+  type JourneyDraft,
+  type JourneyPracticeSubmission,
 } from "../domain/types";
-import { selectConfirmedCommunicationCard } from "../domain/derive-communication-card";
+import { normalizeCommunicationDraft, selectConfirmedCommunicationCard } from "../domain/derive-communication-card";
 import type { ConfirmedCommunicationCard } from "../domain/derive-communication-card";
 import type {
   PartnerResponseBranch,
@@ -18,7 +19,6 @@ import type { AppShellStateRepository } from "../../shell/infrastructure/app-she
 import type { ReviewHistoryRepository } from "../../reviews/infrastructure/review-history-repository";
 import type { JourneyApplicationService } from "./journey-application-service";
 import type { JourneyCompletionTransaction } from "../infrastructure/journey-write-coordinator";
-import { OVERNIGHT_COMPLETE_POINT_EVENT_KEY } from "./journey-progress-markers";
 
 export interface ClipboardAdapter {
   setStringAsync(value: string): Promise<void>;
@@ -83,16 +83,24 @@ export class JourneyPageController {
     return this.dependencies.service.dispatch({ type: "set-explicit-content-consent", consented });
   }
 
+  saveOvernightProgress(input: {
+    stage: "expectations" | "concerns";
+    expectationIds: string[];
+    concernIds: string[];
+    customNote: string;
+    completed: boolean;
+  }) {
+    return this.dependencies.service.dispatch({ type: "save-overnight-progress", ...input });
+  }
+
   async saveOvernight(input: { expectationIds: string[]; concernIds: string[]; customNote: string }) {
     await this.dependencies.service.dispatch({
-      type: "save-overnight",
+      type: "save-overnight-progress",
+      completed: true,
+      stage: "concerns",
       expectationIds: input.expectationIds,
       concernIds: input.concernIds,
       customNote: input.customNote,
-    });
-    await this.dependencies.service.dispatch({
-      type: "record-point-event",
-      key: OVERNIGHT_COMPLETE_POINT_EVENT_KEY,
     });
   }
 
@@ -234,38 +242,21 @@ export class JourneyPageController {
     return this.dependencies.service.dispatch({ type: "edit-communication-card-field", sectionId, userText });
   }
 
-  async saveCommunicationCard(confirmedCard?: ConfirmedCommunicationCard) {
+  async saveCommunicationCard() {
     const draft = this.requireDraft();
-    const confirmed = confirmedCard ?? selectConfirmedCommunicationCard(draft);
-    const included = new Map(confirmed.sections.map((section) => [section.id, section.text]));
-    const card = Object.fromEntries(Object.entries(draft.communicationCard).map(([sectionId, field]) => {
-      const text = included.get(sectionId as keyof JourneyDraft["communicationCard"]);
-      return [sectionId, text === undefined
-        ? {
-            generatedText: "",
-            sourceRevision: field.sourceRevision,
-            needsReview: false,
-            visibility: "deleted" as const
-          }
-        : {
-            generatedText: text,
-            sourceRevision: field.sourceRevision,
-            needsReview: false,
-            visibility: "included" as const
-          }];
-    })) as JourneyDraft["communicationCard"];
-    await this.dependencies.cards.save({
-      id: `card:${draft.id}`,
-      journeyId: draft.id,
-      card,
-      savedAt: this.dependencies.now()
-    });
+    const record = this.buildSavedCommunicationDraft(draft, this.dependencies.now());
+    await this.dependencies.cards.save(record);
+    return record.id;
   }
 
-  async completeInitialJourney(confirmedCard: ConfirmedCommunicationCard) {
+  async completeInitialJourney() {
     const draft = this.requireDraft();
     const completedAt = this.dependencies.now();
-    const card = this.buildSavedCommunicationCard(draft, confirmedCard, completedAt);
+    const completedDraft = {
+      ...draft,
+      communicationCard: normalizeCommunicationDraft(draft.communicationCard)
+    };
+    const card = this.buildSavedCommunicationDraft(completedDraft, completedAt);
     const versionId = `review:${draft.id}:completed`;
     const active = await this.dependencies.reviewHistory?.loadActive();
     const version = {
@@ -275,13 +266,13 @@ export class JourneyPageController {
       title: active?.title ?? `回顾 ${draft.updatedAt.slice(0, 10)}`,
       createdAt: completedAt,
       status: "completed" as const,
-      payload: draft,
+      payload: completedDraft,
     };
     const shell = { initialJourneyId: draft.id, initialJourneyCompletedAt: completedAt };
     if (this.dependencies.completeAtomically !== undefined) {
-      await this.dependencies.completeAtomically({ draft, card, version, shell });
+      await this.dependencies.completeAtomically({ draft: completedDraft, card, version, shell });
       this.dependencies.service.adoptCompletedJourney?.();
-      return;
+      return card.id;
     }
     await this.dependencies.cards.save(card);
     if (this.dependencies.reviewHistory !== undefined
@@ -290,17 +281,24 @@ export class JourneyPageController {
     }
     await this.dependencies.shellState.completeInitialJourney(shell);
     await this.dependencies.service.resetJourney();
+    return card.id;
   }
 
-  private buildSavedCommunicationCard(draft: JourneyDraft, confirmed: ConfirmedCommunicationCard, savedAt: string) {
-    const included = new Map(confirmed.sections.map((section) => [section.id, section.text]));
-    const card = Object.fromEntries(Object.entries(draft.communicationCard).map(([sectionId, field]) => {
-      const text = included.get(sectionId as keyof JourneyDraft["communicationCard"]);
-      return [sectionId, text === undefined
-        ? { generatedText: "", sourceRevision: field.sourceRevision, needsReview: false, visibility: "deleted" as const }
-        : { generatedText: text, sourceRevision: field.sourceRevision, needsReview: false, visibility: "included" as const }];
-    })) as JourneyDraft["communicationCard"];
-    return { id: `card:${draft.id}`, journeyId: draft.id, card, savedAt };
+  private buildSavedCommunicationDraft(draft: JourneyDraft, savedAt: string) {
+    const card = normalizeCommunicationDraft(draft.communicationCard);
+    const sharingConfirmed = Object.values(card).every((field) => (
+      field.visibility !== "pending"
+      && (field.visibility !== "included" || !field.needsReview)
+    ));
+    return {
+      id: `card:${draft.id}`,
+      journeyId: draft.id,
+      card,
+      savedAt,
+      ...(sharingConfirmed
+        ? { sharingPolicyVersion: CURRENT_COMMUNICATION_CARD_SHARING_POLICY_VERSION }
+        : {})
+    };
   }
 
   async copyCommunicationCard(): Promise<ClipboardCopyResult> {

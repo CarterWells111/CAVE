@@ -1,8 +1,8 @@
 import { createRef, type ComponentRef } from "react";
-import { render, screen } from "@testing-library/react-native";
-import { ScrollView, StyleSheet, Text } from "react-native";
+import { fireEvent, render, screen, within } from "@testing-library/react-native";
+import { Pressable, ScrollView, StyleSheet, Text } from "react-native";
 
-import { contentHorizontalPadding, Screen, type ScreenProps } from "./Screen";
+import { contentHorizontalPadding, Screen, type ScreenProps, useScreenScroll } from "./Screen";
 
 type LockedScrollKey = Extract<
   keyof ScreenProps,
@@ -10,6 +10,11 @@ type LockedScrollKey = Extract<
 >;
 
 const screenPropsLockScrollInvariants: [LockedScrollKey] extends [never] ? true : false = true;
+
+function StandaloneScrollAction() {
+  const { scrollToTop } = useScreenScroll();
+  return <Pressable accessibilityRole="button" onPress={scrollToTop}><Text>回到顶部</Text></Pressable>;
+}
 
 describe("Screen", () => {
   it("provides a responsive vertical scrolling content container", () => {
@@ -20,7 +25,9 @@ describe("Screen", () => {
     );
 
     const root = screen.getByTestId("screen");
-    expect(screen.queryByTestId("screen-safe-area")).toBeNull();
+    expect(screen.getByTestId("screen-safe-area")).toHaveProp("edges", {
+      bottom: "additive", left: "off", right: "off", top: "additive",
+    });
     const rootStyle = StyleSheet.flatten(root.props.style);
     const contentStyle = StyleSheet.flatten(root.props.contentContainerStyle);
 
@@ -72,6 +79,32 @@ describe("Screen", () => {
     );
   });
 
+  it("keeps a fixed header outside the vertical scroll view", () => {
+    render(
+      <Screen fixedHeader={<Text>固定页眉</Text>} testID="fixed-header-screen">
+        <Text>可滚动正文</Text>
+      </Screen>,
+    );
+
+    const fixedHeader = screen.getByTestId("screen-fixed-header");
+    const scrollView = screen.getByTestId("fixed-header-screen");
+
+    expect(within(fixedHeader).getByText("固定页眉")).toBeTruthy();
+    expect(within(scrollView).queryByText("固定页眉")).toBeNull();
+    expect(within(scrollView).getByText("可滚动正文")).toBeTruthy();
+    expect(StyleSheet.flatten(fixedHeader.props.style)).toEqual(
+      expect.objectContaining({
+        maxWidth: 600,
+        paddingHorizontal: 20,
+        width: "100%",
+      }),
+    );
+  });
+
+  it("locks scroll invariants out of its public props", () => {
+    expect(screenPropsLockScrollInvariants).toBe(true);
+  });
+
   it("forwards a ref to the native scroll view", () => {
     const ref = createRef<ComponentRef<typeof ScrollView>>();
 
@@ -79,10 +112,6 @@ describe("Screen", () => {
 
     expect(ref.current).not.toBeNull();
     expect(ref.current?.props.testID).toBe("ref-screen");
-  });
-
-  it("locks scroll invariants out of its public props", () => {
-    expect(screenPropsLockScrollInvariants).toBe(true);
   });
 
   it("lets caller presentation styles through without overriding readable width or gutters", () => {
@@ -123,5 +152,11 @@ describe("Screen", () => {
     expect(content.minWidth).toBeUndefined();
     expect(content.paddingLeft).toBeUndefined();
     expect(content.paddingRight).toBeUndefined();
+  });
+
+  it("keeps the scroll controller safe when a consumer is rendered outside Screen", () => {
+    render(<StandaloneScrollAction />);
+
+    expect(() => fireEvent.press(screen.getByRole("button", { name: "回到顶部" }))).not.toThrow();
   });
 });

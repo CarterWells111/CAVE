@@ -26,4 +26,3 @@
 - 解析 Expo public config，确认 splash 插件存在且 iOS-only App 图标范围未回退。
 - 运行移动端聚焦测试、typecheck 与 Expo Doctor。
 - Expo Go 仅用于观察开发期模拟效果；真实原生启动页以 iOS preview 或 production build 为准。
-

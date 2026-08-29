@@ -1,10 +1,8 @@
 import { fireEvent, render, screen } from "@testing-library/react-native";
-import { AccessibilityInfo } from "react-native";
-import * as ReactNative from "react-native";
+import { AccessibilityInfo, View } from "react-native";
 
 import { darkTheme as theme } from "../design/theme";
 import { ProgressHeader } from "./ProgressHeader";
-import { progressHeaderUsesStackedLayout } from "./ProgressHeader";
 
 afterEach(() => jest.restoreAllMocks());
 
@@ -52,23 +50,23 @@ test("keeps actions at least 44 points and exposes unavailable state", () => {
   expect(onBack).not.toHaveBeenCalled();
 });
 
-test.each([
-  [390, 1, false], [390, 1.5, true], [390, 2, true],
-  [360, 1, true], [360, 1.5, true], [360, 2, true],
-  [320, 1, true], [320, 1.5, true], [320, 2, true],
-] as const)("responsive matrix width %i fontScale %s => stacked %s", (width, fontScale, expected) => {
-  expect(progressHeaderUsesStackedLayout(width, fontScale)).toBe(expected);
-});
-
-test("uses a wrapping two-line layout at 360 points and 200% text", () => {
-  jest.spyOn(ReactNative, "useWindowDimensions").mockReturnValue({
-    fontScale: 2, height: 780, scale: 2, width: 360,
-  });
+test("keeps all three slots in one row at 320 points while allowing full labels to scale and wrap", () => {
   render(
-    <ProgressHeader currentPage={7} exitLabel="退出并返回开始页面" onBack={jest.fn()} onExit={jest.fn()} totalPages={7} testID="header" />,
+    <View style={{ width: 320 }} testID="narrow-viewport">
+      <ProgressHeader currentPage={7} onBack={jest.fn()} onExit={jest.fn()} totalPages={7} testID="header" />
+    </View>,
   );
-  expect(screen.getByTestId("header")).toHaveStyle({ flexDirection: "column", width: "100%" });
-  expect(screen.getByText("退出并返回开始页面")).toHaveStyle({ flexShrink: 1, flexWrap: "wrap" });
+  expect(screen.getByTestId("narrow-viewport")).toHaveStyle({ width: 320 });
+  expect(screen.getByTestId("header")).toHaveStyle({ flexDirection: "row", width: "100%" });
+  expect(screen.queryByTestId("progress-actions-row")).toBeNull();
+  for (const label of ["返回上一页", "退出旅程"]) {
+    expect(screen.getByRole("button", { name: label })).toHaveStyle({ minHeight: 44, minWidth: 44 });
+    expect(screen.getByText(label)).toHaveStyle({ flexShrink: 1, flexWrap: "wrap" });
+    expect(screen.getByText(label).props.allowFontScaling).toBeUndefined();
+    expect(screen.getByText(label).props.maxFontSizeMultiplier).toBeUndefined();
+    expect(screen.getByText(label).props.numberOfLines).toBeUndefined();
+    expect(screen.getByText(label).props.ellipsizeMode).toBeUndefined();
+  }
   expect(screen.getByText("7 / 7").props.numberOfLines).toBeUndefined();
 });
 

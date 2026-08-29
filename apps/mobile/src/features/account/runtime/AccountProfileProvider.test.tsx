@@ -54,7 +54,6 @@ function createRepository(): jest.Mocked<AccountProfileRepository> {
 
 function createPicker(): jest.Mocked<AccountProfilePicker> {
   return {
-    requestMediaLibraryPermissionsAsync: jest.fn(async () => ({ granted: true })),
     launchImageLibraryAsync: jest.fn(async (
       options: Parameters<AccountProfilePicker["launchImageLibraryAsync"]>[0],
     ) => {
@@ -164,19 +163,16 @@ test("hides the old account immediately and ignores its late load after an accou
   expect(screen.getByText(`account:${ACCOUNT_B}`)).toBeTruthy();
 });
 
-test("updates display name and avatar, requests permission on demand, and removes the avatar", async () => {
+test("updates display name and avatar through the system picker, and removes the avatar", async () => {
   mockAuth = { status: "signedIn", accountId: ACCOUNT_A, email: "a@example.com" };
   const view = renderProvider();
   await screen.findByText("status:ready");
-  expect(view.picker.requestMediaLibraryPermissionsAsync).not.toHaveBeenCalled();
-
   fireEvent.press(screen.getByRole("button", { name: "save" }));
   await waitFor(() => expect(screen.getByText("name:新昵称")).toBeTruthy());
   expect(view.repository.saveDisplayName).toHaveBeenCalledWith(ACCOUNT_A, " 新昵称 ");
 
   fireEvent.press(screen.getByRole("button", { name: "choose" }));
   await waitFor(() => expect(screen.getByText("avatar:file:///picked-avatar.jpg")).toBeTruthy());
-  expect(view.picker.requestMediaLibraryPermissionsAsync).toHaveBeenCalledTimes(1);
   expect(view.picker.launchImageLibraryAsync).toHaveBeenCalledWith({
     allowsEditing: true,
     aspect: [1, 1],
@@ -190,7 +186,7 @@ test("updates display name and avatar, requests permission on demand, and remove
   expect(view.repository.removeAvatar).toHaveBeenCalledWith(ACCOUNT_A);
 });
 
-test("treats picker cancellation as no change and permission denial as a neutral error", async () => {
+test("treats picker cancellation as no change", async () => {
   mockAuth = { status: "signedIn", accountId: ACCOUNT_A, email: "a@example.com" };
   const picker = createPicker();
   picker.launchImageLibraryAsync.mockResolvedValueOnce({ canceled: true, assets: [] });
@@ -202,10 +198,6 @@ test("treats picker cancellation as no change and permission denial as a neutral
   expect(view.repository.replaceAvatar).not.toHaveBeenCalled();
   expect(screen.getByText("error:none")).toBeTruthy();
 
-  picker.requestMediaLibraryPermissionsAsync.mockResolvedValueOnce({ granted: false });
-  fireEvent.press(screen.getByRole("button", { name: "choose" }));
-  await screen.findByText("error:permission");
-  expect(screen.getByText("status:ready")).toBeTruthy();
 });
 
 test("keeps an earlier persisted mutation visible when a later picker is canceled", async () => {

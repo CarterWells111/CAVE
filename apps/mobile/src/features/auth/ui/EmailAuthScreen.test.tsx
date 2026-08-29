@@ -89,11 +89,7 @@ test("development diagnostics omit private messages and arbitrary input", async 
   fireEvent.press(screen.getByRole("button", { name: "发送验证码" }));
   await screen.findByRole("alert");
 
-  expect(warning).toHaveBeenCalledWith("auth.action.failed", {
-    name: "AuthActionError",
-    code: "NETWORK_ERROR",
-    status: 0,
-  });
+  expect(warning).toHaveBeenCalledWith("auth.action.failed");
   expect(JSON.stringify(warning.mock.calls)).not.toContain(privateEmail);
 });
 

@@ -140,7 +140,7 @@ test("rolls back the version and active transition together", async () => {
   expect(connection.execAsync).toHaveBeenLastCalledWith("ROLLBACK");
 });
 
-test("loads an old v2 active review as v3 without dropping private fields", async () => {
+test("loads an old v2 active review as v4 without dropping private fields", async () => {
   const repository = journeyRepositoryWith({
     root_id: "root-1",
     base_version_id: "version-1",
@@ -153,7 +153,7 @@ test("loads an old v2 active review as v3 without dropping private fields", asyn
     rootId: "root-1",
     sourceVersionId: "version-1",
     payload: {
-      schemaVersion: 3,
+      schemaVersion: 4,
       currentPage: "behavior-map",
       overnightCustomNote: "private overnight note",
       journal: { text: "private journal text" },
@@ -176,14 +176,14 @@ test("loads an interim v2 body-knowledge review without skipping overnight", asy
 
   await expect(repository.loadActive()).resolves.toMatchObject({
     payload: {
-      schemaVersion: 3,
+      schemaVersion: 4,
       currentPage: "body-knowledge",
       pointEventKeys: []
     }
   });
 });
 
-test("loads and branches an old v2 historical version as a current v3 payload", async () => {
+test("loads and branches an old v2 historical version as a current v4 payload", async () => {
   const row = {
     id: "version-1",
     root_id: "root-1",
@@ -199,7 +199,7 @@ test("loads and branches an old v2 historical version as a current v3 payload", 
 
   await expect(repository.loadDetail("version-1")).resolves.toMatchObject({
     payload: {
-      schemaVersion: 3,
+      schemaVersion: 4,
       journal: { text: "private journal text" },
       communicationCard: {
         "communication-not-this-time": expect.objectContaining({ userText: "private review boundary" })
@@ -209,7 +209,7 @@ test("loads and branches an old v2 historical version as a current v3 payload", 
   await expect(repository.loadBranchSeed("version-1")).resolves.toMatchObject({
     sourceVersionId: "version-1",
     payload: {
-      schemaVersion: 3,
+      schemaVersion: 4,
       currentPage: "behavior-map",
       pointEventKeys: expect.arrayContaining(["progress:overnight-complete:v1"])
     }

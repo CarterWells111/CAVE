@@ -1,6 +1,8 @@
+import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "expo-router";
 
 import { useThemePreference } from "../../src/core/design/theme-provider";
+import { DEFAULT_PRIVACY_SETTINGS, type PrivacySettings } from "../../src/core/storage/types";
 import { useAccountProfile } from "../../src/features/account/runtime/AccountProfileProvider";
 import { useOptionalAuth } from "../../src/features/auth/runtime/AuthProvider";
 import { useAdultDeclaration, useOptionalJourneyRuntime } from "../../src/features/journey/runtime/JourneyRuntimeProvider";
@@ -12,12 +14,34 @@ export default function SettingsRoute() {
   const accountProfile = useAccountProfile();
   const adult = useAdultDeclaration();
   const router = useRouter();
-  const {
-    preference,
-    resolvedTheme,
-    saving,
-    setPreference,
-  } = useThemePreference();
+  const { preference, resolvedTheme, saving, setPreference } = useThemePreference();
+  const [privacySettings, setPrivacySettings] = useState<PrivacySettings>({ ...DEFAULT_PRIVACY_SETTINGS });
+  const [privacySettingsStatus, setPrivacySettingsStatus] = useState<"loading" | "ready" | "error">("loading");
+  const loadPrivacySettings = useCallback(async () => {
+    if (runtime === null) return;
+    setPrivacySettingsStatus("loading");
+    try {
+      setPrivacySettings(await runtime.privacySettings.getPrivacySettings());
+      setPrivacySettingsStatus("ready");
+    } catch {
+      setPrivacySettings({ ...DEFAULT_PRIVACY_SETTINGS });
+      setPrivacySettingsStatus("error");
+    }
+  }, [runtime]);
+
+  useEffect(() => {
+    if (runtime !== null) void loadPrivacySettings();
+  }, [loadPrivacySettings, runtime]);
+
+  const changeJournalSaveNotice = async (enabled: boolean) => {
+    if (runtime === null) throw new Error("journey-runtime-unavailable");
+    const current = await runtime.privacySettings.getPrivacySettings();
+    const next = { ...current, showLocalJournalSaveNotice: enabled };
+    await runtime.privacySettings.setPrivacySettings(next);
+    setPrivacySettings(next);
+    setPrivacySettingsStatus("ready");
+  };
+
   return (
     <SettingsScreen
       account={{
@@ -40,16 +64,22 @@ export default function SettingsRoute() {
       }}
       appearancePreference={preference}
       appearanceSaving={saving}
-      deletion={runtime ? {
+      deletion={runtime === null ? undefined : {
         deleteAllData: async () => {
           await auth?.clearLocalSession();
           await runtime.deleteAllData();
           router.replace("/(tabs)");
         },
         onContinue: () => router.replace("/(tabs)"),
-      } : undefined}
+      }}
       onAppearancePreferenceChange={setPreference}
       onBack={() => router.back()}
+      privacy={runtime === null ? undefined : {
+        changeJournalSaveNotice,
+        retry: () => { void loadPrivacySettings(); },
+        showLocalJournalSaveNotice: privacySettings.showLocalJournalSaveNotice,
+        status: privacySettingsStatus,
+      }}
       resolvedTheme={resolvedTheme}
     />
   );

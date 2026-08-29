@@ -29,6 +29,19 @@ import {
 import { JournalService } from "../../journal/application/journal-service";
 import { InMemoryJournalRepository } from "../../journal/infrastructure/in-memory-journal-repository";
 import type { JournalRepository } from "../../journal/infrastructure/journal-repository";
+import {
+  DEFAULT_PRIVACY_SETTINGS,
+  type PrivacySettings,
+  type PrivacySettingsRepository,
+} from "../../../core/storage/types";
+
+class InMemoryPrivacySettingsRepository implements PrivacySettingsRepository {
+  private settings: PrivacySettings = { ...DEFAULT_PRIVACY_SETTINGS };
+
+  async getPrivacySettings() { return { ...this.settings }; }
+  async setPrivacySettings(settings: PrivacySettings) { this.settings = { ...settings }; }
+  async resetPrivacySettings() { this.settings = { ...DEFAULT_PRIVACY_SETTINGS }; }
+}
 
 export type JourneyRuntimeMode = "expo-go-demo" | "native-secure";
 export type JourneyRuntimePersistence = "memory-only" | "sqlcipher-secure-store";
@@ -53,6 +66,7 @@ export type JourneyRuntime = {
   appearancePreferences: AppearancePreferencesRepository;
   journal: JournalRepository;
   createJournalService(ownerAccountId: string): JournalService;
+  privacySettings: PrivacySettingsRepository;
   deleteAllData(): Promise<void>;
   replaceActiveReview(): Promise<void>;
   branchFromReview(draft: JourneyDraft, lineage: { rootId: string; sourceVersionId: string; title: string }): Promise<void>;
@@ -73,6 +87,7 @@ type ComposeDependencies = RuntimeDependencies & {
   reviewHistory?: ReviewHistoryRepository<JourneyDraft>;
   appearancePreferences?: AppearancePreferencesRepository;
   journal?: JournalRepository;
+  privacySettings?: PrivacySettingsRepository;
   deleteStorage?: () => Promise<void>;
   deleteAdditionalStorage?: () => Promise<void>;
   saveVersionedDraft?: (draft: JourneyDraft, active: ActiveReview<JourneyDraft>) => Promise<void>;
@@ -100,6 +115,7 @@ export function composeJourneyRuntime({
   reviewHistory = new InMemoryPayloadReviewHistoryRepository<JourneyDraft>(),
   appearancePreferences = new InMemoryAppearancePreferencesRepository(),
   journal = new InMemoryJournalRepository(),
+  privacySettings = new InMemoryPrivacySettingsRepository(),
   saveVersionedDraft,
   completeJourney,
   branchReview,
@@ -144,6 +160,7 @@ export function composeJourneyRuntime({
     await reviewHistory.clearAll();
     await journal.clearAll();
     await appearancePreferences.save("system");
+    await privacySettings.resetPrivacySettings();
     await service.resetJourney();
     await deleteAdditionalStorage?.();
   };
@@ -181,7 +198,7 @@ export function composeJourneyRuntime({
     }
     service.adoptPersistedJourney(draft);
   };
-  return { mode, persistence, service, controller, drafts: versionedDrafts, cards, shellState, reviewHistory, adultDeclaration, appearancePreferences, journal, createJournalService, deleteAllData, replaceActiveReview, branchFromReview };
+  return { mode, persistence, service, controller, drafts: versionedDrafts, cards, shellState, reviewHistory, adultDeclaration, appearancePreferences, journal, createJournalService, privacySettings, deleteAllData, replaceActiveReview, branchFromReview };
 }
 
 export async function createJourneyRuntime({

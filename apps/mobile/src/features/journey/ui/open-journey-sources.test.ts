@@ -1,60 +1,37 @@
 import { Alert, Linking } from "react-native";
 
-import { openJourneySources } from "./open-journey-sources";
-
-const sources = [
-  {
-    accessedAt: "2026-08-27",
-    appliesTo: "test",
-    id: "SRC-001",
-    organization: "来源一",
-    publicationOrReviewDate: "2026-08-27",
-    sourceType: "EDU" as const,
-    title: "来源一标题",
-    url: "https://example.com/one",
-    verificationStatus: "source_verified" as const,
-  },
-  {
-    accessedAt: "2026-08-27",
-    appliesTo: "test",
-    id: "SRC-002",
-    organization: "来源二",
-    publicationOrReviewDate: "2026-08-27",
-    sourceType: "SAFE" as const,
-    title: "来源二标题",
-    url: "https://example.com/two",
-    verificationStatus: "source_verified" as const,
-  },
-];
+import { JOURNEY_SOURCES_URL, openJourneySources } from "./open-journey-sources";
 
 afterEach(() => jest.restoreAllMocks());
 
-test("deduplicates requested sources and opens the selected link", async () => {
+test("opens the single official sources entry without showing a source picker", async () => {
   const openUrl = jest.spyOn(Linking, "openURL").mockResolvedValue(true);
-  const alert = jest.spyOn(Alert, "alert").mockImplementation((_title, _message, buttons) => {
-    buttons?.[0]?.onPress?.();
-  });
+  const alert = jest.spyOn(Alert, "alert").mockImplementation(() => undefined);
 
-  await openJourneySources(sources, ["SRC-001", "SRC-001", "SRC-002"]);
+  await openJourneySources();
 
-  expect(alert).toHaveBeenCalledTimes(1);
-  expect(alert.mock.calls[0]?.[2]).toHaveLength(3);
-  expect(openUrl).toHaveBeenCalledWith("https://example.com/one");
-});
-
-test("resolves without showing a picker when no source matches", async () => {
-  const alert = jest.spyOn(Alert, "alert");
-
-  await expect(openJourneySources(sources, ["SRC-999"])).resolves.toBeUndefined();
+  expect(JOURNEY_SOURCES_URL).toBe("https://neijiecave.com/sources/");
   expect(alert).not.toHaveBeenCalled();
+  expect(openUrl).toHaveBeenCalledTimes(1);
+  expect(openUrl).toHaveBeenCalledWith(JOURNEY_SOURCES_URL);
 });
 
-test("resolves when the picker is cancelled or opening a link fails", async () => {
-  jest.spyOn(Linking, "openURL").mockRejectedValue(new Error("offline"));
-  jest.spyOn(Alert, "alert")
-    .mockImplementationOnce((_title, _message, buttons) => buttons?.at(-1)?.onPress?.())
-    .mockImplementationOnce((_title, _message, buttons) => buttons?.[0]?.onPress?.());
+test("shows an accessible retry when opening the official sources entry fails", async () => {
+  const openUrl = jest.spyOn(Linking, "openURL")
+    .mockRejectedValueOnce(new Error("offline"))
+    .mockResolvedValueOnce(true);
+  openUrl.mockClear();
+  const alert = jest.spyOn(Alert, "alert").mockImplementation(() => undefined);
 
-  await expect(openJourneySources(sources, ["SRC-001"])).resolves.toBeUndefined();
-  await expect(openJourneySources(sources, ["SRC-001"])).resolves.toBeUndefined();
+  await expect(openJourneySources()).resolves.toBeUndefined();
+  expect(alert).toHaveBeenCalledWith(
+    "无法打开信息来源",
+    "请检查网络连接后重试。",
+    expect.arrayContaining([expect.objectContaining({ text: "重试" })]),
+  );
+
+  const retry = alert.mock.calls[0]?.[2]?.find(({ text }) => text === "重试");
+  retry?.onPress?.();
+  await Promise.resolve();
+  expect(openUrl).toHaveBeenCalledTimes(2);
 });

@@ -16,19 +16,16 @@ export default function StandalonePracticeRoute() {
   const catalog = loadJourneyContentCatalog();
   const scenario = parseStandalonePracticeScenario(routeScenario);
   const initialIntent = standaloneScenarioIntent(scenario);
-  const behaviors = catalog.options
-    .filter(({ group }) => group === "behavior")
-    .map(({ id, label }) => ({ id, label }));
+
   return (
     <Screen>
       <PresetPracticePage
-        behaviorOptions={behaviors}
         catalog={catalog.practice}
         context="standalone"
         {...(initialIntent ? { initialIntent } : {})}
         onComplete={async () => undefined}
         onCopySupportNumber={async (number) => { await ExpoClipboard.setStringAsync(number); }}
-        onOpenSources={(sourceIds) => openJourneySources(catalog.sources, sourceIds)}
+        onOpenSources={openJourneySources}
         onPracticeAgain={async () => { router.replace("/practice/session"); }}
       />
     </Screen>

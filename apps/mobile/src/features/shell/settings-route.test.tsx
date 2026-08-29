@@ -9,13 +9,22 @@ const mockReplace = jest.fn();
 const mockRedirect = jest.fn();
 const mockSetPreference = jest.fn(async () => undefined);
 const mockDeleteAllData = jest.fn(async () => undefined);
+const mockGetPrivacySettings = jest.fn(async () => ({ showLocalJournalSaveNotice: true }));
+const mockSetPrivacySettings = jest.fn(async () => undefined);
 const mockThemePreference = {
   preference: "system" as const,
   resolvedTheme: "dark" as const,
   saving: false,
   setPreference: mockSetPreference,
 };
-let mockRuntime: { deleteAllData(): Promise<void>; snapshot: null } | null = null;
+let mockRuntime: {
+  deleteAllData(): Promise<void>;
+  privacySettings: {
+    getPrivacySettings(): Promise<{ showLocalJournalSaveNotice: boolean }>;
+    setPrivacySettings(settings: { showLocalJournalSaveNotice: boolean }): Promise<void>;
+  };
+  snapshot: null;
+} | null = null;
 let mockAdultStatus: "public" | "authorized" = "public";
 const mockClearLocalSession = jest.fn(async () => undefined);
 const mockSaveDisplayName = jest.fn(async () => undefined);
@@ -81,6 +90,7 @@ test("public settings keeps appearance and back controls without exposing privat
   expect(screen.getByRole("header", { name: "设置" })).toBeTruthy();
   expect(screen.getAllByRole("radio")).toHaveLength(3);
   expect(screen.queryByRole("button", { name: "删除全部本机数据" })).toBeNull();
+  expect(screen.queryByRole("switch", { name: "保存私人记录前显示本机提示" })).toBeNull();
   expect(mockRedirect).not.toHaveBeenCalled();
   expect(mockDeleteAllData).not.toHaveBeenCalled();
 
@@ -92,9 +102,18 @@ test("public settings keeps appearance and back controls without exposing privat
 });
 
 test("authorized settings navigates to the public tabs as soon as deletion succeeds", async () => {
-  mockRuntime = { deleteAllData: mockDeleteAllData, snapshot: null };
+  mockRuntime = {
+    deleteAllData: mockDeleteAllData,
+    privacySettings: {
+      getPrivacySettings: mockGetPrivacySettings,
+      setPrivacySettings: mockSetPrivacySettings,
+    },
+    snapshot: null,
+  };
   mockAdultStatus = "authorized";
   render(<SettingsRoute />);
+
+  expect(await screen.findByRole("switch", { name: "保存私人记录前显示本机提示" })).toHaveProp("value", true);
 
   fireEvent.press(screen.getByRole("button", { name: "删除全部本机数据" }));
   fireEvent.press(screen.getByRole("button", { name: "确认删除全部本机数据" }));

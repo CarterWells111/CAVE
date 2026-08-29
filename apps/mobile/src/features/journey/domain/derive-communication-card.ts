@@ -1,8 +1,10 @@
 import {
   COMMUNICATION_SECTION_IDS,
+  CURRENT_COMMUNICATION_CARD_SHARING_POLICY_VERSION,
   type CommunicationSectionId,
   type EditableDerivedField,
-  type JourneyDraft
+  type JourneyDraft,
+  type SavedCommunicationCardRecord
 } from "./types";
 
 export const COMMUNICATION_CARD_SECTION_IDS = COMMUNICATION_SECTION_IDS;
@@ -59,6 +61,16 @@ function listSentence(prefix: string, labels: string, empty: string) {
   return labels.length > 0 ? `${prefix}${labels}。` : empty;
 }
 
+function possibleClosenessText(draft: JourneyDraft) {
+  const expected = readableLabels(draft, attitudesWith(draft, "looking-forward"));
+  const familiar = readableLabels(draft, attitudesWith(draft, "familiar-enjoyed"));
+  const sentences = [
+    expected ? `我可能愿意的靠近包括：${expected}。` : "",
+    familiar ? `我熟悉或享受过、但仍会在当下重新确认的靠近包括：${familiar}。` : ""
+  ].filter(Boolean);
+  return sentences.join("") || "我暂时没有标记特别期待或熟悉的靠近。";
+}
+
 function templates(draft: JourneyDraft): Record<CommunicationSectionId, string> {
   const practicedPhrase = draft.practice.phrase?.trim() || draft.practice.editedPhrase?.trim();
   return {
@@ -67,11 +79,7 @@ function templates(draft: JourneyDraft): Record<CommunicationSectionId, string> 
       readableLabels(draft, draft.expectationIds),
       "我对这个夜晚暂时没有具体想象。"
     ),
-    "communication-possible-closeness": listSentence(
-      "我可能愿意的靠近包括：",
-      readableLabels(draft, attitudesWith(draft, "looking-forward")),
-      "我暂时没有标记特别期待的靠近。"
-    ),
+    "communication-possible-closeness": possibleClosenessText(draft),
     "communication-decide-in-moment": listSentence(
       "这些事情我想留到当时再决定：",
       readableLabels(draft, attitudesWith(draft, "decide-in-moment", "unsure")),
@@ -101,12 +109,17 @@ export function buildCommunicationCard(draft: JourneyDraft): JourneyDraft["commu
     const generatedText = generated[sectionId];
     const userEdited = previous?.userText !== undefined;
     const generatedChanged = previous !== undefined && previous.generatedText !== generatedText;
+    const visibility = previous === undefined
+      ? "pending"
+      : previous.visibility === "included" && generatedChanged
+        ? "pending"
+        : previous.visibility;
     return [sectionId, {
       generatedText,
       ...(userEdited ? { userText: previous.userText } : {}),
       sourceRevision: draft.sourceRevision,
       needsReview: userEdited && (previous.needsReview || generatedChanged),
-      visibility: userEdited && generatedChanged ? "pending" : previous?.visibility ?? "pending"
+      visibility
     } satisfies EditableDerivedField];
   })) as JourneyDraft["communicationCard"];
 }
@@ -116,16 +129,34 @@ export type ConfirmedCommunicationCard = {
   consentFooter: typeof COMMUNICATION_CARD_CONSENT_FOOTER;
 };
 
+export function normalizeCommunicationDraft(
+  card: JourneyDraft["communicationCard"]
+): JourneyDraft["communicationCard"] {
+  return Object.fromEntries(COMMUNICATION_CARD_SECTION_IDS.map((id) => [id, {
+    ...card[id]
+  }])) as JourneyDraft["communicationCard"];
+}
+
 export function selectConfirmedCommunicationCard(
   draft: Pick<JourneyDraft, "communicationCard">
 ): ConfirmedCommunicationCard {
   return {
     sections: COMMUNICATION_CARD_SECTION_IDS.flatMap((id) => {
       const field = draft.communicationCard[id];
-      return field.visibility === "included"
+      return field.visibility === "included" && !field.needsReview
         ? [{ id, text: field.userText ?? field.generatedText }]
         : [];
     }),
     consentFooter: COMMUNICATION_CARD_CONSENT_FOOTER
   };
+}
+
+export function selectConfirmedSavedCommunicationCard(
+  record: SavedCommunicationCardRecord
+): ConfirmedCommunicationCard | null {
+  if (
+    record.sharingPolicyVersion
+    !== CURRENT_COMMUNICATION_CARD_SHARING_POLICY_VERSION
+  ) return null;
+  return selectConfirmedCommunicationCard({ communicationCard: record.card });
 }

@@ -1,14 +1,15 @@
 import { useRef, useState } from "react";
-import { Text, TextInput, View } from "react-native";
+import { ScrollView, Text, View } from "react-native";
 
 import { useTheme } from "../../../core/design/theme-provider";
 import { Button } from "../../../core/ui/Button";
-import { Card } from "../../../core/ui/Card";
-import { ChoiceChip } from "../../../core/ui/ChoiceChip";
-import { Screen } from "../../../core/ui/Screen";
 import { SecondaryButton } from "../../../core/ui/secondary-button";
 import { StatusBanner } from "../../../core/ui/StatusBanner";
-import type { SharingVisibility } from "../../journey/domain/types";
+import type { CommunicationSectionId, SharingVisibility } from "../../journey/domain/types";
+import {
+  CommunicationDraftGrid,
+  type CommunicationDraftGridSection
+} from "../../journey/ui/components/CommunicationDraftGrid";
 import type {
   EditableSavedCardSection,
   SavedCardSectionUpdate,
@@ -32,19 +33,6 @@ export type SavedCardEditScreenProps = {
 
 type SaveState = "idle" | "saving" | "error" | "success";
 
-const VISIBILITY_LABELS: Readonly<Record<SharingVisibility, string>> = {
-  pending: "尚未决定",
-  included: "已加入展示",
-  private: "只留给自己",
-  deleted: "已删除，可恢复",
-};
-
-const VISIBILITY_CHOICES = [
-  { label: "加入展示", visibility: "included" },
-  { label: "只留给自己", visibility: "private" },
-  { label: "删除这一段", visibility: "deleted" },
-] as const;
-
 function baselineById(sections: readonly EditableSavedCardSection[]) {
   return new Map(sections.map((section) => [section.id, {
     text: section.text,
@@ -52,20 +40,24 @@ function baselineById(sections: readonly EditableSavedCardSection[]) {
   }]));
 }
 
+function retainedVisibilityById(sections: readonly EditableSavedCardSection[]) {
+  return new Map<CommunicationSectionId, Exclude<SharingVisibility, "deleted">>(sections.map((section) => [
+    section.id,
+    section.visibility === "deleted" ? "pending" : section.visibility,
+  ]));
+}
+
 export function SavedCardEditScreen({
-  sections: initialSections,
   metadata,
   onCancel,
-  onSave
+  onSave,
+  sections: initialSections
 }: SavedCardEditScreenProps) {
   const theme = useTheme();
-  const [sections, setSections] = useState<EditableSavedCardSection[]>(() => initialSections.map(
-    (section) => ({ ...section })
-  ));
+  const [sections, setSections] = useState<EditableSavedCardSection[]>(() => initialSections.map((section) => ({ ...section })));
   const baselineRef = useRef(baselineById(initialSections));
+  const retainedVisibilityRef = useRef(retainedVisibilityById(initialSections));
   const [saveState, setSaveState] = useState<SaveState>("idle");
-  const [invalidIds, setInvalidIds] = useState<ReadonlySet<string>>(() => new Set());
-  const [focusedId, setFocusedId] = useState<string | null>(null);
   const saveInFlight = useRef(false);
   const saving = saveState === "saving";
 
@@ -75,31 +67,32 @@ export function SavedCardEditScreen({
   };
   const hasChanges = sections.some(isDirty);
 
-  const updateSection = (
-    id: EditableSavedCardSection["id"],
-    update: Partial<Pick<EditableSavedCardSection, "text" | "visibility">>,
-  ) => {
-    setSections((current) => current.map((section) => section.id === id ? { ...section, ...update } : section));
-    setInvalidIds((current) => {
-      if (!current.has(id)) return current;
-      const next = new Set(current);
-      next.delete(id);
-      return next;
-    });
-    if (saveState !== "saving") setSaveState("idle");
+  const edit = (id: CommunicationSectionId, text: string) => {
+    setSections((current) => current.map((section) => section.id === id
+      ? { ...section, text, needsReview: false }
+      : section));
+    setSaveState("idle");
+  };
+
+  const setDeleted = (id: CommunicationSectionId, deleted: boolean) => {
+    setSections((current) => current.map((section) => {
+      if (section.id !== id) return section;
+      if (deleted) {
+        if (section.visibility !== "deleted") retainedVisibilityRef.current.set(id, section.visibility);
+        return { ...section, visibility: "deleted" };
+      }
+      return { ...section, visibility: retainedVisibilityRef.current.get(id) ?? "pending" };
+    }));
+    setSaveState("idle");
   };
 
   const save = async () => {
     if (saveInFlight.current) return;
-    const blankIds = sections
-      .filter(({ text, visibility }) => visibility !== "deleted" && text.trim().length === 0)
-      .map(({ id }) => id);
-    if (blankIds.length > 0) {
-      setInvalidIds(new Set(blankIds));
-      setSaveState("idle");
-      return;
-    }
     const normalized = sections.map((section) => ({ ...section, text: section.text.trim() }));
+    const hasBlankRetainedSection = normalized.some(
+      ({ text, visibility }) => visibility !== "deleted" && text.length === 0
+    );
+    if (hasBlankRetainedSection) return;
     const updates = normalized.filter(isDirty).map(({ id, text, visibility }) => ({ id, text, visibility }));
     if (updates.length === 0) return;
     saveInFlight.current = true;
@@ -111,6 +104,7 @@ export function SavedCardEditScreen({
         ? { ...section, needsReview: false }
         : section);
       baselineRef.current = baselineById(savedSections);
+      retainedVisibilityRef.current = retainedVisibilityById(savedSections);
       setSections(savedSections);
       setSaveState("success");
     } catch {
@@ -120,10 +114,29 @@ export function SavedCardEditScreen({
     }
   };
 
+  const gridSections: CommunicationDraftGridSection[] = sections.map((section) => ({
+    id: section.id,
+    title: section.title,
+    text: section.text,
+    deleted: section.visibility === "deleted",
+    needsReview: section.needsReview,
+  }));
+
   return (
-    <Screen
-      contentContainerStyle={{ gap: theme.space.xl }}
+    <ScrollView
+      automaticallyAdjustKeyboardInsets
+      contentContainerStyle={{
+        alignSelf: "center",
+        gap: theme.space.xl,
+        maxWidth: theme.size.readableContentMax,
+        paddingHorizontal: theme.space.lg,
+        paddingVertical: theme.space.xl,
+        width: "100%"
+      }}
+      contentInsetAdjustmentBehavior="automatic"
       keyboardDismissMode="interactive"
+      keyboardShouldPersistTaps="handled"
+      style={{ backgroundColor: theme.color.background }}
       testID="saved-card-edit-scroll"
     >
       <View style={{ gap: theme.space.sm }}>
@@ -134,72 +147,16 @@ export function SavedCardEditScreen({
           {`${metadata.dateLabel} · ${metadata.statusLabel}`}
         </Text>
         <Text selectable style={{ ...theme.typography.body, color: theme.color.textSecondary }}>
-          修改文字，并决定每一段是加入展示、只留给自己，还是从这张卡中删除。
+          七段内容会一直保留在本机记录中。灰色段落不会出现在草稿卡纸里，但可以随时编辑并恢复。
         </Text>
       </View>
 
-      {sections.map((section) => {
-        const invalid = invalidIds.has(section.id);
-        const focused = focusedId === section.id;
-        return (
-          <Card accessible={false} key={section.id}>
-            <Text accessibilityRole="header" selectable style={{ ...theme.typography.cardTitle, color: theme.color.text }}>
-              {section.title}
-            </Text>
-            <Text selectable style={{ ...theme.typography.caption, color: theme.color.textSecondary }}>
-              {VISIBILITY_LABELS[section.visibility]}
-            </Text>
-            {section.needsReview ? (
-              <Text selectable style={{ ...theme.typography.caption, color: theme.color.warning }}>
-                内容已变化，需要重新确认
-              </Text>
-            ) : null}
-            <TextInput
-              accessibilityHint={invalid ? "此段不能为空。" : "编辑这段沟通卡文字。"}
-              accessibilityLabel={`编辑：${section.title}`}
-              accessibilityState={{ disabled: saving }}
-              editable={!saving}
-              multiline
-              onBlur={() => setFocusedId((current) => current === section.id ? null : current)}
-              onChangeText={(text) => updateSection(section.id, { text })}
-              onFocus={() => setFocusedId(section.id)}
-              style={{
-                ...theme.typography.body,
-                backgroundColor: theme.color.surfaceMuted,
-                borderColor: invalid ? theme.color.error : focused ? theme.color.focus : theme.color.interactiveBorder,
-                borderCurve: "continuous",
-                borderRadius: theme.radius.control,
-                borderWidth: invalid || focused ? theme.border.focusWidth : theme.border.width,
-                color: theme.color.text,
-                minHeight: theme.size.primaryActionHeight,
-                paddingHorizontal: theme.space.md,
-                paddingVertical: theme.space.compact,
-                textAlignVertical: "top",
-                width: "100%"
-              }}
-              value={section.text}
-            />
-            {invalid ? (
-              <Text accessibilityRole="alert" selectable style={{ ...theme.typography.caption, color: theme.color.error }}>
-                {`${section.title}不能为空；请填写内容后再保存。`}
-              </Text>
-            ) : null}
-            <View accessibilityRole="radiogroup" style={{ gap: theme.space.sm }}>
-              {VISIBILITY_CHOICES.map(({ label, visibility }) => (
-                <ChoiceChip
-                  accessibilityLabel={`${label}：${section.title}`}
-                  disabled={saving}
-                  key={visibility}
-                  label={label}
-                  onPress={() => updateSection(section.id, { visibility })}
-                  selected={section.visibility === visibility}
-                  semantics="radio"
-                />
-              ))}
-            </View>
-          </Card>
-        );
-      })}
+      <CommunicationDraftGrid
+        disabled={saving}
+        onEdit={edit}
+        onSetDeleted={setDeleted}
+        sections={gridSections}
+      />
 
       {saveState === "error" ? (
         <StatusBanner
@@ -217,15 +174,13 @@ export function SavedCardEditScreen({
         ) : (
           <Button
             disabled={!hasChanges}
-            label={saving ? "正在保存更改…" : "保存沟通卡"}
+            label={saving ? "正在保存更改…" : "保存更改"}
             loading={saving}
             onPress={() => { void save(); }}
           />
         )}
-        {saveState !== "success" ? (
-          <SecondaryButton disabled={saving} label="取消编辑" onPress={onCancel} />
-        ) : null}
+        {saveState !== "success" ? <SecondaryButton disabled={saving} label="取消编辑" onPress={onCancel} /> : null}
       </View>
-    </Screen>
+    </ScrollView>
   );
 }

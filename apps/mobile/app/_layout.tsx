@@ -1,6 +1,7 @@
 import { Stack } from "expo-router";
 import { type PropsWithChildren, useMemo } from "react";
 
+import { MotionPreferencesProvider } from "../src/core/design/motion-preferences";
 import { AccountProfileProvider } from "../src/features/account/runtime/AccountProfileProvider";
 import { AuthProvider } from "../src/features/auth/runtime/AuthProvider";
 import { createExpoAuthDependencies } from "../src/features/auth/runtime/expo-auth-dependencies";
@@ -22,10 +23,12 @@ function AuthBoundary({ children }: PropsWithChildren) {
 
 export default function RootLayout() {
   return (
-    <JourneyRuntimeProvider createRuntime={createExpoJourneyRuntime}>
-      <AuthBoundary>
-        <Stack screenOptions={{ headerShown: false }} />
-      </AuthBoundary>
-    </JourneyRuntimeProvider>
+    <MotionPreferencesProvider>
+      <JourneyRuntimeProvider createRuntime={createExpoJourneyRuntime}>
+        <AuthBoundary>
+          <Stack screenOptions={{ headerShown: false }} />
+        </AuthBoundary>
+      </JourneyRuntimeProvider>
+    </MotionPreferencesProvider>
   );
 }
