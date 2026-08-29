@@ -1,12 +1,22 @@
 import { createRef, type ComponentRef } from "react";
-import { fireEvent, render, screen, within } from "@testing-library/react-native";
-import { Pressable, ScrollView, StyleSheet, Text } from "react-native";
+import { act, fireEvent, render, screen, within } from "@testing-library/react-native";
+import { Dimensions, Pressable, ScrollView, StyleSheet, Text } from "react-native";
+import { SafeAreaProvider } from "react-native-safe-area-context";
 
-import { contentHorizontalPadding, Screen, type ScreenProps, useScreenScroll } from "./Screen";
+import {
+  contentHorizontalPadding,
+  safeContentEdgePadding,
+  Screen,
+  type ScreenProps,
+  useScreenScroll,
+} from "./Screen";
 
 type LockedScrollKey = Extract<
   keyof ScreenProps,
-  "horizontal" | "contentInsetAdjustmentBehavior" | "keyboardShouldPersistTaps"
+  | "automaticallyAdjustContentInsets"
+  | "contentInsetAdjustmentBehavior"
+  | "horizontal"
+  | "keyboardShouldPersistTaps"
 >;
 
 const screenPropsLockScrollInvariants: [LockedScrollKey] extends [never] ? true : false = true;
@@ -25,9 +35,8 @@ describe("Screen", () => {
     );
 
     const root = screen.getByTestId("screen");
-    expect(screen.getByTestId("screen-safe-area")).toHaveProp("edges", {
-      bottom: "additive", left: "off", right: "off", top: "additive",
-    });
+    expect(screen.queryByTestId("screen-safe-area")).toBeNull();
+    expect(screen.getByTestId("screen-container")).toHaveStyle({ flex: 1 });
     const rootStyle = StyleSheet.flatten(root.props.style);
     const contentStyle = StyleSheet.flatten(root.props.contentContainerStyle);
 
@@ -99,6 +108,134 @@ describe("Screen", () => {
         width: "100%",
       }),
     );
+  });
+
+  it("keeps every fixed header below the top system inset with stable shared spacing", () => {
+    const originalScreen = Dimensions.get("screen");
+    const originalWindow = Dimensions.get("window");
+    Dimensions.set({
+      screen: { ...originalScreen, height: 844, width: 390 },
+      window: { ...originalWindow, height: 844, width: 390 },
+    });
+    const metrics = {
+      frame: { height: 844, width: 390, x: 0, y: 0 },
+      insets: { bottom: 34, left: 0, right: 0, top: 47 },
+    };
+    const view = render(
+      <SafeAreaProvider initialMetrics={metrics}>
+        <Screen fixedHeader={<Text>第一页导航</Text>} testID="first-page" />
+      </SafeAreaProvider>,
+    );
+    try {
+      expect(screen.getByTestId("screen-fixed-header")).toHaveStyle({ paddingTop: 71 });
+
+      view.rerender(
+        <SafeAreaProvider initialMetrics={metrics}>
+          <Screen fixedHeader={<Text>第二页导航</Text>} testID="second-page" />
+        </SafeAreaProvider>,
+      );
+      expect(screen.getByTestId("screen-fixed-header")).toHaveStyle({ paddingTop: 71 });
+      act(() => {
+        Dimensions.set({
+          screen: { ...originalScreen, height: 844, width: 390 },
+          window: { ...originalWindow, height: 520, width: 390 },
+        });
+      });
+      expect(screen.getByTestId("screen-fixed-header")).toHaveStyle({ paddingTop: 71 });
+      expect(screen.queryByTestId("screen-safe-area")).toBeNull();
+    } finally {
+      view.unmount();
+      Dimensions.set({ screen: originalScreen, window: originalWindow });
+    }
+  });
+
+  it("can place standalone scroll content below the top system inset without an outer safe-area band", () => {
+    render(
+      <SafeAreaProvider initialMetrics={{
+        frame: { height: 844, width: 390, x: 0, y: 0 },
+        insets: { bottom: 34, left: 0, right: 0, top: 47 },
+      }}>
+        <Screen
+          contentContainerStyle={{ paddingVertical: 16 }}
+          contentSafeAreaTop
+          testID="safe-content-screen"
+        >
+          <Text>品牌引导</Text>
+        </Screen>
+      </SafeAreaProvider>,
+    );
+
+    const contentStyle = StyleSheet.flatten(
+      screen.getByTestId("safe-content-screen").props.contentContainerStyle,
+    );
+    expect(contentStyle.paddingVertical).toBe(16);
+    expect(contentStyle.paddingTop).toBe(63);
+    expect(contentStyle.paddingBottom).toBe(42);
+    expect(screen.getByTestId("safe-content-screen")).toHaveProp(
+      "contentInsetAdjustmentBehavior",
+      "never",
+    );
+    expect(screen.getByTestId("safe-content-screen")).toHaveProp(
+      "automaticallyAdjustContentInsets",
+      false,
+    );
+    expect(screen.queryByTestId("screen-safe-area")).toBeNull();
+  });
+
+  it("keeps Android content below tall cutouts without adding redundant ordinary spacing", () => {
+    expect(safeContentEdgePadding(32, 24, "minimum")).toBe(32);
+    expect(safeContentEdgePadding(16, 40, "minimum")).toBe(48);
+    expect(safeContentEdgePadding(0, 0, "minimum")).toBe(0);
+    expect(safeContentEdgePadding(16, 47, "additive")).toBe(63);
+  });
+
+  it("uses physical screen height when a fixed-header route mounts while the keyboard has shrunk the window", () => {
+    const originalScreen = Dimensions.get("screen");
+    const originalWindow = Dimensions.get("window");
+    Dimensions.set({
+      screen: { ...originalScreen, height: 844, width: 390 },
+      window: { ...originalWindow, height: 520, width: 390 },
+    });
+    const view = render(
+      <SafeAreaProvider initialMetrics={{
+        frame: { height: 844, width: 390, x: 0, y: 0 },
+        insets: { bottom: 34, left: 0, right: 0, top: 47 },
+      }}>
+        <Screen fixedHeader={<Text>键盘切页后的导航</Text>} testID="keyboard-remount-screen" />
+      </SafeAreaProvider>,
+    );
+    try {
+      expect(screen.getByTestId("screen-fixed-header")).toHaveStyle({ paddingTop: 71 });
+    } finally {
+      view.unmount();
+      Dimensions.set({ screen: originalScreen, window: originalWindow });
+    }
+  });
+
+  it.each([
+    { height: 667, safeTop: 20, expectedPaddingTop: 36 },
+    { height: 932, safeTop: 59, expectedPaddingTop: 91 },
+  ])("adapts fixed-header spacing for a $height-point phone", ({ expectedPaddingTop, height, safeTop }) => {
+    const originalScreen = Dimensions.get("screen");
+    const originalWindow = Dimensions.get("window");
+    Dimensions.set({
+      screen: { ...originalScreen, height, width: 390 },
+      window: { ...originalWindow, height, width: 390 },
+    });
+    const view = render(
+      <SafeAreaProvider initialMetrics={{
+        frame: { height, width: 390, x: 0, y: 0 },
+        insets: { bottom: 0, left: 0, right: 0, top: safeTop },
+      }}>
+        <Screen fixedHeader={<Text>旅程导航</Text>} testID="responsive-header-screen" />
+      </SafeAreaProvider>,
+    );
+    try {
+      expect(screen.getByTestId("screen-fixed-header")).toHaveStyle({ paddingTop: expectedPaddingTop });
+    } finally {
+      view.unmount();
+      Dimensions.set({ screen: originalScreen, window: originalWindow });
+    }
   });
 
   it("locks scroll invariants out of its public props", () => {
