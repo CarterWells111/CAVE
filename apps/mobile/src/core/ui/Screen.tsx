@@ -11,13 +11,24 @@ import {
   type PropsWithChildren,
   type ReactNode,
 } from "react";
-import { ScrollView, StyleSheet, type ScrollViewProps, useWindowDimensions, View } from "react-native";
+import {
+  Dimensions,
+  ScrollView,
+  StyleSheet,
+  type ScrollViewProps,
+  useWindowDimensions,
+  View,
+} from "react-native";
 import { SafeAreaInsetsContext } from "react-native-safe-area-context";
 
 import { useTheme } from "../design/theme-provider";
 import { space } from "../design/tokens";
 
-type LockedScrollProp = "horizontal" | "contentInsetAdjustmentBehavior" | "keyboardShouldPersistTaps";
+type LockedScrollProp =
+  | "automaticallyAdjustContentInsets"
+  | "contentInsetAdjustmentBehavior"
+  | "horizontal"
+  | "keyboardShouldPersistTaps";
 
 export type ScreenProps = Omit<ScrollViewProps, LockedScrollProp> & {
   contentSafeAreaTop?: boolean;
@@ -50,6 +61,16 @@ export function contentHorizontalPadding(width: number): number {
   return width < 375 ? space.md : space.card;
 }
 
+export function safeContentTopPadding(
+  contentPadding: number,
+  safeAreaTop: number,
+  mode: "additive" | "minimum",
+): number {
+  return mode === "additive"
+    ? contentPadding + safeAreaTop
+    : Math.max(contentPadding, safeAreaTop + space.sm);
+}
+
 function fixedHeaderTopGap(height: number): number {
   if (height < 700) return space.md;
   if (height < 900) return space.lg;
@@ -69,10 +90,9 @@ export const Screen = forwardRef<ComponentRef<typeof ScrollView>, ScreenProps>(f
   forwardedRef,
 ) {
   const theme = useTheme();
-  const { height, width } = useWindowDimensions();
+  const { width } = useWindowDimensions();
   const safeAreaTop = useContext(SafeAreaInsetsContext)?.top ?? 0;
   const scrollRef = useRef<ScrollView>(null);
-  const initialWindowHeightRef = useRef(height);
   const horizontalPadding = contentHorizontalPadding(width);
   const scrollToTop = useCallback(() => {
     scrollRef.current?.scrollTo({ animated: false, y: 0 });
@@ -91,6 +111,11 @@ export const Screen = forwardRef<ComponentRef<typeof ScrollView>, ScreenProps>(f
   const contentTopPadding = typeof requestedContentTopPadding === "number"
     ? requestedContentTopPadding
     : theme.space.xl;
+  const manuallyInsetContent = contentSafeAreaTop
+    ? safeContentTopPadding(contentTopPadding, safeAreaTop, "additive")
+    : fixedHeader === undefined && process.env.EXPO_OS === "android"
+      ? safeContentTopPadding(contentTopPadding, safeAreaTop, "minimum")
+      : undefined;
 
   useEffect(() => {
     if (scrollResetKey !== undefined) scrollRef.current?.scrollTo({ animated: false, y: 0 });
@@ -109,7 +134,7 @@ export const Screen = forwardRef<ComponentRef<typeof ScrollView>, ScreenProps>(f
             maxWidth: theme.size.readableContentMax,
             paddingBottom: theme.space.sm,
             paddingHorizontal: horizontalPadding,
-            paddingTop: safeAreaTop + fixedHeaderTopGap(initialWindowHeightRef.current),
+            paddingTop: safeAreaTop + fixedHeaderTopGap(Dimensions.get("screen").height),
             width: "100%",
             zIndex: 1,
           }}
@@ -121,9 +146,10 @@ export const Screen = forwardRef<ComponentRef<typeof ScrollView>, ScreenProps>(f
       <ScrollView
         {...props}
         ref={scrollRef}
+        automaticallyAdjustContentInsets={!contentSafeAreaTop}
         automaticallyAdjustKeyboardInsets
         horizontal={false}
-        contentInsetAdjustmentBehavior="automatic"
+        contentInsetAdjustmentBehavior={contentSafeAreaTop ? "never" : "automatic"}
         keyboardShouldPersistTaps="handled"
         style={[{ flex: 1, backgroundColor: theme.color.background }, style]}
         contentContainerStyle={[
@@ -134,7 +160,7 @@ export const Screen = forwardRef<ComponentRef<typeof ScrollView>, ScreenProps>(f
             paddingVertical: theme.space.xl,
           },
           callerPresentation,
-          contentSafeAreaTop ? { paddingTop: contentTopPadding + safeAreaTop } : null,
+          manuallyInsetContent === undefined ? null : { paddingTop: manuallyInsetContent },
           {
             maxWidth: theme.size.readableContentMax,
             paddingHorizontal: horizontalPadding,

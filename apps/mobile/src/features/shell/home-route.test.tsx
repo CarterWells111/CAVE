@@ -160,7 +160,8 @@ test("renders the public first-run home without reading private repositories", (
   expect(mockPush.mock.calls).toEqual([["/journey/adult-gate"], ["/settings"]]);
 
   const scroll = screen.getByTestId("first-run-home-scroll");
-  expect(scroll.props.contentInsetAdjustmentBehavior).toBe("automatic");
+  expect(scroll.props.contentInsetAdjustmentBehavior).toBe("never");
+  expect(scroll.props.automaticallyAdjustContentInsets).toBe(false);
   expect(scroll.props.alwaysBounceVertical).toBe(false);
   expect(scroll.props.scrollEnabled).toBe(false);
   expect(typeof scroll.props.onLayout).toBe("function");

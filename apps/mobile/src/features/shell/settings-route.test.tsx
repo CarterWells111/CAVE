@@ -176,5 +176,5 @@ test("the standalone journey welcome keeps its brand content below the device to
   const contentStyle = StyleSheet.flatten(
     screen.getByTestId("journey-welcome-scroll").props.contentContainerStyle,
   );
-  expect(contentStyle.paddingTop).toBeGreaterThanOrEqual(47);
+  expect(contentStyle.paddingTop).toBe(47);
 });

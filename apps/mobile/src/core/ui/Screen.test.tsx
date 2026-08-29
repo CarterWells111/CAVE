@@ -3,7 +3,13 @@ import { act, fireEvent, render, screen, within } from "@testing-library/react-n
 import { Dimensions, Pressable, ScrollView, StyleSheet, Text } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
-import { contentHorizontalPadding, Screen, type ScreenProps, useScreenScroll } from "./Screen";
+import {
+  contentHorizontalPadding,
+  safeContentTopPadding,
+  Screen,
+  type ScreenProps,
+  useScreenScroll,
+} from "./Screen";
 
 type LockedScrollKey = Extract<
   keyof ScreenProps,
@@ -161,7 +167,44 @@ describe("Screen", () => {
     );
     expect(contentStyle.paddingVertical).toBe(16);
     expect(contentStyle.paddingTop).toBe(63);
+    expect(screen.getByTestId("safe-content-screen")).toHaveProp(
+      "contentInsetAdjustmentBehavior",
+      "never",
+    );
+    expect(screen.getByTestId("safe-content-screen")).toHaveProp(
+      "automaticallyAdjustContentInsets",
+      false,
+    );
     expect(screen.queryByTestId("screen-safe-area")).toBeNull();
+  });
+
+  it("keeps Android content below tall cutouts without adding redundant ordinary spacing", () => {
+    expect(safeContentTopPadding(32, 24, "minimum")).toBe(32);
+    expect(safeContentTopPadding(16, 40, "minimum")).toBe(48);
+    expect(safeContentTopPadding(16, 47, "additive")).toBe(63);
+  });
+
+  it("uses physical screen height when a fixed-header route mounts while the keyboard has shrunk the window", () => {
+    const originalScreen = Dimensions.get("screen");
+    const originalWindow = Dimensions.get("window");
+    Dimensions.set({
+      screen: { ...originalScreen, height: 844, width: 390 },
+      window: { ...originalWindow, height: 520, width: 390 },
+    });
+    const view = render(
+      <SafeAreaProvider initialMetrics={{
+        frame: { height: 844, width: 390, x: 0, y: 0 },
+        insets: { bottom: 34, left: 0, right: 0, top: 47 },
+      }}>
+        <Screen fixedHeader={<Text>键盘切页后的导航</Text>} testID="keyboard-remount-screen" />
+      </SafeAreaProvider>,
+    );
+    try {
+      expect(screen.getByTestId("screen-fixed-header")).toHaveStyle({ paddingTop: 71 });
+    } finally {
+      view.unmount();
+      Dimensions.set({ screen: originalScreen, window: originalWindow });
+    }
   });
 
   it.each([
