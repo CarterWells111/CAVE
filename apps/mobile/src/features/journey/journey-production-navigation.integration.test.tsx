@@ -1,5 +1,5 @@
 import { act, fireEvent, render, screen, waitFor, type RenderAPI } from "@testing-library/react-native";
-import type { ReactElement } from "react";
+import { StrictMode, type ReactElement } from "react";
 
 import AdultGateRoute from "../../../app/journey/adult-gate";
 import PrefaceRoute from "../../../app/journey/preface";
@@ -13,7 +13,8 @@ import { composeJourneyRuntime, type JourneyRuntime } from "./runtime/journey-ru
 import { JourneyRuntimeProvider } from "./runtime/JourneyRuntimeProvider";
 
 const mockRouter = { push: jest.fn(), replace: jest.fn() };
-jest.mock("expo-router", () => ({ useRouter: () => mockRouter }));
+let mockRouterValue = mockRouter;
+jest.mock("expo-router", () => ({ useRouter: () => mockRouterValue }));
 
 function runtime() {
   return composeJourneyRuntime({
@@ -44,7 +45,10 @@ async function openRoute(element: ReactElement, journeyRuntime: JourneyRuntime):
   return view;
 }
 
-beforeEach(() => jest.clearAllMocks());
+beforeEach(() => {
+  jest.clearAllMocks();
+  mockRouterValue = mockRouter;
+});
 
 test("landing has one start action and routes to the adult declaration", async () => {
   const journeyRuntime = runtime();
@@ -301,8 +305,24 @@ test("a completed preface deep-link navigates to body knowledge exactly once", a
   await journeyRuntime.service.confirmAdult();
   await journeyRuntime.service.dispatch({ type: "set-address-preference", preference: "妳" });
   await journeyRuntime.service.dispatch({ type: "set-preface-read", read: true });
-  const view = await openRoute(<PrefaceRoute />, journeyRuntime);
+  const view = await openRoute(
+    <StrictMode>
+      <PrefaceRoute />
+    </StrictMode>,
+    journeyRuntime,
+  );
 
+  await waitFor(() => {
+    expect(mockRouter.replace.mock.calls.filter(([path]) => path === "/journey/body-knowledge")).toHaveLength(1);
+  });
+  mockRouterValue = { ...mockRouter };
+  view.rerender(
+    <JourneyRuntimeProvider createRuntime={async () => journeyRuntime}>
+      <StrictMode>
+        <PrefaceRoute />
+      </StrictMode>
+    </JourneyRuntimeProvider>,
+  );
   await waitFor(() => {
     expect(mockRouter.replace.mock.calls.filter(([path]) => path === "/journey/body-knowledge")).toHaveLength(1);
   });
@@ -340,12 +360,18 @@ test("a failed inconsistent-state reset keeps address selection safe and retryab
   const journeyRuntime = runtime();
   await journeyRuntime.service.confirmAdult();
   await journeyRuntime.service.dispatch({ type: "set-preface-read", read: true });
-  const dispatch = journeyRuntime.service.dispatch.bind(journeyRuntime.service);
-  jest.spyOn(journeyRuntime.service, "dispatch").mockImplementation(async (command) => {
-    if (command.type === "set-preface-read" && !command.read) {
+  const service = journeyRuntime.service;
+  const realDispatch = service.dispatch.bind(service);
+  let resetAttempts = 0;
+  const dispatch = jest.spyOn(service, "dispatch").mockImplementation(async (command) => {
+    if (
+      command.type === "set-preface-read"
+      && command.read === false
+      && resetAttempts++ === 0
+    ) {
       throw new Error("private reset failure");
     }
-    return dispatch(command);
+    return realDispatch(command);
   });
   const view = await openRoute(<PrefaceRoute />, journeyRuntime);
 
@@ -365,6 +391,21 @@ test("a failed inconsistent-state reset keeps address selection safe and retryab
     "accessibilityState",
     expect.objectContaining({ busy: false, disabled: false }),
   );
+  expect(mockRouter.replace.mock.calls.filter(([path]) => path === "/journey/body-knowledge")).toHaveLength(0);
+
+  dispatch.mockClear();
+  fireEvent.press(screen.getByRole("button", { name: "这样称呼我" }));
+  await waitFor(() => expect(service.getSnapshot()).toMatchObject({
+    addressPreference: "妳",
+    prefaceRead: false,
+  }));
+  expect(dispatch.mock.calls).toEqual([
+    [{ type: "set-preface-read", read: false }],
+    [{ type: "set-address-preference", preference: "妳" }],
+  ]);
+  expect(await screen.findByRole("header", { name: "欢迎来到内界 CAVE" })).toBeTruthy();
+  expect(screen.queryByText("称呼暂时无法保存，请重试。")).toBeNull();
+  expect(screen.queryByText("private reset failure")).toBeNull();
   expect(mockRouter.replace.mock.calls.filter(([path]) => path === "/journey/body-knowledge")).toHaveLength(0);
   view.unmount();
 });

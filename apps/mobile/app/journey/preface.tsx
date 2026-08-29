@@ -1,5 +1,5 @@
 import { useRouter } from "expo-router";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 
 import { Screen } from "../../src/core/ui/Screen";
 import { useJourneyRuntime } from "../../src/features/journey/runtime/JourneyRuntimeProvider";
@@ -13,14 +13,20 @@ export default function PrefaceRoute() {
   const preference = runtime.snapshot?.addressPreference ?? null;
   const prefaceRead = runtime.snapshot?.prefaceRead === true;
   const completed = eligible && preference !== null && prefaceRead;
+  const navigationDestination = !eligible
+    ? "/journey/welcome"
+    : completed ? "/journey/body-knowledge" : null;
+  const replacedDestination = useRef<string | null>(null);
 
   useEffect(() => {
-    if (!eligible) {
-      router.replace("/journey/welcome");
+    if (navigationDestination === null) {
+      replacedDestination.current = null;
       return;
     }
-    if (completed) router.replace("/journey/body-knowledge");
-  }, [completed, eligible, router]);
+    if (replacedDestination.current === navigationDestination) return;
+    replacedDestination.current = navigationDestination;
+    router.replace(navigationDestination);
+  }, [navigationDestination, router]);
 
   if (!eligible || completed) return null;
   return (
