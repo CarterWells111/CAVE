@@ -10,6 +10,7 @@ import { createAuthSessionStore } from "../infrastructure/auth-session-store";
 import type { AuthDependencies } from "./AuthProvider";
 
 type ExpoSecureStoreModule = Parameters<typeof createExpoSecureStoreAdapter>[0];
+const DEFAULT_AUTH_GATEWAY_URL = "https://api.neijiecave.com";
 
 function createRequestId(randomBytes: (length: number) => Uint8Array): string {
   const bytes = randomBytes(16);
@@ -20,16 +21,24 @@ function createRequestId(randomBytes: (length: number) => Uint8Array): string {
 }
 
 export function createExpoAuthDependencies(
-  options: { randomBytes?: (length: number) => Uint8Array } = {},
+  options: {
+    randomBytes?: (length: number) => Uint8Array;
+    isDevelopment?: boolean;
+  } = {},
 ): AuthDependencies {
   const randomBytes = options.randomBytes ?? ExpoCrypto.getRandomBytes;
+  const configuredGatewayUrl = process.env.EXPO_PUBLIC_GATEWAY_URL?.trim();
+  const gatewayUrl = configuredGatewayUrl || DEFAULT_AUTH_GATEWAY_URL;
+  if (!(options.isDevelopment ?? __DEV__) && !/^https:\/\//iu.test(gatewayUrl)) {
+    throw new Error("auth-api-https-required");
+  }
   const secureStore = createExpoSecureStoreAdapter(
     ExpoSecureStore as unknown as ExpoSecureStoreModule,
   );
   const secrets = createSecretRepository({ secureStore, randomBytes });
   return {
     api: createAuthApiClient({
-      baseUrl: process.env.EXPO_PUBLIC_GATEWAY_URL ?? "http://localhost:8787",
+      baseUrl: gatewayUrl,
     }),
     sessionStore: createAuthSessionStore(secureStore),
     getInstallationToken: () => secrets.getOrCreateInstallationToken(),

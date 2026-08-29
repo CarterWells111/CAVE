@@ -36,6 +36,10 @@ export class JournalService {
     return this.repository.claimUnowned(this.ownerAccountId);
   }
 
+  ensureDeletionCleanup(): Promise<boolean> {
+    return this.repository.ensureDeletionCleanup(this.ownerAccountId);
+  }
+
   createRecord(input: Readonly<{
     title: string;
     occurredAt: string;

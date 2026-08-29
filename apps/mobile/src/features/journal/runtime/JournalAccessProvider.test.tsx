@@ -5,10 +5,20 @@ import { JournalAccessProvider, useJournalAccess } from "./JournalAccessProvider
 
 const claimLegacyRecords = jest.fn(async () => undefined);
 const clearCurrentAccount = jest.fn(async () => undefined);
-const createJournalService = jest.fn(() => ({ claimLegacyRecords, clearCurrentAccount }));
+const ensureDeletionCleanup = jest.fn(async () => false);
+const createJournalService = jest.fn(() => ({
+  claimLegacyRecords,
+  clearCurrentAccount,
+  ensureDeletionCleanup,
+}));
 let mockAuth: { status: "loading" | "signedOut" | "signedIn" | "offline"; accountId?: string } = { status: "signedOut" };
-let mockRuntime: { mode: "expo-go-demo" | "native-secure"; createJournalService: typeof createJournalService } | null = {
+let mockRuntime: {
+  mode: "expo-go-demo" | "native-secure";
+  journalPersistence: "memory-only" | "plaintext-sqlite" | "sqlcipher";
+  createJournalService: typeof createJournalService;
+} | null = {
   mode: "native-secure",
+  journalPersistence: "sqlcipher",
   createJournalService,
 };
 
@@ -22,20 +32,21 @@ jest.mock("../../journey/runtime/JourneyRuntimeProvider", () => ({
 
 function Probe() {
   const access = useJournalAccess();
-  return <Text>{`${access.status}:${access.accountId ?? "none"}:${access.temporaryPreview}`}</Text>;
+  return <Text>{`${access.status}:${access.accountId ?? "none"}:${access.journalPersistence}`}</Text>;
 }
 
 beforeEach(() => {
   jest.clearAllMocks();
   claimLegacyRecords.mockResolvedValue(undefined);
+  ensureDeletionCleanup.mockResolvedValue(false);
   mockAuth = { status: "signedOut" };
-  mockRuntime = { mode: "native-secure", createJournalService };
+  mockRuntime = { mode: "native-secure", journalPersistence: "sqlcipher", createJournalService };
 });
 
 test("keeps the journal locked and unopened while signed out", () => {
   render(<JournalAccessProvider><Probe /></JournalAccessProvider>);
 
-  expect(screen.getByText("locked:none:false")).toBeTruthy();
+  expect(screen.getByText("locked:none:sqlcipher")).toBeTruthy();
   expect(createJournalService).not.toHaveBeenCalled();
 });
 
@@ -43,8 +54,8 @@ test.each(["signedIn", "offline"] as const)("claims legacy rows and exposes the 
   mockAuth = { status, accountId: "account-a" };
   render(<JournalAccessProvider><Probe /></JournalAccessProvider>);
 
-  expect(screen.getByText("loading:account-a:false")).toBeTruthy();
-  await waitFor(() => expect(screen.getByText("ready:account-a:false")).toBeTruthy());
+  expect(screen.getByText("loading:account-a:sqlcipher")).toBeTruthy();
+  await waitFor(() => expect(screen.getByText("ready:account-a:sqlcipher")).toBeTruthy());
   expect(createJournalService).toHaveBeenCalledWith("account-a");
   expect(claimLegacyRecords).toHaveBeenCalledTimes(1);
 });
@@ -54,13 +65,35 @@ test("reports a retryable error without exposing the service when legacy claimin
   claimLegacyRecords.mockRejectedValueOnce(new Error("claim-failed"));
   render(<JournalAccessProvider><Probe /></JournalAccessProvider>);
 
-  await waitFor(() => expect(screen.getByText("error:account-a:false")).toBeTruthy());
+  await waitFor(() => expect(screen.getByText("error:account-a:sqlcipher")).toBeTruthy());
 });
 
-test("marks Expo Go journal access as temporary", async () => {
+test("exposes Expo Go journal access as persistent plaintext SQLite", async () => {
   mockAuth = { status: "signedIn", accountId: "account-a" };
-  mockRuntime = { mode: "expo-go-demo", createJournalService };
+  mockRuntime = {
+    mode: "expo-go-demo",
+    journalPersistence: "plaintext-sqlite",
+    createJournalService,
+  };
   render(<JournalAccessProvider><Probe /></JournalAccessProvider>);
 
-  await waitFor(() => expect(screen.getByText("ready:account-a:true")).toBeTruthy());
+  await waitFor(() => expect(screen.getByText("ready:account-a:plaintext-sqlite")).toBeTruthy());
+});
+
+test("logout locks without deleting and the same account can reopen its journal service", async () => {
+  mockAuth = { status: "signedIn", accountId: "account-a" };
+  const view = render(<JournalAccessProvider><Probe /></JournalAccessProvider>);
+  await waitFor(() => expect(screen.getByText("ready:account-a:sqlcipher")).toBeTruthy());
+
+  mockAuth = { status: "signedOut" };
+  view.rerender(<JournalAccessProvider><Probe /></JournalAccessProvider>);
+  expect(screen.getByText("locked:none:sqlcipher")).toBeTruthy();
+  expect(clearCurrentAccount).not.toHaveBeenCalled();
+
+  mockAuth = { status: "signedIn", accountId: "account-a" };
+  view.rerender(<JournalAccessProvider><Probe /></JournalAccessProvider>);
+  await waitFor(() => expect(createJournalService).toHaveBeenCalledTimes(2));
+  await waitFor(() => expect(screen.getByText("ready:account-a:sqlcipher")).toBeTruthy());
+  expect(claimLegacyRecords).toHaveBeenCalledTimes(2);
+  expect(clearCurrentAccount).not.toHaveBeenCalled();
 });

@@ -21,6 +21,8 @@ import { SqlJourneyTransactionRepository } from "../infrastructure/sql-journey-t
 import { SqlJournalRepository } from "../../journal/infrastructure/sql-journal-repository";
 import type { AccountProfileRepository } from "../../account/infrastructure/account-profile-repository";
 import { createExpoAccountProfileRepository } from "../../account/infrastructure/expo-account-profile-dependencies";
+import type { JournalRepository } from "../../journal/infrastructure/journal-repository";
+import { createExpoGoJournalRepository as createDefaultExpoGoJournalRepository } from "../../journal/infrastructure/expo-go-journal-repository";
 import {
   composeJourneyRuntime,
   createJourneyRuntime,
@@ -35,6 +37,7 @@ type CompositionDependencies = {
   createId(): string;
   now(): string;
   loadNativeAdapters: NativeAdapterLoader;
+  createExpoGoJournalRepository?: () => Promise<JournalRepository>;
   accountProfiles?: Pick<AccountProfileRepository, "clearAll">;
 };
 
@@ -44,6 +47,7 @@ export function createComposedJourneyRuntime({
   createId,
   now,
   loadNativeAdapters,
+  createExpoGoJournalRepository = async () => createDefaultExpoGoJournalRepository(),
   accountProfiles = { clearAll: async () => undefined },
 }: CompositionDependencies): Promise<JourneyRuntime> {
   return createJourneyRuntime({
@@ -52,6 +56,7 @@ export function createComposedJourneyRuntime({
     createId,
     now,
     deleteAdditionalStorage: () => accountProfiles.clearAll(),
+    createExpoGoJournalRepository,
     createNativeRuntime: async () => {
       const adapters = await loadNativeAdapters();
       const database = createEncryptedDatabaseManager({
@@ -66,6 +71,7 @@ export function createComposedJourneyRuntime({
       return composeJourneyRuntime({
         mode: "native-secure",
         persistence: "sqlcipher-secure-store",
+        journalPersistence: "sqlcipher",
         drafts: new SqlJourneyDraftRepository(database),
         cards: new SqlCommunicationCardRepository(database),
         shellState: new SqlAppShellStateRepository(database),

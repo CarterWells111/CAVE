@@ -31,12 +31,14 @@ export function JournalRouteGate({ children }: PropsWithChildren) {
   useEffect(() => {
     if (access.status !== "locked" || loginPrompted.current) return;
     loginPrompted.current = true;
-    const previewNotice = access.temporaryPreview
-      ? "\n\n当前为 Expo Go 临时预览，关闭后不会保留记录。"
-      : "";
+    const persistenceNotice = access.journalPersistence === "plaintext-sqlite"
+      ? "\n\n当前为 Expo Go 开发预览：手记会在此安装中跨重启保留，但未使用 SQLCipher 加密。卸载 Expo Go、清除项目数据或主动删除后不可恢复。"
+      : access.journalPersistence === "memory-only"
+        ? "\n\n当前手记仅在本次内存会话中保留，关闭 App 后会丢失。"
+        : "\n\n正式构建中的手记会在本机加密保存。";
     Alert.alert(
       "登录后使用内界手记",
-      `登录会把这台设备上的手记与账号关联，避免同一设备上的其他账号查看。手记正文、后来与阶段回顾仍只保存在本机，不会上传；卸载 App 或清除本机数据仍会丢失。${previewNotice}`,
+      `登录会把这台设备上的手记与账号关联，避免同一设备上的其他账号查看。手记正文、后来与阶段回顾仍只保存在本机，不会上传；卸载 App 或清除本机数据仍会丢失。${persistenceNotice}`,
       [
         { text: "取消", style: "cancel", onPress: () => router.back() },
         {
@@ -45,16 +47,23 @@ export function JournalRouteGate({ children }: PropsWithChildren) {
         },
       ],
     );
-  }, [access.status, access.temporaryPreview, goToLogin, router]);
+  }, [access.journalPersistence, access.status, goToLogin, router]);
 
   useEffect(() => {
-    if (access.status !== "ready" || !access.temporaryPreview || previewPrompted.current) return;
+    if (access.status !== "ready" || access.journalPersistence === "sqlcipher" || previewPrompted.current) return;
     previewPrompted.current = true;
+    if (access.journalPersistence === "plaintext-sqlite") {
+      Alert.alert(
+        "Expo Go 明文存储提示",
+        "手记会在此安装中跨重启保留，但数据库未使用 SQLCipher 加密。此模式仅适合开发预览，请勿录入真实敏感内容。卸载 Expo Go、清除项目数据或主动删除后不可恢复。",
+      );
+      return;
+    }
     Alert.alert(
-      "Expo Go 临时预览",
-      "关闭 App 后，本次手记记录不会保留。请使用正式安装包保存手记。",
+      "临时手记预览",
+      "手记只存在于本次内存会话，关闭 App 后不会保留。请使用正式安装包保存手记。",
     );
-  }, [access.status, access.temporaryPreview]);
+  }, [access.journalPersistence, access.status]);
 
   if (access.status === "ready") return children;
   if (access.status === "error") {

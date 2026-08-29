@@ -1,5 +1,6 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react-native";
 
+import { MobileAuthApiError } from "../infrastructure/auth-api-client";
 import { EmailAuthScreen } from "./EmailAuthScreen";
 
 const challenge = {
@@ -70,10 +71,16 @@ test("verifies the normalized email snapshot that started the challenge", async 
 test("development diagnostics omit private messages and arbitrary input", async () => {
   const warning = jest.spyOn(console, "warn").mockImplementation(() => undefined);
   const privateEmail = "private.person@example.com";
-  const failure = Object.assign(new Error(`account ${privateEmail} failed`), {
+  const privateCode = "654321";
+  const privateToken = "secret-session-token";
+  const providerResponse = "provider rejected private.person@example.com";
+  const failure = Object.assign(new Error(`account ${privateEmail} failed with ${privateCode}`), {
     code: "NETWORK_ERROR",
     status: 0,
     email: privateEmail,
+    oneTimeCode: privateCode,
+    response: providerResponse,
+    token: privateToken,
   });
   render(<EmailAuthScreen
     adultAuthorized
@@ -90,7 +97,39 @@ test("development diagnostics omit private messages and arbitrary input", async 
   await screen.findByRole("alert");
 
   expect(warning).toHaveBeenCalledWith("auth.action.failed");
-  expect(JSON.stringify(warning.mock.calls)).not.toContain(privateEmail);
+  const diagnostics = JSON.stringify(warning.mock.calls);
+  expect(diagnostics).not.toContain(privateEmail);
+  expect(diagnostics).not.toContain(privateCode);
+  expect(diagnostics).not.toContain(privateToken);
+  expect(diagnostics).not.toContain(providerResponse);
+});
+
+test.each([
+  [new MobileAuthApiError("NETWORK_ERROR", 0), "无法连接认证服务。请检查网络连接后重试。"],
+  [new MobileAuthApiError("AUTH_DELIVERY_UNAVAILABLE", 503), "验证码暂时无法发送。请稍后重试。"],
+  [new MobileAuthApiError("RATE_LIMITED", 429, 42), "操作过于频繁。请等待 42 秒后重试。"],
+  [new MobileAuthApiError("AUTH_INVALID_CODE", 400), "验证码不正确。请检查后重新输入。"],
+  [new MobileAuthApiError("AUTH_CODE_EXPIRED", 400), "验证码已过期。请重新获取验证码。"],
+  [new MobileAuthApiError("AUTH_TOO_MANY_ATTEMPTS", 400), "验证码尝试次数过多。请重新获取验证码。"],
+  [new MobileAuthApiError("AUTH_CHALLENGE_INVALID", 400), "本次验证已失效。请重新获取验证码。"],
+  [new MobileAuthApiError("INVALID_RESPONSE", 502), "认证服务返回异常。请稍后重试。"],
+])("shows an actionable message for authentication failure %#", async (failure, message) => {
+  const warning = jest.spyOn(console, "warn").mockImplementation(() => undefined);
+  render(<EmailAuthScreen
+    adultAuthorized
+    onBack={jest.fn()}
+    onDeleteAccount={jest.fn()}
+    onLogout={jest.fn()}
+    onRequestEmail={jest.fn(async () => { throw failure; })}
+    onVerifyCode={jest.fn()}
+    status="signedOut"
+  />);
+
+  fireEvent.changeText(screen.getByLabelText("邮箱地址"), "person@example.com");
+  fireEvent.press(screen.getByRole("button", { name: "发送验证码" }));
+
+  expect(await screen.findByRole("alert")).toHaveTextContent(message);
+  expect(warning).toHaveBeenCalledWith("auth.action.failed");
 });
 
 function deferredChallenge() {

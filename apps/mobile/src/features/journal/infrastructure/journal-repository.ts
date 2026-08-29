@@ -1,5 +1,20 @@
 import type { JournalEntry, JournalRecord } from "../domain/journal-record";
 
+export class JournalDeletionCleanupRequiredError extends Error {
+  readonly code = "JOURNAL_DELETION_CLEANUP_REQUIRED";
+  readonly deletionCommitted = true;
+  override readonly cause?: unknown;
+
+  constructor(
+    cause?: unknown,
+    readonly ownerDeletionCommitted = false,
+  ) {
+    super("Journal deletion committed but secure cleanup still needs retry");
+    this.name = "JournalDeletionCleanupRequiredError";
+    if (cause !== undefined) this.cause = cause;
+  }
+}
+
 export type JournalRecordSummary = Pick<
   JournalRecord,
   "id" | "title" | "occurredAt" | "createdAt" | "highlight" | "topics"
@@ -18,6 +33,7 @@ export type JournalPeriodReview = Readonly<{
 }>;
 
 export interface JournalRepository {
+  ensureDeletionCleanup(ownerAccountId: string): Promise<boolean>;
   claimUnowned(ownerAccountId: string): Promise<void>;
   createRecord(ownerAccountId: string, record: JournalRecord): Promise<void>;
   updateRecord(ownerAccountId: string, record: JournalRecord): Promise<void>;

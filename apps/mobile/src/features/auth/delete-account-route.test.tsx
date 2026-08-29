@@ -3,6 +3,7 @@ import { render } from "@testing-library/react-native";
 import DeleteAccountRoute from "../../../app/auth/delete-account";
 
 const mockClearCurrentAccount = jest.fn(async () => undefined);
+const mockEnsureDeletionCleanup = jest.fn(async () => false);
 const mockAuth = {
   status: "signedIn",
   createAccountDeletionIdempotencyKey: jest.fn(),
@@ -22,7 +23,11 @@ jest.mock("./runtime/AuthProvider", () => ({
 }));
 
 jest.mock("../journal/runtime/JournalAccessProvider", () => ({
-  useJournalAccess: () => ({ clearCurrentAccount: mockClearCurrentAccount, temporaryPreview: false }),
+  useJournalAccess: () => ({
+    clearCurrentAccount: mockClearCurrentAccount,
+    ensureDeletionCleanup: mockEnsureDeletionCleanup,
+    journalPersistence: "sqlcipher",
+  }),
 }));
 
 jest.mock("./ui/DeleteAccountScreen", () => ({
@@ -41,5 +46,6 @@ test("将当前账户的本机手记删除能力与持久化模式传给账户�
   render(<DeleteAccountRoute />);
 
   expect(capturedProps?.onClearCurrentAccountJournal).toBe(mockClearCurrentAccount);
-  expect(capturedProps?.temporaryPreview).toBe(false);
+  expect(capturedProps?.onEnsureJournalCleanup).toBe(mockEnsureDeletionCleanup);
+  expect(capturedProps?.journalPersistence).toBe("sqlcipher");
 });

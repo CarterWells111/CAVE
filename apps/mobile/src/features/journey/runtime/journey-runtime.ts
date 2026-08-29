@@ -45,6 +45,7 @@ class InMemoryPrivacySettingsRepository implements PrivacySettingsRepository {
 
 export type JourneyRuntimeMode = "expo-go-demo" | "native-secure";
 export type JourneyRuntimePersistence = "memory-only" | "sqlcipher-secure-store";
+export type JournalPersistence = "memory-only" | "plaintext-sqlite" | "sqlcipher";
 export type AdultDeclarationRepository = Pick<
   DatabaseSecretRepository,
   | "hasAdultDeclaration"
@@ -56,6 +57,7 @@ export type AdultDeclarationRepository = Pick<
 export type JourneyRuntime = {
   mode: JourneyRuntimeMode;
   persistence: JourneyRuntimePersistence;
+  journalPersistence: JournalPersistence;
   service: DefaultJourneyApplicationService;
   controller: JourneyPageController;
   drafts: JourneyDraftRepository;
@@ -81,6 +83,7 @@ type RuntimeDependencies = {
 type ComposeDependencies = RuntimeDependencies & {
   mode: JourneyRuntimeMode;
   persistence: JourneyRuntimePersistence;
+  journalPersistence?: JournalPersistence;
   drafts: JourneyDraftRepository;
   cards: CommunicationCardRepository;
   shellState?: AppShellStateRepository;
@@ -99,6 +102,7 @@ type ComposeDependencies = RuntimeDependencies & {
 type CreateDependencies = RuntimeDependencies & {
   executionEnvironment: string;
   deleteAdditionalStorage?: () => Promise<void>;
+  createExpoGoJournalRepository(): Promise<JournalRepository>;
   createNativeRuntime(): Promise<JourneyRuntime>;
 };
 
@@ -109,6 +113,7 @@ export function resolveJourneyRuntimeMode(executionEnvironment: string): Journey
 export function composeJourneyRuntime({
   mode,
   persistence,
+  journalPersistence = persistence === "sqlcipher-secure-store" ? "sqlcipher" : "memory-only",
   drafts,
   cards,
   shellState = new InMemoryAppShellStateRepository(),
@@ -198,7 +203,7 @@ export function composeJourneyRuntime({
     }
     service.adoptPersistedJourney(draft);
   };
-  return { mode, persistence, service, controller, drafts: versionedDrafts, cards, shellState, reviewHistory, adultDeclaration, appearancePreferences, journal, createJournalService, privacySettings, deleteAllData, replaceActiveReview, branchFromReview };
+  return { mode, persistence, journalPersistence, service, controller, drafts: versionedDrafts, cards, shellState, reviewHistory, adultDeclaration, appearancePreferences, journal, createJournalService, privacySettings, deleteAllData, replaceActiveReview, branchFromReview };
 }
 
 export async function createJourneyRuntime({
@@ -207,14 +212,18 @@ export async function createJourneyRuntime({
   createId,
   now,
   deleteAdditionalStorage,
+  createExpoGoJournalRepository,
   createNativeRuntime
 }: CreateDependencies): Promise<JourneyRuntime> {
   if (resolveJourneyRuntimeMode(executionEnvironment) === "expo-go-demo") {
+    const journal = await createExpoGoJournalRepository();
     return composeJourneyRuntime({
       mode: "expo-go-demo",
       persistence: "memory-only",
+      journalPersistence: "plaintext-sqlite",
       drafts: new InMemoryJourneyDraftRepository(),
       cards: new InMemoryCommunicationCardRepository(),
+      journal,
       clipboard,
       createId,
       now,

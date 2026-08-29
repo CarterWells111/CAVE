@@ -5,7 +5,8 @@ test("journal production modules contain no network, analytics or console calls"
   const root = join(__dirname);
   const files = [
     "application/journal-service.ts", "infrastructure/in-memory-journal-repository.ts",
-    "infrastructure/sql-journal-repository.ts", "ui/JournalListScreen.tsx",
+    "infrastructure/sql-journal-repository.ts", "infrastructure/expo-go-journal-repository.ts",
+    "ui/JournalListScreen.tsx",
     "ui/JournalEditorScreen.tsx", "ui/JournalDetailScreen.tsx",
     "ui/JournalEntryEditorScreen.tsx", "ui/JournalPeriodReviewScreen.tsx"
   ];
