@@ -1,0 +1,58 @@
+---
+import ContentCard from "../components/ContentCard.astro";
+import PageHero from "../components/PageHero.astro";
+import { demoFeatures } from "../content/site";
+import BaseLayout from "../layouts/BaseLayout.astro";
+---
+
+<BaseLayout
+  title="App 演示｜CAVE 内界"
+  description="观看 CAVE 内界 App 演示，了解六页引导旅程、身体与安全知识、边界表达练习，以及只保存在本机的回顾与手记。"
+  path="/demo/"
+>
+  <section class="section page-section" aria-labelledby="demo-title">
+    <PageHero
+      eyebrow="App Demo"
+      title="看看 CAVE 如何陪你完成一次整理"
+      description="从身体与安全知识，到表达边界、保存沟通草稿和回看自己的变化，这段演示展示当前版本已经可以完成的主要流程。"
+      headingId="demo-title"
+      notice="1 分 58 秒 · 竖屏演示 · 点击播放"
+    />
+
+    <div class="demo-grid">
+      <figure class="demo-media">
+        <div class="demo-media__frame">
+          <video
+            aria-label="CAVE App 功能演示视频"
+            controls
+            playsinline
+            preload="metadata"
+            poster="/demo/cave-app-demo-poster.jpg"
+          >
+            <source src="/demo/cave-app-demo.mp4" type="video/mp4" />
+            <p>当前浏览器无法播放此视频。</p>
+          </video>
+        </div>
+        <figcaption>
+          演示录屏无旁白；你可以随时暂停、调节进度或全屏观看。播放失败时，可<a href="/demo/cave-app-demo.mp4">直接打开 MP4 视频</a>。
+        </figcaption>
+      </figure>
+
+      <section class="demo-features" aria-labelledby="demo-features-title">
+        <div class="section-heading">
+          <p class="eyebrow">当前功能</p>
+          <h2 id="demo-features-title">现在可以做什么</h2>
+        </div>
+        <ul class="demo-feature-list" role="list">
+          {demoFeatures.map(([title, description]) => (
+            <li data-demo-feature>
+              <ContentCard title={title}>
+                <p>{description}</p>
+              </ContentCard>
+            </li>
+          ))}
+        </ul>
+      </section>
+    </div>
+  </section>
+</BaseLayout>

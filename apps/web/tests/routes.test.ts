@@ -3,12 +3,13 @@ import { readFile } from "node:fs/promises";
 import { JOURNEY_SOURCE_REGISTRY } from "@cave/content";
 import { describe, expect, it } from "vitest";
 
-import { experienceSteps, principles } from "../src/content/site";
+import { demoFeatures, experienceSteps, principles } from "../src/content/site";
 
-const routeNames = ["", "privacy", "support", "safety", "sources"] as const;
+const routeNames = ["", "demo", "privacy", "support", "safety", "sources"] as const;
 
 const expectedCanonicals = [
   "https://neijiecave.com/",
+  "https://neijiecave.com/demo/",
   "https://neijiecave.com/privacy/",
   "https://neijiecave.com/support/",
   "https://neijiecave.com/safety/",
@@ -20,7 +21,7 @@ const supportBoundary =
 const safetyBoundary =
   "CAVE 是成年人身体认知与同意教育工具，不是医疗器械，不提供诊断或治疗，也不会判断你是否“准备好”。紧急情况下，请联系你所在地的紧急服务。";
 const sharingBoundary =
-  "不会。预览、保存或复制都不等于发送，分享必须由你主动完成。";
+  "不会。当前版本没有沟通草稿的复制全文、保存图片或系统分享入口。编辑、全屏展示或保存到内界手记都不会把内容发给别人；预设练习中的“复制”只复制支持号码。";
 
 const readRoute = async (route: (typeof routeNames)[number]) =>
   readFile(new URL(`../dist/${route}/index.html`, import.meta.url), "utf8");
@@ -57,7 +58,7 @@ const textContent = (html: string) =>
     .trim();
 
 describe("official site routes", () => {
-  it("builds five complete, distinct, static routes with matching metadata", async () => {
+  it("builds six complete, distinct, static routes with matching metadata", async () => {
     const htmlDocuments = await Promise.all(routeNames.map(readRoute));
     const titles: string[] = [];
     const descriptions: string[] = [];
@@ -108,7 +109,7 @@ describe("official site routes", () => {
     expect(new Set(descriptions)).toHaveLength(routeNames.length);
     const allSiteText = textContent(htmlDocuments.join("\n"));
     expect(allSiteText).not.toMatch(
-      /\bAI\b|人工智能|云同步|App\s*Store|Google\s*Play|应用商店|商店徽章|立即下载|下载(?:\s*App|应用)/iu
+      /人工智能|云同步|App\s*Store|Google\s*Play|应用商店|商店徽章|立即下载|下载(?:\s*App|应用)/iu
     );
   });
 
@@ -138,7 +139,7 @@ describe("official site routes", () => {
     expect(homeCallout).toContain('href="/privacy/"');
     expect(homeCallout).toContain('href="/support/"');
     expect(textContent(homeCallout)).toContain(
-      "旅程无需账号；内界手记需登录以隔离同一设备上的不同账号。所有私密正文仍只保存在当前设备。"
+      "旅程、练习、沟通草稿和普通回顾无需账号；内界手记需登录以隔离同一设备上的不同账号。所有私密正文仍只保存在当前设备。"
     );
     expect(textContent(homeCallout)).toContain(
       "查看常见问题、删除说明、联系渠道，以及 CAVE 能做与不能做的事。"
@@ -146,7 +147,39 @@ describe("official site routes", () => {
     expect(html).not.toMatch(/立即下载|App\s*Store|Google\s*Play|商店徽章|下载(?:应用|App)|AI\s*对话|云同步/iu);
   });
 
-  it("builds a noindex 404 document outside the five canonical routes", async () => {
+  it("publishes a self-hosted, user-controlled App demo", async () => {
+    const html = await readRoute("demo");
+    const videoTags = tags(html, "video");
+
+    expect(textContent(html)).toContain("看看 CAVE 如何陪你完成一次整理");
+    expect(tags(html, "h1")).toHaveLength(1);
+    expect(html).toMatch(/<h1\b[^>]*\bid=["']demo-title["']/u);
+    expect(videoTags).toHaveLength(1);
+    const video = videoTags[0] ?? "";
+    expect(video).toMatch(/\bcontrols(?:\s|>)/u);
+    expect(video).toMatch(/\bplaysinline(?:\s|>)/u);
+    expect(attribute(video, "preload")).toBe("metadata");
+    expect(attribute(video, "poster")).toBe("/demo/cave-app-demo-poster.jpg");
+    expect(video).not.toMatch(/\bautoplay(?:\s|>)/u);
+    expect(video).not.toMatch(/\bloop(?:\s|>)/u);
+
+    const videoSources = tags(html, "source").filter(
+      (source) => attribute(source, "src") === "/demo/cave-app-demo.mp4"
+    );
+    expect(videoSources).toHaveLength(1);
+    expect(attribute(videoSources[0] ?? "", "type")).toBe("video/mp4");
+    const videoElement = html.match(/<video\b[\s\S]*?<\/video>/u)?.[0] ?? "";
+    expect(videoElement).not.toContain('href="/demo/cave-app-demo.mp4"');
+    expect(html.replace(videoElement, "")).toContain('href="/demo/cave-app-demo.mp4"');
+    expect(html).toMatch(/<a\b[^>]*\bhref=["']\/demo\/["'][^>]*\baria-current=["']page["']/u);
+    expect(html.match(/data-demo-feature/gu) ?? []).toHaveLength(demoFeatures.length);
+    for (const [title, description] of demoFeatures) {
+      expect(textContent(html)).toContain(title);
+      expect(textContent(html)).toContain(description);
+    }
+  });
+
+  it("builds a noindex 404 document outside the six canonical routes", async () => {
     const [html, sitemap] = await Promise.all([
       readFile(new URL("../dist/404.html", import.meta.url), "utf8"),
       readFile(new URL("../dist/sitemap.xml", import.meta.url), "utf8")
@@ -178,7 +211,7 @@ describe("official site routes", () => {
   });
 
   it("preserves semantics for every markerless navigation and content list", async () => {
-    const [homeHtml, privacyHtml, supportHtml, safetyHtml, sourcesHtml] = await Promise.all(
+    const [homeHtml, demoHtml, privacyHtml, supportHtml, safetyHtml, sourcesHtml] = await Promise.all(
       routeNames.map(readRoute)
     );
     const homePrinciples = tags(homeHtml ?? "", "ul").filter((tag) =>
@@ -203,7 +236,7 @@ describe("official site routes", () => {
     expect(safetyLists).toHaveLength(1);
     expect(safetyLists.map((tag) => attribute(tag, "role"))).toEqual(["list"]);
 
-    for (const html of [homeHtml, privacyHtml, supportHtml, safetyHtml, sourcesHtml]) {
+    for (const html of [homeHtml, demoHtml, privacyHtml, supportHtml, safetyHtml, sourcesHtml]) {
       const navigationBlocks = Array.from(
         (html ?? "").matchAll(/<nav\b[^>]*>([\s\S]*?)<\/nav>/gu),
         ([, contents = ""]) => contents
@@ -225,9 +258,11 @@ describe("official site routes", () => {
     expect(html.match(/data-privacy-point/gu) ?? []).toHaveLength(6);
     expect(html).toContain("保留");
     expect(html).toContain("删除");
-    expect(html).toContain("Apple");
-    expect(html).toContain("系统相册");
+    expect(html).toContain("操作系统");
     expect(html).toContain("系统剪贴板");
+    expect(html).toContain("当前版本不会把沟通草稿写入系统相册");
+    expect(html).not.toContain("沟通卡图片才会进入系统相册");
+    expect(html).not.toContain("导出");
     expect(html).toContain("ZHIQI LIANG（以内界 CAVE 名义运营）");
     expect(html).toContain("support@neijiecave.com");
     expect(html).toMatch(/<h1\b[^>]*\bid=["']privacy-title["']/u);
@@ -360,5 +395,9 @@ describe("official site routes", () => {
     );
     expect(groupCounts).toEqual(expectedGroupCounts);
     expect(html).toContain("来源已核验不代表中文改写已经通过专家复核。");
+    expect(html).toContain("查阅 CAVE 使用的 14 条教育、医疗及中国大陆安全与支持来源");
+    expect(textContent(html)).toContain(
+      "部分页面内容由 AI 辅助生成，并经团队编辑审核。AI 辅助、团队编辑审核和免责声明都不能代替医疗、安全及紧急支持内容所需的专业审核。"
+    );
   });
 });

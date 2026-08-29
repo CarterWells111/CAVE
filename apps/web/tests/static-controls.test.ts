@@ -19,6 +19,7 @@ const expectedHeaders = [
 
 const expectedSitemapLocations = [
   "https://neijiecave.com/",
+  "https://neijiecave.com/demo/",
   "https://neijiecave.com/privacy/",
   "https://neijiecave.com/support/",
   "https://neijiecave.com/safety/",
@@ -29,6 +30,10 @@ const approvedFaviconSha256 =
   "445618AEB1A01E7B091AE47F041932C9EDDF0835FFA4678974EA1E621442B0D8";
 const approvedBrandLogoSha256 =
   "EB46D26357D1FBA99AB723C80D1510E31F29B0C4BC1B3FFE96E1B9CCB594F2BD";
+const approvedDemoVideoSha256 =
+  "1E671BE1A722B4AEE7BF5443777EA7D0A9B51C298D34A7933F8A30C9D2603C10";
+const approvedDemoPosterSha256 =
+  "8693B62021BC0ACA4065BE569DA880101F9DD2460B93533E79DD587E48DF99DC";
 
 const sha256 = (source: Buffer) =>
   createHash("sha256").update(source).digest("hex").toUpperCase();
@@ -77,9 +82,9 @@ const assertSitemapControls = (source: string) => {
     );
 
     expect(locationMatches).toHaveLength(1);
-    expect(lastModifiedMatches).toEqual(["2026-08-28"]);
+    expect(lastModifiedMatches).toEqual(["2026-08-29"]);
     expect(contents.replace(/\s+/gu, "")).toBe(
-      `<loc>${locationMatches[0]}</loc><lastmod>2026-08-28</lastmod>`
+      `<loc>${locationMatches[0]}</loc><lastmod>2026-08-29</lastmod>`
     );
   }
 };
@@ -94,17 +99,29 @@ const assertFaviconControls = (source: Buffer) => {
   expect(sha256(source)).toBe(approvedFaviconSha256);
 };
 
+const assertDemoMediaControls = (video: Buffer, poster: Buffer) => {
+  expect(video.byteLength).toBeGreaterThan(1_000_000);
+  expect(video.subarray(4, 8).toString("ascii")).toBe("ftyp");
+  expect(video.includes(Buffer.from("avc1", "ascii"))).toBe(true);
+  expect(sha256(video)).toBe(approvedDemoVideoSha256);
+  expect(poster.byteLength).toBeGreaterThan(10_000);
+  expect([...poster.subarray(0, 3)]).toEqual([255, 216, 255]);
+  expect(sha256(poster)).toBe(approvedDemoPosterSha256);
+};
+
 describe("static deployment controls", () => {
   it("ships the exact Cloudflare security and crawl controls", async () => {
     const readTextDistFile = (name: string) =>
       readFile(new URL(`../dist/${name}`, import.meta.url), "utf8");
-    const [distEntries, headers, robots, sitemap, favicon, brandLogo] = await Promise.all([
+    const [distEntries, headers, robots, sitemap, favicon, brandLogo, demoVideo, demoPoster] = await Promise.all([
       readdir(new URL("../dist/", import.meta.url)),
       readTextDistFile("_headers"),
       readTextDistFile("robots.txt"),
       readTextDistFile("sitemap.xml"),
       readFile(new URL("../dist/favicon.png", import.meta.url)),
-      readFile(new URL("../../../assets/brand/logo.png", import.meta.url))
+      readFile(new URL("../../../assets/brand/logo.png", import.meta.url)),
+      readFile(new URL("../dist/demo/cave-app-demo.mp4", import.meta.url)),
+      readFile(new URL("../dist/demo/cave-app-demo-poster.jpg", import.meta.url))
     ]);
 
     expect(distEntries).not.toContain("_redirects");
@@ -117,6 +134,7 @@ describe("static deployment controls", () => {
 
     assertSitemapControls(sitemap);
     assertFaviconControls(favicon);
+    assertDemoMediaControls(demoVideo, demoPoster);
     expect(sha256(brandLogo)).toBe(approvedBrandLogoSha256);
   });
 });
@@ -133,11 +151,11 @@ describe("static control regression guards", () => {
       sitemap.replace("</url>", "<changefreq>daily</changefreq></url>"),
       sitemap.replace(
         "</urlset>",
-        "<url><loc>https://neijiecave.com/extra</loc><lastmod>2026-08-28</lastmod></url></urlset>"
+        "<url><loc>https://neijiecave.com/extra</loc><lastmod>2026-08-29</lastmod></url></urlset>"
       ),
       sitemap.replace("</urlset>", "<loc>https://neijiecave.com/extra</loc></urlset>"),
-      sitemap.replace("<lastmod>2026-08-28</lastmod>", "<lastmod>2026-08-27</lastmod>"),
-      sitemap.replace(/ {4}<lastmod>2026-08-28<\/lastmod>\r?\n/u, "")
+      sitemap.replace("<lastmod>2026-08-29</lastmod>", "<lastmod>2026-08-28</lastmod>"),
+      sitemap.replace(/ {4}<lastmod>2026-08-29<\/lastmod>\r?\n/u, "")
     ];
 
     for (const variant of invalidVariants) {

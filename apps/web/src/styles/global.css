@@ -231,7 +231,8 @@ main {
 
 .card-grid,
 .journey-grid,
-.source-grid {
+.source-grid,
+.demo-feature-list {
   display: grid;
   gap: 1rem;
 }
@@ -246,6 +247,53 @@ main {
   margin: 0;
   padding: 0;
   list-style: none;
+}
+
+.demo-grid {
+  display: grid;
+  grid-template-columns: minmax(16rem, 0.85fr) minmax(0, 1.15fr);
+  align-items: start;
+  gap: clamp(2rem, 5vw, 5rem);
+  width: 100%;
+  min-width: 0;
+}
+
+.demo-media {
+  width: min(100%, 28rem);
+  max-width: 100%;
+  min-width: 0;
+  margin: 0;
+}
+
+.demo-media__frame {
+  padding: clamp(0.5rem, 1.5vw, 0.8rem);
+  border: 1px solid var(--color-border);
+  border-radius: 1.25rem;
+  background: var(--color-surface-raised);
+  box-shadow: 0 1.5rem 4rem color-mix(in srgb, #000 36%, transparent);
+}
+
+.demo-media video {
+  display: block;
+  width: 100%;
+  aspect-ratio: 592 / 1280;
+  border-radius: 0.8rem;
+  background: #000;
+  object-fit: contain;
+}
+
+.demo-media figcaption {
+  margin-top: 0.85rem;
+  color: var(--color-text-muted);
+  font-size: 0.875rem;
+}
+
+.demo-features .section-heading {
+  margin-bottom: 1.5rem;
+}
+
+.demo-features {
+  min-width: 0;
 }
 
 .content-card {
@@ -474,6 +522,14 @@ main {
   .journey-grid,
   .source-grid {
     grid-template-columns: 1fr;
+  }
+
+  .demo-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .demo-media {
+    justify-self: center;
   }
   .site-nav ul { justify-content: flex-start; }
 
