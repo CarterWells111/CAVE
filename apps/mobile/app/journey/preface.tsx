@@ -28,13 +28,13 @@ export default function PrefaceRoute() {
       {preference === null ? (
         <PrefacePage
           onContinue={(selectedPreference) => runtime.runAndRefresh(async () => {
+            if (prefaceRead) {
+              await runtime.service.dispatch({ type: "set-preface-read", read: false });
+            }
             await runtime.service.dispatch({
               type: "set-address-preference",
               preference: selectedPreference,
             });
-            if (prefaceRead) {
-              await runtime.service.dispatch({ type: "set-preface-read", read: false });
-            }
           })}
         />
       ) : (

@@ -315,6 +315,7 @@ test("an inconsistent read preface without an address cannot skip the welcome no
   const journeyRuntime = runtime();
   await journeyRuntime.service.confirmAdult();
   await journeyRuntime.service.dispatch({ type: "set-preface-read", read: true });
+  const dispatch = jest.spyOn(journeyRuntime.service, "dispatch");
   const view = await openRoute(<PrefaceRoute />, journeyRuntime);
 
   expect(await screen.findByRole("header", { name: "开始前，想告诉你" })).toBeTruthy();
@@ -326,7 +327,44 @@ test("an inconsistent read preface without an address cannot skip the welcome no
     ageConfirmed: true,
     prefaceRead: false,
   }));
+  expect(dispatch.mock.calls).toEqual([
+    [{ type: "set-preface-read", read: false }],
+    [{ type: "set-address-preference", preference: "妳" }],
+  ]);
   expect(await screen.findByRole("header", { name: "欢迎来到内界 CAVE" })).toBeTruthy();
+  expect(mockRouter.replace.mock.calls.filter(([path]) => path === "/journey/body-knowledge")).toHaveLength(0);
+  view.unmount();
+});
+
+test("a failed inconsistent-state reset keeps address selection safe and retryable", async () => {
+  const journeyRuntime = runtime();
+  await journeyRuntime.service.confirmAdult();
+  await journeyRuntime.service.dispatch({ type: "set-preface-read", read: true });
+  const dispatch = journeyRuntime.service.dispatch.bind(journeyRuntime.service);
+  jest.spyOn(journeyRuntime.service, "dispatch").mockImplementation(async (command) => {
+    if (command.type === "set-preface-read" && !command.read) {
+      throw new Error("private reset failure");
+    }
+    return dispatch(command);
+  });
+  const view = await openRoute(<PrefaceRoute />, journeyRuntime);
+
+  expect(await screen.findByRole("header", { name: "开始前，想告诉你" })).toBeTruthy();
+  fireEvent.press(screen.getByRole("radio", { name: "妳｜明确称呼女性，更有书信感。" }));
+  fireEvent.press(screen.getByRole("button", { name: "这样称呼我" }));
+
+  expect(await screen.findByText("称呼暂时无法保存，请重试。")).toBeTruthy();
+  expect(screen.queryByText("private reset failure")).toBeNull();
+  expect(journeyRuntime.service.getSnapshot()).toMatchObject({
+    addressPreference: null,
+    ageConfirmed: true,
+    prefaceRead: true,
+  });
+  expect(screen.getByRole("header", { name: "开始前，想告诉你" })).toBeTruthy();
+  expect(screen.getByRole("button", { name: "这样称呼我" })).toHaveProp(
+    "accessibilityState",
+    expect.objectContaining({ busy: false, disabled: false }),
+  );
   expect(mockRouter.replace.mock.calls.filter(([path]) => path === "/journey/body-knowledge")).toHaveLength(0);
   view.unmount();
 });
