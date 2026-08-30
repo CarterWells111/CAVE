@@ -49,17 +49,20 @@ describe("Maestro release selectors", () => {
     expect(flow).not.toContain('text: "打开回顾 .*"');
   });
 
-  it("locks the six-page completion flow to the current four-tab shell", () => {
+  it("locks the six-page completion flow to the three-tab main shell", () => {
     const flow = read(".maestro/core-flow.yaml");
-    const nav = read("apps/mobile/src/features/shell/ui/LongTermBottomNav.tsx");
+    const nav = read("apps/mobile/src/features/shell/ui/LongTermTabBar.tsx");
     const destinations = read("apps/mobile/src/features/shell/ui/long-term-navigation.ts");
     const shell = read("apps/mobile/src/features/journey/ui/JourneyScreenShell.tsx");
 
-    expect(nav).toContain("LONG_TERM_DESTINATIONS.map");
+    expect(nav).toContain("MAIN_TAB_DESTINATIONS");
     for (const label of ["首页", "回顾", "练习", "我的"]) {
       expect(destinations).toContain(`label: "${label}"`);
+    }
+    for (const label of ["首页", "练习", "我的"]) {
       expect(flow).toContain(`"${label}"`);
     }
+    expect(flow).not.toContain('- assertVisible: "回顾"');
     for (const title of [
       "过夜期待与在意",
       "身体与安全知识",

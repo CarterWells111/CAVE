@@ -1,7 +1,7 @@
 import { useRouter } from "expo-router";
 
 import { LongTermBottomNav, type LongTermTab } from "./LongTermBottomNav";
-import { getLongTermDestination } from "./long-term-navigation";
+import { getLongTermDestination, MAIN_TAB_DESTINATIONS } from "./long-term-navigation";
 
 export type JourneyLongTermNavProps = Readonly<{
   activeTab?: LongTermTab | undefined;
@@ -14,6 +14,7 @@ export function JourneyLongTermNav({ activeTab, disabled = false }: JourneyLongT
   return (
     <LongTermBottomNav
       activeTab={activeTab}
+      destinations={MAIN_TAB_DESTINATIONS}
       disabled={disabled}
       navigate={(tab) => { if (!disabled) router.replace(getLongTermDestination(tab).path); }}
     />

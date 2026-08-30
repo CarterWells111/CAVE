@@ -7,7 +7,7 @@ function source(path: string) {
   return readFileSync(resolve(__dirname, "../../../app", path), "utf8");
 }
 
-test("ships exactly the four approved public tabs without a private-storage gate", () => {
+test("registers all four public routes while the main tab bar selects its visible destinations", () => {
   const layout = source("(tabs)/_layout.tsx");
   expect(layout.match(/<Tabs\.Screen/gu)).toHaveLength(4);
   for (const label of ["首页", "回顾", "练习", "我的"]) expect(layout).toContain(`title: "${label}"`);
@@ -52,7 +52,7 @@ test("keeps the long-term navigation available during later full reviews", () =>
   expect(source("journey/_layout.tsx")).toContain("JourneyLongTermNav");
   const nav = source("../src/features/shell/ui/LongTermBottomNav.tsx");
   const destinations = source("../src/features/shell/ui/long-term-navigation.ts");
-  expect(nav).toContain("LONG_TERM_DESTINATIONS.map");
+  expect(nav).toContain("destinations.map");
   for (const label of ["首页", "回顾", "练习", "我的"]) expect(destinations).toContain(`label: "${label}"`);
   expect(nav).toContain('accessibilityRole="tab"');
 });

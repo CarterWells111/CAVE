@@ -28,6 +28,9 @@ export const LONG_TERM_DESTINATIONS: ReadonlyArray<LongTermDestination> = [
   { icon: "person-outline", label: "我的", path: "/(tabs)/profile", routeName: "profile", tab: "profile" },
 ];
 
+export const MAIN_TAB_DESTINATIONS: ReadonlyArray<LongTermDestination> =
+  LONG_TERM_DESTINATIONS.filter(({ tab }) => tab !== "reviews");
+
 const DESTINATIONS_BY_TAB = Object.fromEntries(
   LONG_TERM_DESTINATIONS.map((destination) => [destination.tab, destination]),
 ) as Readonly<Record<LongTermTab, LongTermDestination>>;

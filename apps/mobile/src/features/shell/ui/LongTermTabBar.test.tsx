@@ -17,15 +17,21 @@ test("renders the shared navigation with the Expo tab selection and navigation b
     <LongTermTabBar
       emitTabPress={emitTabPress}
       navigate={navigate}
-      state={{ index: 1, routes }}
+      state={{ index: 2, routes }}
     />,
   );
 
-  expect(screen.getByRole("tab", { name: "回顾" }).props.accessibilityState).toEqual(
+  expect(screen.getByRole("tab", { name: "练习" }).props.accessibilityState).toEqual(
     expect.objectContaining({ disabled: false, selected: true }),
   );
+  expect(screen.getAllByRole("tab").map((tab) => tab.props.accessibilityLabel)).toEqual([
+    "首页",
+    "练习",
+    "我的",
+  ]);
+  expect(screen.queryByRole("tab", { name: "回顾" })).toBeNull();
   expect(screen.getByText("home-outline")).toBeTruthy();
-  expect(screen.getByText("time-outline")).toBeTruthy();
+  expect(screen.queryByText("time-outline")).toBeNull();
   expect(screen.getByText("chatbubbles-outline")).toBeTruthy();
   expect(screen.getByText("person-outline")).toBeTruthy();
 
@@ -46,13 +52,13 @@ test("emits current and prevented tab presses without navigating", () => {
     <LongTermTabBar
       emitTabPress={emitTabPress}
       navigate={navigate}
-      state={{ index: 1, routes }}
+      state={{ index: 2, routes }}
     />,
   );
 
-  fireEvent.press(screen.getByRole("tab", { name: "回顾" }));
+  fireEvent.press(screen.getByRole("tab", { name: "练习" }));
   fireEvent.press(screen.getByRole("tab", { name: "我的" }));
 
-  expect(emitTabPress.mock.calls).toEqual([["reviews-key"], ["profile-key"]]);
+  expect(emitTabPress.mock.calls).toEqual([["practice-key"], ["profile-key"]]);
   expect(navigate).not.toHaveBeenCalled();
 });
