@@ -22,10 +22,15 @@ beforeEach(() => {
   mockLoad.mockReturnValue(new Promise<null>(() => undefined));
 });
 
-test("renders all four tabs publicly without consulting runtime or private shell state", () => {
+test("renders the three current tabs without consulting runtime or private shell state", () => {
   render(<JourneyLongTermNav activeTab="home" />);
 
-  expect(screen.getAllByRole("tab")).toHaveLength(4);
+  expect(screen.getAllByRole("tab").map((tab) => tab.props.accessibilityLabel)).toEqual([
+    "首页",
+    "练习",
+    "我的"
+  ]);
+  expect(screen.queryByRole("tab", { name: "回顾" })).toBeNull();
   expect(mockLoad).not.toHaveBeenCalled();
 });
 
@@ -33,21 +38,20 @@ test("keeps the same immediate navigation when an authorized runtime exists", ()
   mockRuntime = { shellState: mockShellState, snapshot: { ageConfirmed: true } };
   render(<JourneyLongTermNav activeTab="home" />);
 
-  expect(screen.getAllByRole("tab")).toHaveLength(4);
+  expect(screen.getAllByRole("tab")).toHaveLength(3);
+  expect(screen.queryByRole("tab", { name: "回顾" })).toBeNull();
   expect(mockLoad).not.toHaveBeenCalled();
 });
 
-test("routes each public tab destination", () => {
+test("routes each currently visible tab destination", () => {
   render(<JourneyLongTermNav activeTab="practice" />);
 
   fireEvent.press(screen.getByRole("tab", { name: "首页" }));
-  fireEvent.press(screen.getByRole("tab", { name: "回顾" }));
   fireEvent.press(screen.getByRole("tab", { name: "练习" }));
   fireEvent.press(screen.getByRole("tab", { name: "我的" }));
 
   expect(mockReplace.mock.calls).toEqual([
     ["/(tabs)"],
-    ["/(tabs)/reviews"],
     ["/(tabs)/practice"],
     ["/(tabs)/profile"]
   ]);

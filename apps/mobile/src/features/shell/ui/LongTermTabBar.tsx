@@ -2,6 +2,7 @@ import { LongTermBottomNav } from "./LongTermBottomNav";
 import {
   getLongTermDestination,
   getLongTermDestinationByRouteName,
+  MAIN_TAB_DESTINATIONS,
   type LongTermRouteName,
 } from "./long-term-navigation";
 
@@ -25,6 +26,7 @@ export function LongTermTabBar({ emitTabPress, navigate, state }: LongTermTabBar
   return (
     <LongTermBottomNav
       activeTab={activeTab}
+      destinations={MAIN_TAB_DESTINATIONS}
       navigate={(tab) => {
         const destination = getLongTermDestination(tab);
         const routeIndex = state.routes.findIndex((route) => route.name === destination.routeName);

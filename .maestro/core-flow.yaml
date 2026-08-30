@@ -1,5 +1,5 @@
 appId: com.neijie.cave
-name: Six-page core flow and four-tab shell
+name: Six-page core flow and three-tab main shell
 tags:
   - release-static-spec
 ---
@@ -79,7 +79,6 @@ tags:
 - extendedWaitUntil:
     visible: "首页"
     timeout: 20000
-- assertVisible: "回顾"
 - assertVisible: "练习"
 - assertVisible: "我的"
 - assertNotVisible: "设置.*当前"

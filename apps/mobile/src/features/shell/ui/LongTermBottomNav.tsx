@@ -3,17 +3,27 @@ import { Pressable, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { useTheme } from "../../../core/design/theme-provider";
-import { LONG_TERM_DESTINATIONS, type LongTermTab } from "./long-term-navigation";
+import {
+  MAIN_TAB_DESTINATIONS,
+  type LongTermDestination,
+  type LongTermTab,
+} from "./long-term-navigation";
 
 export type { LongTermTab } from "./long-term-navigation";
 
 export type LongTermBottomNavProps = Readonly<{
   activeTab?: LongTermTab | undefined;
+  destinations?: ReadonlyArray<LongTermDestination> | undefined;
   disabled?: boolean | undefined;
   navigate: (tab: LongTermTab) => void;
 }>;
 
-export function LongTermBottomNav({ activeTab, disabled = false, navigate }: LongTermBottomNavProps) {
+export function LongTermBottomNav({
+  activeTab,
+  destinations = MAIN_TAB_DESTINATIONS,
+  disabled = false,
+  navigate,
+}: LongTermBottomNavProps) {
   const theme = useTheme();
   return (
     <SafeAreaView
@@ -36,7 +46,7 @@ export function LongTermBottomNav({ activeTab, disabled = false, navigate }: Lon
           paddingVertical: theme.space.none
         }}
       >
-        {LONG_TERM_DESTINATIONS.map(({ icon, label, tab }) => {
+        {destinations.map(({ icon, label, tab }) => {
           const selected = activeTab === tab;
           return (
             <Pressable

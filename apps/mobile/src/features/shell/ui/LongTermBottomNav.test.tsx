@@ -3,16 +3,17 @@ import { StyleSheet } from "react-native";
 
 import { darkTheme } from "../../../core/design/theme";
 import { LongTermBottomNav } from "./LongTermBottomNav";
+import { MAIN_TAB_DESTINATIONS } from "./long-term-navigation";
 
-test("renders four compact vector destinations with color and icon size as the only selected emphasis", () => {
+test("renders three compact vector destinations with color and icon size as the only selected emphasis", () => {
   const navigate = jest.fn();
-  render(<LongTermBottomNav activeTab="reviews" navigate={navigate} />);
+  render(<LongTermBottomNav activeTab="practice" navigate={navigate} />);
 
   const tabs = screen.getAllByRole("tab");
-  expect(tabs).toHaveLength(4);
-  expect(tabs.map((tab) => tab.props.accessibilityLabel)).toEqual(["首页", "回顾", "练习", "我的"]);
+  expect(tabs).toHaveLength(3);
+  expect(tabs.map((tab) => tab.props.accessibilityLabel)).toEqual(["首页", "练习", "我的"]);
 
-  const selectedTab = screen.getByRole("tab", { name: "回顾" });
+  const selectedTab = screen.getByRole("tab", { name: "练习" });
   const inactiveTab = screen.getByRole("tab", { name: "首页" });
   expect(selectedTab.props.accessibilityState).toEqual({ disabled: false, selected: true });
   expect(inactiveTab.props.accessibilityState).toEqual({ disabled: false, selected: false });
@@ -24,10 +25,11 @@ test("renders four compact vector destinations with color and icon size as the o
     backgroundColor: darkTheme.color.surface,
     borderWidth: 0,
   }));
-  expect(screen.getByText("time-outline")).toHaveProp("color", darkTheme.color.primary);
-  expect(screen.getByText("time-outline")).toHaveProp("size", 24);
+  expect(screen.getByText("chatbubbles-outline")).toHaveProp("color", darkTheme.color.primary);
+  expect(screen.getByText("chatbubbles-outline")).toHaveProp("size", 24);
   expect(screen.getByText("home-outline")).toHaveProp("color", darkTheme.color.textSecondary);
   expect(screen.getByText("home-outline")).toHaveProp("size", 20);
+  expect(screen.queryByRole("tab", { name: "回顾" })).toBeNull();
   expect(screen.queryByText("当前")).toBeNull();
 
   fireEvent.press(screen.getByRole("tab", { name: "我的" }));
@@ -51,7 +53,18 @@ test("keeps every destination touchable at 44 by 44 and supports no active tab",
   expect(screen.queryByText("当前")).toBeNull();
 });
 
-test("keeps all long-term destinations visible but inert while journey navigation is locked", () => {
+test("renders only the supplied main tab destinations", () => {
+  render(<LongTermBottomNav destinations={MAIN_TAB_DESTINATIONS} navigate={jest.fn()} />);
+
+  expect(screen.getAllByRole("tab").map((tab) => tab.props.accessibilityLabel)).toEqual([
+    "首页",
+    "练习",
+    "我的",
+  ]);
+  expect(screen.queryByRole("tab", { name: "回顾" })).toBeNull();
+});
+
+test("keeps all current destinations visible but inert while journey navigation is locked", () => {
   const navigate = jest.fn();
   render(<LongTermBottomNav disabled navigate={navigate} />);
 
