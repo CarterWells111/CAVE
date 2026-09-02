@@ -6,6 +6,7 @@ const routes = [
   { key: "home-key", name: "index" },
   { key: "reviews-key", name: "reviews" },
   { key: "practice-key", name: "practice" },
+  { key: "journal-key", name: "journal" },
   { key: "profile-key", name: "profile" },
 ] as const;
 
@@ -27,6 +28,7 @@ test("renders the shared navigation with the Expo tab selection and navigation b
   expect(screen.getAllByRole("tab").map((tab) => tab.props.accessibilityLabel)).toEqual([
     "首页",
     "练习",
+    "内界手记",
     "我的",
   ]);
   expect(screen.queryByRole("tab", { name: "回顾" })).toBeNull();
@@ -57,8 +59,8 @@ test("emits current and prevented tab presses without navigating", () => {
   );
 
   fireEvent.press(screen.getByRole("tab", { name: "练习" }));
-  fireEvent.press(screen.getByRole("tab", { name: "我的" }));
+  fireEvent.press(screen.getByRole("tab", { name: "内界手记" }));
 
-  expect(emitTabPress.mock.calls).toEqual([["practice-key"], ["profile-key"]]);
+  expect(emitTabPress.mock.calls).toEqual([["practice-key"], ["journal-key"]]);
   expect(navigate).not.toHaveBeenCalled();
 });

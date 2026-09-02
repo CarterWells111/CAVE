@@ -76,5 +76,6 @@ tags:
 - assertVisible: "来自刚完成的旅程"
 - assertVisible: "首页"
 - assertVisible: "练习"
+- assertVisible: "内界手记"
 - assertVisible: "我的"
 - assertNotVisible: "设置.*当前"

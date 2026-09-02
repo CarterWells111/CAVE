@@ -71,15 +71,20 @@ export function LongTermBottomNav({
                 paddingVertical: theme.space.none
               }}
             >
-              <Ionicons
-                accessible={false}
-                color={selected ? theme.color.primary : theme.color.textSecondary}
-                name={icon}
-                size={selected ? theme.size.iconLarge : theme.size.icon}
-              />
-              <Text style={{ ...theme.typography.label, color: selected ? theme.color.primary : theme.color.textSecondary, textAlign: "center" }}>
-                {label}
-              </Text>
+              <View
+                style={{ alignItems: "center", transform: [{ translateY: 2 }] }}
+                testID={`long-term-tab-content-${tab}`}
+              >
+                <Ionicons
+                  accessible={false}
+                  color={selected ? theme.color.primary : theme.color.textSecondary}
+                  name={icon}
+                  size={selected ? theme.size.iconLarge : theme.size.icon}
+                />
+                <Text style={{ ...theme.typography.label, color: selected ? theme.color.primary : theme.color.textSecondary, textAlign: "center" }}>
+                  {label}
+                </Text>
+              </View>
             </Pressable>
           );
         })}

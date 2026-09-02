@@ -5,11 +5,12 @@ import {
   MAIN_TAB_DESTINATIONS,
 } from "./long-term-navigation";
 
-test("defines the four long-term destinations once with their routes and icons", () => {
+test("defines the five long-term destinations once with their routes and icons", () => {
   expect(LONG_TERM_DESTINATIONS).toEqual([
     { icon: "home-outline", label: "首页", path: "/(tabs)", routeName: "index", tab: "home" },
     { icon: "time-outline", label: "回顾", path: "/(tabs)/reviews", routeName: "reviews", tab: "reviews" },
     { icon: "chatbubbles-outline", label: "练习", path: "/(tabs)/practice", routeName: "practice", tab: "practice" },
+    { icon: "book-outline", label: "内界手记", path: "/(tabs)/journal", routeName: "journal", tab: "journal" },
     { icon: "person-outline", label: "我的", path: "/(tabs)/profile", routeName: "profile", tab: "profile" },
   ]);
 
@@ -22,7 +23,8 @@ test("keeps the review route registered while omitting it from the current botto
   expect(MAIN_TAB_DESTINATIONS).toEqual([
     { icon: "home-outline", label: "首页", path: "/(tabs)", routeName: "index", tab: "home" },
     { icon: "chatbubbles-outline", label: "练习", path: "/(tabs)/practice", routeName: "practice", tab: "practice" },
+    { icon: "book-outline", label: "内界手记", path: "/(tabs)/journal", routeName: "journal", tab: "journal" },
     { icon: "person-outline", label: "我的", path: "/(tabs)/profile", routeName: "profile", tab: "profile" },
   ]);
-  expect(LONG_TERM_DESTINATIONS.map(({ label }) => label)).toEqual(["首页", "回顾", "练习", "我的"]);
+  expect(LONG_TERM_DESTINATIONS.map(({ label }) => label)).toEqual(["首页", "回顾", "练习", "内界手记", "我的"]);
 });

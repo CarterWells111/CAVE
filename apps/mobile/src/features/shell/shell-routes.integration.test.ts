@@ -7,10 +7,10 @@ function source(path: string) {
   return readFileSync(resolve(__dirname, "../../../app", path), "utf8");
 }
 
-test("registers all four public routes while the main tab bar selects its visible destinations", () => {
+test("registers all five tab routes while the main tab bar selects its visible destinations", () => {
   const layout = source("(tabs)/_layout.tsx");
-  expect(layout.match(/<Tabs\.Screen/gu)).toHaveLength(4);
-  for (const label of ["首页", "回顾", "练习", "我的"]) expect(layout).toContain(`title: "${label}"`);
+  expect(layout.match(/<Tabs\.Screen/gu)).toHaveLength(5);
+  for (const label of ["首页", "回顾", "练习", "内界手记", "我的"]) expect(layout).toContain(`title: "${label}"`);
   expect(layout).not.toContain("ShellRouteGate");
   expect(layout).toContain("LongTermTabBar");
   expect(layout).toContain('type: "tabPress"');
@@ -25,6 +25,11 @@ test("keeps session-only routes public and protects only private detail routes",
   expect(source("reviews/[id].tsx")).toContain("ShellRouteGate");
   expect(source("practice/session.tsx")).toContain('context="standalone"');
   expect(source("reviews/topic/[id].tsx")).toContain('storageMode="session-only"');
+  const journalTab = source("(tabs)/journal.tsx");
+  expect(journalTab).toContain("ShellRouteGate");
+  expect(journalTab).toContain("JournalRouteGate");
+  expect(journalTab).toContain("JournalListScreen");
+  expect(existsSync(resolve(__dirname, "../../../app/journal/index.tsx"))).toBe(false);
 });
 
 test("loads long-term lists through metadata-only repository projections", () => {
@@ -53,7 +58,7 @@ test("keeps the long-term navigation available during later full reviews", () =>
   const nav = source("../src/features/shell/ui/LongTermBottomNav.tsx");
   const destinations = source("../src/features/shell/ui/long-term-navigation.ts");
   expect(nav).toContain("destinations.map");
-  for (const label of ["首页", "回顾", "练习", "我的"]) expect(destinations).toContain(`label: "${label}"`);
+  for (const label of ["首页", "回顾", "练习", "内界手记", "我的"]) expect(destinations).toContain(`label: "${label}"`);
   expect(nav).toContain('accessibilityRole="tab"');
 });
 

@@ -56,10 +56,10 @@ describe("Maestro release selectors", () => {
     const shell = read("apps/mobile/src/features/journey/ui/JourneyScreenShell.tsx");
 
     expect(nav).toContain("MAIN_TAB_DESTINATIONS");
-    for (const label of ["首页", "回顾", "练习", "我的"]) {
+    for (const label of ["首页", "回顾", "练习", "内界手记", "我的"]) {
       expect(destinations).toContain(`label: "${label}"`);
     }
-    for (const label of ["首页", "练习", "我的"]) {
+    for (const label of ["首页", "练习", "内界手记", "我的"]) {
       expect(flow).toContain(`"${label}"`);
     }
     expect(flow).not.toContain('- assertVisible: "回顾"');
