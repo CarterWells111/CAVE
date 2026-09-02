@@ -13,13 +13,12 @@ import {
   getResumePath
 } from "./journey-navigation";
 
-test("freezes the six canonical content pages plus auxiliary onboarding routes", () => {
+test("freezes the five canonical content pages plus auxiliary onboarding routes", () => {
   expect(JOURNEY_PAGE_IDS).toEqual([
     "body-knowledge",
     "overnight",
     "behavior-map",
     "reflection",
-    "preset-practice",
     "final-preparation"
   ]);
   expect(JOURNEY_ROUTE_MANIFEST).toEqual([
@@ -80,15 +79,14 @@ test("keeps address, preface, and sequential prerequisites after the adult decla
       "behavior-partner-nudity", "behavior-over-clothes-touch", "behavior-direct-touch",
     ].map((id) => [id, "skip" as const])),
   };
-  const reflected = {
+  const reminded = {
     ...mapped,
     currentPage: "reflection" as const,
-    journal: { text: "", saveChoice: "not-saved" as const },
-  };
-  const practiced = {
-    ...reflected,
-    currentPage: "preset-practice" as const,
-    practice: { ...reflected.practice, completed: true },
+    pointEventKeys: [
+      "progress:overnight-complete:v1",
+      "progress:behavior-map-complete:v1",
+      "progress:consent-reminder-seen:v1",
+    ],
   };
 
   expect(canAccessJourneyPage(adultConfirmed, "body-knowledge")).toBe(false);
@@ -105,10 +103,8 @@ test("keeps address, preface, and sequential prerequisites after the adult decla
     behaviorAttitudes: {},
     explicitContentConsent: null,
   }, "reflection")).toBe(true);
-  expect(canAccessJourneyPage(mapped, "preset-practice")).toBe(false);
-  expect(canAccessJourneyPage(reflected, "preset-practice")).toBe(true);
-  expect(canAccessJourneyPage(reflected, "final-preparation")).toBe(false);
-  expect(canAccessJourneyPage(practiced, "final-preparation")).toBe(true);
+  expect(canAccessJourneyPage(mapped, "final-preparation")).toBe(false);
+  expect(canAccessJourneyPage(reminded, "final-preparation")).toBe(true);
 });
 
 test("allows only the persisted progress-jump target after onboarding is complete", () => {
@@ -149,7 +145,7 @@ test("does not unlock the behavior map merely by entering concerns", () => {
 
 test("supports deterministic next and back navigation", () => {
   expect(getAdjacentJourneyPage("reflection", -1)).toBe("behavior-map");
-  expect(getAdjacentJourneyPage("reflection", 1)).toBe("preset-practice");
+  expect(getAdjacentJourneyPage("reflection", 1)).toBe("final-preparation");
   expect(getAdjacentJourneyPage("body-knowledge", -1)).toBeNull();
   expect(getAdjacentJourneyPage("final-preparation", 1)).toBeNull();
 });
@@ -158,9 +154,10 @@ test("redirects legacy journey pages without reintroducing an eighth screen", ()
   expect(resolveJourneyPageAlias("behavior-attitudes")).toBe("behavior-map");
   expect(resolveJourneyPageAlias("checklist")).toBe("final-preparation");
   expect(resolveJourneyPageAlias("communication-card")).toBe("final-preparation");
+  expect(resolveJourneyPageAlias("preset-practice")).toBe("final-preparation");
   expect(resolveJourneyPageAlias("reflection")).toBe("reflection");
   expect(resolveJourneyPageAlias("unknown-page")).toBeNull();
-  expect(JOURNEY_PAGE_IDS).toHaveLength(6);
+  expect(JOURNEY_PAGE_IDS).toHaveLength(5);
 });
 
 test("resumes at the persisted page and defaults to welcome", () => {

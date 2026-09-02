@@ -5,6 +5,7 @@ import {
 } from "../domain/types";
 import {
   BEHAVIOR_MAP_COMPLETE_POINT_EVENT_KEY,
+  CONSENT_REMINDER_SEEN_POINT_EVENT_KEY,
   OVERNIGHT_COMPLETE_POINT_EVENT_KEY,
 } from "./journey-progress-markers";
 
@@ -14,7 +15,8 @@ export type JourneyRoutePath = `/journey/${JourneyPageId}` | "/journey/welcome";
 export const LEGACY_JOURNEY_PAGE_ALIASES = {
   "behavior-attitudes": "behavior-map",
   checklist: "final-preparation",
-  "communication-card": "final-preparation"
+  "communication-card": "final-preparation",
+  "preset-practice": "final-preparation",
 } as const satisfies Readonly<Record<string, JourneyPageId>>;
 
 export const JOURNEY_ROUTE_MANIFEST = [
@@ -64,11 +66,14 @@ export function canAccessJourneyPage(draft: JourneyDraft | null, page: JourneyPa
     );
   if (page === "reflection") return behaviorMapCompleted;
 
-  const reflectionCompleted = behaviorMapCompleted
-    && (draft.journal.saveChoice === "not-saved" || draft.journal.savedAt !== undefined);
-  if (page === "preset-practice") return reflectionCompleted;
+  const legacyReflectionCompleted = draft.journal.saveChoice === "not-saved"
+    || draft.journal.savedAt !== undefined
+    || draft.practice.completed
+    || draft.currentPage === "preset-practice";
+  const reminderSeen = draft.pointEventKeys.includes(CONSENT_REMINDER_SEEN_POINT_EVENT_KEY)
+    || legacyReflectionCompleted;
 
-  return reflectionCompleted && draft.practice.completed;
+  return behaviorMapCompleted && reminderSeen;
 }
 
 export function resolveJourneyPageAlias(page: string): JourneyPageId | null {
@@ -83,7 +88,8 @@ export function getAdjacentJourneyPage(page: JourneyPageId, direction: -1 | 1): 
 
 export function getResumePath(draft: JourneyDraft | null): JourneyRoutePath {
   if (draft === null) return "/journey/welcome";
-  const currentIndex = JOURNEY_PAGE_IDS.indexOf(draft.currentPage);
+  const currentPage = resolveJourneyPageAlias(draft.currentPage);
+  const currentIndex = currentPage === null ? -1 : JOURNEY_PAGE_IDS.indexOf(currentPage);
   for (let index = currentIndex; index >= 0; index -= 1) {
     const page = JOURNEY_PAGE_IDS[index];
     if (page !== undefined && canAccessJourneyPage(draft, page)) return `/journey/${page}`;

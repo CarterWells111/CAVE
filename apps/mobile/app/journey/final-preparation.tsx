@@ -12,13 +12,17 @@ export default function FinalPreparationRoute() {
       {({ controller, runAndRefresh, snapshot }) => (
         snapshot ? <FinalPreparationPage
           draft={snapshot}
+          onDone={async () => {
+            const cardId = await runAndRefresh(() => controller.completeInitialJourney());
+            router.replace(`/cards/${cardId}`);
+          }}
           onEdit={(sectionId, userText) => runAndRefresh(
             () => controller.editCommunicationCard(sectionId, userText)
           )}
-          onFinish={async () => {
-            const cardId = await runAndRefresh(() => controller.completeInitialJourney());
-            router.replace(`/cards/${cardId}`);
-            return cardId;
+          onFinish={() => runAndRefresh(() => controller.saveCommunicationCard())}
+          onPractice={async (phrase) => {
+            await runAndRefresh(() => controller.completeInitialJourney());
+            router.replace({ pathname: "/practice", params: { phrase } });
           }}
           onSetVisibility={(sectionId, visibility) => runtime.runAndRefresh(
             () => runtime.service.dispatch({ type: "set-communication-card-visibility", sectionId, visibility })

@@ -3,11 +3,11 @@ export const JOURNEY_PAGE_IDS = [
   "overnight",
   "behavior-map",
   "reflection",
-  "preset-practice",
   "final-preparation"
 ] as const;
 
 export type JourneyPageId = (typeof JOURNEY_PAGE_IDS)[number];
+export type PersistedJourneyPageId = JourneyPageId | "preset-practice";
 
 export type BehaviorAttitude =
   | "looking-forward"
@@ -83,7 +83,7 @@ export type ChecklistItem = {
 export type JourneyDraft = {
   id: string;
   schemaVersion: 4;
-  currentPage: JourneyPageId;
+  currentPage: PersistedJourneyPageId;
   ageConfirmed: boolean;
   addressPreference: AddressPreference;
   prefaceRead: boolean;

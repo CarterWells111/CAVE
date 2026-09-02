@@ -33,6 +33,7 @@ import { JourneyScrollTarget, useJourneyGuidedScroll } from "../guided-scroll-sc
 type Props = {
   context?: "journey" | "standalone";
   initialIntent?: PracticeIntent;
+  initialPhrase?: string;
   catalog: JourneyPracticeCatalog;
   onComplete(input: {
     behaviorId: string | null;
@@ -95,6 +96,7 @@ export function PresetPracticePage({
   onPracticeAgain,
   context = "journey",
   initialIntent,
+  initialPhrase,
 }: Props) {
   const theme = useTheme();
   const { reveal } = useJourneyGuidedScroll();
@@ -126,7 +128,10 @@ export function PresetPracticePage({
 
   const startPractice = () => {
     const started = startScenario(state);
-    const next = initialIntent ? selectPracticeNeed(started, initialIntent) : started;
+    const selected = initialIntent ? selectPracticeNeed(started, initialIntent) : started;
+    const next = initialPhrase && selected.phrase
+      ? editPracticePhrase(selected, initialPhrase)
+      : selected;
     setDraftPhrase(next.phrase ?? "");
     setState(next);
   };

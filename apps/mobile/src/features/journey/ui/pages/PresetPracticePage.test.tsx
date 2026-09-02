@@ -114,6 +114,22 @@ test("uses a typed standalone scenario intent when the practice starts", () => {
   expect(screen.queryByText("此刻，你更接近哪一种需要？")).toBeNull();
 });
 
+test("starts a contextual rehearsal with the phrase carried from the completed journey", () => {
+  render(
+    <PresetPracticePage
+      catalog={catalog}
+      initialIntent="pause-and-decide"
+      initialPhrase="先停一下，我现在不想继续。"
+      onComplete={jest.fn()}
+    />,
+  );
+
+  fireEvent.press(screen.getByText("开始情境练习"));
+
+  expect(screen.getByText("把需要说出来")).toBeTruthy();
+  expect(screen.getByText("先停一下，我现在不想继续。")).toBeTruthy();
+});
+
 test("finishes standalone practice without claiming persistence or awarding an echo", async () => {
   const onComplete = jest.fn();
   render(

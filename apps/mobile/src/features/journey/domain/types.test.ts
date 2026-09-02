@@ -1,12 +1,11 @@
 import { JOURNEY_PAGE_IDS, createJourneyDraft, type JourneyDraft } from "./types";
 
-test("exposes exactly the six current journey content page ids", () => {
+test("exposes exactly the five current journey content page ids without standalone practice", () => {
   expect(JOURNEY_PAGE_IDS).toEqual([
     "body-knowledge",
     "overnight",
     "behavior-map",
     "reflection",
-    "preset-practice",
     "final-preparation"
   ]);
 });

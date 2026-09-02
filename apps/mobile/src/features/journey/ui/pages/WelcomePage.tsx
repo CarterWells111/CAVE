@@ -79,7 +79,7 @@ export function WelcomePage({
         visible={helpOpen}
       >
         <Text selectable style={styles.body}>内界 CAVE 帮助你探索亲密关系中的身体、安全、边界与沟通。</Text>
-        <Text selectable style={styles.body}>点击“开启旅程”后，会先请你在本机作出年满 18 岁的自我声明。声明后，会先看到“开始前，想告诉你”，再进入六页正式内容。</Text>
+        <Text selectable style={styles.body}>点击“开启旅程”后，会先请你在本机作出年满 18 岁的自我声明。声明后，会先看到“开始前，想告诉你”，再进入五页正式内容。</Text>
         <Text selectable style={styles.body}>这项声明不是身份核验，也不是真实年龄核验；我们不收集生日、证件或邮箱。</Text>
         <Text selectable style={styles.body}>它是自我探索与沟通练习工具，不提供医疗诊断，也不能替代专业医疗或紧急支持。</Text>
         <Text selectable style={styles.body}>部分页面内容由 AI 辅助生成，并经团队编辑审核。AI 辅助、团队编辑审核和免责声明都不能代替医疗、安全及紧急支持内容所需的专业审核。</Text>

@@ -4,6 +4,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { Screen } from "../../src/core/ui/Screen";
 import {
   parseStandalonePracticeScenario,
+  parseStandalonePracticePhrase,
   standaloneScenarioIntent,
 } from "../../src/features/journey/application/standalone-practice-route";
 import { loadJourneyContentCatalog } from "../../src/features/journey/infrastructure/journey-content-catalog";
@@ -12,10 +13,14 @@ import { PresetPracticePage } from "../../src/features/journey/ui/pages/PresetPr
 
 export default function StandalonePracticeRoute() {
   const router = useRouter();
-  const { scenario: routeScenario } = useLocalSearchParams<{ scenario?: string | string[] }>();
+  const { phrase: routePhrase, scenario: routeScenario } = useLocalSearchParams<{
+    phrase?: string | string[];
+    scenario?: string | string[];
+  }>();
   const catalog = loadJourneyContentCatalog();
   const scenario = parseStandalonePracticeScenario(routeScenario);
   const initialIntent = standaloneScenarioIntent(scenario);
+  const initialPhrase = parseStandalonePracticePhrase(routePhrase);
 
   return (
     <Screen>
@@ -23,6 +28,7 @@ export default function StandalonePracticeRoute() {
         catalog={catalog.practice}
         context="standalone"
         {...(initialIntent ? { initialIntent } : {})}
+        {...(initialPhrase ? { initialPhrase } : {})}
         onComplete={async () => undefined}
         onCopySupportNumber={async (number) => { await ExpoClipboard.setStringAsync(number); }}
         onOpenSources={openJourneySources}

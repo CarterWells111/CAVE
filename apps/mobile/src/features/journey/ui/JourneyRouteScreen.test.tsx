@@ -153,7 +153,7 @@ test("keeps route navigation unavailable while the page reports an unpersisted s
   expect(screen.queryByRole("header", { name: "旅程选项" })).toBeNull();
 });
 
-test("replaces the options back action with six progress destinations", async () => {
+test("replaces the options back action with five progress destinations", async () => {
   mockRuntime.snapshot = createWelcomedDraft();
 
   render(
@@ -167,12 +167,11 @@ test("replaces the options back action with six progress destinations", async ()
   expect(screen.getByText("完成 18+ 成年确认、称呼和须知后，可以直接前往任意一页。跳过不会自动填写内容。")).toBeTruthy();
   expect(screen.queryByRole("button", { name: "返回上一步" })).toBeNull();
   const destinations = [
-    "1/6 身体与安全知识（当前页）",
-    "2/6 过夜期待与在意",
-    "3/6 行为地图与边界",
-    "4/6 自我反思",
-    "5/6 预设沟通练习",
-    "6/6 我的沟通草稿",
+    "1/5 身体与安全知识（当前页）",
+    "2/5 过夜期待与在意",
+    "3/5 行为地图与边界",
+    "4/5 你随时可以改变主意",
+    "5/5 我的沟通草稿",
   ];
   for (const label of destinations) {
     expect(screen.getByRole("button", { name: label })).toBeTruthy();
@@ -182,7 +181,7 @@ test("replaces the options back action with six progress destinations", async ()
     expect.objectContaining({ disabled: true }),
   );
 
-  fireEvent.press(screen.getByRole("button", { name: destinations[5]! }));
+  fireEvent.press(screen.getByRole("button", { name: destinations[4]! }));
   await waitFor(() => {
     expect(mockRuntime.service.navigateTo).toHaveBeenCalledWith("final-preparation");
     expect(mockReplace).toHaveBeenCalledWith("/journey/final-preparation");
@@ -201,7 +200,7 @@ test("keeps progress options open with a retryable generic error when persistenc
   );
 
   fireEvent.press(screen.getByRole("button", { name: "旅程选项" }));
-  const target = screen.getByRole("button", { name: "6/6 我的沟通草稿" });
+  const target = screen.getByRole("button", { name: "5/5 我的沟通草稿" });
   fireEvent.press(target);
   fireEvent.press(target);
 
@@ -210,7 +209,7 @@ test("keeps progress options open with a retryable generic error when persistenc
   expect(mockRuntime.service.navigateTo).toHaveBeenCalledTimes(1);
   expect(mockReplace).not.toHaveBeenCalledWith("/journey/final-preparation");
 
-  fireEvent.press(screen.getByRole("button", { name: "6/6 我的沟通草稿" }));
+  fireEvent.press(screen.getByRole("button", { name: "5/5 我的沟通草稿" }));
   await waitFor(() => expect(mockRuntime.service.navigateTo).toHaveBeenCalledTimes(2));
   await waitFor(() => expect(mockReplace).toHaveBeenCalledWith("/journey/final-preparation"));
 });
@@ -226,10 +225,10 @@ test("keeps an unresolved progress jump modal and suppresses late navigation aft
   );
 
   fireEvent.press(screen.getByRole("button", { name: "旅程选项" }));
-  fireEvent.press(screen.getByRole("button", { name: "6/6 我的沟通草稿" }));
+  fireEvent.press(screen.getByRole("button", { name: "5/5 我的沟通草稿" }));
 
   expect(screen.queryByRole("button", { name: "关闭旅程选项" })).toBeNull();
-  expect(screen.getByRole("button", { name: "6/6 我的沟通草稿" })).toHaveProp(
+  expect(screen.getByRole("button", { name: "5/5 我的沟通草稿" })).toHaveProp(
     "accessibilityState",
     expect.objectContaining({ busy: true, disabled: true }),
   );

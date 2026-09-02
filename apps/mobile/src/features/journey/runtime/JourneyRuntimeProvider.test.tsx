@@ -45,6 +45,7 @@ jest.mock("expo-router", () => ({
     return null;
   },
   Stack: () => mockStackRender(),
+  useLocalSearchParams: () => ({}),
   usePathname: () => mockPathname,
   useRouter: () => mockRouter
 }));

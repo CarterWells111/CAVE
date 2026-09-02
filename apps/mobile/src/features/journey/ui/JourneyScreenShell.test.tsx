@@ -28,25 +28,25 @@ test.each([
   ["overnight", 2],
   ["behavior-map", 3],
   ["reflection", 4],
-  ["preset-practice", 5],
-  ["final-preparation", 6]
-] as const)("renders %s as step %i of the six-page journey", (pageId, pageNumber) => {
+  ["final-preparation", 5]
+] as const)("renders %s as step %i of the five-page journey", (pageId, pageNumber) => {
   render(<JourneyScreenShell pageId={pageId} onExit={onExit} />);
 
   expect(screen.getByTestId(`journey-page-${pageId}`)).toBeTruthy();
-  expect(screen.getByText(`${pageNumber} / 6`)).toBeTruthy();
+  expect(screen.getByText(`${pageNumber} / 5`)).toBeTruthy();
   expect(screen.queryByText(/准备度|readiness|score|percentage/iu)).toBeNull();
 });
 
 test("numbers the first knowledge page and exposes journey options", () => {
   render(<JourneyScreenShell pageId="body-knowledge" onExit={onExit} />);
 
-  expect(screen.getByText("1 / 6")).toBeTruthy();
+  expect(screen.getByText("1 / 5")).toBeTruthy();
   expect(screen.getByRole("button", { name: "旅程选项" })).toBeTruthy();
 });
 
 test.each([
   ["behavior-map", "行为地图与边界"],
+  ["reflection", "你随时可以改变主意"],
   ["final-preparation", "我的沟通草稿"]
 ] as const)("names the canonical %s screen without legacy page titles", (pageId, title) => {
   render(<JourneyScreenShell pageId={pageId} onExit={onExit} />);

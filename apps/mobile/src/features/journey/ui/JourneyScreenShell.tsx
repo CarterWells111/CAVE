@@ -15,8 +15,7 @@ export const JOURNEY_PAGE_TITLES: Record<JourneyPageId, string> = {
   "body-knowledge": "身体与安全知识",
   overnight: "过夜期待与在意",
   "behavior-map": "行为地图与边界",
-  reflection: "自我反思",
-  "preset-practice": "预设沟通练习",
+  reflection: "你随时可以改变主意",
   "final-preparation": "我的沟通草稿"
 };
 
@@ -119,7 +118,7 @@ export function JourneyScreenShell({
               backDisabled={navigationLocked || backState === "loading"}
               currentPage={pageNumber}
               showProgress
-              totalPages={6}
+              totalPages={JOURNEY_PAGE_IDS.length}
               onExit={onExit}
               exitDisabled={navigationLocked}
               exitLabel="旅程选项"

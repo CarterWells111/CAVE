@@ -14,13 +14,12 @@ function routeSource(name: string) {
   return readFileSync(resolve(routeDirectory, name), "utf8");
 }
 
-test("ships exactly the six canonical content route modules", () => {
+test("ships exactly the five canonical content route modules", () => {
   const canonical = [
     "body-knowledge",
     "overnight",
     "behavior-map",
     "reflection",
-    "preset-practice",
     "final-preparation"
   ];
   const files = readdirSync(routeDirectory);
@@ -29,6 +28,7 @@ test("ships exactly the six canonical content route modules", () => {
     expect(files).toContain(`${pageId}.tsx`);
     expect(routeSource(`${pageId}.tsx`)).toContain(`pageId="${pageId}"`);
   }
+  expect(routeSource("preset-practice.tsx")).toContain('href="/practice"');
 });
 
 test.each([
@@ -46,7 +46,7 @@ test.each([
 test("connects every canonical continue action without an eighth page or dead-end alias", () => {
   expect(routeSource("body-knowledge.tsx")).toContain('goTo("overnight")');
   expect(routeSource("body-knowledge.tsx")).not.toContain('/journey/adult-gate');
-  expect(routeSource("preset-practice.tsx")).toContain('goTo("final-preparation")');
+  expect(routeSource("reflection.tsx")).toContain('goTo("final-preparation")');
 
   const canonicalSources = [
     "welcome.tsx",
@@ -54,7 +54,6 @@ test("connects every canonical continue action without an eighth page or dead-en
     "body-knowledge.tsx",
     "behavior-map.tsx",
     "reflection.tsx",
-    "preset-practice.tsx",
     "final-preparation.tsx"
   ].map(routeSource).join("\n");
 

@@ -20,16 +20,25 @@ type Props = {
   loadState?: ShellLoadState;
   scenarios: Scenario[];
   onRetry?: () => void;
+  onStartPhrase?: (phrase: string) => void;
   onStartPractice: () => void;
   onStartScenario: (id: string) => void;
+  recentPhrase?: string;
 };
 
-export function PracticeHubScreen({ loadState = "ready", onRetry, onStartPractice, onStartScenario, scenarios }: Props) {
+export function PracticeHubScreen({ loadState = "ready", onRetry, onStartPhrase, onStartPractice, onStartScenario, recentPhrase, scenarios }: Props) {
   const theme = useTheme();
   return (
     <ShellFrame title="练习">
       <StatusBanner message="预设对话，不使用 AI" variant="info" />
       <SupportingText>所有分支都已写在本机内容中，不会生成对话，也不会录音。</SupportingText>
+      {recentPhrase && onStartPhrase ? (
+        <Card accessible={false}>
+          <SectionHeading>来自刚完成的旅程</SectionHeading>
+          <SupportingText>{recentPhrase}</SupportingText>
+          <Button label="用这句话排练" onPress={() => onStartPhrase(recentPhrase)} />
+        </Card>
+      ) : null}
       {loadState === "loading" ? <ShellLoading /> : null}
       {loadState === "error" ? (
         <ErrorState

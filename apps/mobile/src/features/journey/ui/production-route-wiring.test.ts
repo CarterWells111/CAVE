@@ -14,10 +14,14 @@ const canonicalRoutes = [
   "body-knowledge.tsx",
   "behavior-map.tsx",
   "reflection.tsx",
-  "preset-practice.tsx",
   "final-preparation.tsx"
 ];
-const legacyAliases = ["behavior-attitudes.tsx", "checklist.tsx", "communication-card.tsx"];
+const legacyAliases = [
+  "behavior-attitudes.tsx",
+  "checklist.tsx",
+  "communication-card.tsx",
+  "preset-practice.tsx",
+];
 
 function routeSource(name: string) {
   return readFileSync(resolve(routeDirectory, name), "utf8");
@@ -37,8 +41,8 @@ test("root layout mounts one runtime composition provider shared by journey and 
   expect(routeSource("overnight.tsx")).toContain("useJourneyNavigationLock");
 });
 
-test("exactly seven production routes consume runtime state without no-op callbacks", () => {
-  expect(canonicalRoutes).toHaveLength(7);
+test("exactly six production routes consume runtime state without no-op callbacks", () => {
+  expect(canonicalRoutes).toHaveLength(6);
   for (const name of canonicalRoutes) {
     const source = routeSource(name);
     expect(source).toMatch(/use(?:Optional)?JourneyRuntime|useAdultDeclaration|JourneyRouteScreen/u);
@@ -46,8 +50,8 @@ test("exactly seven production routes consume runtime state without no-op callba
   }
 });
 
-test("exactly three legacy route modules are redirect-only aliases", () => {
-  expect(legacyAliases).toHaveLength(3);
+test("exactly four legacy route modules are redirect-only aliases", () => {
+  expect(legacyAliases).toHaveLength(4);
   for (const name of legacyAliases) {
     const source = routeSource(name);
     expect(source).toContain("<Redirect");

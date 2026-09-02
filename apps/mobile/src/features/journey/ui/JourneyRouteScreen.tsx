@@ -189,7 +189,7 @@ export function JourneyRouteScreen({
         ) : null}
         {JOURNEY_PAGE_IDS.map((targetPage, index) => {
           const current = targetPage === pageId;
-          const label = `${index + 1}/6 ${JOURNEY_PAGE_TITLES[targetPage]}${current ? "（当前页）" : ""}`;
+          const label = `${index + 1}/${JOURNEY_PAGE_IDS.length} ${JOURNEY_PAGE_TITLES[targetPage]}${current ? "（当前页）" : ""}`;
           return (
             <TextAction
               disabled={current || progressJumpTarget !== null}

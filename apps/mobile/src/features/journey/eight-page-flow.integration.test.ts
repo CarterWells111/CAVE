@@ -66,23 +66,8 @@ async function completeLocalFlow() {
   await app.navigateTo("behavior-map");
   await controller.setBehaviorAttitude("draft-kissing", "unsure");
   await app.navigateTo("reflection");
-  await controller.saveReflection({
-    motivationIds: ["draft-motivation-curious"],
-    comfortNeedIds: ["draft-comfort-privacy"],
-    expressionSupportNeeded: true,
-    journalSaveChoice: "device"
-  });
-  await app.navigateTo("preset-practice");
-  await controller.completePractice({
-    behaviorId: "draft-kissing",
-    intent: "slow-down",
-    phraseId: "draft-phrase-slow-down",
-    editedPhrase: "Please slow down.",
-    branch: "supportive"
-  });
+  await app.dispatch({ type: "record-point-event", key: "progress:consent-reminder-seen:v1" });
   await app.navigateTo("final-preparation");
-  await controller.updateChecklist("checklist:expression", "considered", "Use my pause phrase");
-  await controller.finishChecklistReview();
   await controller.editCommunicationCard(
     "communication-night-expectations",
     "Please ask before continuing."
@@ -91,7 +76,7 @@ async function completeLocalFlow() {
   return { app, clipboard, controller, storage };
 }
 
-test("completes the six-page journey offline, explicitly saves/copies, and resumes after restart", async () => {
+test("completes the five-page journey offline, explicitly saves/copies, and resumes after restart", async () => {
   const originalFetch = globalThis.fetch;
   const offline = jest.fn(async () => { throw new Error("offline"); });
   globalThis.fetch = offline as typeof fetch;
@@ -103,14 +88,14 @@ test("completes the six-page journey offline, explicitly saves/copies, and resum
 
     expect(await storage.cards.list()).toHaveLength(1);
     expect(clipboard.setStringAsync).toHaveBeenCalledWith(expect.stringContaining(COMMUNICATION_CARD_CONSENT_FOOTER));
-    expect(getPointSummary(app.getSnapshot()!.pointEventKeys)).toMatchObject({ total: 80 });
+    expect(getPointSummary(app.getSnapshot()!.pointEventKeys)).toMatchObject({ total: 30 });
     expect(offline).not.toHaveBeenCalled();
 
     const restarted = application(storage.drafts);
     await expect(restarted.initialize()).resolves.toBe("ready");
     expect(restarted.getSnapshot()).toMatchObject({
       currentPage: "final-preparation",
-      practice: { completed: true }
+      practice: { completed: false }
     });
   } finally {
     globalThis.fetch = originalFetch;
@@ -130,9 +115,4 @@ test("back-edit recomputes generated fields while preserving user text for revie
     userText: "Please ask before continuing.",
     needsReview: true
   });
-  expect(app.getSnapshot()?.privatePreparation.items).toContainEqual(expect.objectContaining({
-    id: "checklist:expression",
-    status: "considered",
-    userNote: "Use my pause phrase"
-  }));
 });

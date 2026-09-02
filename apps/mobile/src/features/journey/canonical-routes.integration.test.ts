@@ -15,8 +15,7 @@ test.each([
   ["overnight", "OvernightPage"],
   ["body-knowledge", "BodyKnowledgePage"],
   ["behavior-map", "behavior-map-page"],
-  ["reflection", "reflection-page"],
-  ["preset-practice", "PresetPracticePage"],
+  ["reflection", "ConsentReminderPage"],
   ["final-preparation", "FinalPreparationPage"],
 ] as const)("%s imports its canonical page directly", (name, pageModule) => {
   const source = route(name);
@@ -49,7 +48,7 @@ test("underage exit is a root-level blocking route outside the journey layout", 
   expect(source).not.toContain("useJourneyRuntime");
 });
 
-test("Pages 1 through 4 hydrate canonical state and persist before navigation", () => {
+test("Pages 1 through 4 persist canonical progress before navigation", () => {
   const overnight = route("overnight");
   expect(overnight).toContain("options={catalog.options}");
   expect(overnight).toContain("initialStage={snapshot?.overnight.resumeStage");
@@ -74,32 +73,31 @@ test("Pages 1 through 4 hydrate canonical state and persist before navigation", 
   expect(behavior).toContain('goTo("reflection")');
 
   const reflection = route("reflection");
-  expect(reflection).toContain("initialValue={{");
-  expect(reflection).toContain("onCardVisibilityChange={setCardOpen}");
-  expect(reflection).toContain("immersiveContent={cardOpen}");
-  expect(reflection).toContain("onSave={(input)");
-  expect(reflection).toContain("onSetJournalSaveNotice={setJournalSaveNotice}");
-  expect(reflection).toContain("pressureWithoutDisappointment: input.pressureWithoutDisappointment");
-  expect(reflection).toContain("journalPromptId: input.journalPromptId");
-  expect(reflection).toContain("journalText: input.journalText");
-  expect(reflection).not.toContain("behaviorAnswers=");
-  expect(reflection).not.toContain("onEditBehaviorAttitude");
-  expect(reflection).toMatch(/saveReflection\([\s\S]*goTo\("preset-practice"\)/u);
+  expect(reflection).toContain("<ConsentReminderPage");
+  expect(reflection).toContain("CONSENT_REMINDER_SEEN_POINT_EVENT_KEY");
+  expect(reflection).toContain('goTo("final-preparation")');
+  expect(reflection).not.toContain("ReflectionPage");
+  expect(reflection).not.toContain("saveReflection");
 });
 
-test("practice and final routes use real user-triggered local persistence", () => {
+test("standalone practice and final routes use real user-triggered local persistence", () => {
   const practice = route("preset-practice");
-  expect(practice).toContain("catalog={catalog.practice}");
-  expect(practice).toContain("ExpoClipboard.setStringAsync");
-  expect(practice).toContain("controller.completePractice({");
-  expect(practice).not.toContain('type: "set-practice"');
-  expect(practice).toContain('goTo("final-preparation")');
+  expect(practice).toContain('<Redirect href="/practice"');
+  const standalonePractice = readFileSync(
+    resolve(routeDirectory, "../practice/session.tsx"),
+    "utf8",
+  );
+  expect(standalonePractice).toContain("catalog={catalog.practice}");
+  expect(standalonePractice).toContain("ExpoClipboard.setStringAsync");
+  expect(standalonePractice).toContain('context="standalone"');
 
   const final = route("final-preparation");
   expect(final).toContain("<FinalPreparationPage");
   expect(final).toContain('type: "set-communication-card-visibility"');
   expect(final).not.toContain("confirmCommunicationCardForSharing");
-  expect(final).toContain("await runAndRefresh(() => controller.completeInitialJourney())");
+  expect(final).toContain("controller.saveCommunicationCard()");
+  expect(final).toContain("controller.completeInitialJourney()");
+  expect(final).toContain('pathname: "/practice"');
   expect(final).toContain("router.replace(`/cards/${cardId}`)");
   expect(final).not.toContain("saveCardImageToLibrary");
   expect(final).not.toContain("copyConfirmedCommunicationCard");

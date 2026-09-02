@@ -12,6 +12,7 @@ const mockReplaceActiveReview = jest.fn(async () => undefined);
 let mockRuntime: unknown | null = null;
 
 jest.mock("expo-router", () => ({
+  useLocalSearchParams: () => ({}),
   useRouter: () => ({ push: mockPush }),
 }));
 
@@ -47,7 +48,7 @@ test("keeps public reviews useful without reading private shell state", () => {
   fireEvent.press(screen.getByRole("button", { name: "按主题回顾：身体感受" }));
   fireEvent.press(screen.getByRole("button", { name: "按主题回顾：边界与表达" }));
   fireEvent.press(screen.getByRole("button", { name: "按主题回顾：沟通练习" }));
-  fireEvent.press(screen.getByRole("button", { name: "开始完整六页回顾" }));
+  fireEvent.press(screen.getByRole("button", { name: "开始完整五页回顾" }));
 
   expect(mockPush.mock.calls).toEqual([
     ["/reviews/topic/body"],
@@ -85,7 +86,7 @@ test("keeps the authorized reviews completion error retryable", async () => {
   expect(screen.queryByText(/private shell failure/u)).toBeNull();
   fireEvent.press(screen.getByRole("button", { name: "重试" }));
 
-  expect(await screen.findByRole("button", { name: "开始完整六页回顾" })).toBeTruthy();
+  expect(await screen.findByRole("button", { name: "开始完整五页回顾" })).toBeTruthy();
   expect(mockShellStateLoad).toHaveBeenCalledTimes(2);
 });
 
