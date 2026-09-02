@@ -10,8 +10,18 @@ import {
   resolveJourneyPageAlias,
   canAccessJourneyPage,
   getAdjacentJourneyPage,
-  getResumePath
+  getResumePath,
+  shouldEnableJourneyNativeBackGesture,
 } from "./journey-navigation";
+
+test("keeps native back gestures off formal journey pages without changing onboarding", () => {
+  expect(shouldEnableJourneyNativeBackGesture("/journey/reflection", false)).toBe(false);
+  expect(shouldEnableJourneyNativeBackGesture("/journey/body-knowledge", false)).toBe(false);
+  expect(shouldEnableJourneyNativeBackGesture("/journey/welcome", false)).toBe(true);
+  expect(shouldEnableJourneyNativeBackGesture("/journey/adult-gate", false)).toBe(true);
+  expect(shouldEnableJourneyNativeBackGesture("/journey/preface", false)).toBe(true);
+  expect(shouldEnableJourneyNativeBackGesture("/journey/welcome", true)).toBe(false);
+});
 
 test("freezes the six canonical content pages plus auxiliary onboarding routes", () => {
   expect(JOURNEY_PAGE_IDS).toEqual([

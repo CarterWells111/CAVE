@@ -21,6 +21,7 @@ import { loadJourneyContentCatalog } from "../../infrastructure/journey-content-
 import { JourneyAction } from "../components/JourneyAction";
 import { JourneyChoice } from "../components/JourneyChoice";
 import { JourneyScrollTarget, useJourneyGuidedScroll } from "../guided-scroll-screen";
+import { useJourneyStepBack } from "../journey-step-back";
 import type { JourneyAction as JourneyActionCallback } from "../journey-ui-contracts";
 
 type CustomBehavior = { id: string; label: string };
@@ -135,6 +136,7 @@ export function BehaviorMapPage({
   const [activeCard, setActiveCard] = useState<DeckCard | null>(null);
   const [cardFace, setCardFace] = useState<CardFace>("front");
   const [animating, setAnimating] = useState(false);
+  const [operationInFlight, setOperationInFlight] = useState(false);
   const [draftAttitude, setDraftAttitude] = useState<BehaviorAttitude | undefined>();
   const [attitudes, setAttitudes] = useState<Record<string, BehaviorAttitude>>(() => ({ ...initialAttitudes }));
   const [customBehaviors, setCustomBehaviors] = useState<CustomBehavior[]>(() => [...initialCustomBehaviors]);
@@ -313,11 +315,29 @@ export function BehaviorMapPage({
     ));
   };
 
-  const saveActiveBehavior = async () => {
+  const runWithOperationLock = <T,>(operation: () => T | Promise<T>): T | Promise<T> => {
+    setOperationInFlight(true);
+    const release = () => {
+      if (mountedRef.current) setOperationInFlight(false);
+    };
+    try {
+      const result = operation();
+      if (result && typeof (result as Promise<T>).then === "function") {
+        return Promise.resolve(result).finally(release);
+      }
+      release();
+      return result;
+    } catch (error) {
+      release();
+      throw error;
+    }
+  };
+
+  const saveActiveBehavior = () => runWithOperationLock(async () => {
     if (activeCard?.kind !== "behavior" || draftAttitude === undefined) return;
     await persistAttitudes(activeCard.behaviorIds, draftAttitude);
     await returnToGallery();
-  };
+  });
 
   const chooseDraftAttitude = (behaviorId: string, attitude: BehaviorAttitude) => {
     setDraftAttitude(attitude);
@@ -326,7 +346,7 @@ export function BehaviorMapPage({
     reveal("behavior-map-active-action");
   };
 
-  const persistSensitiveConsent = async (consented: boolean) => {
+  const persistSensitiveConsent = (consented: boolean) => runWithOperationLock(async () => {
     await onSetSensitiveContentConsent?.(consented);
     setSensitiveConsent(consented);
     const targetId = consented
@@ -334,9 +354,9 @@ export function BehaviorMapPage({
       : "behavior-map-more";
     pendingScrollTargetRef.current = targetId;
     await returnToGallery(targetId);
-  };
+  });
 
-  const addCustomBehavior = async () => {
+  const addCustomBehavior = () => runWithOperationLock(async () => {
     const label = customLabel.trim();
     if (!label) return;
     const behavior = { id: createCustomBehaviorId(), label };
@@ -344,7 +364,7 @@ export function BehaviorMapPage({
     setCustomBehaviors((current) => [...current, behavior]);
     setCustomLabel("");
     await returnToGallery();
-  };
+  });
 
   const cardStatus = (card: DeckCard) => {
     if (card.kind === "behavior") {
@@ -366,10 +386,26 @@ export function BehaviorMapPage({
     outputRange: ["-90deg", "0deg", "90deg"],
   });
 
+  const returnToPreviousStep = async () => {
+    if (activeCard?.kind === "more" && sensitiveStage === "learned") {
+      setSensitiveConfirmationChecked(false);
+      setSensitiveStage("intro");
+      return;
+    }
+    await returnToGallery();
+  };
+
+  useJourneyStepBack({
+    active: activeCard !== null,
+    disabled: animating || operationInFlight,
+    onBack: returnToPreviousStep,
+  });
+
   if (activeCard) {
     return (
       <JourneyScrollTarget targetId="behavior-map-active-card">
       <Animated.View
+        accessibilityState={{ busy: animating }}
         style={[
           styles.fullPage,
           { minHeight: Math.max(520, height - 180) },
@@ -520,7 +556,7 @@ export function BehaviorMapPage({
           accessibilityLabel="继续整理感受"
           label="继续整理感受"
           loadingLabel="正在继续…"
-          onAction={() => onComplete({ participated: true })}
+          onAction={() => runWithOperationLock(() => onComplete({ participated: true }))}
         />
       </JourneyScrollTarget>
     </View>

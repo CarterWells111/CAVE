@@ -32,7 +32,7 @@ test("root layout mounts one runtime composition provider shared by journey and 
   expect(journeyLayout).not.toContain("<JourneyRuntimeProvider");
   expect(journeyLayout).toContain("JourneyLongTermNav");
   expect(journeyLayout).toContain("JourneyNavigationLockProvider");
-  expect(journeyLayout).toContain("gestureEnabled: !locked");
+  expect(journeyLayout).toContain("gestureEnabled: shouldEnableJourneyNativeBackGesture(pathname, locked)");
   expect(journeyLayout).toContain("<JourneyLongTermNav disabled={locked}");
   expect(routeSource("overnight.tsx")).toContain("useJourneyNavigationLock");
 });

@@ -18,6 +18,7 @@ import { ChoiceChip } from "../../../../core/ui/ChoiceChip";
 import { InfoCard } from "../../../../core/ui/info-card";
 import { JourneyAction } from "../components/JourneyAction";
 import { JourneyScrollTarget, useJourneyGuidedScroll } from "../guided-scroll-screen";
+import { useJourneyStepBack } from "../journey-step-back";
 
 type ActionResult = void | Promise<void>;
 type Stage = "expectations" | "concerns";
@@ -291,6 +292,12 @@ export function OvernightPage({
   const rotation = flipRotation.interpolate({
     inputRange: [-90, 0, 90],
     outputRange: ["-90deg", "0deg", "90deg"],
+  });
+
+  useJourneyStepBack({
+    active: activePanel !== null,
+    disabled: interactionsLocked,
+    onBack: returnToOverview,
   });
 
   if (activePanel !== null) {

@@ -1,10 +1,14 @@
 import { act, fireEvent, render, screen } from "@testing-library/react-native";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { StyleSheet, Text } from "react-native";
+import { BackHandler, PanResponder, StyleSheet, Text } from "react-native";
 
 import { darkTheme as theme } from "../../../core/design/theme";
-import { JourneyScreenShell } from "./JourneyScreenShell";
+import {
+  JourneyScreenShell,
+  shouldClaimJourneyBackGesture,
+  shouldCompleteJourneyBackGesture,
+} from "./JourneyScreenShell";
 
 const onExit = jest.fn();
 
@@ -21,6 +25,57 @@ function deferred<T>() {
 
 beforeEach(() => {
   jest.clearAllMocks();
+});
+
+test("claims only a deliberate horizontal drag that starts at the left edge", () => {
+  expect(shouldClaimJourneyBackGesture({ dx: 16, dy: 4, startX: 24 })).toBe(true);
+  expect(shouldClaimJourneyBackGesture({ dx: 16, dy: 4, startX: 25 })).toBe(false);
+  expect(shouldClaimJourneyBackGesture({ dx: -80, dy: 0, startX: 0 })).toBe(false);
+  expect(shouldClaimJourneyBackGesture({ dx: 16, dy: 12, startX: 0 })).toBe(false);
+});
+
+test("completes only after the claimed edge drag travels far enough", () => {
+  expect(shouldCompleteJourneyBackGesture({ dx: 64, dy: 8, startX: 0 })).toBe(true);
+  expect(shouldCompleteJourneyBackGesture({ dx: 63, dy: 8, startX: 0 })).toBe(false);
+  expect(shouldCompleteJourneyBackGesture({ dx: 90, dy: 70, startX: 0 })).toBe(false);
+});
+
+test("routes a completed left-edge gesture through the shared back action", () => {
+  const onBack = jest.fn();
+  const create = jest.spyOn(PanResponder, "create");
+  render(<JourneyScreenShell pageId="overnight" onBack={onBack} onExit={onExit} />);
+
+  const config = create.mock.calls.at(-1)?.[0];
+  const gesture = { dx: 72, dy: 8, x0: 12 } as never;
+  expect(config?.onMoveShouldSetPanResponderCapture?.({} as never, gesture)).toBe(true);
+  act(() => { config?.onPanResponderRelease?.({} as never, gesture); });
+
+  expect(onBack).toHaveBeenCalledTimes(1);
+  create.mockRestore();
+});
+
+test("routes Android hardware back through the shared action and consumes the first-page boundary", () => {
+  const subscriptions: Array<() => boolean | null | undefined> = [];
+  const addEventListener = jest.spyOn(BackHandler, "addEventListener").mockImplementation((_, listener) => {
+    subscriptions.push(listener);
+    return { remove: jest.fn() };
+  });
+  const onBack = jest.fn();
+  const laterPage = render(
+    <JourneyScreenShell pageId="overnight" onBack={onBack} onExit={onExit} />,
+  );
+
+  let consumed = false;
+  act(() => { consumed = subscriptions.at(-1)?.() === true; });
+  expect(consumed).toBe(true);
+  expect(onBack).toHaveBeenCalledTimes(1);
+  laterPage.unmount();
+
+  render(<JourneyScreenShell pageId="body-knowledge" onExit={onExit} />);
+  act(() => { consumed = subscriptions.at(-1)?.() === true; });
+  expect(consumed).toBe(true);
+  expect(onBack).toHaveBeenCalledTimes(1);
+  addEventListener.mockRestore();
 });
 
 test.each([
@@ -105,7 +160,7 @@ test("keeps the page title and header actions flexible for large text", () => {
   expect(title.props.numberOfLines).toBeUndefined();
   expect(title.props.ellipsizeMode).toBeUndefined();
 
-  for (const label of ["返回上一页", "旅程选项"]) {
+  for (const label of ["返回上一步", "旅程选项"]) {
     const action = screen.getByRole("button", { name: label });
     const actionLabel = screen.getByText(label);
     expect(action).toHaveStyle({ minHeight: 44, minWidth: 44 });
@@ -118,7 +173,7 @@ test("exposes working back and options actions on later pages", () => {
   const onBack = jest.fn();
   render(<JourneyScreenShell pageId="overnight" onBack={onBack} onExit={onExit} />);
 
-  fireEvent.press(screen.getByRole("button", { name: "返回上一页" }));
+  fireEvent.press(screen.getByRole("button", { name: "返回上一步" }));
   fireEvent.press(screen.getByRole("button", { name: "旅程选项" }));
 
   expect(onBack).toHaveBeenCalledTimes(1);
@@ -137,7 +192,7 @@ test("blocks every header navigation action while page persistence is locked", (
     />,
   );
 
-  const back = screen.getByRole("button", { name: "返回上一页" });
+  const back = screen.getByRole("button", { name: "返回上一步" });
   const exit = screen.getByRole("button", { name: "旅程选项" });
   expect(back).toHaveProp("accessibilityState", expect.objectContaining({ disabled: true }));
   expect(exit).toHaveProp("accessibilityState", expect.objectContaining({ disabled: true }));
@@ -185,11 +240,11 @@ test.each(["resolve", "reject"] as const)(
       <JourneyScreenShell pageId="behavior-map" onBack={onOldBack} onExit={onExit} />
     );
 
-    fireEvent.press(screen.getByRole("button", { name: "返回上一页" }));
+    fireEvent.press(screen.getByRole("button", { name: "返回上一步" }));
     view.rerender(
       <JourneyScreenShell pageId="overnight" onBack={onCurrentBack} onExit={onExit} />
     );
-    fireEvent.press(screen.getByRole("button", { name: "返回上一页" }));
+    fireEvent.press(screen.getByRole("button", { name: "返回上一步" }));
 
     await act(async () => {
       if (oldSettlement === "resolve") oldBack.resolve();
@@ -210,7 +265,7 @@ test.each(["resolve", "reject"] as const)(
     });
 
     expect(
-      screen.getByRole("button", { name: "返回上一页" }).props.accessibilityState
+      screen.getByRole("button", { name: "返回上一步" }).props.accessibilityState
     ).toEqual(expect.objectContaining({ busy: false, disabled: false }));
   }
 );
@@ -224,7 +279,7 @@ test.each(["resolve", "reject"] as const)(
       <JourneyScreenShell pageId="overnight" onBack={onBack} onExit={onExit} />
     );
 
-    fireEvent.press(screen.getByRole("button", { name: "返回上一页" }));
+    fireEvent.press(screen.getByRole("button", { name: "返回上一步" }));
     view.unmount();
 
     await act(async () => {
@@ -245,7 +300,7 @@ test("keeps one safe back error status and allows retry without exposing the raw
     .mockReturnValueOnce(retriedBack.promise);
   render(<JourneyScreenShell pageId="overnight" onBack={onBack} onExit={onExit} />);
 
-  fireEvent.press(screen.getByRole("button", { name: "返回上一页" }));
+  fireEvent.press(screen.getByRole("button", { name: "返回上一步" }));
   await act(async () => {
     failedBack.reject(new Error("private storage internals"));
     await failedBack.promise.catch(() => undefined);
@@ -255,7 +310,7 @@ test("keeps one safe back error status and allows retry without exposing the raw
   expect(screen.getByText("返回失败，请重试。")).toBeTruthy();
   expect(screen.queryByText(/private storage internals/iu)).toBeNull();
 
-  fireEvent.press(screen.getByRole("button", { name: "返回上一页" }));
+  fireEvent.press(screen.getByRole("button", { name: "返回上一步" }));
   expect(onBack).toHaveBeenCalledTimes(2);
   expect(screen.queryByText("返回失败，请重试。")).toBeNull();
   expect(
@@ -267,6 +322,6 @@ test("keeps one safe back error status and allows retry without exposing the raw
     await retriedBack.promise;
   });
 
-  expect(screen.getByRole("button", { name: "返回上一页" })).toBeTruthy();
+  expect(screen.getByRole("button", { name: "返回上一步" })).toBeTruthy();
   expect(screen.queryAllByRole("alert")).toHaveLength(0);
 });
