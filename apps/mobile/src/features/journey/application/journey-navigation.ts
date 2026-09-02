@@ -26,6 +26,11 @@ export const JOURNEY_ROUTE_MANIFEST = [
   ...JOURNEY_PAGE_IDS
 ] as const;
 
+export function shouldEnableJourneyNativeBackGesture(pathname: string, locked: boolean) {
+  if (locked) return false;
+  return !JOURNEY_PAGE_IDS.some((page) => pathname === `/journey/${page}`);
+}
+
 const REQUIRED_KNOWLEDGE_CARD_IDS = [
   "draft-knowledge-body-signals",
   "draft-knowledge-consent",

@@ -2,6 +2,7 @@ import { Redirect, Stack, usePathname } from "expo-router";
 import { View } from "react-native";
 
 import { useAdultDeclaration } from "../../src/features/journey/runtime/JourneyRuntimeProvider";
+import { shouldEnableJourneyNativeBackGesture } from "../../src/features/journey/application/journey-navigation";
 import {
   JourneyNavigationLockProvider,
   useJourneyNavigationLock,
@@ -21,7 +22,12 @@ function JourneyNavigator() {
 
   return (
     <View style={{ flex: 1 }}>
-      <Stack screenOptions={{ gestureEnabled: !locked, headerShown: false }} />
+      <Stack
+        screenOptions={{
+          gestureEnabled: shouldEnableJourneyNativeBackGesture(pathname, locked),
+          headerShown: false,
+        }}
+      />
       <JourneyLongTermNav disabled={locked} />
     </View>
   );

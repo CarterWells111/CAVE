@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState, type PropsWithChildren, type RefObject } from "react";
-import { KeyboardAvoidingView, Text, View } from "react-native";
+import { useCallback, useEffect, useMemo, useRef, useState, type PropsWithChildren, type RefObject } from "react";
+import { BackHandler, KeyboardAvoidingView, PanResponder, Text, View } from "react-native";
 
 import { useTheme } from "../../../core/design/theme-provider";
 import { Card } from "../../../core/ui/Card";
@@ -30,6 +30,28 @@ type Props = PropsWithChildren<{
 }>;
 
 type BackState = "idle" | "loading" | "error";
+
+type JourneyBackGesture = Readonly<{
+  startX: number;
+  dx: number;
+  dy: number;
+}>;
+
+const BACK_EDGE_WIDTH = 24;
+const BACK_GESTURE_CLAIM_DISTANCE = 12;
+const BACK_GESTURE_COMPLETE_DISTANCE = 64;
+const BACK_GESTURE_HORIZONTAL_RATIO = 1.5;
+
+export function shouldClaimJourneyBackGesture({ startX, dx, dy }: JourneyBackGesture) {
+  return startX <= BACK_EDGE_WIDTH
+    && dx >= BACK_GESTURE_CLAIM_DISTANCE
+    && dx >= Math.abs(dy) * BACK_GESTURE_HORIZONTAL_RATIO;
+}
+
+export function shouldCompleteJourneyBackGesture(gesture: JourneyBackGesture) {
+  return gesture.dx >= BACK_GESTURE_COMPLETE_DISTANCE
+    && shouldClaimJourneyBackGesture(gesture);
+}
 
 export function JourneyScreenShell({
   pageId,
@@ -64,7 +86,7 @@ export function JourneyScreenShell({
     };
   }, [pageId]);
 
-  const handleBack = () => {
+  const handleBack = useCallback(() => {
     if (!onBack || navigationLocked || backInFlightRef.current) return;
 
     const pageGeneration = pageGenerationRef.current;
@@ -98,10 +120,39 @@ export function JourneyScreenShell({
       if (isCurrentOperation()) setBackState("error");
     }
     if (isCurrentOperation()) backInFlightRef.current = false;
-  };
+  }, [navigationLocked, onBack]);
+
+  useEffect(() => {
+    const subscription = BackHandler.addEventListener("hardwareBackPress", () => {
+      handleBack();
+      return true;
+    });
+    return () => subscription.remove();
+  }, [handleBack]);
+
+  const backPanResponder = useMemo(() => PanResponder.create({
+    onMoveShouldSetPanResponderCapture: (_, gestureState) => (
+      onBack !== undefined
+      && !navigationLocked
+      && !backInFlightRef.current
+      && shouldClaimJourneyBackGesture({
+        startX: gestureState.x0,
+        dx: gestureState.dx,
+        dy: gestureState.dy,
+      })
+    ),
+    onPanResponderRelease: (_, gestureState) => {
+      if (shouldCompleteJourneyBackGesture({
+        startX: gestureState.x0,
+        dx: gestureState.dx,
+        dy: gestureState.dy,
+      })) handleBack();
+    },
+  }), [handleBack, navigationLocked, onBack]);
 
   return (
     <View
+      {...backPanResponder.panHandlers}
       style={{ backgroundColor: theme.color.background, flex: 1 }}
       testID={`journey-page-${pageId}`}
     >
@@ -113,7 +164,7 @@ export function JourneyScreenShell({
         <JourneyGuidedScrollScreen
           fixedHeader={(
             <ProgressHeader
-              backLabel={backState === "loading" ? "正在返回…" : "返回上一页"}
+              backLabel={backState === "loading" ? "正在返回…" : "返回上一步"}
               backBusy={backState === "loading"}
               backDisabled={navigationLocked || backState === "loading"}
               currentPage={pageNumber}

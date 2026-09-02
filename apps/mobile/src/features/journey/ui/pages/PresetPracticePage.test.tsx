@@ -3,6 +3,7 @@ import { loadCatalog } from "@cave/content";
 import { StyleSheet } from "react-native";
 
 import * as guidedScroll from "../guided-scroll-screen";
+import { JourneyStepBackHarness } from "../journey-step-back.test-utils";
 import { PresetPracticePage } from "./PresetPracticePage";
 
 afterEach(() => jest.restoreAllMocks());
@@ -164,6 +165,53 @@ test("returns safely when mirror practice is skipped from phrase editing", () =>
 
   expect(screen.getByText("把需要说出来")).toBeTruthy();
   expect(screen.getByText("我还不知道接下来想怎样。可以先停下来，让我仔细感受一下吗？")).toBeTruthy();
+});
+
+test("returns through phrase editing, mirror practice, and the actual visited stages", () => {
+  render(
+    <JourneyStepBackHarness>
+      <PresetPracticePage catalog={catalog} onComplete={jest.fn()} />
+    </JourneyStepBackHarness>,
+  );
+
+  fireEvent.press(screen.getByText("开始情境练习"));
+  fireEvent.press(screen.getByText("整体推进得有点快"));
+  fireEvent.press(screen.getByText("改成我的说法"));
+  expect(screen.getByLabelText("我的表达句")).toBeTruthy();
+  fireEvent.press(screen.getByRole("button", { name: "测试返回上一步" }));
+  expect(screen.queryByLabelText("我的表达句")).toBeNull();
+
+  fireEvent.press(screen.getByText("先对着镜子说一遍"));
+  expect(screen.getByText("这次练习不会录音、不会请求麦克风权限，也不会识别你说了什么。")).toBeTruthy();
+  fireEvent.press(screen.getByRole("button", { name: "测试返回上一步" }));
+  expect(screen.queryByText("这次练习不会录音、不会请求麦克风权限，也不会识别你说了什么。")).toBeNull();
+
+  fireEvent.press(screen.getByRole("button", { name: "测试返回上一步" }));
+  expect(screen.getByText("此刻，你更接近哪一种需要？")).toBeTruthy();
+  fireEvent.press(screen.getByRole("button", { name: "测试返回上一步" }));
+  expect(screen.getByText("改变主意，也属于过程")).toBeTruthy();
+  expect(screen.queryByRole("button", { name: "测试返回上一步" })).toBeNull();
+});
+
+test("returns from completion actions to review before the preceding practice stage", () => {
+  render(
+    <JourneyStepBackHarness>
+      <PresetPracticePage catalog={catalog} onComplete={jest.fn()} />
+    </JourneyStepBackHarness>,
+  );
+  fireEvent.press(screen.getByText("开始情境练习"));
+  fireEvent.press(screen.getByText("整体推进得有点快"));
+  fireEvent.press(screen.getByText("就用这句话"));
+  fireEvent.press(screen.getByText("继续"));
+  fireEvent.press(screen.getByText("安静待一会儿"));
+  fireEvent.press(screen.getByText("跳过不太理想的回应"));
+  fireEvent.press(screen.getByText("继续"));
+  expect(screen.getByText("接下来，你可以")).toBeTruthy();
+
+  fireEvent.press(screen.getByRole("button", { name: "测试返回上一步" }));
+  expect(screen.getByText("这次练习回看")).toBeTruthy();
+  fireEvent.press(screen.getByRole("button", { name: "测试返回上一步" }));
+  expect(screen.getByText("可选练习")).toBeTruthy();
 });
 
 test("starts with the generic scenario without loading or requesting a specific behavior", () => {
