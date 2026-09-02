@@ -19,7 +19,7 @@ test("journal production modules contain no network, analytics or console calls"
 test("journal routes wire explicit back navigation and focus-driven list refresh", () => {
   const appRoot = join(__dirname, "../../../app/journal");
   const detailRoute = readFileSync(join(appRoot, "[id].tsx"), "utf8");
-  const listRoute = readFileSync(join(appRoot, "index.tsx"), "utf8");
+  const listRoute = readFileSync(join(appRoot, "../(tabs)/journal.tsx"), "utf8");
 
   expect(detailRoute).toContain("onBack={() => router.back()}");
   expect(listRoute).toContain("useFocusEffect");
