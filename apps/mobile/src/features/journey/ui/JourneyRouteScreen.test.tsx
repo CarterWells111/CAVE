@@ -1,9 +1,10 @@
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react-native";
-import { Alert, Text } from "react-native";
+import { Alert, BackHandler, Text } from "react-native";
 
 import { createJourneyDraft, type JourneyDraft, type JourneyPageId } from "../domain/types";
 import { JourneyAction } from "./components/JourneyAction";
 import { JourneyRouteScreen } from "./JourneyRouteScreen";
+import { useJourneyStepBack } from "./journey-step-back";
 
 const mockReplace = jest.fn();
 const mockRuntime = {
@@ -85,6 +86,82 @@ function createWelcomedDraft(currentPage: JourneyPageId = "body-knowledge"): Jou
   };
 }
 
+function RegisteredStep({ active = true, disabled = false }: { active?: boolean; disabled?: boolean }) {
+  useJourneyStepBack({
+    active,
+    disabled,
+    onBack: internalStepBack,
+  });
+  return <Text>registered-step</Text>;
+}
+
+const internalStepBack = jest.fn();
+
+test("prefers the registered internal step over the previous journey page", async () => {
+  mockRuntime.snapshot = createUnlockedDraft("reflection");
+  render(
+    <JourneyRouteScreen pageId="reflection">
+      {() => <RegisteredStep />}
+    </JourneyRouteScreen>,
+  );
+
+  fireEvent.press(await screen.findByRole("button", { name: "返回上一步" }));
+
+  expect(internalStepBack).toHaveBeenCalledTimes(1);
+  expect(mockRuntime.service.navigateTo).not.toHaveBeenCalled();
+});
+
+test("keeps a registered internal step from falling through while it is disabled", async () => {
+  mockRuntime.snapshot = createUnlockedDraft("reflection");
+  render(
+    <JourneyRouteScreen pageId="reflection">
+      {() => <RegisteredStep disabled />}
+    </JourneyRouteScreen>,
+  );
+
+  const back = await screen.findByRole("button", { name: "返回上一步" });
+  expect(back).toHaveProp("accessibilityState", expect.objectContaining({ disabled: true }));
+  fireEvent.press(back);
+
+  expect(internalStepBack).not.toHaveBeenCalled();
+  expect(mockRuntime.service.navigateTo).not.toHaveBeenCalled();
+});
+
+test("locks route back while a page-level operation is busy without an internal step", async () => {
+  mockRuntime.snapshot = createUnlockedDraft("reflection");
+  render(
+    <JourneyRouteScreen pageId="reflection">
+      {() => <RegisteredStep active={false} disabled />}
+    </JourneyRouteScreen>,
+  );
+
+  const back = await screen.findByRole("button", { name: "返回上一步" });
+  expect(back).toHaveProp("accessibilityState", expect.objectContaining({ disabled: true }));
+  fireEvent.press(back);
+
+  expect(mockRuntime.service.navigateTo).not.toHaveBeenCalled();
+});
+
+test("consumes system back at the first formal journey page without leaving it", () => {
+  const subscriptions: Array<() => boolean | null | undefined> = [];
+  const addEventListener = jest.spyOn(BackHandler, "addEventListener").mockImplementation((_, listener) => {
+    subscriptions.push(listener);
+    return { remove: jest.fn() };
+  });
+  mockRuntime.snapshot = createWelcomedDraft();
+  render(
+    <JourneyRouteScreen pageId="body-knowledge">
+      {() => <Text>body-knowledge</Text>}
+    </JourneyRouteScreen>,
+  );
+
+  act(() => { subscriptions.at(-1)?.(); });
+
+  expect(mockReplace).not.toHaveBeenCalled();
+  expect(mockRuntime.service.navigateTo).not.toHaveBeenCalled();
+  addEventListener.mockRestore();
+});
+
 test("redirects an unconfirmed visitor before rendering an adult-only page", async () => {
   render(
     <JourneyRouteScreen pageId="overnight">
@@ -106,7 +183,7 @@ test("renders active snapshot state and persists back navigation before replacin
   );
 
   expect(screen.getByText("journey-1")).toBeTruthy();
-  fireEvent.press(screen.getByRole("button", { name: "返回上一页" }));
+  fireEvent.press(screen.getByRole("button", { name: "返回上一步" }));
 
   await waitFor(() => {
     expect(mockRuntime.service.navigateTo).toHaveBeenCalledWith("behavior-map");
@@ -143,7 +220,7 @@ test("keeps route navigation unavailable while the page reports an unpersisted s
     </JourneyRouteScreen>,
   );
 
-  const back = screen.getByRole("button", { name: "返回上一页" });
+  const back = screen.getByRole("button", { name: "返回上一步" });
   const exit = screen.getByRole("button", { name: "旅程选项" });
   expect(back).toHaveProp("accessibilityState", expect.objectContaining({ disabled: true }));
   expect(exit).toHaveProp("accessibilityState", expect.objectContaining({ disabled: true }));
@@ -153,7 +230,7 @@ test("keeps route navigation unavailable while the page reports an unpersisted s
   expect(screen.queryByRole("header", { name: "旅程选项" })).toBeNull();
 });
 
-test("replaces the options back action with six progress destinations", async () => {
+test("replaces the options back action with five progress destinations", async () => {
   mockRuntime.snapshot = createWelcomedDraft();
 
   render(
@@ -167,12 +244,11 @@ test("replaces the options back action with six progress destinations", async ()
   expect(screen.getByText("完成 18+ 成年确认、称呼和须知后，可以直接前往任意一页。跳过不会自动填写内容。")).toBeTruthy();
   expect(screen.queryByRole("button", { name: "返回上一步" })).toBeNull();
   const destinations = [
-    "1/6 身体与安全知识（当前页）",
-    "2/6 过夜期待与在意",
-    "3/6 行为地图与边界",
-    "4/6 自我反思",
-    "5/6 预设沟通练习",
-    "6/6 我的沟通草稿",
+    "1/5 身体与安全知识（当前页）",
+    "2/5 过夜期待与在意",
+    "3/5 行为地图与边界",
+    "4/5 你随时可以改变主意",
+    "5/5 我的沟通草稿",
   ];
   for (const label of destinations) {
     expect(screen.getByRole("button", { name: label })).toBeTruthy();
@@ -182,7 +258,7 @@ test("replaces the options back action with six progress destinations", async ()
     expect.objectContaining({ disabled: true }),
   );
 
-  fireEvent.press(screen.getByRole("button", { name: destinations[5]! }));
+  fireEvent.press(screen.getByRole("button", { name: destinations[4]! }));
   await waitFor(() => {
     expect(mockRuntime.service.navigateTo).toHaveBeenCalledWith("final-preparation");
     expect(mockReplace).toHaveBeenCalledWith("/journey/final-preparation");
@@ -201,7 +277,7 @@ test("keeps progress options open with a retryable generic error when persistenc
   );
 
   fireEvent.press(screen.getByRole("button", { name: "旅程选项" }));
-  const target = screen.getByRole("button", { name: "6/6 我的沟通草稿" });
+  const target = screen.getByRole("button", { name: "5/5 我的沟通草稿" });
   fireEvent.press(target);
   fireEvent.press(target);
 
@@ -210,7 +286,7 @@ test("keeps progress options open with a retryable generic error when persistenc
   expect(mockRuntime.service.navigateTo).toHaveBeenCalledTimes(1);
   expect(mockReplace).not.toHaveBeenCalledWith("/journey/final-preparation");
 
-  fireEvent.press(screen.getByRole("button", { name: "6/6 我的沟通草稿" }));
+  fireEvent.press(screen.getByRole("button", { name: "5/5 我的沟通草稿" }));
   await waitFor(() => expect(mockRuntime.service.navigateTo).toHaveBeenCalledTimes(2));
   await waitFor(() => expect(mockReplace).toHaveBeenCalledWith("/journey/final-preparation"));
 });
@@ -226,10 +302,10 @@ test("keeps an unresolved progress jump modal and suppresses late navigation aft
   );
 
   fireEvent.press(screen.getByRole("button", { name: "旅程选项" }));
-  fireEvent.press(screen.getByRole("button", { name: "6/6 我的沟通草稿" }));
+  fireEvent.press(screen.getByRole("button", { name: "5/5 我的沟通草稿" }));
 
   expect(screen.queryByRole("button", { name: "关闭旅程选项" })).toBeNull();
-  expect(screen.getByRole("button", { name: "6/6 我的沟通草稿" })).toHaveProp(
+  expect(screen.getByRole("button", { name: "5/5 我的沟通草稿" })).toHaveProp(
     "accessibilityState",
     expect.objectContaining({ busy: true, disabled: true }),
   );
@@ -298,7 +374,7 @@ test("does not replace the route when a deferred back navigation resolves after 
     </JourneyRouteScreen>
   );
 
-  fireEvent.press(screen.getByRole("button", { name: "返回上一页" }));
+  fireEvent.press(screen.getByRole("button", { name: "返回上一步" }));
   view.unmount();
   await act(async () => pendingBack.resolve());
 
@@ -316,7 +392,7 @@ test("keeps back navigation busy, blocks duplicates, and hides rejection details
     </JourneyRouteScreen>
   );
 
-  const back = screen.getByRole("button", { name: "返回上一页" });
+  const back = screen.getByRole("button", { name: "返回上一步" });
   fireEvent.press(back);
   fireEvent.press(back);
 
@@ -329,9 +405,9 @@ test("keeps back navigation busy, blocks duplicates, and hides rejection details
   await act(async () => { pendingBack.reject(new Error("private back failure")); });
   expect(await screen.findByText("返回失败，请重试。")).toBeTruthy();
   expect(screen.queryByText("private back failure")).toBeNull();
-  await waitFor(() => expect(screen.getByRole("button", { name: "返回上一页" })).toBeTruthy());
+  await waitFor(() => expect(screen.getByRole("button", { name: "返回上一步" })).toBeTruthy());
 
-  fireEvent.press(screen.getByRole("button", { name: "返回上一页" }));
+  fireEvent.press(screen.getByRole("button", { name: "返回上一步" }));
   await waitFor(() => expect(mockRuntime.runAndRefresh).toHaveBeenCalledTimes(2));
   expect(mockRuntime.service.navigateTo).toHaveBeenCalledWith("behavior-map");
 });

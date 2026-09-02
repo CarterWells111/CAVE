@@ -113,6 +113,7 @@ describe("Screen", () => {
     expect(StyleSheet.flatten(fixedHeader.props.style)).toEqual(
       expect.objectContaining({
         maxWidth: 600,
+        paddingBottom: 4,
         paddingHorizontal: 20,
         width: "100%",
       }),
@@ -136,21 +137,21 @@ describe("Screen", () => {
       </SafeAreaProvider>,
     );
     try {
-      expect(screen.getByTestId("screen-fixed-header")).toHaveStyle({ paddingTop: 71 });
+      expect(screen.getByTestId("screen-fixed-header")).toHaveStyle({ paddingTop: 59 });
 
       view.rerender(
         <SafeAreaProvider initialMetrics={metrics}>
           <Screen fixedHeader={<Text>第二页导航</Text>} testID="second-page" />
         </SafeAreaProvider>,
       );
-      expect(screen.getByTestId("screen-fixed-header")).toHaveStyle({ paddingTop: 71 });
+      expect(screen.getByTestId("screen-fixed-header")).toHaveStyle({ paddingTop: 59 });
       act(() => {
         Dimensions.set({
           screen: { ...originalScreen, height: 844, width: 390 },
           window: { ...originalWindow, height: 520, width: 390 },
         });
       });
-      expect(screen.getByTestId("screen-fixed-header")).toHaveStyle({ paddingTop: 71 });
+      expect(screen.getByTestId("screen-fixed-header")).toHaveStyle({ paddingTop: 59 });
       expect(screen.queryByTestId("screen-safe-area")).toBeNull();
     } finally {
       view.unmount();
@@ -214,7 +215,7 @@ describe("Screen", () => {
       </SafeAreaProvider>,
     );
     try {
-      expect(screen.getByTestId("screen-fixed-header")).toHaveStyle({ paddingTop: 71 });
+      expect(screen.getByTestId("screen-fixed-header")).toHaveStyle({ paddingTop: 59 });
     } finally {
       view.unmount();
       Dimensions.set({ screen: originalScreen, window: originalWindow });
@@ -222,8 +223,8 @@ describe("Screen", () => {
   });
 
   it.each([
-    { height: 667, safeTop: 20, expectedPaddingTop: 36 },
-    { height: 932, safeTop: 59, expectedPaddingTop: 91 },
+    { height: 667, safeTop: 20, expectedPaddingTop: 28 },
+    { height: 932, safeTop: 59, expectedPaddingTop: 75 },
   ])("adapts fixed-header spacing for a $height-point phone", ({ expectedPaddingTop, height, safeTop }) => {
     const originalScreen = Dimensions.get("screen");
     const originalWindow = Dimensions.get("window");

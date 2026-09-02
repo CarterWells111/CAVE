@@ -76,10 +76,10 @@ export function ReviewsHubScreen({
             <SupportingText>
               {activeJourney?.kind === "initial"
                 ? "首次旅程完成前，可以继续原旅程或直接从一个主题开始。"
-                : "可以直接从一个主题开始，也可以由你主动启动完整六页回顾。"}
+                : "可以直接从一个主题开始，也可以由你主动启动完整五页回顾。"}
             </SupportingText>
             {activeJourney?.kind !== "initial" ? (
-              <Button label="开始完整六页回顾" onPress={requestFullReview} />
+              <Button label="开始完整五页回顾" onPress={requestFullReview} />
             ) : null}
           </Card>
           <View style={{ gap: theme.space.md }}>

@@ -11,6 +11,10 @@ import { JourneyRouteCoordinator } from "../application/journey-route-coordinato
 import type { JourneyDraft, JourneyPageId } from "../domain/types";
 import { useJourneyRuntime } from "../runtime/JourneyRuntimeProvider";
 import { JOURNEY_PAGE_TITLES, JourneyScreenShell } from "./JourneyScreenShell";
+import {
+  JourneyStepBackProvider,
+  type JourneyStepBackRegistration,
+} from "./journey-step-back";
 
 type JourneyRouteRenderProps = {
   snapshot: JourneyDraft | null;
@@ -38,6 +42,7 @@ export function JourneyRouteScreen({
   const [restartFailed, setRestartFailed] = useState(false);
   const [progressJumpFailed, setProgressJumpFailed] = useState(false);
   const [progressJumpTarget, setProgressJumpTarget] = useState<JourneyPageId | null>(null);
+  const [stepBackRegistration, setStepBackRegistration] = useState<JourneyStepBackRegistration | null>(null);
   const progressJumpInFlightRef = useRef(false);
   const navigationActiveRef = useRef(true);
   const navigationGenerationRef = useRef(0);
@@ -82,14 +87,14 @@ export function JourneyRouteScreen({
     return runAndRefresh(() => activeCoordinator.goTo(page));
   };
   const onBack = pageId === "body-knowledge"
-    ? () => {
-      router.replace("/journey/preface");
-      return Promise.resolve();
-    }
+    ? undefined
     : () => {
       const activeCoordinator = createActiveCoordinator();
       return runAndRefresh(() => activeCoordinator.backFrom(pageId));
     };
+  const activeStepBack = stepBackRegistration?.active === true ? stepBackRegistration : null;
+  const effectiveBack = activeStepBack?.onBack ?? onBack;
+  const effectiveNavigationLocked = navigationLocked || stepBackRegistration?.disabled === true;
   const exitJourney = () => {
     if (navigationLocked || progressJumpInFlightRef.current) return;
     navigationActiveRef.current = false;
@@ -150,14 +155,14 @@ export function JourneyRouteScreen({
   };
 
   return (
-    <>
+    <JourneyStepBackProvider setRegistration={setStepBackRegistration}>
       <JourneyScreenShell
         immersiveContent={immersiveContent}
-        navigationLocked={navigationLocked}
+        navigationLocked={effectiveNavigationLocked}
         pageId={pageId}
         onExit={openOptions}
         exitRef={optionsReturnFocusRef}
-        {...(onBack === undefined ? {} : { onBack })}
+        {...(effectiveBack === undefined ? {} : { onBack: effectiveBack })}
       >
         {children({
           snapshot: runtime.snapshot,
@@ -189,7 +194,7 @@ export function JourneyRouteScreen({
         ) : null}
         {JOURNEY_PAGE_IDS.map((targetPage, index) => {
           const current = targetPage === pageId;
-          const label = `${index + 1}/6 ${JOURNEY_PAGE_TITLES[targetPage]}${current ? "（当前页）" : ""}`;
+          const label = `${index + 1}/${JOURNEY_PAGE_IDS.length} ${JOURNEY_PAGE_TITLES[targetPage]}${current ? "（当前页）" : ""}`;
           return (
             <TextAction
               disabled={current || progressJumpTarget !== null}
@@ -208,6 +213,6 @@ export function JourneyRouteScreen({
         <Button disabled={progressJumpTarget !== null} label="退出旅程" onPress={exitJourney} />
         <TextAction disabled={progressJumpTarget !== null} label="重新开始" onPress={restart} />
       </BottomSheet>
-    </>
+    </JourneyStepBackProvider>
   );
 }

@@ -37,17 +37,16 @@ test("the root entry opens the public tabs without reading persisted shell state
   expect(indexSource).not.toContain("<Redirect");
 });
 
-test("exactly six canonical content routes compose their matching page components", () => {
+test("exactly five canonical content routes compose their matching page components", () => {
   const routeDirectory = resolve(__dirname, "../../../../app/journey");
   const expected = {
     "body-knowledge": "BodyKnowledgePage",
     overnight: "OvernightPage",
     "behavior-map": "BehaviorMapPage",
-    reflection: "ReflectionPage",
-    "preset-practice": "PresetPracticePage",
+    reflection: "ConsentReminderPage",
     "final-preparation": "FinalPreparationPage"
   };
-  expect(Object.keys(expected)).toHaveLength(6);
+  expect(Object.keys(expected)).toHaveLength(5);
   for (const [route, component] of Object.entries(expected)) {
     expect(readFileSync(resolve(routeDirectory, `${route}.tsx`), "utf8")).toContain(`<${component}`);
   }
@@ -62,15 +61,16 @@ test("the Expo Router app directory contains no test or spec modules", () => {
   expect(testModules).toEqual([]);
 });
 
-test("exactly three legacy aliases redirect to canonical routes", () => {
+test("legacy aliases and the removed journey practice route redirect safely", () => {
   const routeDirectory = resolve(__dirname, "../../../../app/journey");
   const aliases = {
     "behavior-attitudes": "/journey/behavior-map",
     checklist: "/journey/final-preparation",
-    "communication-card": "/journey/final-preparation"
+    "communication-card": "/journey/final-preparation",
+    "preset-practice": "/practice",
   };
 
-  expect(Object.keys(aliases)).toHaveLength(3);
+  expect(Object.keys(aliases)).toHaveLength(4);
   for (const [route, destination] of Object.entries(aliases)) {
     const source = readFileSync(resolve(routeDirectory, `${route}.tsx`), "utf8");
     expect(source).toContain("<Redirect");
@@ -79,7 +79,7 @@ test("exactly three legacy aliases redirect to canonical routes", () => {
   }
 });
 
-test("the production route inventory contains only six content routes and three legacy aliases", () => {
+test("the production route inventory contains five content routes and four compatibility aliases", () => {
   const routeDirectory = resolve(__dirname, "../../../../app/journey");
   const auxiliaryModules = ["_layout.tsx", "welcome.tsx", "preface.tsx", "adult-gate.tsx"];
   const productionRoutes = readdirSync(routeDirectory)

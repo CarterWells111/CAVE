@@ -29,10 +29,12 @@ import {
 } from "../../domain/seven-screen-practice-machine";
 import { JourneyAction } from "../components/JourneyAction";
 import { JourneyScrollTarget, useJourneyGuidedScroll } from "../guided-scroll-screen";
+import { useJourneyStepBack } from "../journey-step-back";
 
 type Props = {
   context?: "journey" | "standalone";
   initialIntent?: PracticeIntent;
+  initialPhrase?: string;
   catalog: JourneyPracticeCatalog;
   onComplete(input: {
     behaviorId: string | null;
@@ -95,6 +97,7 @@ export function PresetPracticePage({
   onPracticeAgain,
   context = "journey",
   initialIntent,
+  initialPhrase,
 }: Props) {
   const theme = useTheme();
   const { reveal } = useJourneyGuidedScroll();
@@ -106,9 +109,11 @@ export function PresetPracticePage({
   const [optionalResponseEditing, setOptionalResponseEditing] = useState(false);
   const [optionalResponseDraft, setOptionalResponseDraft] = useState("");
   const [submitted, setSubmitted] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const [completionFeelings, setCompletionFeelings] = useState<string[]>([]);
   const [completionStep, setCompletionStep] = useState<"review" | "actions">("review");
   const submittedRef = useRef(false);
+  const historyRef = useRef<SevenScreenPracticeState[]>([]);
   const previousVisibleStepRef = useRef("entry");
   const selectedNeedLabel = NEEDS.find(({ intent }) => intent === state.intent)?.label;
   const selectedAftercareLabel = AFTERCARE.find(({ id }) => id === state.aftercareId)?.label;
@@ -124,20 +129,28 @@ export function PresetPracticePage({
     reveal(`practice-stage-${visibleStep}`, { mode: "nearest" });
   }, [reveal, visibleStep]);
 
+  const advanceTo = (next: SevenScreenPracticeState) => {
+    historyRef.current.push(state);
+    setState(next);
+  };
+
   const startPractice = () => {
     const started = startScenario(state);
-    const next = initialIntent ? selectPracticeNeed(started, initialIntent) : started;
+    const selected = initialIntent ? selectPracticeNeed(started, initialIntent) : started;
+    const next = initialPhrase && selected.phrase
+      ? editPracticePhrase(selected, initialPhrase)
+      : selected;
     setDraftPhrase(next.phrase ?? "");
-    setState(next);
+    advanceTo(next);
   };
   const chooseNeed = (intent: PracticeIntent) => {
     const next = selectPracticeNeed(state, intent);
     setDraftPhrase(next.phrase ?? "");
-    setState(next);
+    advanceTo(next);
   };
   const usePhrase = () => {
     const edited = editPracticePhrase(state, draftPhrase || state.phrase || "");
-    setState(showRespectfulResponse(edited, catalog));
+    advanceTo(showRespectfulResponse(edited, catalog));
     setEditing(false);
   };
   const completionInput = (completed: SevenScreenPracticeState) => {
@@ -159,9 +172,14 @@ export function PresetPracticePage({
     if (submittedRef.current) return;
     const completed = completePractice(state);
     setState(completed);
-    await onComplete(completionInput(completed));
-    submittedRef.current = true;
-    setSubmitted(true);
+    setSubmitting(true);
+    try {
+      await onComplete(completionInput(completed));
+      submittedRef.current = true;
+      setSubmitted(true);
+    } finally {
+      setSubmitting(false);
+    }
   };
   const toggleCompletionFeeling = (feeling: string) => {
     setCompletionFeelings((current) => {
@@ -172,6 +190,46 @@ export function PresetPracticePage({
         : [...withoutSkip, feeling];
     });
   };
+
+  const returnToPreviousStep = () => {
+    if (mirrorVisible) {
+      setMirrorVisible(false);
+      return;
+    }
+    if (editing) {
+      setEditing(false);
+      return;
+    }
+    if (optionalResponseEditing) {
+      setOptionalResponseEditing(false);
+      return;
+    }
+    if (state.stage === "completed" && completionStep === "actions") {
+      setCompletionStep("review");
+      return;
+    }
+    const previous = historyRef.current.pop();
+    if (!previous) return;
+    setMirrorVisible(false);
+    setEditing(false);
+    setOptionalResponseEditing(false);
+    setCompletionStep("review");
+    setDraftPhrase(previous.phrase ?? "");
+    setOptionalResponseDraft(previous.optionalUserResponse ?? "");
+    setState(previous);
+  };
+
+  useJourneyStepBack({
+    active: context === "journey" && (
+      mirrorVisible
+      || editing
+      || optionalResponseEditing
+      || (state.stage === "completed" && completionStep === "actions")
+      || historyRef.current.length > 0
+    ),
+    disabled: submitting || submitted,
+    onBack: returnToPreviousStep,
+  });
 
   return (
     <View style={{ gap: theme.space.lg, width: "100%" }} testID="page-5-content">
@@ -244,7 +302,7 @@ export function PresetPracticePage({
         <Card>
           <Heading>一种尊重边界的回应</Heading>
           <Body>{state.partnerResponse ?? ""}</Body>
-          <Button label="继续" onPress={() => setState(continueToAftercare(state))} />
+          <Button label="继续" onPress={() => advanceTo(continueToAftercare(state))} />
         </Card>
       ) : null}
 
@@ -252,7 +310,7 @@ export function PresetPracticePage({
         <Card>
           <Heading>停下来以后，此刻的你更想怎样？</Heading>
           {AFTERCARE.map((option) => (
-            <ChoiceChip key={option.id} label={option.label} onPress={() => setState(chooseAftercare(state, option.id))} selected={false} semantics="radio" />
+            <ChoiceChip key={option.id} label={option.label} onPress={() => advanceTo(chooseAftercare(state, option.id))} selected={false} semantics="radio" />
           ))}
         </Card>
       ) : null}
@@ -267,10 +325,10 @@ export function PresetPracticePage({
           ) : null}
           <Heading>可选练习</Heading>
           <Body>接下来的情境可能让人不舒服。你可以跳过，不影响流程或积分。</Body>
-          <Button label="跳过不太理想的回应" onPress={() => setState(chooseOptionalBranch(state, catalog, "skip"))} />
+          <Button label="跳过不太理想的回应" onPress={() => advanceTo(chooseOptionalBranch(state, catalog, "skip"))} />
           <SecondaryButton
             label="也练习一次不太理想的回应"
-            onPress={() => setState(chooseOptionalBranch(state, catalog, "disappointed-but-stops"))}
+            onPress={() => advanceTo(chooseOptionalBranch(state, catalog, "disappointed-but-stops"))}
           />
         </Card>
       ) : null}
@@ -323,12 +381,12 @@ export function PresetPracticePage({
               <Button
                 disabled={!state.optionalUserResponse}
                 label="完成这个分支"
-                onPress={() => setState(completePractice(state))}
+                onPress={() => advanceTo(completePractice(state))}
               />
               <SecondaryButton
                 disabled={!state.optionalUserResponse}
                 label="继续练习对方施压"
-                onPress={() => setState(chooseOptionalBranch(state, catalog, "continues-pressure"))}
+                onPress={() => advanceTo(chooseOptionalBranch(state, catalog, "continues-pressure"))}
               />
             </>
           ) : null}
@@ -337,12 +395,12 @@ export function PresetPracticePage({
               <Button
                 disabled={!state.optionalUserResponse}
                 label="对方停止，完成练习"
-                onPress={() => setState(completePractice(state))}
+                onPress={() => advanceTo(completePractice(state))}
               />
               <SecondaryButton
                 disabled={!state.optionalUserResponse}
                 label="对方仍在说服、继续触碰或阻止离开"
-                onPress={() => setState(chooseOptionalBranch(state, catalog, "ignores-or-blocks-exit"))}
+                onPress={() => advanceTo(chooseOptionalBranch(state, catalog, "ignores-or-blocks-exit"))}
               />
             </>
           ) : null}
@@ -365,7 +423,7 @@ export function PresetPracticePage({
             label="查看完整信息来源"
             onPress={() => { void onOpenSources?.(); }}
           />
-          <Button label="结束这次练习" onPress={() => setState(closeSafetyPractice(state))} />
+          <Button label="结束这次练习" onPress={() => advanceTo(closeSafetyPractice(state))} />
         </Card>
       ) : null}
 

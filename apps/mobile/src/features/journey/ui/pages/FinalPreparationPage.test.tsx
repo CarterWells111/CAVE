@@ -19,8 +19,10 @@ function draft() {
 function renderPage(overrides: Partial<ComponentProps<typeof FinalPreparationPage>> = {}) {
   const props = {
     draft: draft(),
+    onDone: jest.fn(),
     onEdit: jest.fn(async () => undefined),
     onFinish: jest.fn(async () => "card:journey-1"),
+    onPractice: jest.fn(),
     onSetVisibility: jest.fn(async () => undefined),
     ...overrides,
   };
@@ -112,6 +114,75 @@ test("flushes pending edits before saving and guards duplicate completion", asyn
   await waitFor(() => expect(onFinish).toHaveBeenCalledTimes(1));
 });
 
+test("offers the saved boundary phrase for optional practice instead of forcing navigation", async () => {
+  const onFinish = jest.fn(async () => "card:journey-1");
+  const onPractice = jest.fn();
+  const onDone = jest.fn();
+  renderPage({ onDone, onFinish, onPractice });
+
+  fireEvent.press(screen.getByRole("button", { name: "保存并查看我的沟通草稿" }));
+
+  expect(await screen.findByRole("header", { name: "沟通草稿已保存" })).toBeTruthy();
+  expect(screen.getByText("先停一下，我现在不想继续。")).toBeTruthy();
+  expect(screen.getByText("拒绝不需要标准话术；这句简短示例只是一个可以带走的起点，不会改动你的草稿。")).toBeTruthy();
+
+  fireEvent.press(screen.getByRole("button", { name: "排练一下这句话" }));
+  expect(onPractice).toHaveBeenCalledWith("先停一下，我现在不想继续。");
+  await waitFor(() => expect(screen.getByRole("button", { name: "暂时不用，完成旅程" }))
+    .toHaveProp("accessibilityState", expect.objectContaining({ disabled: false })));
+  fireEvent.press(screen.getByRole("button", { name: "暂时不用，完成旅程" }));
+  await waitFor(() => expect(onDone).toHaveBeenCalledWith("card:journey-1"));
+});
+
+test("uses a concise user-authored changed-feelings phrase but never sends oversized draft text", async () => {
+  const concise = draft();
+  concise.communicationCard["communication-changed-feelings"].userText = "我想先停一下，等我准备好再说。";
+  const concisePractice = jest.fn();
+  const { unmount } = render(<FinalPreparationPage
+    draft={concise}
+    onDone={jest.fn()}
+    onEdit={jest.fn()}
+    onFinish={jest.fn(async () => "card:journey-1")}
+    onPractice={concisePractice}
+    onSetVisibility={jest.fn()}
+  />);
+  fireEvent.press(screen.getByRole("button", { name: "保存并查看我的沟通草稿" }));
+  expect(await screen.findByText("我想先停一下，等我准备好再说。")).toBeTruthy();
+  fireEvent.press(screen.getByRole("button", { name: "排练一下这句话" }));
+  expect(concisePractice).toHaveBeenCalledWith("我想先停一下，等我准备好再说。");
+  await waitFor(() => expect(screen.getByRole("button", { name: "排练一下这句话" }))
+    .toHaveProp("accessibilityState", expect.objectContaining({ disabled: false })));
+  unmount();
+
+  const oversized = draft();
+  oversized.communicationCard["communication-changed-feelings"].userText = "停".repeat(161);
+  const oversizedPractice = jest.fn();
+  renderPage({ draft: oversized, onPractice: oversizedPractice });
+  fireEvent.press(screen.getByRole("button", { name: "保存并查看我的沟通草稿" }));
+  expect(await screen.findByText("先停一下，我现在不想继续。")).toBeTruthy();
+  fireEvent.press(screen.getByRole("button", { name: "排练一下这句话" }));
+  expect(oversizedPractice).toHaveBeenCalledWith("先停一下，我现在不想继续。");
+  await waitFor(() => expect(screen.getByRole("button", { name: "排练一下这句话" }))
+    .toHaveProp("accessibilityState", expect.objectContaining({ disabled: false })));
+});
+
+test("keeps a failed optional-practice handoff retryable", async () => {
+  const onPractice = jest.fn()
+    .mockRejectedValueOnce(new Error("completion failed"))
+    .mockResolvedValueOnce(undefined);
+  renderPage({ onPractice });
+
+  fireEvent.press(screen.getByRole("button", { name: "保存并查看我的沟通草稿" }));
+  expect(await screen.findByRole("header", { name: "沟通草稿已保存" })).toBeTruthy();
+  fireEvent.press(screen.getByRole("button", { name: "排练一下这句话" }));
+
+  expect(await screen.findByRole("alert")).toHaveTextContent("暂时无法完成旅程，请重试。");
+  fireEvent.press(screen.getByRole("button", { name: "排练一下这句话" }));
+  await waitFor(() => expect(onPractice).toHaveBeenCalledTimes(2));
+  await waitFor(() => expect(screen.getByRole("button", { name: "排练一下这句话" }))
+    .toHaveProp("accessibilityState", expect.objectContaining({ disabled: false })));
+});
+
 test("blocks final save after a failed write and retries the queued change", async () => {
   const onSetVisibility = jest.fn()
     .mockRejectedValueOnce(new Error("disk full"))
@@ -150,9 +221,10 @@ test("blocks an opposite visibility change until the pending write settles", asy
   fireEvent.press(screen.getByText("重试保存更改"));
   await waitFor(() => expect(onSetVisibility).toHaveBeenLastCalledWith("communication-night-expectations", "deleted"));
   expect(await screen.findByText("更改已保存。")).toBeTruthy();
+  expect(screen.getByText("已从草稿中删除")).toBeTruthy();
   fireEvent.press(screen.getByText("保存并查看我的沟通草稿"));
   await waitFor(() => expect(onFinish).toHaveBeenCalledTimes(1));
-  expect(screen.getByText("已从草稿中删除")).toBeTruthy();
+  expect(screen.getByRole("header", { name: "沟通草稿已保存" })).toBeTruthy();
 });
 
 test("allows an empty communication draft to be saved and viewed", async () => {
@@ -170,7 +242,7 @@ test("allows an empty communication draft to be saved and viewed", async () => {
   await waitFor(() => expect(onFinish).toHaveBeenCalledTimes(1));
 });
 
-test("keeps the user on 6/6 when saving fails and allows retry", async () => {
+test("keeps the user on the final page when saving fails and allows retry", async () => {
   const announce = jest.spyOn(AccessibilityInfo, "announceForAccessibility").mockImplementation(() => undefined);
   const onFinish = jest.fn()
     .mockRejectedValueOnce(new Error("completion failed"))

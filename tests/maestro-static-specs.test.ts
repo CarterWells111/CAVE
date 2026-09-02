@@ -49,7 +49,7 @@ describe("Maestro release selectors", () => {
     expect(flow).not.toContain('text: "打开回顾 .*"');
   });
 
-  it("locks the six-page completion flow to the three-tab main shell", () => {
+  it("locks the five-page completion flow and practice handoff to the three-tab main shell", () => {
     const flow = read(".maestro/core-flow.yaml");
     const nav = read("apps/mobile/src/features/shell/ui/LongTermTabBar.tsx");
     const destinations = read("apps/mobile/src/features/shell/ui/long-term-navigation.ts");
@@ -67,13 +67,14 @@ describe("Maestro release selectors", () => {
       "过夜期待与在意",
       "身体与安全知识",
       "行为地图与边界",
-      "自我反思",
-      "预设沟通练习",
+      "你随时可以改变主意",
       "我的沟通草稿"
     ]) {
       expect(shell).toContain(`"${title}"`);
       expect(flow).toContain(`assertVisible: "${title}"`);
     }
+    expect(shell).not.toContain('"预设沟通练习"');
+    expect(flow).toContain('assertVisible: "预设沟通练习"');
   });
 
   it("keeps delete-all as a local-state spec and delegates offline setup to external 07B", () => {

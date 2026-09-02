@@ -24,3 +24,19 @@ test("exposes empty and retryable error states", () => {
   fireEvent.press(screen.getByRole("button", { name: "重试" }));
   expect(retry).toHaveBeenCalledTimes(1);
 });
+
+test("surfaces a phrase carried from a completed journey as an optional rehearsal", () => {
+  const onStartPhrase = jest.fn();
+  render(<PracticeHubScreen
+    onStartPhrase={onStartPhrase}
+    onStartPractice={jest.fn()}
+    onStartScenario={jest.fn()}
+    recentPhrase="先停一下，我现在不想继续。"
+    scenarios={[]}
+  />);
+
+  expect(screen.getByText("来自刚完成的旅程")).toBeTruthy();
+  expect(screen.getByText("先停一下，我现在不想继续。")).toBeTruthy();
+  fireEvent.press(screen.getByRole("button", { name: "用这句话排练" }));
+  expect(onStartPhrase).toHaveBeenCalledWith("先停一下，我现在不想继续。");
+});

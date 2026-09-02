@@ -2,7 +2,7 @@ import { fireEvent, render, screen } from "@testing-library/react-native";
 
 import { ReviewsHubScreen } from "./ReviewsHubScreen";
 
-test("supports continuing, topic entry, and a user-started full six-page review without history", () => {
+test("supports continuing, topic entry, and a user-started full five-page review without history", () => {
   const onContinueReview = jest.fn();
   const onStartFullReview = jest.fn();
   const onStartTopic = jest.fn();
@@ -16,7 +16,7 @@ test("supports continuing, topic entry, and a user-started full six-page review 
 
   fireEvent.press(screen.getByRole("button", { name: "继续本次回顾" }));
   fireEvent.press(screen.getByRole("button", { name: "按主题回顾：边界与表达" }));
-  fireEvent.press(screen.getByRole("button", { name: "开始完整六页回顾" }));
+  fireEvent.press(screen.getByRole("button", { name: "开始完整五页回顾" }));
   expect(onStartFullReview).not.toHaveBeenCalled();
   fireEvent.press(screen.getByRole("button", { name: "确认开始新回顾" }));
   expect(onContinueReview).toHaveBeenCalledWith("active");
@@ -40,7 +40,7 @@ test("continues the initial journey and hides the full-review replacement action
 
   fireEvent.press(screen.getByRole("button", { name: "继续首次旅程" }));
   expect(onContinueJourney).toHaveBeenCalledWith("initial");
-  expect(screen.queryByRole("button", { name: "开始完整六页回顾" })).toBeNull();
+  expect(screen.queryByRole("button", { name: "开始完整五页回顾" })).toBeNull();
   expect(screen.getByRole("button", { name: "按主题回顾：边界与表达" })).toBeTruthy();
   expect(onStartFullReview).not.toHaveBeenCalled();
 });

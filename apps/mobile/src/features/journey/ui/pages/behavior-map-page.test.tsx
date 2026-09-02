@@ -1,7 +1,8 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react-native";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react-native";
 import { AccessibilityInfo, Animated, StyleSheet } from "react-native";
 
 import * as guidedScroll from "../guided-scroll-screen";
+import { JourneyStepBackHarness } from "../journey-step-back.test-utils";
 import { BehaviorMapPage } from "./behavior-map-page";
 
 const mockScrollToNode = jest.fn();
@@ -28,7 +29,78 @@ const completeBaseAttitudes = {
 async function openCard(frontTestId: string, backTestId: string) {
   fireEvent.press(screen.getByTestId(frontTestId));
   await waitFor(() => expect(screen.getByTestId(backTestId)).toBeTruthy());
+  await waitFor(() => expect(screen.getByTestId("behavior-card-fullscreen"))
+    .toHaveProp("accessibilityState", expect.objectContaining({ busy: false })));
 }
+
+function deferred<T>() {
+  let resolve!: (value: T | PromiseLike<T>) => void;
+  const promise = new Promise<T>((resolvePromise) => {
+    resolve = resolvePromise;
+  });
+  return { promise, resolve };
+}
+
+test("returns an unsaved behavior card to the gallery without persisting it", async () => {
+  const onSetAttitudes = jest.fn();
+  render(
+    <JourneyStepBackHarness>
+      <BehaviorMapPage onComplete={jest.fn()} onSetAttitudes={onSetAttitudes} reducedMotion />
+    </JourneyStepBackHarness>,
+  );
+  await openCard("behavior-card-front-behavior-hug", "behavior-card-back-behavior-hug");
+  fireEvent.press(screen.getByRole("radio", { name: "拥抱或依偎：我还没想清楚" }));
+
+  fireEvent.press(await screen.findByRole("button", { name: "测试返回上一步" }));
+
+  expect(await screen.findByTestId("behavior-card-grid")).toBeTruthy();
+  expect(onSetAttitudes).not.toHaveBeenCalled();
+});
+
+test("disables step back while a behavior card is being saved", async () => {
+  const pendingSave = deferred<void>();
+  render(
+    <JourneyStepBackHarness>
+      <BehaviorMapPage
+        onComplete={jest.fn()}
+        onSetAttitudes={() => pendingSave.promise}
+        reducedMotion
+      />
+    </JourneyStepBackHarness>,
+  );
+  await openCard("behavior-card-front-behavior-hug", "behavior-card-back-behavior-hug");
+  fireEvent.press(screen.getByRole("radio", { name: "拥抱或依偎：我还没想清楚" }));
+  fireEvent.press(screen.getByRole("button", { name: "带着这些感受继续" }));
+
+  const back = await screen.findByRole("button", { name: "测试返回上一步" });
+  await waitFor(() => expect(back).toHaveProp(
+    "accessibilityState",
+    expect.objectContaining({ disabled: true }),
+  ));
+  fireEvent.press(back);
+  expect(screen.getByTestId("behavior-card-fullscreen")).toBeTruthy();
+
+  await act(async () => pendingSave.resolve());
+  expect(await screen.findByTestId("behavior-card-grid")).toBeTruthy();
+});
+
+test("steps back through the sensitive explanation before returning to the gallery", async () => {
+  render(
+    <JourneyStepBackHarness>
+      <BehaviorMapPage onComplete={jest.fn()} onSetAttitudes={jest.fn()} reducedMotion />
+    </JourneyStepBackHarness>,
+  );
+  await openCard("behavior-card-front-behavior-map-more", "behavior-card-back-more");
+  fireEvent.press(screen.getByRole("button", { name: "了解内容后再决定" }));
+  expect(screen.getByText("继续查看更具体的身体接触")).toBeTruthy();
+
+  fireEvent.press(await screen.findByRole("button", { name: "测试返回上一步" }));
+  expect(screen.getByText("是否查看更多具体行为？")).toBeTruthy();
+  expect(screen.queryByTestId("behavior-card-grid")).toBeNull();
+
+  fireEvent.press(screen.getByRole("button", { name: "测试返回上一步" }));
+  expect(await screen.findByTestId("behavior-card-grid")).toBeTruthy();
+});
 
 test("reveals a full-screen card action once after the first answer", async () => {
   const reveal = jest.fn();

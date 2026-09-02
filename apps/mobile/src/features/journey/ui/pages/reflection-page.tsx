@@ -22,6 +22,7 @@ import { loadJourneyContentCatalog } from "../../infrastructure/journey-content-
 import { JourneyAction } from "../components/JourneyAction";
 import { JourneyChoice } from "../components/JourneyChoice";
 import { JourneyScrollTarget, useJourneyGuidedScroll } from "../guided-scroll-screen";
+import { useJourneyStepBack } from "../journey-step-back";
 import type { JourneyAction as JourneyActionCallback } from "../journey-ui-contracts";
 
 type PressureAnswer = "still-want" | "slow-down" | "unsure" | "less-want" | "skip";
@@ -227,6 +228,7 @@ export function ReflectionPage({
   const [activeCardId, setActiveCardId] = useState<ReflectionCardId | null>(null);
   const [cardFace, setCardFace] = useState<CardFace>("front");
   const [animating, setAnimating] = useState(false);
+  const [operationInFlight, setOperationInFlight] = useState(false);
   const [journalStorageOpen, setJournalStorageOpen] = useState(false);
   const [hideFutureJournalNotice, setHideFutureJournalNotice] = useState(false);
   const [clearConfirmationOpen, setClearConfirmationOpen] = useState(false);
@@ -332,12 +334,30 @@ export function ReflectionPage({
     await returnToGallery();
   };
 
-  const saveActiveCard = async () => {
-    if (activeCardId === null) return;
-    await saveValueAndReturn(draftValue);
+  const runWithOperationLock = <T,>(operation: () => T | Promise<T>): T | Promise<T> => {
+    setOperationInFlight(true);
+    const release = () => {
+      if (mountedRef.current) setOperationInFlight(false);
+    };
+    try {
+      const result = operation();
+      if (result && typeof (result as Promise<T>).then === "function") {
+        return Promise.resolve(result).finally(release);
+      }
+      release();
+      return result;
+    } catch (error) {
+      release();
+      throw error;
+    }
   };
 
-  const saveJournal = async () => {
+  const saveActiveCard = () => runWithOperationLock(async () => {
+    if (activeCardId === null) return;
+    await saveValueAndReturn(draftValue);
+  });
+
+  const saveJournal = () => runWithOperationLock(async () => {
     if (storageMode === "session-only") {
       await saveValueAndReturn({ ...draftValue, journalSaveChoice: "not-saved" });
       return;
@@ -345,7 +365,7 @@ export function ReflectionPage({
     if (hideFutureJournalNotice) await onSetJournalSaveNotice?.(false);
     await saveValueAndReturn({ ...draftValue, journalSaveChoice: "device" });
     setJournalStorageOpen(false);
-  };
+  });
 
   const startJournalSave = () => {
     if (storageMode === "session-only") return saveJournal();
@@ -356,7 +376,7 @@ export function ReflectionPage({
     return saveJournal();
   };
 
-  const clearActiveCard = async () => {
+  const clearActiveCard = () => runWithOperationLock(async () => {
     if (activeCardId === null) return;
     const cleared = clearCardValue(activeCardId, savedValue);
     if (storageMode === "device") await onSave?.(persistedValue(cleared));
@@ -364,7 +384,7 @@ export function ReflectionPage({
     setDraftValue(cloneValue(cleared));
     setClearConfirmationOpen(false);
     await returnToGallery();
-  };
+  });
 
   const toggleMotivation = (id: string) => {
     setDraftValue((current) => {
@@ -429,6 +449,24 @@ export function ReflectionPage({
   const rotation = flipRotation.interpolate({
     inputRange: [-90, 0, 90],
     outputRange: ["-90deg", "0deg", "90deg"],
+  });
+
+  const returnToPreviousStep = async () => {
+    if (journalStorageOpen) {
+      setJournalStorageOpen(false);
+      return;
+    }
+    if (clearConfirmationOpen) {
+      setClearConfirmationOpen(false);
+      return;
+    }
+    await returnToGallery();
+  };
+
+  useJourneyStepBack({
+    active: activeCardId !== null,
+    disabled: animating || operationInFlight,
+    onBack: returnToPreviousStep,
   });
 
   if (activeCardId !== null && activeCard) {
@@ -704,7 +742,7 @@ export function ReflectionPage({
         errorMessage={storageMode === "session-only" ? "完成回顾失败，请重试。" : "保存反思失败，请重试。"}
         label={storageMode === "session-only" ? "完成本次回顾" : "带着这些发现去练习"}
         loadingLabel={storageMode === "session-only" ? "正在完成回顾…" : "正在保存这些发现…"}
-        onAction={() => onComplete(persistedValue(savedValue))}
+        onAction={() => runWithOperationLock(() => onComplete(persistedValue(savedValue)))}
       />
       </JourneyScrollTarget>
     </View>

@@ -49,11 +49,11 @@ test("guards content routes until onboarding prerequisites are present", () => {
 test("persists the target page before replacing the route for next and back", async () => {
   const { coordinator, navigateTo, router, service } = harness();
 
-  await coordinator.goTo("preset-practice");
+  await coordinator.goTo("final-preparation");
   await coordinator.backFrom("reflection");
 
-  expect(service.navigateTo).toHaveBeenNthCalledWith(1, "preset-practice");
-  expect(router.replace).toHaveBeenNthCalledWith(1, "/journey/preset-practice");
+  expect(service.navigateTo).toHaveBeenNthCalledWith(1, "final-preparation");
+  expect(router.replace).toHaveBeenNthCalledWith(1, "/journey/final-preparation");
   expect(service.navigateTo).toHaveBeenNthCalledWith(2, "behavior-map");
   expect(router.replace).toHaveBeenNthCalledWith(2, "/journey/behavior-map");
   expect(navigateTo.mock.invocationCallOrder[0]).toBeLessThan(router.replace.mock.invocationCallOrder[0]!);

@@ -76,9 +76,9 @@ export function safeContentEdgePadding(
 }
 
 function fixedHeaderTopGap(height: number): number {
-  if (height < 700) return space.md;
-  if (height < 900) return space.lg;
-  return space.xl;
+  if (height < 700) return space.sm;
+  if (height < 900) return space.compact;
+  return space.md;
 }
 
 export const Screen = forwardRef<ComponentRef<typeof ScrollView>, ScreenProps>(function Screen(
@@ -163,7 +163,7 @@ export const Screen = forwardRef<ComponentRef<typeof ScrollView>, ScreenProps>(f
             alignSelf: "center",
             backgroundColor: theme.color.background,
             maxWidth: theme.size.readableContentMax,
-            paddingBottom: theme.space.sm,
+            paddingBottom: theme.space.xs,
             paddingHorizontal: horizontalPadding,
             paddingTop: safeAreaTop + fixedHeaderTopGap(Dimensions.get("screen").height),
             width: "100%",

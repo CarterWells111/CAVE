@@ -19,8 +19,16 @@ const mockRouter = {
 };
 
 jest.mock("expo-router", () => ({
+  Redirect: ({ href }: { href: string }) => {
+    mockRouter.replace(href);
+    return null;
+  },
   useRouter: () => mockRouter
 }));
+
+beforeEach(() => {
+  jest.clearAllMocks();
+});
 
 function runtime(clipboard = { setStringAsync: jest.fn(async () => undefined) }) {
   const drafts = new InMemoryJourneyDraftRepository();
@@ -36,7 +44,7 @@ function runtime(clipboard = { setStringAsync: jest.fn(async () => undefined) })
   });
 }
 
-async function unlockAllSixPages(journeyRuntime: JourneyRuntime) {
+async function unlockFivePageJourney(journeyRuntime: JourneyRuntime) {
   await journeyRuntime.service.confirmAdult();
   await journeyRuntime.service.dispatch({ type: "set-address-preference", preference: "你" });
   await journeyRuntime.service.dispatch({ type: "set-preface-read", read: true });
@@ -64,18 +72,9 @@ async function unlockAllSixPages(journeyRuntime: JourneyRuntime) {
     await journeyRuntime.controller.setBehaviorAttitude(behaviorId, "skip");
   }
   await journeyRuntime.controller.setExplicitContentConsent(false);
-  await journeyRuntime.controller.saveReflection({
-    motivationIds: [],
-    comfortNeedIds: [],
-    journalSaveChoice: "not-saved",
-    journalText: ""
-  });
-  await journeyRuntime.controller.completePractice({
-    behaviorId: null,
-    intent: "pause-to-feel",
-    phrase: "先停一下，我需要一点时间。",
-    aftercareId: "quiet",
-    completed: true
+  await journeyRuntime.service.dispatch({
+    type: "record-point-event",
+    key: "progress:consent-reminder-seen:v1",
   });
 }
 
@@ -95,7 +94,7 @@ async function openRoute(element: ReactElement, journeyRuntime: JourneyRuntime):
   return view;
 }
 
-test("the production routes expose all six content pages offline", async () => {
+test("the production routes expose all five content pages offline", async () => {
   const originalFetch = globalThis.fetch;
   const offlineFetch = jest.fn(async () => { throw new Error("offline"); });
   globalThis.fetch = offlineFetch as typeof fetch;
@@ -107,21 +106,20 @@ test("the production routes expose all six content pages offline", async () => {
     expect(screen.queryByTestId("progress-center")).toBeNull();
     view.unmount();
 
-    await unlockAllSixPages(journeyRuntime);
+    await unlockFivePageJourney(journeyRuntime);
     const screens: Array<[JourneyPageId, number, ReactElement]> = [
       ["body-knowledge", 1, <BodyKnowledgeRoute />],
       ["overnight", 2, <OvernightRoute />],
       ["behavior-map", 3, <BehaviorMapRoute />],
       ["reflection", 4, <ReflectionRoute />],
-      ["preset-practice", 5, <PresetPracticeRoute />],
-      ["final-preparation", 6, <FinalPreparationRoute />]
+      ["final-preparation", 5, <FinalPreparationRoute />]
     ];
 
     for (const [pageId, pageNumber, route] of screens) {
       await journeyRuntime.service.navigateTo(pageId);
       view = await openRoute(route, journeyRuntime);
       expect(screen.getByTestId(`journey-page-${pageId}`)).toBeTruthy();
-      expect(within(screen.getByTestId("progress-center")).getByText(`${pageNumber} / 6`)).toBeTruthy();
+      expect(within(screen.getByTestId("progress-center")).getByText(`${pageNumber} / 5`)).toBeTruthy();
       expect(screen.queryByText(/8\s*\/\s*8|共\s*8\s*页/u)).toBeNull();
       expect(screen.getByRole("button", { name: "旅程选项" })).toBeTruthy();
       view.unmount();
@@ -146,21 +144,30 @@ test("the production landing opens onboarding without creating an active draft",
   view.unmount();
 });
 
-test("the production reflection screen omits the prior behavior-answer review card", async () => {
+test("the production reminder states revocable consent without questions and advances to the draft", async () => {
   const journeyRuntime = runtime();
-  await unlockAllSixPages(journeyRuntime);
+  await unlockFivePageJourney(journeyRuntime);
   await journeyRuntime.service.navigateTo("reflection");
   const view = await openRoute(<ReflectionRoute />, journeyRuntime);
 
-  expect(screen.queryByText("这是你刚才留下的答案")).toBeNull();
-  expect(screen.queryByRole("button", { name: /修改.*的答案/u })).toBeNull();
-  expect(screen.getAllByText("尚未记录")).toHaveLength(5);
+  expect(screen.getByText("这是你此刻的感受，不是你必须履行的承诺。")).toBeTruthy();
+  expect(screen.getByText("即使之前同意过，你仍然可以随时改变主意、撤回同意。")).toBeTruthy();
+  expect(screen.getByText("你不需要解释，也不需要把话说得完美。")).toBeTruthy();
+  expect(screen.queryAllByRole("radio")).toEqual([]);
+  expect(screen.queryAllByRole("checkbox")).toEqual([]);
+
+  fireEvent.press(screen.getByRole("button", { name: "我知道了，继续整理沟通草稿" }));
+
+  await waitFor(() => expect(mockRouter.replace).toHaveBeenCalledWith("/journey/final-preparation"));
+  expect(journeyRuntime.service.getSnapshot()?.pointEventKeys)
+    .toContain("progress:consent-reminder-seen:v1");
   view.unmount();
 });
 
-test("the production final screen saves retained sections before opening the private draft", async () => {
+test("the production final screen saves retained sections before offering optional practice", async () => {
   const journeyRuntime = runtime();
-  await unlockAllSixPages(journeyRuntime);
+  const completeInitialJourney = jest.spyOn(journeyRuntime.controller, "completeInitialJourney");
+  await unlockFivePageJourney(journeyRuntime);
   await journeyRuntime.service.navigateTo("final-preparation");
   const view = await openRoute(<FinalPreparationRoute />, journeyRuntime);
 
@@ -170,8 +177,18 @@ test("the production final screen saves retained sections before opening the pri
   expect(screen.queryByRole("button", { name: "复制已确认内容" })).toBeNull();
   expect(screen.queryByRole("button", { name: "保存为图片" })).toBeNull();
   fireEvent.press(screen.getAllByText("从草稿中删除")[0]!);
-  fireEvent.press(screen.getByText("保存并查看我的沟通草稿"));
-  await waitFor(() => expect(mockRouter.replace).toHaveBeenCalledWith("/cards/card:production-flow-journey"));
+  await screen.findByText("已从草稿中删除");
+  await waitFor(() => expect(
+    screen.getByRole("button", { name: "保存并查看我的沟通草稿" }),
+  ).toHaveProp("accessibilityState", expect.objectContaining({ disabled: false })));
+  fireEvent.press(screen.getByRole("button", { name: "保存并查看我的沟通草稿" }));
+  expect(await screen.findByRole("header", { name: "沟通草稿已保存" })).toBeTruthy();
+  expect(completeInitialJourney).not.toHaveBeenCalled();
+  expect(mockRouter.replace).not.toHaveBeenCalled();
+  fireEvent.press(screen.getByRole("button", { name: "排练一下这句话" }));
+  await waitFor(() => expect(completeInitialJourney).toHaveBeenCalledTimes(1));
+  await waitFor(() => expect(mockRouter.replace)
+    .toHaveBeenCalledWith(expect.objectContaining({ pathname: "/practice" })));
   const saved = await journeyRuntime.cards.load("card:production-flow-journey");
   expect(saved).toMatchObject({
     journeyId: "production-flow-journey"
@@ -181,4 +198,26 @@ test("the production final screen saves retained sections before opening the pri
     needsReview === false && visibility === "pending"
   ))).toBe(true);
   view.unmount();
+});
+
+test("the production final screen can finish without entering practice", async () => {
+  const journeyRuntime = runtime();
+  const completeInitialJourney = jest.spyOn(journeyRuntime.controller, "completeInitialJourney");
+  await unlockFivePageJourney(journeyRuntime);
+  await journeyRuntime.service.navigateTo("final-preparation");
+  const view = await openRoute(<FinalPreparationRoute />, journeyRuntime);
+
+  fireEvent.press(screen.getByRole("button", { name: "保存并查看我的沟通草稿" }));
+  expect(await screen.findByRole("header", { name: "沟通草稿已保存" })).toBeTruthy();
+  fireEvent.press(screen.getByRole("button", { name: "暂时不用，完成旅程" }));
+
+  await waitFor(() => expect(completeInitialJourney).toHaveBeenCalledTimes(1));
+  await waitFor(() => expect(mockRouter.replace).toHaveBeenCalledWith("/cards/card:production-flow-journey"));
+  view.unmount();
+});
+
+test("the removed journey practice route redirects to the main practice tab", () => {
+  render(<PresetPracticeRoute />);
+
+  expect(mockRouter.replace).toHaveBeenCalledWith("/practice");
 });

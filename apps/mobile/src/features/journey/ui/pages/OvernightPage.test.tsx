@@ -3,6 +3,7 @@ import { act, fireEvent, render, screen, waitFor, within } from "@testing-librar
 import { Animated, StyleSheet } from "react-native";
 
 import * as guidedScroll from "../guided-scroll-screen";
+import { JourneyStepBackHarness } from "../journey-step-back.test-utils";
 import { OvernightPage } from "./OvernightPage";
 
 afterEach(() => jest.restoreAllMocks());
@@ -18,6 +19,21 @@ async function openCard(testId: string, backTestId: string) {
   fireEvent.press(screen.getByTestId(testId));
   await waitFor(() => expect(screen.getByTestId(backTestId)).toBeTruthy());
 }
+
+test("returns an open overnight card to its overview as the current internal step", async () => {
+  const onContinue = jest.fn();
+  render(
+    <JourneyStepBackHarness>
+      <OvernightPage onContinue={onContinue} options={options} reducedMotion />
+    </JourneyStepBackHarness>,
+  );
+  await openCard("overnight-card-front-expectations", "overnight-card-back-expectations");
+
+  fireEvent.press(await screen.findByRole("button", { name: "测试返回上一步" }));
+
+  expect(await screen.findByTestId("overnight-card-grid")).toBeTruthy();
+  expect(onContinue).not.toHaveBeenCalled();
+});
 
 test("guides only after each saved card is explicitly returned to the overview", async () => {
   const reveal = jest.fn();

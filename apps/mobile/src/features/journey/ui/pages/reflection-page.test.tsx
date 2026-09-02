@@ -1,19 +1,21 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react-native";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react-native";
 import { AccessibilityInfo, Animated, StyleSheet } from "react-native";
 
 import * as guidedScroll from "../guided-scroll-screen";
+import { JourneyStepBackHarness } from "../journey-step-back.test-utils";
 import { ReflectionPage, type ReflectionPageProps } from "./reflection-page";
 
 afterEach(() => jest.restoreAllMocks());
 
-function renderPage(overrides: Partial<ReflectionPageProps> = {}) {
+function renderPage(overrides: Partial<ReflectionPageProps> = {}, withStepBack = false) {
   const props: ReflectionPageProps = {
     onComplete: jest.fn(async () => undefined),
     onSave: jest.fn(async () => undefined),
     reducedMotion: true,
     ...overrides,
   };
-  render(<ReflectionPage {...props} />);
+  const page = <ReflectionPage {...props} />;
+  render(withStepBack ? <JourneyStepBackHarness>{page}</JourneyStepBackHarness> : page);
   return props;
 }
 
@@ -22,6 +24,14 @@ async function openCard(title: string, cardId: string) {
   expect(await screen.findByTestId(`reflection-card-back-${cardId}`)).toBeTruthy();
   await waitFor(() => expect(screen.getByTestId("reflection-card-fullscreen"))
     .toHaveProp("accessibilityState", expect.objectContaining({ busy: false })));
+}
+
+function deferred<T>() {
+  let resolve!: (value: T | PromiseLike<T>) => void;
+  const promise = new Promise<T>((resolvePromise) => {
+    resolve = resolvePromise;
+  });
+  return { promise, resolve };
 }
 
 test("reveals the active card action only after the first answer", async () => {
@@ -93,6 +103,40 @@ test("cancels an unconfirmed edit and restores the saved card value", async () =
     .toHaveProp("accessibilityState", expect.objectContaining({ checked: true }));
   expect(screen.getByRole("radio", { name: "拒绝或离开：我还不确定" }))
     .toHaveProp("accessibilityState", expect.objectContaining({ checked: false }));
+});
+
+test("returns an open reflection card to the gallery without saving its draft", async () => {
+  const onSave = jest.fn(async () => undefined);
+  renderPage({ initialValue: { refusalSafety: "can" }, onSave }, true);
+  await openCard("我能说不、暂停或离开吗", "safety");
+  fireEvent.press(screen.getByRole("radio", { name: "拒绝或离开：我还不确定" }));
+
+  fireEvent.press(await screen.findByRole("button", { name: "测试返回上一步" }));
+
+  expect(await screen.findByTestId("reflection-card-grid")).toBeTruthy();
+  expect(onSave).not.toHaveBeenCalled();
+  await openCard("我能说不、暂停或离开吗", "safety");
+  expect(screen.getByRole("radio", { name: "拒绝或离开：可以" }))
+    .toHaveProp("accessibilityState", expect.objectContaining({ checked: true }));
+});
+
+test("disables step back while a reflection card is being saved", async () => {
+  const pendingSave = deferred<void>();
+  renderPage({ onSave: () => pendingSave.promise }, true);
+  await openCard("我能说不、暂停或离开吗", "safety");
+  fireEvent.press(screen.getByRole("radio", { name: "拒绝或离开：可以" }));
+  fireEvent.press(screen.getByRole("button", { name: "保存这张卡并返回" }));
+
+  const back = await screen.findByRole("button", { name: "测试返回上一步" });
+  await waitFor(() => expect(back).toHaveProp(
+    "accessibilityState",
+    expect.objectContaining({ disabled: true }),
+  ));
+  fireEvent.press(back);
+  expect(screen.getByTestId("reflection-card-fullscreen")).toBeTruthy();
+
+  await act(async () => pendingSave.resolve());
+  expect(await screen.findByTestId("reflection-card-grid")).toBeTruthy();
 });
 
 test("keeps the card open and exposes retry feedback when an immediate save fails", async () => {
