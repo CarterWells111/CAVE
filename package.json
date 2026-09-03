@@ -35,7 +35,7 @@
     "eslint": "^9.39.2",
     "globals": "^16.5.0",
     "typescript": "~5.9.3",
-    "typescript-eslint": "^8.48.1",
+    "typescript-eslint": "^8.69.0",
     "vitest": "^4.0.18",
     "yaml": "2.9.0"
   }
