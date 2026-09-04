@@ -6,7 +6,7 @@
 
 | 模块 | 技术 | 职责 |
 | --- | --- | --- |
-| 移动端 | Expo SDK 54、React Native、Expo Router | 六页旅程、预设练习、沟通卡、回顾、手记和账户界面 |
+| 移动端 | Expo SDK 54、React Native、Expo Router | 五页旅程、独立预设练习、沟通卡、回顾、手记和账户界面 |
 | 本地数据层 | Expo SQLite/SQLCipher、SecureStore | 私密数据、数据库密钥、成年声明、刷新令牌和本机资料 |
 | Gateway | Cloudflare Workers、Hono、Zod | 邮箱验证码、会话、账号删除，以及独立的安全网关研究 |
 | 身份数据 | Cloudflare D1 | 账号 UUID、不可逆摘要、过期时间、限流与删除授权 |

@@ -1,4 +1,5 @@
 import { Redirect, Stack, usePathname } from "expo-router";
+import type { PropsWithChildren } from "react";
 import { View } from "react-native";
 
 import { useAdultDeclaration } from "../../src/features/journey/runtime/JourneyRuntimeProvider";
@@ -10,6 +11,16 @@ import {
 import { JourneyLongTermNav } from "../../src/features/shell/ui/JourneyLongTermNav";
 
 const publicJourneyPaths = new Set(["/journey/welcome", "/journey/adult-gate"]);
+
+function JourneyScreenLayout({ children, route }: PropsWithChildren<{ route: { name: string } }>) {
+  const { status } = useAdultDeclaration();
+  // Inactive stack screens can remain mounted after navigation. Guard each one,
+  // including screens underneath the public destination after revocation.
+  if (status === "public" && !publicJourneyPaths.has(`/journey/${route.name}`)) {
+    return <Redirect href="/journey/welcome" />;
+  }
+  return children;
+}
 
 function JourneyNavigator() {
   const { status } = useAdultDeclaration();
@@ -23,6 +34,7 @@ function JourneyNavigator() {
   return (
     <View style={{ flex: 1 }}>
       <Stack
+        screenLayout={(props) => <JourneyScreenLayout {...props} />}
         screenOptions={{
           gestureEnabled: shouldEnableJourneyNativeBackGesture(pathname, locked),
           headerShown: false,

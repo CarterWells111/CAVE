@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 
 import packageJson from "../package.json";
 import contentPackageJson from "../packages/content/package.json";
+import { INTERNAL_CHECKS } from "../scripts/verify-internal.mjs";
 
 function scalarRunCommand(mappingEntry: string): string | undefined {
   const command = mappingEntry.match(/^run:\s*(\S.*?)\s*$/)?.[1];
@@ -112,7 +113,9 @@ describe("foundation CI workflow", () => {
       new URL("../.github/workflows/ci.yml", import.meta.url),
       "utf8"
     );
-    const runCommands = collectStepRunCommands(workflow);
+    const workflowCommands = collectStepRunCommands(workflow);
+    expect(workflowCommands).toContain("pnpm verify:internal");
+    const runCommands = [...workflowCommands, ...INTERNAL_CHECKS.map((args: string[]) => `pnpm ${args.join(" ")}`)];
     const contentValidationCommands = runCommands.filter((command) =>
       command.startsWith("pnpm validate:content")
     );
@@ -130,7 +133,8 @@ describe("foundation CI workflow", () => {
       /^\s*(?:-\s+)?uses:\s+(?:actions\/checkout|actions\/setup-node|pnpm\/action-setup)@v4(?:\.\d+)*(?:\s+#.*)?$/mu
     );
     expect(workflow).toContain('version: "10.34.5"');
-    expect(workflow).toContain('node-version: "22"');
+    expect(workflow).toContain('node-version-file: ".nvmrc"');
+    expect(readFileSync(new URL("../.nvmrc", import.meta.url), "utf8").trim()).toBe("22.23.2");
     expect(runCommands).toContain("pnpm install --frozen-lockfile");
     expect(runCommands).toContain("pnpm typecheck");
     expect(runCommands).toContain("pnpm lint");

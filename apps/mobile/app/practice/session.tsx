@@ -2,6 +2,8 @@ import * as ExpoClipboard from "expo-clipboard";
 import { useLocalSearchParams, useRouter } from "expo-router";
 
 import { Screen } from "../../src/core/ui/Screen";
+import { SecondaryButton } from "../../src/core/ui/secondary-button";
+import { backOrHome } from "../../src/features/shell/ui/safe-navigation";
 import {
   parseStandalonePracticeScenario,
   parseStandalonePracticePhrase,
@@ -24,6 +26,7 @@ export default function StandalonePracticeRoute() {
 
   return (
     <Screen>
+      <SecondaryButton label="返回练习入口" onPress={() => backOrHome(router)} />
       <PresetPracticePage
         catalog={catalog.practice}
         context="standalone"

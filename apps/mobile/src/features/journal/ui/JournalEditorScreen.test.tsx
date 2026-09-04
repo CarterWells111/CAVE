@@ -10,7 +10,18 @@ jest.mock("@react-native-community/datetimepicker", () => {
   return function MockDateTimePicker(props: Record<string, unknown>) {
     return React.createElement(View, { ...props, testID: "native-date-picker" });
   };
-}, { virtual: true });
+});
+
+test("offers a back action and blocks it while saving", async () => {
+  const onBack = jest.fn();
+  render(<JournalEditorScreen onBack={onBack} onSaved={jest.fn()} service={{ createRecord: () => new Promise(() => undefined) } as never} />);
+  fireEvent.press(await screen.findByRole("button", { name: "返回手记列表" }));
+  expect(onBack).toHaveBeenCalledTimes(1);
+  fireEvent.press(screen.getByRole("button", { name: "保存到本机" }));
+  expect(screen.getByRole("button", { name: "返回手记列表" })).toBeDisabled();
+  fireEvent.press(screen.getByRole("button", { name: "返回手记列表" }));
+  expect(onBack).toHaveBeenCalledTimes(1);
+});
 
 test("uses a themed surface and a calendar control instead of an ISO text field", async () => {
   render(

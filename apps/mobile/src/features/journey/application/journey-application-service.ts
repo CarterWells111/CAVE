@@ -4,6 +4,7 @@ import { buildCommunicationCard } from "../domain/derive-communication-card";
 import { reduceJourneyDraft } from "../domain/reducer";
 import { createJourneyDraft, type JourneyDraft, type JourneyPageId } from "../domain/types";
 import { JourneyStorageError, type JourneyDraftRepository } from "../infrastructure/journey-draft-repository";
+import type { PreferenceValues } from "../../account/application/account-preferences-service";
 
 export type JourneyRecoveryState = "ready" | "recovery-required";
 
@@ -44,6 +45,16 @@ export class DefaultJourneyApplicationService implements JourneyApplicationServi
       this.snapshot = null;
       return "recovery-required";
     }
+  }
+
+  applyAccountPreferences(preferences: PreferenceValues): Promise<void> {
+    return this.enqueue(async () => {
+      const current = this.snapshot;
+      if (current === null) return;
+      if (current.ageConfirmed === preferences.ageConfirmed && current.addressPreference === preferences.addressPreference) return;
+      const next = { ...current, ...preferences, updatedAt: this.dependencies.now() };
+      await this.persist({ ...next, communicationCard: buildCommunicationCard(next) });
+    });
   }
 
   confirmAdult(): Promise<void> {

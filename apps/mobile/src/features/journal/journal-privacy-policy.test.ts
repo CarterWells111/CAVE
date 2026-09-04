@@ -21,7 +21,7 @@ test("journal routes wire explicit back navigation and focus-driven list refresh
   const detailRoute = readFileSync(join(appRoot, "[id].tsx"), "utf8");
   const listRoute = readFileSync(join(appRoot, "../(tabs)/journal.tsx"), "utf8");
 
-  expect(detailRoute).toContain("onBack={() => router.back()}");
+  expect(detailRoute).toContain("onBack={() => backOrHome(router)}");
   expect(listRoute).toContain("useFocusEffect");
   expect(listRoute).toContain("focusRevision");
 });

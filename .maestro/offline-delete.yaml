@@ -5,10 +5,13 @@ tags:
   - release-static-spec
 ---
 - runFlow: back-edit.yaml
-- tapOn: "首页"
-- tapOn: "打开设置"
+- tapOn: "我的"
+- tapOn: "设置"
 - assertVisible: "设置"
-- assertVisible: "旅程、练习和沟通卡保存在本机.*"
+- scrollUntilVisible:
+    element:
+      text: "旅程、练习、手记、沟通卡和回顾保存在本机.*"
+    direction: DOWN
 - scrollUntilVisible:
     element:
       text: "删除全部本机数据"
@@ -19,7 +22,10 @@ tags:
 - extendedWaitUntil:
     visible: "本机数据已删除。"
     timeout: 20000
-- tapOn: "返回欢迎页"
-- assertVisible: "欢迎来到内界 CAVE"
+- tapOn: "返回首页"
+- assertVisible: "开启旅程"
+- stopApp
+- launchApp
+- assertVisible: "开启旅程"
 - assertNotVisible: "继续本机旅程"
 - assertNotVisible: "1 / 7"

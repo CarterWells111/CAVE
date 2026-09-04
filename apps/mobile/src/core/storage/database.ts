@@ -78,6 +78,15 @@ export class InvalidDatabaseKeyError extends Error {
   }
 }
 
+export class SqlCipherUnavailableError extends Error {
+  readonly code = "SQLCIPHER_UNAVAILABLE";
+
+  constructor() {
+    super("SQLCipher is unavailable in this native database connection");
+    this.name = "SqlCipherUnavailableError";
+  }
+}
+
 export class UnsupportedDatabaseVersionError extends Error {
   constructor(version: number) {
     super(`Unsupported database version: ${version}`);
@@ -277,11 +286,15 @@ function assertDataSql(sql: string): void {
 
 function preserveCloseFailure(primaryError: unknown, closeError: unknown): void {
   if (!(primaryError instanceof Error)) return;
-  const property = primaryError.cause === undefined ? "cause" : "closeError";
-  Object.defineProperty(primaryError, property, {
-    configurable: true,
-    value: closeError
-  });
+  try {
+    const property = primaryError.cause === undefined ? "cause" : "closeError";
+    Object.defineProperty(primaryError, property, {
+      configurable: true,
+      value: closeError
+    });
+  } catch {
+    // Secondary diagnostics must not replace an immutable primary error.
+  }
 }
 
 export function createEncryptedDatabaseManager({
@@ -476,10 +489,16 @@ export function createEncryptedDatabaseManager({
     }
     const opened = await native.openDatabaseAsync(databaseName);
     try {
+      const capability = await opened.getFirstAsync<{ cipher_version?: unknown }>(
+        "PRAGMA cipher_version"
+      );
+      if (typeof capability?.cipher_version !== "string" || capability.cipher_version.trim() === "") {
+        throw new SqlCipherUnavailableError();
+      }
       await opened.execAsync(`PRAGMA key = '${key}'`);
       await opened.execAsync("PRAGMA foreign_keys = ON");
-      await opened.execAsync("PRAGMA journal_mode = WAL");
       let currentVersion = await readCurrentVersion(opened);
+      await opened.execAsync("PRAGMA journal_mode = WAL");
       for (const migration of DATABASE_MIGRATIONS) {
         if (currentVersion < migration.version) {
           currentVersion = await applyMigration(
@@ -659,7 +678,7 @@ async function readCurrentVersion(connection: DatabaseConnection): Promise<numbe
     await connection.execAsync("COMMIT");
     return version;
   } catch (error) {
-    await connection.execAsync("ROLLBACK");
+    await rollbackPreservingError(connection, error);
     throw error;
   }
 }
@@ -695,7 +714,21 @@ async function applyMigration(
     await connection.execAsync("COMMIT");
     return migration.version;
   } catch (error) {
-    await connection.execAsync("ROLLBACK");
+    await rollbackPreservingError(connection, error);
     throw error;
+  }
+}
+
+async function rollbackPreservingError(connection: DatabaseConnection, primaryError: unknown): Promise<void> {
+  try {
+    await connection.execAsync("ROLLBACK");
+  } catch (rollbackError) {
+    if (primaryError instanceof Error) {
+      try {
+        Object.defineProperty(primaryError, "rollbackError", { configurable: true, value: rollbackError });
+      } catch {
+        // Secondary diagnostics must not replace an immutable primary error.
+      }
+    }
   }
 }

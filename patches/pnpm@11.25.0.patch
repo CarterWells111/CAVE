@@ -1,0 +1,17 @@
+diff --git a/dist/pnpm.mjs b/dist/pnpm.mjs
+--- a/dist/pnpm.mjs
++++ b/dist/pnpm.mjs
+@@ -262908,7 +262908,12 @@
+ function isBulkResponseShape(body) {
+   if (typeof body !== "object" || body === null || Array.isArray(body))
+     return false;
+-  return Object.values(body).every((packageAdvisories) => Array.isArray(packageAdvisories) && packageAdvisories.every((advisory) => typeof advisory === "object" && advisory !== null && !Array.isArray(advisory) && typeof advisory.vulnerable_versions === "string"));
++  return Object.values(body).every((packageAdvisories) => Array.isArray(packageAdvisories) && packageAdvisories.every((advisory) =>
++    typeof advisory === "object" && advisory !== null && !Array.isArray(advisory) &&
++    Number.isSafeInteger(advisory.id) && advisory.id > 0 && isKnownSeverity(advisory.severity) &&
++    typeof advisory.vulnerable_versions === "string" && advisory.vulnerable_versions.trim().length > 0 &&
++    import_semver58.default.validRange(advisory.vulnerable_versions, { loose: true }) !== null
++  ));
+ }
+ function satisfiesSafe(version2, range) {
+   try {

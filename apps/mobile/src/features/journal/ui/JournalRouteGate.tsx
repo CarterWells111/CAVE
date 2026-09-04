@@ -7,6 +7,7 @@ import { Button } from "../../../core/ui/Button";
 import { Screen } from "../../../core/ui/Screen";
 import { SecondaryButton } from "../../../core/ui/secondary-button";
 import { useJournalAccess } from "../runtime/JournalAccessProvider";
+import { backOrHome } from "../../shell/ui/safe-navigation";
 
 export function JournalRouteGate({ children }: PropsWithChildren) {
   const access = useJournalAccess();
@@ -40,7 +41,7 @@ export function JournalRouteGate({ children }: PropsWithChildren) {
       "登录后使用内界手记",
       `登录会把这台设备上的手记与账号关联，避免同一设备上的其他账号查看。手记正文、后来与阶段回顾仍只保存在本机，不会上传；卸载 App 或清除本机数据仍会丢失。${persistenceNotice}`,
       [
-        { text: "取消", style: "cancel", onPress: () => router.back() },
+        { text: "取消", style: "cancel", onPress: () => backOrHome(router) },
         {
           text: "去登录",
           onPress: goToLogin,
@@ -86,7 +87,7 @@ export function JournalRouteGate({ children }: PropsWithChildren) {
           登录后可打开与当前账号绑定的本机手记。
         </Text>
         <Button label="去登录" onPress={goToLogin} />
-        <SecondaryButton label="返回上一页" onPress={() => router.back()} />
+        <SecondaryButton label="返回上一页" onPress={() => backOrHome(router)} />
       </Screen>
     );
   }

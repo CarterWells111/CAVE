@@ -40,7 +40,7 @@ test("wires the profile account card as read-only and signs in from the public p
   const view = render(<ProfileRoute />);
 
   fireEvent.press(screen.getByRole("button", { name: "邮箱登录" }));
-  expect(mockPush).toHaveBeenCalledWith("/auth/email");
+  expect(mockPush).toHaveBeenCalledWith({ pathname: "/auth/email", params: { returnTo: "/(tabs)/profile" } });
 
   mockAccountProfile = {
     status: "ready",

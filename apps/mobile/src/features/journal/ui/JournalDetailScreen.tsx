@@ -54,7 +54,7 @@ export function JournalDetailScreen({ id, service, onAdd, onBack, onDeleted, onE
       onAction={retryDeletionCleanup}
     /></Screen>;
   }
-  if (failed) return <Screen><ErrorState title="无法打开这条手记" message="它可能已经被删除，或本机存储暂时不可用。" actionLabel="重试" onAction={load} /></Screen>;
+  if (failed) return <Screen><ErrorState title="无法打开这条手记" message="它可能已经被删除，或本机存储暂时不可用。" actionLabel="重试" onAction={load} /><SecondaryButton label="返回手记列表" onPress={onBack} /></Screen>;
   if (value === null) return <Screen><Text accessibilityLiveRegion="polite" style={{ ...theme.typography.body, color: theme.color.text }}>正在读取本机手记…</Text></Screen>;
   const { record, entries } = value;
   const deleteRecord = () => Alert.alert("永久删除这条记录？", "删除后无法恢复。", [

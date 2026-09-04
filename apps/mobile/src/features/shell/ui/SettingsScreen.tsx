@@ -10,6 +10,7 @@ import { InfoCard } from "../../../core/ui/info-card";
 import { IconTextAction } from "../../../core/ui/icon-text-action";
 import { SecondaryButton } from "../../../core/ui/secondary-button";
 import { AccountProfileCard } from "../../account/ui/AccountProfileCard";
+import { AccountPreferenceSettings } from "../../account/ui/AccountPreferenceSettings";
 
 type DeleteCapability = {
   deleteAllData(): Promise<void>;
@@ -45,6 +46,7 @@ export type SettingsScreenProps = {
   resolvedTheme: ResolvedTheme;
   onAppearancePreferenceChange(preference: ThemePreference): Promise<void>;
   onBack(): void;
+  onAdultRevoked?: (() => void) | undefined;
 };
 
 type DeleteState = "idle" | "confirming" | "deleting" | "error" | "success";
@@ -164,6 +166,7 @@ export function SettingsScreen({
   deletion,
   onAppearancePreferenceChange,
   onBack,
+  onAdultRevoked,
   privacy,
   resolvedTheme,
 }: SettingsScreenProps) {
@@ -282,6 +285,8 @@ export function SettingsScreen({
           管理账户、保存方式、外观与这台设备上的内容。
         </Text>
       </View>
+
+      <AccountPreferenceSettings onRevoke={onAdultRevoked ?? (() => undefined)} />
 
       {account ? (
         <>

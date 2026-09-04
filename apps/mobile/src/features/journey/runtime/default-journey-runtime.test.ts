@@ -51,7 +51,7 @@ function nativeAdapters({ deletionPending = false } = {}): ExpoJourneyAdapters {
     getAllAsync: jest.fn(async <T,>() => [] as T[]),
     getFirstAsync: jest.fn(async <T,>(sql: string) => (sql === "PRAGMA user_version"
       ? { user_version: 2 } as T
-      : null)),
+      : sql === "PRAGMA cipher_version" ? { cipher_version: "test-only-simulated" } as T : null)),
     closeAsync: jest.fn(async () => undefined)
   } as unknown as DatabaseConnection;
   return {

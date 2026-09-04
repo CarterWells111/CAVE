@@ -1,0 +1,26 @@
+{
+  "status": "preparing",
+  "frozenCommit": null,
+  "bundleIdentifier": "com.neijie.cave",
+  "appVersion": "0.1.0",
+  "runtimeVersion": "0.1.0-p0-schema12",
+  "schemaVersion": 12,
+  "node": "22.23.2",
+  "pnpm": "10.34.5",
+  "preview": { "purpose": "正常导航与持久化验收", "buildId": null, "buildNumber": "3", "installUrl": null, "status": "not-built" },
+  "acceptance": { "purpose": "开发客户端；隔离合成数据的原生故障验收；需Metro", "buildId": null, "buildNumber": "4", "installUrl": null, "status": "not-built" },
+  "historicalCandidate": {
+    "buildId": "1e030993-6e85-45b7-8e59-f41730bcee0a",
+    "commit": "4b45f2f1673237bcdfe472307dbd91be47fae2ef",
+    "profile": "alpha",
+    "distribution": "STORE",
+    "buildNumber": "2",
+    "appVersion": "0.1.0",
+    "status": "candidate-only; TestFlight availability and device installation not verified"
+  },
+  "fallbackBaseline": "explicitly synthetic historical schema; not historical binary upgrade verification",
+  "installOrder": ["historical candidate if available", "preview without uninstall", "acceptance without uninstall; connect matching Metro"],
+  "switchImpact": "Same app ID: builds replace one another and can share existing sandbox/Keychain. Synthetic harness uses separate names. Do not uninstall to simulate upgrade.",
+  "deviceAcceptance": "pending-user",
+  "productionContentReview": "unchanged; remains release blocker"
+}

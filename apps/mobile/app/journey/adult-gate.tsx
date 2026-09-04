@@ -2,6 +2,8 @@ import { useRouter } from "expo-router";
 import { useCallback, useEffect, useRef } from "react";
 
 import { Screen } from "../../src/core/ui/Screen";
+import { useOptionalAuth } from "../../src/features/auth/runtime/AuthProvider";
+import { useOptionalAccountPreferences } from "../../src/features/account/runtime/AccountPreferencesProvider";
 import {
   useAdultDeclaration,
   useOptionalJourneyRuntime
@@ -10,6 +12,8 @@ import { AdultGatePage } from "../../src/features/journey/ui/pages/adult-gate-pa
 
 export default function AdultGateRoute() {
   const router = useRouter();
+  const auth = useOptionalAuth();
+  const preferences = useOptionalAccountPreferences();
   const adultDeclaration = useAdultDeclaration();
   const runtime = useOptionalJourneyRuntime();
   const authorizationReady = adultDeclaration.status === "authorized"
@@ -37,6 +41,12 @@ export default function AdultGateRoute() {
     if (authorizationReady) openPreface();
   }, [authorizationReady, openPreface]);
 
+  useEffect(() => {
+    if (preferences?.ready && preferences.preferences.ageConfirmed && runtime !== null && runtime.snapshot === null) {
+      void runtime.runAndRefresh(() => adultDeclaration.confirmAdult()).catch(() => undefined);
+    }
+  }, [adultDeclaration, preferences, runtime]);
+
   const confirmAdult = () => {
     if (!activeRef.current || decisionRef.current !== null || navigatedRef.current) return;
     const decision = {};
@@ -51,9 +61,11 @@ export default function AdultGateRoute() {
       });
   };
 
-  const exitUnderage = () => {
+  const exitUnderage = async () => {
     if (!activeRef.current || decisionRef.current !== null || navigatedRef.current) return;
     decisionRef.current = {};
+    try { await preferences?.change({ ageConfirmed: false }); }
+    catch (error) { decisionRef.current = null; throw error; }
     navigatedRef.current = true;
     router.replace("/underage-exit");
   };
@@ -62,6 +74,7 @@ export default function AdultGateRoute() {
   return (
     <Screen>
       <AdultGatePage
+        onSignIn={auth?.status === "signedOut" ? () => router.push({ pathname: "/auth/email", params: { returnTo: "/journey/adult-gate" } }) : undefined}
         onConfirmAdult={confirmAdult}
         onUnderage={exitUnderage}
       />

@@ -1,0 +1,48 @@
+# Dependencies and package-manager state
+node_modules/
+.pnpm-store/
+
+# Expo / React Native generated state
+.expo/
+.expo-shared/
+apps/mobile/ios/
+apps/mobile/android/
+
+# EAS local and native credentials
+.eas/
+*.mobileprovision
+*.p12
+*.cer
+*.key
+
+# Cloudflare local state
+.wrangler/
+.dev.vars
+
+# Builds, tests, and logs
+.astro/
+coverage/
+dist/
+apps/mobile/dist-acceptance/
+build/
+*.log
+
+# Local environment files
+.env
+.env.*
+!.env.example
+
+# Editors and operating systems
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# Local isolated worktrees
+.worktrees/
+# Local acceptance reports and unrelated generated artifacts
+outputs/
+artifact_node_modules/
+build_p0_p4.mjs
+build_simple_status.mjs
+build_sorted_status.mjs

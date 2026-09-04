@@ -1,8 +1,10 @@
 import type {
+  AccountPreferences,
   AccountDeletionGrantResponse,
   AuthSessionResponse,
   EmailChallengeAccepted,
 } from "@cave/contracts";
+import type { PreferenceChanges } from "../../account/application/account-preferences-service";
 import {
   createContext,
   type PropsWithChildren,
@@ -52,6 +54,8 @@ type AuthContextValue = {
   verifyAccountDeletionChallenge(challengeId: string, code: string): Promise<AccountDeletionGrantResponse>;
   createAccountDeletionIdempotencyKey(): string;
   deleteAccount(deletionGrant: string, idempotencyKey: string): Promise<void>;
+  getAccountPreferences(accountId: string): Promise<AccountPreferences>;
+  updateAccountPreferences(accountId: string, expectedRevision: number, changes: PreferenceChanges): Promise<AccountPreferences>;
 };
 
 export class LocalAuthError extends Error {
@@ -73,10 +77,9 @@ function recordFrom(response: AuthSessionResponse, email?: string): AuthSessionR
 }
 
 export function AuthProvider({
-  adultStatus,
   dependencies,
   children,
-}: PropsWithChildren<{ adultStatus: AdultStatus; dependencies: AuthDependencies }>) {
+}: PropsWithChildren<{ adultStatus?: AdultStatus; dependencies: AuthDependencies }>) {
   const [status, setStatus] = useState<PublicStatus>("loading");
   const sessionRef = useRef<RuntimeSession | null>(null);
   const sessionEpochRef = useRef(0);
@@ -185,22 +188,16 @@ export function AuthProvider({
     return () => { active = false; };
   }, [adopt, dependencies, enqueueSessionMutation, refreshSession]);
 
-  const requireAdult = useCallback(() => {
-    if (adultStatus !== "authorized") throw new LocalAuthError("ADULT_DECLARATION_REQUIRED");
-  }, [adultStatus]);
-
   const requestEmailChallenge = useCallback(async (email: string) => {
-    requireAdult();
     return await dependencies.api.requestEmailChallenge({
       contractVersion: "1",
       requestId: dependencies.createRequestId(),
       email,
       installationToken: await dependencies.getInstallationToken(),
     });
-  }, [dependencies, requireAdult]);
+  }, [dependencies]);
 
   const verifyEmailChallenge = useCallback(async (challengeId: string, code: string, email: string) => {
-    requireAdult();
     const requestEpoch = sessionEpochRef.current;
     const response = await dependencies.api.verifyEmailChallenge(challengeId, {
       contractVersion: "1",
@@ -211,7 +208,7 @@ export function AuthProvider({
     if (sessionEpochRef.current !== requestEpoch) throw new LocalAuthError("AUTH_UNAUTHORIZED");
     const loginEpoch = ++sessionEpochRef.current;
     await adopt(response, loginEpoch, email.trim().toLowerCase());
-  }, [adopt, dependencies, requireAdult]);
+  }, [adopt, dependencies]);
 
   const ensureAccessToken = useCallback(async (): Promise<string> => {
     const session = sessionRef.current;
@@ -254,7 +251,6 @@ export function AuthProvider({
   }, [clearLocalSession, dependencies]);
 
   const requestAccountDeletionChallenge = useCallback(async (email: string) => {
-    requireAdult();
     return await dependencies.api.requestAccountDeletionChallenge(
       await ensureAccessToken(),
       {
@@ -264,7 +260,23 @@ export function AuthProvider({
         installationToken: await dependencies.getInstallationToken(),
       },
     );
-  }, [dependencies, ensureAccessToken, requireAdult]);
+  }, [dependencies, ensureAccessToken]);
+
+  const preferencesToken = useCallback(async (accountId: string) => {
+    const epoch = sessionEpochRef.current;
+    if (sessionRef.current?.record.accountId !== accountId) throw new LocalAuthError("AUTH_UNAUTHORIZED");
+    const token = await ensureAccessToken();
+    if (sessionEpochRef.current !== epoch || sessionRef.current?.record.accountId !== accountId) throw new LocalAuthError("AUTH_UNAUTHORIZED");
+    return token;
+  }, [ensureAccessToken]);
+  const getAccountPreferences = useCallback(async (accountId: string) => (
+    (await dependencies.api.getAccountPreferences(await preferencesToken(accountId), dependencies.createRequestId())).preferences
+  ), [dependencies, preferencesToken]);
+  const updateAccountPreferences = useCallback(async (accountId: string, expectedRevision: number, changes: PreferenceChanges) => (
+    (await dependencies.api.updateAccountPreferences(await preferencesToken(accountId), {
+      contractVersion: "1", requestId: dependencies.createRequestId(), expectedRevision, changes,
+    })).preferences
+  ), [dependencies, preferencesToken]);
 
   const verifyAccountDeletionChallenge = useCallback(async (challengeId: string, code: string) => (
     await dependencies.api.verifyAccountDeletionChallenge(challengeId, {
@@ -306,9 +318,12 @@ export function AuthProvider({
     verifyAccountDeletionChallenge,
     createAccountDeletionIdempotencyKey,
     deleteAccount,
+    getAccountPreferences,
+    updateAccountPreferences,
   }), [
     clearLocalSession, createAccountDeletionIdempotencyKey, deleteAccount, logout, requestAccountDeletionChallenge,
     requestEmailChallenge, status, verifyAccountDeletionChallenge, verifyEmailChallenge,
+    getAccountPreferences, updateAccountPreferences,
   ]);
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

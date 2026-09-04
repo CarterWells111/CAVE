@@ -5,6 +5,9 @@ import type {
   AccountDeletionChallengeRequest,
   AccountDeletionGrantResponse,
   AccountDeletionRequest,
+  AccountPreferences,
+  AccountPreferencesResponse,
+  UpdateAccountPreferencesRequest,
   AuthSessionResponse,
   Course,
   DebriefDimension,
@@ -65,6 +68,9 @@ type PublicTypeInventory = [
   AccountDeletionChallengeRequest,
   AccountDeletionGrantResponse,
   AccountDeletionRequest,
+  AccountPreferences,
+  AccountPreferencesResponse,
+  UpdateAccountPreferencesRequest,
   ScenarioConfig
 ];
 
@@ -80,6 +86,9 @@ describe("version one public contract surface", () => {
         "AccountDeletionChallengeRequestSchema",
         "AccountDeletionGrantResponseSchema",
         "AccountDeletionRequestSchema",
+        "AccountPreferencesSchema",
+        "AccountPreferencesResponseSchema",
+        "UpdateAccountPreferencesRequestSchema",
         "AuthSessionResponseSchema",
         "CourseSchema",
         "DebriefDimensionSchema",

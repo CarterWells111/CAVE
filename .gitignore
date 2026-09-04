@@ -23,6 +23,7 @@ apps/mobile/android/
 .astro/
 coverage/
 dist/
+apps/mobile/dist-acceptance/
 build/
 *.log
 

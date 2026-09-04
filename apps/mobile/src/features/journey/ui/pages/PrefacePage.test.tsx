@@ -39,8 +39,21 @@ test("requires a chosen form of address before saving it", async () => {
   await waitFor(() => expect(onContinue).toHaveBeenCalledWith("妳"));
 });
 
-test("does not mention login or adult verification before the first knowledge page", () => {
+test("explains account persistence and hides the login link when it is not available", () => {
   render(<PrefacePage onContinue={jest.fn()} />);
-  expect(screen.queryByText(/邮箱|验证码|登录|年满 18/u)).toBeNull();
-  expect(screen.queryByText(/之后仍可调整/u)).toBeNull();
+  expect(screen.getByText(/登录后会保存到账号/u)).toBeTruthy();
+  expect(screen.queryByRole("link", { name: "登录后保存现有选择" })).toBeNull();
+});
+
+test("saves a selection immediately but waits for continue to advance", async () => {
+  const onChoose = jest.fn(async () => undefined);
+  const onContinue = jest.fn();
+  const onSignIn = jest.fn();
+  render(<PrefacePage onChoose={onChoose} onContinue={onContinue} onSignIn={onSignIn} />);
+  fireEvent.press(screen.getByRole("radio", { name: "妳｜明确称呼女性，更有书信感。" }));
+  await waitFor(() => expect(onChoose).toHaveBeenCalledWith("妳"));
+  expect(onContinue).not.toHaveBeenCalled();
+  await waitFor(() => expect(screen.getByRole("link", { name: "登录后保存现有选择" })).toHaveProp("accessibilityState", { disabled: false }));
+  fireEvent.press(screen.getByRole("link", { name: "登录后保存现有选择" }));
+  expect(onSignIn).toHaveBeenCalledTimes(1);
 });

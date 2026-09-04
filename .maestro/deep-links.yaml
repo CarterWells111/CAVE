@@ -1,0 +1,18 @@
+appId: com.neijie.cave
+name: Cold and warm journal links with a safe missing-record exit
+tags:
+  - pending-device
+# Precondition: adult declaration accepted and test account signed in; synthetic data only.
+---
+- stopApp
+- openLink: "cave:///journal/p0-record-does-not-exist"
+- extendedWaitUntil:
+    visible: "无法打开这条手记"
+    timeout: 20000
+- tapOn: "返回手记列表"
+- assertVisible: "首页"
+- openLink: "cave:///journey/body-knowledge"
+- assertVisible: "1 / 5"
+- openLink: "cave:///journal/p0-record-does-not-exist/edit"
+- assertVisible: "无法打开这条手记"
+- tapOn: "返回手记列表"

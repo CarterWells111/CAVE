@@ -49,9 +49,7 @@ export default function SettingsRoute() {
         ...(accountProfile.email === undefined ? {} : { email: accountProfile.email }),
         ...(accountProfile.profile === undefined ? {} : { profile: accountProfile.profile }),
         ...(accountProfile.status === "signedOut" ? {
-          onSignIn: () => router.push(
-            adult.status === "authorized" ? "/auth/email" : "/journey/adult-gate",
-          ),
+          onSignIn: () => router.push({ pathname: "/auth/email", params: { returnTo: "/(tabs)/profile" } }),
         } : {}),
         ...(accountProfile.status === "ready" ? {
           onManageAccount: () => router.push("/auth/email"),
@@ -64,16 +62,18 @@ export default function SettingsRoute() {
       }}
       appearancePreference={preference}
       appearanceSaving={saving}
-      deletion={runtime === null ? undefined : {
+      deletion={runtime === null && adult.deleteAllData === undefined ? undefined : {
         deleteAllData: async () => {
           await auth?.clearLocalSession();
-          await runtime.deleteAllData();
+          if (runtime !== null) await runtime.deleteAllData();
+          else await adult.deleteAllData?.();
           router.replace("/(tabs)");
         },
         onContinue: () => router.replace("/(tabs)"),
       }}
       onAppearancePreferenceChange={setPreference}
       onBack={() => router.back()}
+      onAdultRevoked={() => router.replace("/journey/adult-gate")}
       privacy={runtime === null ? undefined : {
         changeJournalSaveNotice,
         retry: () => { void loadPrivacySettings(); },

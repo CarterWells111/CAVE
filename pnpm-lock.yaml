@@ -12,6 +12,9 @@ patchedDependencies:
   image-size@1.2.1:
     hash: e74ffd52075b1cc272cd8a0725dd39772e160522e494058898d9f15bbbdb4d94
     path: patches/image-size@1.2.1.patch
+  pnpm@11.25.0:
+    hash: 245cdea41884c3e3af39a00f68e29dba50659b01d47c9ca1a25bf33b695cecc7
+    path: patches/pnpm@11.25.0.patch
 
 importers:
 
@@ -240,6 +243,12 @@ importers:
       '@cave/scenario-engine':
         specifier: workspace:*
         version: link:../scenario-engine
+
+  tools/security-audit:
+    devDependencies:
+      pnpm:
+        specifier: 11.25.0
+        version: 11.25.0(patch_hash=245cdea41884c3e3af39a00f68e29dba50659b01d47c9ca1a25bf33b695cecc7)
 
 packages:
 
@@ -5570,6 +5579,11 @@ packages:
   pngjs@3.4.0:
     resolution: {integrity: sha512-NCrCHhWmnQklfH4MtJMRjZ2a8c80qXeMlQMv2uVp9ISJMTt562SbGd6n2oq0PaPgKm7Z6pL9E2UlLIhC+SHL3w==}
     engines: {node: '>=4.0.0'}
+
+  pnpm@11.25.0:
+    resolution: {integrity: sha512-XN6SW08HX3Jetx+64YpC/+eEUkeJ8ZthxzHLhyHsKKruFg4BqNWvT+2ypCzb8wDv4j2zVrDUoXtNY+EfirfJVg==}
+    engines: {node: '>=22.13'}
+    hasBin: true
 
   possible-typed-array-names@1.1.0:
     resolution: {integrity: sha512-/+5VFTchJDoVj3bhoqi6UeymcD00DAwb1nJwamzPvHEszJ4FpF6SNNbUbOS8yI56qHzdV8eK0qEfOSiodkTdxg==}
@@ -13554,6 +13568,8 @@ snapshots:
       xmlbuilder: 15.1.1
 
   pngjs@3.4.0: {}
+
+  pnpm@11.25.0(patch_hash=245cdea41884c3e3af39a00f68e29dba50659b01d47c9ca1a25bf33b695cecc7): {}
 
   possible-typed-array-names@1.1.0: {}
 

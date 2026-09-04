@@ -3,6 +3,17 @@ import { createAuthApiClient, MobileAuthApiError } from "./auth-api-client";
 const requestId = "7cbbc0f9-9d12-4b08-9741-75bbb399e7c6";
 const challengeId = "cb02004c-7b5b-4680-9b16-8a6a33511bc9";
 
+test("reads and patches account preferences with authenticated, versioned requests", async () => {
+  const fetch = jest.fn(async () => Response.json({ contractVersion: "1", requestId,
+    preferences: { ageConfirmed: true, addressPreference: "妳", updatedAt: null, revision: 1 },
+  }));
+  const client = createAuthApiClient({ baseUrl: "https://gateway.example", fetch });
+  await client.getAccountPreferences("access", requestId);
+  expect(fetch).toHaveBeenLastCalledWith(expect.stringContaining("/v1/account/preferences?requestId="), expect.objectContaining({ method: "GET", headers: expect.objectContaining({ Authorization: "Bearer access" }) }));
+  await client.updateAccountPreferences("access", { contractVersion: "1", requestId, expectedRevision: 1, changes: { ageConfirmed: false } });
+  expect(fetch).toHaveBeenLastCalledWith("https://gateway.example/v1/account/preferences", expect.objectContaining({ method: "PATCH", body: expect.stringContaining('"ageConfirmed":false') }));
+});
+
 test("posts a no-store challenge request and validates the response contract", async () => {
   const fetch = jest.fn(async () => Response.json({
     contractVersion: "1", requestId, challengeId, expiresInSeconds: 600, resendAfterSeconds: 60,
