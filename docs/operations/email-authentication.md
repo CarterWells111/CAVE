@@ -7,7 +7,19 @@
 - 已核对的生产地址是 `https://api.neijiecave.com`。邮箱认证已部署在 Cloudflare Workers，使用 D1 与 Resend；本架构不使用 Railway。
 - 截至 2026-08-29，健康检查正常、D1 没有待应用 migration，Worker 已配置 `RESEND_API_KEY`、`AUTH_EMAIL_LOOKUP_KEY_V1` 和 `AUTH_OTP_KEY_V1` 三个 Secret binding。这里只记录配置名称，不记录值。
 - 移动端默认使用生产地址。`EXPO_PUBLIC_GATEWAY_URL` 仅作为明确的开发或构建覆盖；HTTP 只允许在 `__DEV__` bundle 中连接经核对的本地 Gateway，非开发 bundle 会拒绝非 HTTPS 覆盖，手机不会静默回退到 `localhost`。
-- 身份服务只保存账号和会话元数据。手记不会上传到 Worker 或 D1，也不存在远程手记正文表。
+- 身份服务保存账号、会话元数据以及成年确认和界面称呼。手记不会上传到 Worker 或 D1，也不存在远程手记正文表。
+
+## 账号偏好发布顺序
+
+本次新增成年确认与称呼同步，尚需按以下顺序发布：
+
+1. 应用 `apps/gateway/migrations/0002_account_preferences.sql`，这是新增表，不修改既有账号、会话或本机内容。
+2. 发布支持 `GET/PATCH /v1/account/preferences` 的 Gateway。请求需要有效 Access Token；PATCH 使用 `expectedRevision`，旧版本冲突返回 409。
+3. 发布移动端。游客选择先保存在本机，登录后本次明确选择优先；没有新选择时恢复账号记录。登录前也可访问邮箱验证，受限旅程仍由成年确认控制。
+
+接口未发布或网络不可用时，本机选择保留并标记尚未同步；启动、登录、回到前台或手动重试时再次同步。撤销成年确认立即在当前设备生效，联网同步后其他设备在下次同步时收到变更。
+
+删除全部本机数据清除本机偏好及待同步记录，不调用云端偏好删除；删除云端账号通过外键级联删除偏好。回滚移动端不需要删除此表，避免丢失账号已有选择。
 
 ## 固定行为
 

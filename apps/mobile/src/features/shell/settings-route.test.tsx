@@ -134,7 +134,7 @@ test("authorized signed-out settings opens email login from the single account c
 
   expect(screen.getAllByRole("button", { name: "邮箱登录" })).toHaveLength(1);
   fireEvent.press(screen.getByRole("button", { name: "邮箱登录" }));
-  expect(mockPush).toHaveBeenCalledWith("/auth/email");
+  expect(mockPush).toHaveBeenCalledWith({ pathname: "/auth/email", params: { returnTo: "/(tabs)/profile" } });
 });
 
 test("ready settings receives the local profile and keeps email read-only", () => {

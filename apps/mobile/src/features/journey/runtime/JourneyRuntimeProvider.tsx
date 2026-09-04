@@ -16,8 +16,11 @@ import { DatabaseRecoveryRequiredError } from "../../../core/storage/database";
 import { Button } from "../../../core/ui/Button";
 import { ErrorState } from "../../../core/ui/ErrorState";
 import { SecondaryButton } from "../../../core/ui/secondary-button";
+import { useOptionalAccountPreferences } from "../../account/runtime/AccountPreferencesProvider";
+import { useOptionalAuth } from "../../auth/runtime/AuthProvider";
+import { AccountJournalDeletionContext } from "../../account/runtime/account-journal-deletion-context";
 
-import { JourneyProvider, useJourney } from "../ui/JourneyProvider";
+import { JourneyProvider, PreparedJourneyProvider, useJourney } from "../ui/JourneyProvider";
 import type { JourneyDraft } from "../domain/types";
 import type { JourneyRuntime, JourneyRuntimeMode } from "./journey-runtime";
 
@@ -43,6 +46,7 @@ export type JourneyRuntimeContextValue = {
 export type AdultDeclarationContextValue = {
   status: "public" | "authorized";
   confirmAdult(): Promise<void>;
+  deleteAllData?(): Promise<void>;
 };
 
 type JourneyRuntimeProviderProps = PropsWithChildren<{
@@ -68,28 +72,47 @@ function RuntimeContextProvider({
   children,
   runtime,
   deleteRuntimeData,
-  refreshAuthorization
+  refreshAuthorization,
+  active = true
 }: PropsWithChildren<{
   runtime: JourneyRuntime;
   deleteRuntimeData(): Promise<void>;
   refreshAuthorization(): Promise<void>;
+  active?: boolean;
 }>) {
   const { runAndRefresh, snapshot } = useJourney();
+  const preferences = useOptionalAccountPreferences();
+  const preferredAddress = preferences?.preferences.addressPreference;
+  useEffect(() => {
+    if (!active || preferredAddress === undefined || snapshot === null || snapshot.addressPreference === preferredAddress) return;
+    void runAndRefresh(() => runtime.service.applyAccountPreferences({ ageConfirmed: true, addressPreference: preferredAddress })).catch(() => undefined);
+  }, [active, preferredAddress, runAndRefresh, runtime, snapshot]);
   const restart = useCallback(
     () => runAndRefresh(async () => {
       await runtime.service.resetJourney();
+      if (preferences?.ready && preferences.preferences.ageConfirmed) {
+        await runtime.service.confirmAdult();
+        await runtime.service.applyAccountPreferences(preferences.preferences);
+        return;
+      }
       await runtime.adultDeclaration.deleteAdultDeclaration();
       await refreshAuthorization();
     }),
-    [refreshAuthorization, runAndRefresh, runtime]
+    [preferences, refreshAuthorization, runAndRefresh, runtime]
   );
   const deleteAllData = useCallback(
     () => runAndRefresh(deleteRuntimeData),
     [deleteRuntimeData, runAndRefresh]
   );
   const replaceActiveReview = useCallback(
-    () => runAndRefresh(() => runtime.replaceActiveReview()),
-    [runAndRefresh, runtime]
+    () => runAndRefresh(async () => {
+      await runtime.replaceActiveReview();
+      if (preferences?.ready && preferences.preferences.ageConfirmed) {
+        await runtime.service.confirmAdult();
+        await runtime.service.applyAccountPreferences(preferences.preferences);
+      }
+    }),
+    [preferences, runAndRefresh, runtime]
   );
   const context = useMemo<JourneyRuntimeContextValue>(() => ({
     mode: runtime.mode,
@@ -111,7 +134,7 @@ function RuntimeContextProvider({
   }), [deleteAllData, replaceActiveReview, restart, runAndRefresh, runtime, snapshot]);
 
   return (
-    <JourneyRuntimeContext.Provider value={context}>
+    <JourneyRuntimeContext.Provider value={active ? context : null}>
       {children}
     </JourneyRuntimeContext.Provider>
   );
@@ -194,6 +217,14 @@ export function JourneyRuntimeProvider({
   children,
   createRuntime
 }: JourneyRuntimeProviderProps) {
+  const preferences = useOptionalAccountPreferences();
+  const preferencesRef = useRef(preferences);
+  const auth = useOptionalAuth();
+  const authRef = useRef(auth);
+  authRef.current = auth;
+  preferencesRef.current = preferences;
+  const [authorizedOwner, setAuthorizedOwner] = useState<string | null | undefined>(undefined);
+  const preferenceOperations = useRef<Promise<unknown>>(Promise.resolve());
   const [state, setState] = useState<RuntimeState>({ status: "loading" });
   const [runtimeAttempt, setRuntimeAttempt] = useState(0);
   const createRuntimeRef = useRef(createRuntime);
@@ -218,7 +249,12 @@ export function JourneyRuntimeProvider({
   const deleteRuntimeData = useCallback((runtime: JourneyRuntime) => {
     if (deletionPromiseRef.current !== null) return deletionPromiseRef.current;
     setState({ status: "deleting", runtime });
-    const deletion = runtime.deleteAllData()
+    const deletion = Promise.resolve().then(async () => {
+      await authRef.current?.clearLocalSession();
+      await preferenceOperations.current;
+      await preferencesRef.current?.clear();
+      await runtime.deleteAllData();
+    })
       .then(() => {
         setState({ status: "public", runtime });
       })
@@ -256,8 +292,20 @@ export function JourneyRuntimeProvider({
           runtime.adultDeclaration.hasAdultDeclaration(),
           runtime.adultDeclaration.hasPendingLocalDataDeletion()
         ]);
+        const accountPreferences = preferencesRef.current;
+        if (accountPreferences !== null) {
+          if (declared && !deletionPending) {
+            const recovery = await runtime.service.initialize();
+            if (recovery !== "ready") throw new Error("journey-recovery-required");
+          }
+          await accountPreferences.initialize({
+            ageConfirmed: declared && !deletionPending && (runtime.mode !== "expo-go-demo" || runtime.service.getSnapshot()?.ageConfirmed === true),
+            addressPreference: declared && !deletionPending ? runtime.service.getSnapshot()?.addressPreference ?? null : null,
+          });
+          if (deletionPending) await accountPreferences.clear();
+        }
         if (active) {
-          setState({ status: declared && !deletionPending ? "authorized" : "public", runtime });
+          setState({ status: accountPreferences === null && declared && !deletionPending ? "authorized" : "public", runtime });
         }
       } catch {
         if (active) setState({ status: "authorization-error", runtime });
@@ -271,7 +319,67 @@ export function JourneyRuntimeProvider({
     return () => { active = false; };
   }, [runtimeAttempt]);
 
+  const preferenceRuntime = "runtime" in state ? state.runtime : null;
+  const deletionAccountId = auth?.accountId;
+  const deletionAuthenticated = auth?.status === "signedIn" || auth?.status === "offline";
+  const accountJournalDeletion = useMemo(() => {
+    if (preferenceRuntime === null || deletionAccountId === undefined || !deletionAuthenticated) return null;
+    const guard = () => {
+      const current = authRef.current;
+      if (current?.accountId !== deletionAccountId || (current.status !== "signedIn" && current.status !== "offline") || deletionPromiseRef.current !== null) {
+        throw new Error("journal-deletion-account-unavailable");
+      }
+    };
+    const service = preferenceRuntime.createJournalService(deletionAccountId);
+    return {
+      accountId: deletionAccountId,
+      journalPersistence: preferenceRuntime.journalPersistence,
+      ensureDeletionCleanup: async () => { guard(); return await service.ensureDeletionCleanup(); },
+      clearCurrentAccount: async () => { guard(); await service.clearCurrentAccount(); },
+    };
+  }, [deletionAccountId, deletionAuthenticated, preferenceRuntime]);
+  const preferenceReady = preferences?.ready;
+  const preferenceAdult = preferences?.preferences.ageConfirmed;
+  const preferenceOwner = preferences?.owner;
+  useEffect(() => {
+    if (preferenceRuntime === null || !preferenceReady) return;
+    let active = true;
+    const isCurrent = () => active && deletionPromiseRef.current === null;
+    const operation = preferenceOperations.current.then(async () => {
+      if (!isCurrent()) return;
+      if (!preferenceAdult) {
+        await preferenceRuntime.adultDeclaration.deleteAdultDeclaration();
+        await preferenceRuntime.service.applyAccountPreferences({ ageConfirmed: false, addressPreference: preferencesRef.current!.preferences.addressPreference });
+        if (isCurrent()) { setAuthorizedOwner(preferenceOwner); setState({ status: "public", runtime: preferenceRuntime }); }
+        return;
+      }
+      if (await preferenceRuntime.adultDeclaration.hasPendingLocalDataDeletion()) return;
+      const recovery = await preferenceRuntime.service.initialize();
+      if (recovery !== "ready") throw new Error("journey-recovery-required");
+      if (!isCurrent()) return;
+      if (preferenceRuntime.service.getSnapshot() !== null || await preferenceRuntime.shellState.load() === null) {
+        await preferenceRuntime.service.confirmAdult();
+      }
+      await preferenceRuntime.service.applyAccountPreferences(preferencesRef.current!.preferences);
+      if (!isCurrent()) return;
+      await preferenceRuntime.adultDeclaration.recordAdultDeclaration();
+      if (isCurrent()) { setAuthorizedOwner(preferenceOwner); setState({ status: "authorized", runtime: preferenceRuntime }); }
+    });
+    preferenceOperations.current = operation.catch(() => undefined);
+    void operation.catch((error: unknown) => {
+      if (isCurrent()) setState({ status: error instanceof DatabaseRecoveryRequiredError ? "storage-recovery-required" : "authorization-error", runtime: preferenceRuntime });
+    });
+    return () => { active = false; };
+  }, [preferenceRuntime, preferenceReady, preferenceAdult, preferenceOwner]);
+
   const confirmAdult = useCallback(() => {
+    if (preferencesRef.current !== null) return (async () => {
+      await preferencesRef.current!.change({ ageConfirmed: true });
+      if (state.status === "authorized") {
+        await state.runtime.service.confirmAdult();
+        await state.runtime.service.applyAccountPreferences(preferencesRef.current!.preferences);
+      }
+    })();
     if (state.status !== "public" && state.status !== "authorized") {
       return Promise.reject(new Error("journey-runtime-not-ready"));
     }
@@ -327,7 +435,13 @@ export function JourneyRuntimeProvider({
     return (
       <PublicBoundary>
         <AuthorizationErrorScreen
-          onRetry={() => { void setAuthorizationFromMarker(state.runtime).catch(() => undefined); }}
+          onRetry={() => {
+            if (preferencesRef.current !== null) {
+              setState({ status: "loading" });
+              setRuntimeAttempt((attempt) => attempt + 1);
+              preferencesRef.current.retry();
+            } else void setAuthorizationFromMarker(state.runtime).catch(() => undefined);
+          }}
         />
       </PublicBoundary>
     );
@@ -350,18 +464,46 @@ export function JourneyRuntimeProvider({
     );
   }
 
-  const adultDeclaration = { status: state.status, confirmAdult } satisfies AdultDeclarationContextValue;
-  if (state.status === "public") {
+  const effectiveStatus = preferences !== null && (!preferences.ready || !preferences.preferences.ageConfirmed || authorizedOwner !== preferences.owner)
+    ? "public" : state.status;
+  const adultDeclaration = {
+    status: effectiveStatus, confirmAdult,
+    ...(preferences === null ? {} : { deleteAllData: () => deleteRuntimeData(state.runtime) }),
+  } satisfies AdultDeclarationContextValue;
+  if (preferences !== null) {
     return (
+      <AccountJournalDeletionContext.Provider value={accountJournalDeletion}>
+        <ThemeProvider repository={effectiveStatus === "authorized" ? state.runtime.appearancePreferences : publicAppearancePreferences}>
+          <AdultDeclarationContext.Provider value={adultDeclaration}>
+            <PreparedJourneyProvider service={state.runtime.service} active={effectiveStatus === "authorized"} owner={preferences.owner}>
+              <RuntimeContextProvider
+                active={effectiveStatus === "authorized"}
+                deleteRuntimeData={() => deleteRuntimeData(state.runtime)}
+                refreshAuthorization={() => setAuthorizationFromMarker(state.runtime)}
+                runtime={state.runtime}
+              >
+                {children}
+              </RuntimeContextProvider>
+            </PreparedJourneyProvider>
+          </AdultDeclarationContext.Provider>
+        </ThemeProvider>
+      </AccountJournalDeletionContext.Provider>
+    );
+  }
+  if (effectiveStatus === "public") {
+    return (
+      <AccountJournalDeletionContext.Provider value={accountJournalDeletion}>
       <PublicBoundary>
         <AdultDeclarationContext.Provider value={adultDeclaration}>
           {children}
         </AdultDeclarationContext.Provider>
       </PublicBoundary>
+      </AccountJournalDeletionContext.Provider>
     );
   }
 
   return (
+    <AccountJournalDeletionContext.Provider value={accountJournalDeletion}>
     <ThemeProvider repository={state.runtime.appearancePreferences}>
       <AdultDeclarationContext.Provider value={adultDeclaration}>
         <JourneyProvider
@@ -378,6 +520,7 @@ export function JourneyRuntimeProvider({
         </JourneyProvider>
       </AdultDeclarationContext.Provider>
     </ThemeProvider>
+    </AccountJournalDeletionContext.Provider>
   );
 }
 

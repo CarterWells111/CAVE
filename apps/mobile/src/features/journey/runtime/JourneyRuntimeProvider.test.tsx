@@ -729,7 +729,7 @@ test("first launch through the underage exit never creates a key, database, migr
 
   fireEvent.press(await screen.findByRole("button", { name: "我未满 18 岁" }));
 
-  expect(mockRouter.replace).toHaveBeenCalledWith("/underage-exit");
+  await waitFor(() => expect(mockRouter.replace).toHaveBeenCalledWith("/underage-exit"));
   expect(harness.adapters.secrets.getDatabaseKey).not.toHaveBeenCalled();
   expect(harness.adapters.secrets.getOrCreateDatabaseKey).not.toHaveBeenCalled();
   expect(harness.adapters.secrets.recordAdultDeclaration).not.toHaveBeenCalled();

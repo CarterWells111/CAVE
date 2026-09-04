@@ -2,6 +2,10 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react-nativ
 
 import { MobileAuthApiError } from "../infrastructure/auth-api-client";
 import { EmailAuthScreen } from "./EmailAuthScreen";
+import { InMemoryAppearancePreferencesRepository } from "../../../core/design/appearance-preferences";
+import { ThemeProvider } from "../../../core/design/theme-provider";
+import { darkTheme, lightTheme } from "../../../core/design/theme";
+import { ScrollView, StyleSheet } from "react-native";
 
 const challenge = {
   contractVersion: "1" as const,
@@ -12,6 +16,23 @@ const challenge = {
 };
 
 afterEach(() => { jest.restoreAllMocks(); });
+
+test.each(["dark", "light"] as const)("paints the whole login page and inputs using the %s theme", async (mode) => {
+  const repository = new InMemoryAppearancePreferencesRepository();
+  await repository.save(mode);
+  const theme = mode === "dark" ? darkTheme : lightTheme;
+  render(<ThemeProvider repository={repository}><EmailAuthScreen
+    adultAuthorized onBack={jest.fn()} onDeleteAccount={jest.fn()} onLogout={jest.fn()}
+    onRequestEmail={jest.fn(async () => challenge)} onVerifyCode={jest.fn()} status="signedOut"
+  /></ThemeProvider>);
+  await screen.findByLabelText("邮箱地址");
+  expect(StyleSheet.flatten(screen.UNSAFE_getByType(ScrollView).props.style)).toEqual(expect.objectContaining({ backgroundColor: theme.color.background, flex: 1 }));
+  expect(screen.getByLabelText("邮箱地址")).toHaveStyle({ backgroundColor: theme.color.surface, color: theme.color.text });
+  expect(screen.getByLabelText("邮箱地址")).toHaveProp("keyboardAppearance", mode);
+  fireEvent.changeText(screen.getByLabelText("邮箱地址"), "person@example.com");
+  fireEvent.press(screen.getByRole("button", { name: "发送验证码" }));
+  expect(await screen.findByLabelText("6 位验证码")).toHaveProp("keyboardAppearance", mode);
+});
 
 test("explains the local-only boundary and completes an email code flow", async () => {
   const requestEmail = jest.fn(async () => challenge);
@@ -25,7 +46,7 @@ test("explains the local-only boundary and completes an email code flow", async 
     onVerifyCode={verifyCode}
     status="signedOut"
   />);
-  expect(screen.getByText(/不会上传日记、沟通卡、回顾或亲密内容/u)).toBeTruthy();
+  expect(screen.getByText(/日记、沟通卡、回顾或亲密内容仍只在本机/u)).toBeTruthy();
   fireEvent.changeText(screen.getByLabelText("邮箱地址"), " Person@Example.com ");
   fireEvent.press(screen.getByRole("button", { name: "发送验证码" }));
   await screen.findByLabelText("6 位验证码");
@@ -138,7 +159,7 @@ function deferredChallenge() {
   return { promise, resolve };
 }
 
-test("does not initiate authentication before adulthood is locally declared", () => {
+test("allows email sign-in before adulthood is declared", () => {
   const onAdultGate = jest.fn();
   render(<EmailAuthScreen
     adultAuthorized={false}
@@ -150,9 +171,8 @@ test("does not initiate authentication before adulthood is locally declared", ()
     onVerifyCode={jest.fn()}
     status="signedOut"
   />);
-  fireEvent.press(screen.getByRole("button", { name: "先完成成年确认" }));
-  expect(onAdultGate).toHaveBeenCalledTimes(1);
-  expect(screen.queryByLabelText("邮箱地址")).toBeNull();
+  expect(screen.queryByRole("button", { name: "先完成成年确认" })).toBeNull();
+  expect(screen.getByLabelText("邮箱地址")).toBeTruthy();
 });
 
 test("offers device logout and separate cloud-account deletion when signed in", () => {

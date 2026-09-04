@@ -1,5 +1,7 @@
 import { useRouter } from "expo-router";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useOptionalAccountPreferences } from "../../src/features/account/runtime/AccountPreferencesProvider";
+import { useOptionalAuth } from "../../src/features/auth/runtime/AuthProvider";
 
 import { useJourneyRuntime } from "../../src/features/journey/runtime/JourneyRuntimeProvider";
 import { JourneyGuidedScrollScreen } from "../../src/features/journey/ui/guided-scroll-screen";
@@ -9,10 +11,13 @@ import { PrefaceWelcomeSheet } from "../../src/features/journey/ui/pages/preface
 export default function PrefaceRoute() {
   const router = useRouter();
   const runtime = useJourneyRuntime();
+  const preferences = useOptionalAccountPreferences();
+  const auth = useOptionalAuth();
   const eligible = runtime.snapshot?.ageConfirmed === true;
   const preference = runtime.snapshot?.addressPreference ?? null;
+  const [choosing, setChoosing] = useState(preference === null);
   const prefaceRead = runtime.snapshot?.prefaceRead === true;
-  const completed = eligible && preference !== null && prefaceRead;
+  const completed = eligible && preference !== null && prefaceRead && !choosing;
   const replacedDestination = useRef<
     "/journey/welcome" | "/journey/body-knowledge" | null
   >(null);
@@ -36,8 +41,11 @@ export default function PrefaceRoute() {
   if (!eligible || completed) return null;
   return (
     <JourneyGuidedScrollScreen resetKey="preface">
-      {preference === null ? (
+      {choosing || preference === null ? (
         <PrefacePage
+          initialPreference={preferences?.preferences.addressPreference ?? preference}
+          onChoose={preferences === null ? undefined : (addressPreference) => preferences.change({ addressPreference })}
+          onSignIn={auth?.status === "signedOut" ? () => router.push({ pathname: "/auth/email", params: { returnTo: "/journey/preface" } }) : undefined}
           onContinue={(selectedPreference) => runtime.runAndRefresh(async () => {
             if (prefaceRead) {
               await runtime.service.dispatch({ type: "set-preface-read", read: false });
@@ -46,6 +54,7 @@ export default function PrefaceRoute() {
               type: "set-address-preference",
               preference: selectedPreference,
             });
+            setChoosing(false);
           })}
         />
       ) : (

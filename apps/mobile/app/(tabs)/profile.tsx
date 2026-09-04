@@ -37,7 +37,7 @@ function PublicProfileRoute({ account }: { account: ReturnType<typeof useAccount
   return (
     <Screen>
       <ProfileScreen
-        account={profileScreenAccount(account, () => router.push("/auth/email"))}
+        account={profileScreenAccount(account, () => router.push({ pathname: "/auth/email", params: { returnTo: "/(tabs)/profile" } }))}
         cards={[]}
         cardsLoadState="ready"
         onOpenSettings={() => router.push("/settings")}
@@ -110,7 +110,7 @@ function AuthorizedProfileRoute({
   return (
     <Screen>
       <ProfileScreen
-        account={profileScreenAccount(account, () => router.push("/auth/email"))}
+        account={profileScreenAccount(account, () => router.push({ pathname: "/auth/email", params: { returnTo: "/(tabs)/profile" } }))}
         cards={cardItems}
         cardsLoadState={cardsLoadState}
         onOpenCard={(id) => router.push(`/cards/${id}`)}

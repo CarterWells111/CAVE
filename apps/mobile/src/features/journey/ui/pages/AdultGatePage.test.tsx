@@ -18,9 +18,19 @@ test("states the local adult self-declaration boundary without collecting identi
   expect(screen.getByRole("header", { name: "仅限已满 18 岁者" })).toBeTruthy();
   expect(screen.getByText(/本机作出自我声明/u)).toBeTruthy();
   expect(screen.getByText(/不是身份或年龄核验/u)).toBeTruthy();
-  expect(screen.getByText(/不收集你的生日、证件或邮箱/u)).toBeTruthy();
-  expect(screen.getByText(/数据本机优先/u)).toBeTruthy();
+  expect(screen.getByText(/不收集你的生日或证件/u)).toBeTruthy();
+  expect(screen.getByText(/先保存在本机/u)).toBeTruthy();
   expect(screen.queryByRole("checkbox")).toBeNull();
+});
+
+test("offers an underlined login link without confirming adulthood", () => {
+  const onSignIn = jest.fn();
+  const onConfirmAdult = jest.fn();
+  render(<AdultGatePage onConfirmAdult={onConfirmAdult} onUnderage={jest.fn()} onSignIn={onSignIn} />);
+  expect(screen.getByText("登录后保存现有选择")).toHaveStyle({ textDecorationLine: "underline" });
+  fireEvent.press(screen.getByRole("link", { name: "登录后保存现有选择" }));
+  expect(onSignIn).toHaveBeenCalledTimes(1);
+  expect(onConfirmAdult).not.toHaveBeenCalled();
 });
 
 test("offers direct adult and underage actions without a declaration checkbox", async () => {

@@ -9,6 +9,7 @@ import {
 } from "react";
 
 import { useAuth } from "../../auth/runtime/AuthProvider";
+import { useOptionalAccountJournalDeletion } from "../../account/runtime/account-journal-deletion-context";
 import type { JournalPersistence } from "../../journey/runtime/journey-runtime";
 import { useOptionalJourneyRuntime } from "../../journey/runtime/JourneyRuntimeProvider";
 import type { JournalService } from "../application/journal-service";
@@ -35,6 +36,7 @@ const JournalAccessContext = createContext<JournalAccessContextValue | null>(nul
 export function JournalAccessProvider({ children }: PropsWithChildren) {
   const auth = useAuth();
   const runtime = useOptionalJourneyRuntime();
+  const accountDeletion = useOptionalAccountJournalDeletion();
   const [attempt, setAttempt] = useState(0);
   const [serviceState, setServiceState] = useState<ServiceState | null>(null);
   const accountId = auth.accountId;
@@ -74,6 +76,13 @@ export function JournalAccessProvider({ children }: PropsWithChildren) {
       };
     }
     if (accountId === undefined || runtime === null) {
+      if (accountId !== undefined && accountDeletion?.accountId === accountId) {
+        return {
+          status: "locked", accountId, journalPersistence: accountDeletion.journalPersistence, retry,
+          ensureDeletionCleanup: accountDeletion.ensureDeletionCleanup,
+          clearCurrentAccount: accountDeletion.clearCurrentAccount,
+        };
+      }
       return {
         status: "error",
         journalPersistence,
@@ -111,7 +120,7 @@ export function JournalAccessProvider({ children }: PropsWithChildren) {
       ensureDeletionCleanup: () => serviceState.service.ensureDeletionCleanup(),
       clearCurrentAccount: () => serviceState.service.clearCurrentAccount(),
     };
-  }, [accountId, auth.status, retry, runtime, serviceState]);
+  }, [accountDeletion, accountId, auth.status, retry, runtime, serviceState]);
 
   return <JournalAccessContext.Provider value={value}>{children}</JournalAccessContext.Provider>;
 }

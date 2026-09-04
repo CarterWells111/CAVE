@@ -1,4 +1,6 @@
 import {
+  AccountPreferencesResponseSchema,
+  type UpdateAccountPreferencesRequest,
   AccountDeletionGrantResponseSchema,
   AuthSessionResponseSchema,
   EmailChallengeAcceptedSchema,
@@ -36,19 +38,20 @@ export function createAuthApiClient({ baseUrl, fetch = globalThis.fetch }: Clien
     body: unknown,
     schema: z.ZodType<T> | null,
     accessToken?: string,
+    method: "GET" | "POST" | "PATCH" = "POST",
   ): Promise<T> {
     let response: Response;
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 10_000);
     try {
       response = await fetch(`${origin}${path}`, {
-        method: "POST",
+        method,
         cache: "no-store",
         headers: {
           "Content-Type": "application/json",
           ...(accessToken === undefined ? {} : { Authorization: `Bearer ${accessToken}` }),
         },
-        body: JSON.stringify(body),
+        ...(method === "GET" ? {} : { body: JSON.stringify(body) }),
         signal: controller.signal,
       });
     } catch {
@@ -75,6 +78,12 @@ export function createAuthApiClient({ baseUrl, fetch = globalThis.fetch }: Clien
   }
 
   return {
+    getAccountPreferences: (accessToken: string, requestId: string) => post(
+      `/v1/account/preferences?requestId=${encodeURIComponent(requestId)}`, undefined, AccountPreferencesResponseSchema, accessToken, "GET",
+    ),
+    updateAccountPreferences: (accessToken: string, input: UpdateAccountPreferencesRequest) => post(
+      "/v1/account/preferences", input, AccountPreferencesResponseSchema, accessToken, "PATCH",
+    ),
     requestEmailChallenge: (input: EmailChallengeRequest): Promise<EmailChallengeAccepted> => (
       post("/v1/auth/email/challenges", input, EmailChallengeAcceptedSchema)
     ),

@@ -46,6 +46,34 @@ type PendingRecoveryAction = "retry" | "reset";
 
 const JourneyContext = createContext<JourneyContextValue | null>(null);
 
+/** The account runtime has already initialized the service before granting access.
+ * Keep navigation mounted while its public/authorized context changes. */
+export function PreparedJourneyProvider({ service, active, owner, children }: PropsWithChildren<{
+  service: InitializableJourneyService;
+  active: boolean;
+  owner: string | null;
+}>) {
+  const [, setVersion] = useState(0);
+  const generation = useMemo(() => ({}), [active, owner, service]);
+  const current = useRef<object | null>(generation);
+  current.current = generation;
+  useLayoutEffect(() => {
+    current.current = generation;
+    return () => { if (current.current === generation) current.current = null; };
+  }, [generation]);
+  const refresh = useCallback(() => {
+    if (active && current.current === generation) setVersion((value) => value + 1);
+  }, [active, generation]);
+  const runAndRefresh = useCallback(async <T,>(action: () => Promise<T>) => {
+    if (!active || current.current !== generation) throw new Error("journey-runtime-unavailable");
+    try { return await action(); }
+    finally { refresh(); }
+  }, [active, generation, refresh]);
+  const snapshot = active ? service.getSnapshot() : null;
+  const context = useMemo(() => ({ service, snapshot, refresh, runAndRefresh }), [service, snapshot, refresh, runAndRefresh]);
+  return <JourneyContext.Provider value={context}>{children}</JourneyContext.Provider>;
+}
+
 export function JourneyProvider({
   service,
   children,

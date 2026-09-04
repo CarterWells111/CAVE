@@ -37,6 +37,7 @@ const MESSAGE_KEYS: Record<ApiErrorCode, string> = {
   AUTH_REAUTH_REQUIRED: "auth.reauth_required",
   AUTH_DELIVERY_UNAVAILABLE: "auth.delivery_unavailable",
   AUTH_CHALLENGE_INVALID: "auth.challenge_invalid",
+  ACCOUNT_PREFERENCES_CONFLICT: "gateway.account_preferences_conflict",
   INTERNAL_ERROR: "gateway.internal_error"
 };
 

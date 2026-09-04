@@ -243,7 +243,7 @@ test("a refresh-401 clear cannot sign out or delete a concurrently verified logi
   });
 });
 
-test("blocks starting email authentication before the local adult declaration", async () => {
+test("allows starting email authentication before the local adult declaration", async () => {
   const deps = dependencies({ sessionStore: { load: jest.fn(async () => null), save: jest.fn(), clear: jest.fn() } });
   let result: ReturnType<typeof useAuth> | undefined;
   function Capture() { result = useAuth(); return <Text>{result.status}</Text>; }
@@ -251,9 +251,9 @@ test("blocks starting email authentication before the local adult declaration", 
   await screen.findByText("signedOut");
   await act(async () => {
     await expect(result!.requestEmailChallenge("person@example.com"))
-      .rejects.toMatchObject({ code: "ADULT_DECLARATION_REQUIRED" });
+      .resolves.toBeUndefined();
   });
-  expect(deps.api.requestEmailChallenge).not.toHaveBeenCalled();
+  expect(deps.api.requestEmailChallenge).toHaveBeenCalledTimes(1);
 });
 
 test("logout clears the device even when the network request fails", async () => {
