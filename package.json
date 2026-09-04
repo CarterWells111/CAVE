@@ -20,7 +20,7 @@
     "validate:content": "pnpm --filter @cave/content validate:content",
     "validate:content:internal": "pnpm --filter @cave/content validate:content:internal",
     "validate:content:draft": "pnpm --filter @cave/content validate:content:draft",
-    "security:audit": "pnpm audit --prod --audit-level high",
+    "security:audit": "node scripts/security-audit.mjs",
     "security:scan-bundle": "node scripts/scan-bundle-secrets.mjs",
     "verify:mobile-policy": "node scripts/verify-mobile-source-policy.mjs",
     "build:gateway": "pnpm --filter @cave/gateway build",

@@ -45,7 +45,13 @@ corepack pnpm security:scan-bundle
 corepack pnpm security:audit
 ```
 
-该命令访问包注册表并根据仓库中记录的审计策略检查生产依赖。网络不可用时应记录为未执行，不得把网络失败解释为无漏洞。
+该命令通过 `scripts/security-audit.mjs` 调用 `tools/security-audit` 中单独锁定的 pnpm 11.25.0，只执行 `audit --prod --audit-level high`。默认连接官方 npm bulk advisory 接口，传输锁文件中的第三方包名和版本；不传输源码、私密正文或密钥。网络不可用、服务响应无效或锁文件缺失时返回非零，不得把审计未完成解释为无漏洞。
+
+安装和其他生命周期命令仍使用根目录锁定的 pnpm 10.34.5 / `.nvmrc` 中的 Node 22.23.2；不要为审计运行 pnpm 11 install 或全局替换 pnpm。独立工具 workspace 避免其可执行文件覆盖根目录 pnpm。审计启动器的 `--pm-on-fail=ignore` **仅禁止自动切换回根目录的 pnpm 10**，不是忽略漏洞；`high` 阈值和 `pnpm-workspace.yaml` 中原有的两个 GHSA 豁免保持不变。首次检出先执行 `pnpm install --frozen-lockfile`，不要使用仅生产依赖安装来运行开发门禁。
+
+原因见 [pnpm 11 官方发布说明](https://github.com/pnpm/pnpm.io/blob/main/blog/releases/11.0.md)：旧 `audits/quick` 接口已退役，应使用 `advisories/bulk`，不能无限重试旧接口。`tests/security-audit.test.ts` 使用真实审计 CLI 和本机 HTTP 服务，验证 v9 锁文件的直接、传递、可选及 workspace 生产依赖覆盖、开发依赖排除、阈值、精确豁免、错误/超时阻断和文件不被重写。本机合成服务测试不替代对官方 npm 服务执行的真实审计。
+
+审计工具还应用 `patches/pnpm@11.25.0.patch`：上游会跳过非法公告 ID、未知严重度或无效版本范围，可能将坏报告误报为干净结果；此补丁在响应校验处拒绝这些字段，沿用上游的非零错误出口。它不改变合法漏洞匹配、严重度阈值或任何豁免。升级审计工具时必须先复验补丁及上述真实 CLI 测试，不能静默移除校验。
 
 ## 建议的完整本地检查
 

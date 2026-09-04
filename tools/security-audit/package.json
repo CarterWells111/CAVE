@@ -1,0 +1,8 @@
+{
+  "name": "@cave/security-audit-tool",
+  "version": "0.0.0",
+  "private": true,
+  "devDependencies": {
+    "pnpm": "11.25.0"
+  }
+}

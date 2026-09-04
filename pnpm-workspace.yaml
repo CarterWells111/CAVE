@@ -1,6 +1,7 @@
 packages:
   - "apps/*"
   - "packages/*"
+  - "tools/security-audit"
 
 overrides:
   fastq: "1.20.1"
@@ -13,6 +14,7 @@ allowBuilds:
 
 patchedDependencies:
   image-size@1.2.1: "patches/image-size@1.2.1.patch"
+  pnpm@11.25.0: "patches/pnpm@11.25.0.patch"
 
 auditConfig:
   ignoreGhsas:

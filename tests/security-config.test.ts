@@ -21,7 +21,7 @@ describe("repository security configuration", () => {
       "pnpm --filter @cave/gateway test:safety"
     );
     expect(packageJson.scripts["security:audit"]).toBe(
-      "pnpm audit --prod --audit-level high"
+      "node scripts/security-audit.mjs"
     );
     expect(packageJson.scripts["security:scan-bundle"]).toBe(
       "node scripts/scan-bundle-secrets.mjs"
