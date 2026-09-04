@@ -4,22 +4,29 @@ tags:
   - release-static-spec
 ---
 - runFlow: core-flow.yaml
-- tapOn: "回顾"
+- tapOn: "我的"
 - assertVisible: "首页"
-- assertVisible: "回顾"
+- assertVisible: "内界手记"
 - assertVisible: "练习"
 - assertVisible: "我的"
+- scrollUntilVisible:
+    element:
+      id: "profile-review-open"
+    direction: DOWN
 - tapOn:
-    text: "打开回顾：.*"
+    id: "profile-review-open"
     index: 0
-- assertVisible: "从这条回顾开始新分支"
+- scrollUntilVisible:
+    element:
+      text: "从这条回顾开始新分支"
+    direction: DOWN
 - tapOn: "从这条回顾开始新分支"
 
 - assertVisible: "5 / 5"
-- tapOn: "返回上一页"
+- tapOn: "返回上一步"
 - assertVisible: "4 / 5"
 - assertVisible: "你随时可以改变主意"
-- tapOn: "返回上一页"
+- tapOn: "返回上一步"
 - assertVisible: "3 / 5"
 - scrollUntilVisible:
     element:
@@ -44,13 +51,25 @@ tags:
 - extendedWaitUntil:
     visible: "首页"
     timeout: 20000
-- tapOn: "回顾"
+- tapOn: "我的"
+- scrollUntilVisible:
+    element:
+      id: "profile-review-open"
+    direction: DOWN
 - tapOn:
-    text: "打开.*"
+    id: "profile-review-open"
     index: 0
+- scrollUntilVisible:
+    element:
+      text: "删除这条回顾"
+    direction: DOWN
 - tapOn: "删除这条回顾"
 - assertVisible: "请再次确认：这条回顾会从本机删除，并且无法恢复。"
 - tapOn: "确认删除这条回顾"
 - assertVisible: "这条回顾已删除。"
-- tapOn: "返回回顾历史"
-- assertVisible: "历史回顾"
+- tapOn: "返回我的回顾"
+- scrollUntilVisible:
+    element:
+      text: "我的回顾"
+    direction: DOWN
+- assertVisible: "我的回顾"

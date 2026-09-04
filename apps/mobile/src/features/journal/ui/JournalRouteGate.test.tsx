@@ -19,7 +19,7 @@ let mockAccess: {
 jest.mock("expo-router", () => ({
   useLocalSearchParams: () => mockParams,
   usePathname: () => "/journal/new",
-  useRouter: () => ({ back: mockBack, push: mockPush }),
+  useRouter: () => ({ back: mockBack, push: mockPush, canGoBack: () => true }),
 }));
 
 jest.mock("../runtime/JournalAccessProvider", () => ({

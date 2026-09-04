@@ -27,6 +27,16 @@ export type {
 export { ApiErrorCodeSchema, ApiErrorResponseSchema } from "./errors";
 export type { ApiErrorCode, ApiErrorResponse } from "./errors";
 export {
+  AccountPreferencesSchema,
+  AccountPreferencesResponseSchema,
+  UpdateAccountPreferencesRequestSchema,
+} from "./account-preferences";
+export type {
+  AccountPreferences,
+  AccountPreferencesResponse,
+  UpdateAccountPreferencesRequest,
+} from "./account-preferences";
+export {
   AccountDeletionChallengeRequestSchema,
   AccountDeletionGrantResponseSchema,
   AccountDeletionRequestSchema,

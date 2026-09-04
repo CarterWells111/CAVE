@@ -10,6 +10,7 @@ const mockReplace = jest.fn();
 const mockRequest = jest.fn(async () => ({ challengeId: "challenge-1", expiresInSeconds: 600, resendAfterSeconds: 60 }));
 const mockVerify = jest.fn(async () => undefined);
 let mockReturnTo: string | undefined = "/journal/new";
+let mockAuthStatus: "signedOut" | "signedIn" = "signedOut";
 
 jest.mock("expo-router", () => ({
   useLocalSearchParams: () => ({ returnTo: mockReturnTo }),
@@ -18,7 +19,7 @@ jest.mock("expo-router", () => ({
 
 jest.mock("./runtime/AuthProvider", () => ({
   useAuth: () => ({
-    status: "signedOut",
+    status: mockAuthStatus,
     requestEmailChallenge: mockRequest,
     verifyEmailChallenge: mockVerify,
     logout: jest.fn(),
@@ -33,6 +34,7 @@ jest.mock("../journey/runtime/JourneyRuntimeProvider", () => ({
 beforeEach(() => {
   jest.clearAllMocks();
   mockReturnTo = "/journal/new";
+  mockAuthStatus = "signedOut";
 });
 
 async function completeLogin() {
@@ -53,14 +55,37 @@ test("returns to the intended protected journal route after login", async () => 
 
   await completeLogin();
 
-  expect(mockReplace).toHaveBeenCalledWith("/journal/new");
+  expect(mockReplace).toHaveBeenCalledWith({ pathname: "/journal/new" });
 });
 
-test("does not honor a non-journal return path", async () => {
+test("falls back to My page instead of honoring an unsupported return path", async () => {
   mockReturnTo = "/settings";
   render(<ThemeProvider repository={new InMemoryAppearancePreferencesRepository()}><EmailAuthRoute /></ThemeProvider>);
 
   await completeLogin();
 
+  expect(mockReplace).toHaveBeenCalledWith("/(tabs)/profile");
+});
+
+test("returns to My page after an ordinary login without a return path", async () => {
+  mockReturnTo = undefined;
+  render(<ThemeProvider repository={new InMemoryAppearancePreferencesRepository()}><EmailAuthRoute /></ThemeProvider>);
+  await completeLogin();
+  expect(mockReplace).toHaveBeenCalledWith("/(tabs)/profile");
+});
+
+test("honors an explicit My return path even when login remounts the route", async () => {
+  mockReturnTo = "/(tabs)/profile";
+  mockAuthStatus = "signedIn";
+  render(<ThemeProvider repository={new InMemoryAppearancePreferencesRepository()}><EmailAuthRoute /></ThemeProvider>);
+  await waitFor(() => expect(mockReplace).toHaveBeenCalledWith("/(tabs)/profile"));
+  expect(mockVerify).not.toHaveBeenCalled();
+});
+
+test("an already signed-in user can still open account management without being redirected", async () => {
+  mockReturnTo = undefined;
+  mockAuthStatus = "signedIn";
+  render(<ThemeProvider repository={new InMemoryAppearancePreferencesRepository()}><EmailAuthRoute /></ThemeProvider>);
+  await screen.findByRole("button", { name: "从这台设备退出登录" });
   expect(mockReplace).not.toHaveBeenCalled();
 });

@@ -25,6 +25,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     owner: "carter_wells",
     slug: "cave",
     version: "0.1.0",
+    runtimeVersion: "0.1.0-p0-schema12",
     scheme: "cave",
     orientation: "portrait",
     userInterfaceStyle: "automatic",
@@ -68,6 +69,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       typedRoutes: true
     },
     ios: {
+      ...(environment === "preview" ? { buildNumber: "3" } : environment === "acceptance" ? { buildNumber: "4" } : {}),
       icon: "./assets/app-icon.png",
       bundleIdentifier: "com.neijie.cave",
       supportsTablet: false,
@@ -80,6 +82,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
         projectId: "1ddc0761-af43-491c-b969-ec2f6c415013"
       },
       build: process.env.EAS_BUILD_ID ?? "local",
+      acceptanceTools: environment === "acceptance" && process.env.CAVE_ACCEPTANCE_TOOLS === "1",
       environment
     }
   };

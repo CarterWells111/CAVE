@@ -1,0 +1,15 @@
+appId: com.neijie.cave
+name: Synthetic journal persistence after process restart
+tags:
+  - pending-device
+# Precondition: signed-in test account; create a synthetic record through UI,
+# then supply its ID with maestro test -e RECORD_ID=... (never production data).
+---
+- openLink: "cave:///journal/${RECORD_ID}"
+- assertVisible: "后来"
+- stopApp
+- launchApp
+- openLink: "cave:///journal/${RECORD_ID}"
+- extendedWaitUntil:
+    visible: "后来"
+    timeout: 20000

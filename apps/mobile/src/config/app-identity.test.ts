@@ -19,6 +19,25 @@ afterEach(() => {
 });
 
 describe("Expo app identity", () => {
+  test("internal packages have distinct reproducible build numbers", () => {
+    expect(configFor("preview").ios?.buildNumber).toBe("3");
+    expect(configFor("acceptance").ios?.buildNumber).toBe("4");
+  });
+
+  test("only explicit acceptance profile plus switch enables native fault tools", () => {
+    const previous = process.env.CAVE_ACCEPTANCE_TOOLS;
+    try {
+      process.env.CAVE_ACCEPTANCE_TOOLS = "1";
+      expect(configFor("production").extra?.acceptanceTools).toBe(false);
+      expect(configFor("preview").extra?.acceptanceTools).toBe(false);
+      expect(configFor("acceptance").extra?.acceptanceTools).toBe(true);
+      delete process.env.CAVE_ACCEPTANCE_TOOLS;
+      expect(configFor("acceptance").extra?.acceptanceTools).toBe(false);
+    } finally {
+      if (previous === undefined) delete process.env.CAVE_ACCEPTANCE_TOOLS;
+      else process.env.CAVE_ACCEPTANCE_TOOLS = previous;
+    }
+  });
   test.each(["development", "preview", "production"])(
     "uses the shared branded splash screen for the %s profile",
     (profile) => {

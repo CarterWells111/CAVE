@@ -156,8 +156,8 @@ test("adult declaration creates the local journey and opens the preface", async 
   const journeyRuntime = runtime(false);
   const view = await openRoute(<AdultGateReadinessProbe />, journeyRuntime);
 
-  expect(screen.queryByText(/验证码|登录/u)).toBeNull();
-  expect(screen.getByText(/不收集.*邮箱/u)).toBeTruthy();
+  expect(screen.getByText(/登录后保存到账号/u)).toBeTruthy();
+  expect(screen.getByText(/不收集你的生日或证件/u)).toBeTruthy();
   fireEvent.press(screen.getByRole("button", { name: "我已年满 18 岁，继续" }));
 
   await waitFor(() => expect(journeyRuntime.service.getSnapshot()).toMatchObject({
@@ -284,7 +284,7 @@ test("underage action opens the blocking route without writing a declaration", a
 
   fireEvent.press(screen.getByRole("button", { name: "我未满 18 岁" }));
 
-  expect(mockRouter.replace).toHaveBeenCalledWith("/underage-exit");
+  await waitFor(() => expect(mockRouter.replace).toHaveBeenCalledWith("/underage-exit"));
   expect(journeyRuntime.service.getSnapshot()).toBeNull();
   view.unmount();
 });

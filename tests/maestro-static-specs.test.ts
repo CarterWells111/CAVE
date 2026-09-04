@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { createRequire } from "node:module";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -17,11 +17,7 @@ const { parseAllDocuments } = viteRequire("yaml") as Readonly<{
 
 const root = resolve(import.meta.dirname, "..");
 const read = (path: string) => readFileSync(resolve(root, path), "utf8");
-const maestroFlows = [
-  ".maestro/core-flow.yaml",
-  ".maestro/back-edit.yaml",
-  ".maestro/offline-delete.yaml"
-];
+const maestroFlows = readdirSync(resolve(root, ".maestro")).filter((name) => name.endsWith(".yaml")).map((name) => `.maestro/${name}`);
 
 function parseMaestroDocuments(source: string) {
   const documents = parseAllDocuments(source);
@@ -31,6 +27,14 @@ function parseMaestroDocuments(source: string) {
 }
 
 describe("Maestro release selectors", () => {
+  it("uses current onboarding, return actions, and an existing deep-link route", () => {
+    const flow = read(".maestro/core-flow.yaml");
+    for (const stale of ["我已满 18 岁，开始探索", "先跳过", "继续看看我的在意", "记录这个感受，继续", "这次没有"]) expect(flow).not.toContain(stale);
+    for (const current of ["我已年满 18 岁，继续", "我已了解，开始旅程", "进入行为地图", "返回练习入口"]) expect(flow).toContain(current);
+    expect(read(".maestro/back-edit.yaml")).not.toContain("返回上一页");
+    expect(read(".maestro/deep-links.yaml")).toContain("cave:///journey/body-knowledge");
+    expect(read("apps/mobile/app/journey/body-knowledge.tsx")).toContain("JourneyRouteScreen");
+  });
   it("parses every static flow as two valid YAML documents", () => {
     for (const path of maestroFlows) {
       const documents = parseMaestroDocuments(read(path));
@@ -42,14 +46,14 @@ describe("Maestro release selectors", () => {
 
   it("locks the history action to its current accessible label", () => {
     const flow = read(".maestro/back-edit.yaml");
-    const screen = read("apps/mobile/src/features/reviews/ui/ReviewHistoryScreen.tsx");
+    const screen = read("apps/mobile/src/features/shell/ui/ProfileScreen.tsx");
 
-    expect(screen).toContain("`打开回顾：${review.title}`");
-    expect(flow).toContain('text: "打开回顾：.*"');
-    expect(flow).not.toContain('text: "打开回顾 .*"');
+    expect(screen).toContain('testID="profile-review-open"');
+    expect(flow).toContain('id: "profile-review-open"');
+    expect(flow).not.toContain('tapOn: "回顾"');
   });
 
-  it("locks the five-page completion flow and practice handoff to the three-tab main shell", () => {
+  it("locks the five-page completion flow and practice handoff to the four-tab main shell", () => {
     const flow = read(".maestro/core-flow.yaml");
     const nav = read("apps/mobile/src/features/shell/ui/LongTermTabBar.tsx");
     const destinations = read("apps/mobile/src/features/shell/ui/long-term-navigation.ts");
@@ -74,7 +78,7 @@ describe("Maestro release selectors", () => {
       expect(flow).toContain(`assertVisible: "${title}"`);
     }
     expect(shell).not.toContain('"预设沟通练习"');
-    expect(flow).toContain('assertVisible: "预设沟通练习"');
+    expect(flow).toContain('assertVisible: "预设对话，不使用 AI"');
   });
 
   it("keeps delete-all as a local-state spec and delegates offline setup to external 07B", () => {

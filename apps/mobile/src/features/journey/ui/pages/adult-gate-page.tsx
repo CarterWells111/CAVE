@@ -4,13 +4,15 @@ import { Text, View } from "react-native";
 import { useTheme } from "../../../../core/design/theme-provider";
 import { Card } from "../../../../core/ui/Card";
 import { JourneyAction } from "../components/JourneyAction";
+import { LoginSaveHint, PreferenceSyncNotice } from "../../../account/ui/PreferenceSyncNotice";
 
 type AdultGatePageProps = {
   onConfirmAdult(): void | Promise<void>;
   onUnderage(): void | Promise<void>;
+  onSignIn?: (() => void) | undefined;
 };
 
-export function AdultGatePage({ onConfirmAdult, onUnderage }: AdultGatePageProps) {
+export function AdultGatePage({ onConfirmAdult, onUnderage, onSignIn }: AdultGatePageProps) {
   const theme = useTheme();
   const mountedRef = useRef(true);
   const decisionInFlightRef = useRef(false);
@@ -46,7 +48,7 @@ export function AdultGatePage({ onConfirmAdult, onUnderage }: AdultGatePageProps
           继续即表示你在本机作出自我声明：你已年满 18 岁。这不是身份或年龄核验。
         </Text>
         <Text selectable style={{ ...theme.typography.body, color: theme.color.text }}>
-          我们不收集你的生日、证件或邮箱。你的数据本机优先保存。
+          成年确认不收集你的生日或证件。选择会先保存在本机，登录后保存到账号，可在我的设置中调整。
         </Text>
       </Card>
       <JourneyAction
@@ -63,6 +65,8 @@ export function AdultGatePage({ onConfirmAdult, onUnderage }: AdultGatePageProps
         loadingLabel="正在继续…"
         onAction={() => runDecision("underage", onUnderage)}
       />
+      <LoginSaveHint disabled={pendingDecision !== null} onPress={onSignIn} />
+      <PreferenceSyncNotice />
     </View>
   );
 }

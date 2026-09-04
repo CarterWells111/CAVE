@@ -4,6 +4,7 @@ import { useTheme } from "../../../../core/design/theme-provider";
 import { BottomSheet } from "../../../../core/ui/bottom-sheet";
 import type { AddressPreference } from "../../domain/types";
 import { JourneyAction } from "../components/JourneyAction";
+import { PreferenceSyncNotice } from "../../../account/ui/PreferenceSyncNotice";
 
 type PrefaceWelcomeSheetProps = {
   onConfirm(): void | Promise<void>;
@@ -44,6 +45,7 @@ export function PrefaceWelcomeSheet({
         loadingLabel="正在进入旅程…"
         onAction={onConfirm}
       />
+      <PreferenceSyncNotice />
     </BottomSheet>
   );
 }

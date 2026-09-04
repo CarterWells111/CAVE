@@ -7,7 +7,7 @@
 ## 目录
 
 - `development-history/`：历史实现计划、设计规格和协作记录。
-- `product-history/`：已被现行六页旅程取代的旧产品与界面方案。
+- `product-history/`：已被现行五页旅程与独立练习入口取代的旧产品与界面方案。
 - `quality-history/`：绑定旧分支、旧提交或阶段性环境的验证记录。
 - `demo-day/`：展示准备、话术和差距分析。
 - `content-history/`：内容运营与内部复核准备材料。

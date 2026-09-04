@@ -62,6 +62,7 @@ export function EmailAuthScreen(props: Props) {
 
   return (
     <ScrollView
+      style={{ backgroundColor: theme.color.background, flex: 1 }}
       contentContainerStyle={{ alignSelf: "center", gap: theme.space.xl, maxWidth: theme.size.readableContentMax, padding: theme.space.lg, width: "100%" }}
       contentInsetAdjustmentBehavior="automatic"
       keyboardDismissMode="interactive"
@@ -71,16 +72,11 @@ export function EmailAuthScreen(props: Props) {
       <Text accessibilityRole="header" selectable style={{ ...theme.typography.title, color: theme.color.text }}>邮箱账户</Text>
       <Card accessible={false}>
         <Text selectable style={{ ...theme.typography.body, color: theme.color.textSecondary }}>
-          邮箱仅用于登录和账户安全。登录不会上传日记、沟通卡、回顾或亲密内容；这些内容仍只在本机。
+          邮箱用于登录和账户安全。成年确认与界面称呼会保存到账号；日记、沟通卡、回顾或亲密内容仍只在本机。
         </Text>
       </Card>
 
-      {!props.adultAuthorized ? (
-        <Card accessible={false}>
-          <Text selectable style={{ ...theme.typography.body, color: theme.color.text }}>邮箱登录只向已在本机确认成年的用户开放。</Text>
-          <Button label="先完成成年确认" onPress={() => props.onAdultGate?.()} />
-        </Card>
-      ) : props.status === "signedIn" || props.status === "offline" ? (
+      {props.status === "signedIn" || props.status === "offline" ? (
         <Card accessible={false}>
           <Text accessibilityRole="header" selectable style={{ ...theme.typography.heading, color: theme.color.text }}>
             {props.status === "offline" ? "已登录（当前离线）" : "已登录"}
@@ -98,6 +94,7 @@ export function EmailAuthScreen(props: Props) {
                 autoCapitalize="none"
                 autoComplete="email"
                 inputMode="email"
+                keyboardAppearance={theme.name}
                 onChangeText={setEmail}
                 placeholder="name@example.com"
                 placeholderTextColor={theme.color.textMuted}
@@ -126,6 +123,7 @@ export function EmailAuthScreen(props: Props) {
                 accessibilityLabel="6 位验证码"
                 autoComplete="one-time-code"
                 inputMode="numeric"
+                keyboardAppearance={theme.name}
                 maxLength={6}
                 onChangeText={(value) => setCode(value.replace(/\D/gu, ""))}
                 style={{ ...inputStyle, fontVariant: ["tabular-nums"], letterSpacing: 6 }}

@@ -4,6 +4,8 @@ import { Hono, type MiddlewareHandler } from "hono";
 
 import { parseGatewayEnv, type GatewayEnv } from "./env";
 import { D1AuthRepository } from "./auth/d1-auth-repository";
+import { D1AccountPreferencesRepository } from "./account-preferences/repository";
+import { createAccountPreferencesService, type AccountPreferencesService } from "./account-preferences/service";
 import { createResendAuthEmailSender } from "./auth/resend-email-sender";
 import { AuthServiceError, createAuthService, type AuthService } from "./auth/service";
 import { safeLogEvent } from "./observability/safe-log";
@@ -16,6 +18,7 @@ import { createHealthRoutes } from "./routes/health";
 import { createMetaRoutes } from "./routes/meta";
 import { createPracticeRoutes } from "./routes/practice";
 import { createAuthRoutes } from "./routes/auth";
+import { createAccountPreferencesRoutes } from "./routes/account-preferences";
 import { createOutputGuard } from "./security/output-guard";
 import {
   createRateLimiter,
@@ -101,6 +104,18 @@ function createBoundAuthService(rawEnv: unknown, options: GatewayAppOptions): Au
         : []),
       { version: 1, value: bindings.AUTH_OTP_KEY_V1 },
     ],
+  });
+}
+
+function createBoundAccountPreferencesService(rawEnv: unknown): AccountPreferencesService {
+  const bindings = rawEnv as Partial<WorkerBindings>;
+  if (bindings.AUTH_DB === undefined) {
+    const unavailable = async (): Promise<never> => { throw new AuthServiceError("AUTH_DELIVERY_UNAVAILABLE", 503); };
+    return { get: unavailable, update: unavailable };
+  }
+  return createAccountPreferencesService({
+    authRepository: new D1AuthRepository(bindings.AUTH_DB),
+    repository: new D1AccountPreferencesRepository(bindings.AUTH_DB),
   });
 }
 
@@ -270,6 +285,7 @@ export function createApp(
   app.route("/", createHealthRoutes());
   app.route("/", createMetaRoutes(env));
   app.route("/", createAuthRoutes({ service: authService, logger }));
+  app.route("/", createAccountPreferencesRoutes({ service: createBoundAccountPreferencesService(rawEnv), logger }));
   app.route(
     "/",
     createPracticeRoutes({ turnService, debriefService })

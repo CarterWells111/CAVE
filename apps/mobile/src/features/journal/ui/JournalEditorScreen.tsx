@@ -13,8 +13,8 @@ const topicOptions: Array<{ value: JournalTopic; label: string }> = [
   { value: "intimate-relationship", label: "亲密关系" }, { value: "self-boundaries", label: "自我边界" }, { value: "sexual-health", label: "健康性生活" }
 ];
 
-export function JournalEditorScreen({ service, onSaved, initial }: Readonly<{
-  service: JournalService; onSaved(id: string): void;
+export function JournalEditorScreen({ service, onSaved, initial, onBack }: Readonly<{
+  service: JournalService; onSaved(id: string): void; onBack?(): void;
   initial?: Readonly<{ id?: string; title?: string; occurredAt?: string; highlight?: JournalHighlight; body?: string; topics?: readonly JournalTopic[]; source?: JournalSource; cardSnapshot?: JournalRecord["cardSnapshot"] }>;
 }>) {
   const theme = useTheme();
@@ -24,6 +24,7 @@ export function JournalEditorScreen({ service, onSaved, initial }: Readonly<{
   const [error, setError] = useState<string | null>(null); const [saving, setSaving] = useState(false);
   const field = { backgroundColor: theme.color.surface, borderColor: theme.color.border, borderRadius: theme.radius.md, borderWidth: 1, color: theme.color.text, padding: theme.space.md } as const;
   const save = async () => {
+    if (saving) return;
     setSaving(true); setError(null);
     try {
       const record = initial?.id
@@ -38,6 +39,7 @@ export function JournalEditorScreen({ service, onSaved, initial }: Readonly<{
     catch { setError("请填写标题、有效时间和重点提要。"); setSaving(false); }
   };
   return <Screen testID="journal-editor-screen">
+    {onBack ? <SecondaryButton disabled={saving} label="返回手记列表" onPress={onBack} /> : null}
     <Text accessibilityRole="header" style={{ ...theme.typography.title, color: theme.color.text }}>{initial?.id ? "修改这条记录" : "记下一件事"}</Text>
     <TextInput accessibilityLabel="关键事件标题" placeholder="例如：第一次说出我想暂停" placeholderTextColor={theme.color.textMuted} selectionColor={theme.color.primary} value={title} onChangeText={setTitle} style={field} />
     <JournalDateField label="事件日期" onChange={setOccurredAt} value={occurredAt} />

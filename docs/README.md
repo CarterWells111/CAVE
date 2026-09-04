@@ -4,7 +4,7 @@
 
 ## 产品
 
-- [产品概览](product/overview.md)：当前六页旅程、长期使用方式、账户与数据边界。
+- [产品概览](product/overview.md)：当前五页旅程与独立练习入口、长期使用方式、账户与数据边界。
 - [当前限制](product/current-limitations.md)：内容审核、设备能力、数据恢复和 AI 能力边界。
 
 ## 架构与隐私

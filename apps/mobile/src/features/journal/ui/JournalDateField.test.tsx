@@ -10,7 +10,7 @@ jest.mock("@react-native-community/datetimepicker", () => {
   return function MockDateTimePicker(props: Record<string, unknown>) {
     return React.createElement(View, { ...props, testID: "native-date-picker" });
   };
-}, { virtual: true });
+});
 
 test("opens a native day picker and emits a future calendar date", async () => {
   const onChange = jest.fn();

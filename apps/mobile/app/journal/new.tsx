@@ -6,6 +6,7 @@ import type { JournalHighlight, JournalRecord, JournalSource } from "../../src/f
 import { JournalEditorScreen } from "../../src/features/journal/ui/JournalEditorScreen";
 import { JournalLoadingScreen } from "../../src/features/journal/ui/JournalLoadingScreen";
 import { buildRetainedLocalDraftSections } from "../../src/features/shell/application/saved-card-edit";
+import { backOrHome } from "../../src/features/shell/ui/safe-navigation";
 
 type Initial = Readonly<{ title?: string; occurredAt?: string; highlight?: JournalHighlight; body?: string; source?: JournalSource; cardSnapshot?: JournalRecord["cardSnapshot"] }>;
 
@@ -42,5 +43,5 @@ export default function NewJournalRoute() {
     return () => { active = false; };
   }, [cardId, reviewId, runtime.cards, runtime.reviewHistory]);
   if (initial === null) return <JournalLoadingScreen message="正在从本机整理可编辑框架…" />;
-  return <JournalEditorScreen initial={initial} service={journalService} onSaved={(id) => router.replace({ pathname: "/journal/[id]", params: { id } })} />;
+  return <JournalEditorScreen initial={initial} service={journalService} onBack={() => backOrHome(router)} onSaved={(id) => router.replace({ pathname: "/journal/[id]", params: { id } })} />;
 }

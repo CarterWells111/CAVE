@@ -64,7 +64,8 @@ describe("public documentation contract", () => {
     const readme = readDocument("README.md");
 
     expect(readme).toContain("Expo SDK 54");
-    expect(readme).toContain("六页旅程");
+    expect(readme).toContain("五页旅程");
+    expect(readme).toContain("独立入口");
     expect(readme).toContain("当前移动端练习使用预设路径，不调用生成式 AI");
     expect(readme).toContain("手记登录只用于同一设备上的账号隔离");
     expect(readme).toContain("不提供云同步");

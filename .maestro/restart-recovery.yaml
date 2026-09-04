@@ -1,0 +1,21 @@
+appId: com.neijie.cave
+name: Journey restoration after process restart
+tags:
+  - pending-device
+---
+- runFlow: core-flow.yaml
+- stopApp
+- launchApp
+- tapOn: "我的"
+- scrollUntilVisible:
+    element:
+      id: "profile-review-open"
+    direction: DOWN
+- tapOn:
+    id: "profile-review-open"
+    index: 0
+- scrollUntilVisible:
+    element:
+      text: "从这条回顾开始新分支"
+    direction: DOWN
+- assertVisible: "从这条回顾开始新分支"
