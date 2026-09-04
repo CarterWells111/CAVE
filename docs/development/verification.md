@@ -53,6 +53,14 @@ corepack pnpm security:audit
 
 审计工具还应用 `patches/pnpm@11.25.0.patch`：上游会跳过非法公告 ID、未知严重度或无效版本范围，可能将坏报告误报为干净结果；此补丁在响应校验处拒绝这些字段，沿用上游的非零错误出口。它不改变合法漏洞匹配、严重度阈值或任何豁免。升级审计工具时必须先复验补丁及上述真实 CLI 测试，不能静默移除校验。
 
+## CI 下载缓存与安装耗时
+
+GitHub 的每个 job 仍在独立的临时环境中运行，不复用开发电脑的安装目录。CI 分两层复用下载：`actions/cache` 保存 pnpm 工具引导安装的 npm `_cacache`，现有 `setup-node` 的 `cache: pnpm` 保存项目依赖 store。工具缓存按系统、架构、工作流和 Node 版本文件区分，不缓存凭证、安装日志、`node_modules` 或审计结果。缓存未命中仍执行正常联网安装；缓存命中也不跳过固定版本的工具安装、`pnpm install --frozen-lockfile` 和完整验证。
+
+`pnpm/action-setup@v6` 内部执行 `npm ci`，且每次删除并重建工具安装目录，因此仅缓存该目录没有收益。只在这一引导安装步骤设置 `npm_config_audit=false`、`npm_config_fund=false` 和 `npm_config_prefer_offline=true`，避免工具安装附带的旧审计请求，优先复用已校验的下载包。这些环境变量不作用于后面的项目检查；独立 `security:audit` 仍每次联网获取最新漏洞信息，错误与高危门槛不变。依据：[官方引导安装实现](https://github.com/pnpm/action-setup/blob/v6/src/install-pnpm/run.ts)。
+
+优化前 PR CI33853322124 attempt2 的 pnpm 准备用时 329 秒、项目依赖安装 10 秒、15 项内部门禁 212 秒。优化后的冷缓存和暖缓存耗时必须以 CI 日志实测记录；不将缓存命中当作验证通过，也不保证外部服务的响应时间。本轮保留 push/PR 两条检查与既有发布策略，不恢复 EAS 打包或改变 CodeQL 的启停状态。
+
 ## 建议的完整本地检查
 
 ```bash

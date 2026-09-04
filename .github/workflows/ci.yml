@@ -18,8 +18,21 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v7
 
+      - name: Restore pnpm bootstrap downloads
+        uses: actions/cache@v4
+        with:
+          path: ${{ runner.temp }}/cave-npm-bootstrap/_cacache
+          key: npm-bootstrap-v1-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('.github/workflows/ci.yml', '.nvmrc') }}
+
       - name: Set up pnpm
         uses: pnpm/action-setup@v6
+        # Only suppress npm's redundant audit while installing the tool itself.
+        # The mandatory project security:audit below still queries fresh advisories.
+        env:
+          npm_config_cache: ${{ runner.temp }}/cave-npm-bootstrap
+          npm_config_prefer_offline: "true"
+          npm_config_audit: "false"
+          npm_config_fund: "false"
         with:
           version: "10.34.5"
 
