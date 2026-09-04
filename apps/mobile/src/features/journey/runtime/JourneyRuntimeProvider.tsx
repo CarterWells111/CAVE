@@ -59,6 +59,7 @@ type RuntimeState =
   | { status: "public"; runtime: JourneyRuntime }
   | { status: "authorized"; runtime: JourneyRuntime }
   | { status: "authorization-error"; runtime: JourneyRuntime }
+  | { status: "draft-recovery-required"; runtime: JourneyRuntime }
   | { status: "storage-recovery-required"; runtime: JourneyRuntime }
   | { status: "deleting"; runtime: JourneyRuntime }
   | { status: "deletion-error"; runtime: JourneyRuntime }
@@ -67,6 +68,24 @@ type RuntimeState =
 const JourneyRuntimeContext = createContext<JourneyRuntimeContextValue | null>(null);
 const AdultDeclarationContext = createContext<AdultDeclarationContextValue | null>(null);
 const publicAppearancePreferences = new InMemoryAppearancePreferencesRepository();
+class DraftRecoveryRequiredError extends Error {}
+
+function DraftRecoveryScreen({ onReset }: { onReset(): Promise<void> }) {
+  const [pending, setPending] = useState(false);
+  const [failed, setFailed] = useState(false);
+  const inFlight = useRef(false);
+  return <View style={{ gap: 16 }}>
+    <ErrorState title="本机旅程需要恢复" message="当前本机草稿版本无法继续使用。重置后可以安全重新开始。" />
+    {failed ? <Text accessibilityRole="alert">重置失败，请重试。</Text> : null}
+    <Button label="重置本机旅程" loading={pending} onPress={() => {
+      if (inFlight.current) return;
+      inFlight.current = true;
+      setPending(true);
+      setFailed(false);
+      void onReset().catch(() => setFailed(true)).finally(() => { inFlight.current = false; setPending(false); });
+    }} />
+  </View>;
+}
 
 function RuntimeContextProvider({
   children,
@@ -296,7 +315,7 @@ export function JourneyRuntimeProvider({
         if (accountPreferences !== null) {
           if (declared && !deletionPending) {
             const recovery = await runtime.service.initialize();
-            if (recovery !== "ready") throw new Error("journey-recovery-required");
+            if (recovery !== "ready") throw new DraftRecoveryRequiredError();
           }
           await accountPreferences.initialize({
             ageConfirmed: declared && !deletionPending && (runtime.mode !== "expo-go-demo" || runtime.service.getSnapshot()?.ageConfirmed === true),
@@ -307,8 +326,8 @@ export function JourneyRuntimeProvider({
         if (active) {
           setState({ status: accountPreferences === null && declared && !deletionPending ? "authorized" : "public", runtime });
         }
-      } catch {
-        if (active) setState({ status: "authorization-error", runtime });
+      } catch (error) {
+        if (active) setState({ status: error instanceof DraftRecoveryRequiredError ? "draft-recovery-required" : error instanceof DatabaseRecoveryRequiredError ? "storage-recovery-required" : "authorization-error", runtime });
       }
     }).catch(
       () => {
@@ -341,8 +360,9 @@ export function JourneyRuntimeProvider({
   const preferenceReady = preferences?.ready;
   const preferenceAdult = preferences?.preferences.ageConfirmed;
   const preferenceOwner = preferences?.owner;
+  const canReconcilePreferences = state.status === "public" || state.status === "authorized";
   useEffect(() => {
-    if (preferenceRuntime === null || !preferenceReady) return;
+    if (preferenceRuntime === null || !preferenceReady || !canReconcilePreferences) return;
     let active = true;
     const isCurrent = () => active && deletionPromiseRef.current === null;
     const operation = preferenceOperations.current.then(async () => {
@@ -355,7 +375,7 @@ export function JourneyRuntimeProvider({
       }
       if (await preferenceRuntime.adultDeclaration.hasPendingLocalDataDeletion()) return;
       const recovery = await preferenceRuntime.service.initialize();
-      if (recovery !== "ready") throw new Error("journey-recovery-required");
+      if (recovery !== "ready") throw new DraftRecoveryRequiredError();
       if (!isCurrent()) return;
       if (preferenceRuntime.service.getSnapshot() !== null || await preferenceRuntime.shellState.load() === null) {
         await preferenceRuntime.service.confirmAdult();
@@ -367,10 +387,10 @@ export function JourneyRuntimeProvider({
     });
     preferenceOperations.current = operation.catch(() => undefined);
     void operation.catch((error: unknown) => {
-      if (isCurrent()) setState({ status: error instanceof DatabaseRecoveryRequiredError ? "storage-recovery-required" : "authorization-error", runtime: preferenceRuntime });
+      if (isCurrent()) setState({ status: error instanceof DraftRecoveryRequiredError ? "draft-recovery-required" : error instanceof DatabaseRecoveryRequiredError ? "storage-recovery-required" : "authorization-error", runtime: preferenceRuntime });
     });
     return () => { active = false; };
-  }, [preferenceRuntime, preferenceReady, preferenceAdult, preferenceOwner]);
+  }, [canReconcilePreferences, preferenceRuntime, preferenceReady, preferenceAdult, preferenceOwner]);
 
   const confirmAdult = useCallback(() => {
     if (preferencesRef.current !== null) return (async () => {
@@ -462,6 +482,16 @@ export function JourneyRuntimeProvider({
         />
       </PublicBoundary>
     );
+  }
+
+  if (state.status === "draft-recovery-required") {
+    return <PublicBoundary>
+      <DraftRecoveryScreen onReset={async () => {
+        await state.runtime.service.resetJourney();
+        setState({ status: "loading" });
+        setRuntimeAttempt((attempt) => attempt + 1);
+      }} />
+    </PublicBoundary>;
   }
 
   const effectiveStatus = preferences !== null && (!preferences.ready || !preferences.preferences.ageConfirmed || authorizedOwner !== preferences.owner)
