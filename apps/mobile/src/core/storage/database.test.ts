@@ -128,6 +128,7 @@ function makeHarness(options: {
     }),
     getFirstAsync: jest.fn(async (sql: string) => {
       calls.push(sql);
+      if (sql === "PRAGMA cipher_version") return { cipher_version: "test-only-simulated" };
       if (failVersionOnce) { failVersionOnce = false; throw new Error("file is encrypted"); }
       return { user_version: userVersion };
     }),
@@ -178,7 +179,7 @@ function makeCoordinatedLifecycleHarness(options: { blockFirstClose?: boolean } 
       execAsync: jest.fn(async () => undefined),
       runAsync: jest.fn(async () => ({ changes: 0 })),
       getAllAsync: jest.fn(async () => []),
-      getFirstAsync: jest.fn(async () => ({ user_version: 7 })),
+      getFirstAsync: jest.fn(async (sql: string) => sql === "PRAGMA cipher_version" ? { cipher_version: "test-only-simulated" } : { user_version: 7 }),
       closeAsync: jest.fn(async () => {
         events.push(`${label}:close-start`);
         closeStarted.resolve();
@@ -237,7 +238,8 @@ function makeLifecycleHarness() {
       execAsync: jest.fn(async () => undefined),
       runAsync: jest.fn(async () => ({ changes: 0 })),
       getAllAsync: jest.fn(async () => []),
-      getFirstAsync: jest.fn(async () => {
+      getFirstAsync: jest.fn(async (sql: string) => {
+        if (sql === "PRAGMA cipher_version") return { cipher_version: "test-only-simulated" };
         if (id === 1 && firstRead) {
           firstRead = false;
           firstReadStarted.resolve();
@@ -277,6 +279,94 @@ function makeLifecycleHarness() {
 }
 
 describe("encrypted database lifecycle", () => {
+  test.each([null, {}, { cipher_version: "" }, { cipher_version: "   " }])(
+    "refuses unavailable SQLCipher before issuing private database SQL (%p)", async (capability) => {
+      const harness = makeHarness({ databaseExists: true, key: VALID_DATABASE_KEY });
+      harness.database.getFirstAsync.mockResolvedValueOnce(capability as never);
+      const manager = createEncryptedDatabaseManager(harness as unknown as Parameters<typeof createEncryptedDatabaseManager>[0]);
+      await expect(manager.initialize()).rejects.toMatchObject({ code: "SQLCIPHER_UNAVAILABLE" });
+      expect(harness.database.execAsync).not.toHaveBeenCalled();
+      expect(harness.database.closeAsync).toHaveBeenCalledTimes(1);
+      expect(harness.files.removeDatabaseFiles).not.toHaveBeenCalled();
+      expect(await harness.secrets.getDatabaseKey()).toBe(VALID_DATABASE_KEY);
+    }
+  );
+
+  test("preserves a migration failure when both rollback and close fail", async () => {
+    const harness = makeHarness();
+    const primary = new Error("schema failed");
+    const rollback = new Error("rollback failed");
+    const close = new Error("close failed");
+    harness.database.execAsync.mockImplementation(async (sql: string) => {
+      if (sql.includes("CREATE TABLE")) throw primary;
+      if (sql === "ROLLBACK") throw rollback;
+    });
+    harness.database.closeAsync.mockRejectedValueOnce(close);
+    const manager = createEncryptedDatabaseManager(harness as unknown as Parameters<typeof createEncryptedDatabaseManager>[0]);
+    await expect(manager.initialize()).rejects.toBe(primary);
+    expect(primary).toMatchObject({ rollbackError: rollback, cause: close });
+  });
+
+  test("preserves missing capability when close fails and retries closing before reopening", async () => {
+    const harness = makeHarness({ databaseExists: true, key: VALID_DATABASE_KEY });
+    harness.database.getFirstAsync.mockResolvedValueOnce(null as never);
+    const closeError = new Error("close failed");
+    harness.database.closeAsync.mockRejectedValueOnce(closeError);
+    const manager = createEncryptedDatabaseManager(harness as unknown as Parameters<typeof createEncryptedDatabaseManager>[0]);
+    await expect(manager.initialize()).rejects.toMatchObject({ code: "SQLCIPHER_UNAVAILABLE", cause: closeError });
+    expect(harness.database.execAsync).not.toHaveBeenCalled();
+    await manager.initialize();
+    expect(harness.database.closeAsync).toHaveBeenCalledTimes(2);
+    expect(harness.native.openDatabaseAsync).toHaveBeenCalledTimes(2);
+    expect(harness.files.removeDatabaseFiles).not.toHaveBeenCalled();
+  });
+
+  test.each(["frozen", "non-extensible", "locked-rollback", "locked-cause", "locked-close"])(
+    "preserves the original migration error with %s diagnostics when rollback and close fail", async (restriction) => {
+      const harness = makeHarness();
+      const primary = new Error("original migration failure");
+      const existing = new Error("existing diagnostic");
+      if (restriction === "frozen") Object.freeze(primary);
+      if (restriction === "non-extensible") Object.preventExtensions(primary);
+      if (restriction === "locked-rollback") {
+        Object.defineProperty(primary, "rollbackError", { value: existing, configurable: false });
+      }
+      if (restriction === "locked-cause") {
+        Object.defineProperty(primary, "cause", { value: undefined, configurable: false });
+      }
+      if (restriction === "locked-close") {
+        Object.defineProperty(primary, "cause", { value: existing });
+        Object.defineProperty(primary, "closeError", { value: existing, configurable: false });
+      }
+      const rollback = new Error("secondary rollback failure");
+      const close = new Error("secondary close failure");
+      harness.database.execAsync.mockImplementation(async (sql: string) => {
+        if (sql.includes("CREATE TABLE")) throw primary;
+        if (sql === "ROLLBACK") throw rollback;
+      });
+      harness.database.closeAsync.mockRejectedValueOnce(close);
+      const manager = createEncryptedDatabaseManager(harness as unknown as Parameters<typeof createEncryptedDatabaseManager>[0]);
+      await expect(manager.initialize()).rejects.toBe(primary);
+      expect(harness.database.closeAsync).toHaveBeenCalledTimes(1);
+      expect(harness.files.removeDatabaseFiles).not.toHaveBeenCalled();
+      if (restriction === "locked-rollback") expect(Object.getOwnPropertyDescriptor(primary, "rollbackError")?.value).toBe(existing);
+      if (restriction === "locked-close") expect(primary.cause).toBe(existing);
+      // A failed close remains pending even when the error cannot accept diagnostics.
+      await manager.close();
+      expect(harness.database.closeAsync).toHaveBeenCalledTimes(2);
+    }
+  );
+
+  test("preserves an unsupported-version error when read rollback fails", async () => {
+    const harness = makeHarness({ userVersion: 99 });
+    const rollbackError = new Error("rollback failed");
+    harness.database.execAsync.mockImplementation(async (sql: string) => {
+      if (sql === "ROLLBACK") throw rollbackError;
+    });
+    const manager = createEncryptedDatabaseManager(harness as unknown as Parameters<typeof createEncryptedDatabaseManager>[0]);
+    await expect(manager.initialize()).rejects.toMatchObject({ name: "UnsupportedDatabaseVersionError", rollbackError });
+  });
+
   test("registers the private journal schema and account ownership migration", () => {
     expect(CURRENT_SCHEMA_VERSION).toBe(12);
     expect(DATABASE_MIGRATIONS.at(-2)).toMatchObject({ version: 11 });
@@ -301,14 +391,15 @@ describe("encrypted database lifecycle", () => {
     );
     await manager.initialize();
 
-    expect(harness.calls.slice(0, 7)).toEqual([
+    expect(harness.calls.slice(0, 8)).toEqual([
       "open",
+      "PRAGMA cipher_version",
       `PRAGMA key = '${VALID_DATABASE_KEY}'`,
       "PRAGMA foreign_keys = ON",
-      "PRAGMA journal_mode = WAL",
       "BEGIN IMMEDIATE",
       "PRAGMA user_version",
-      "COMMIT"
+      "COMMIT",
+      "PRAGMA journal_mode = WAL"
     ]);
     expect(harness.calls.findIndex((call) => call.includes("CREATE TABLE"))).toBeGreaterThan(6);
     expect(harness.calls.join("\n")).not.toContain("transcript_history");
@@ -685,7 +776,7 @@ describe("encrypted database lifecycle", () => {
     expect(harness.calls.filter((call) => call.includes("CREATE TABLE IF NOT EXISTS journey_drafts_v3")))
       .toHaveLength(1);
     expect(harness.calls.filter((call) => call === "PRAGMA user_version = 7")).toHaveLength(1);
-    expect(harness.calls.slice(-3)).toEqual(["BEGIN IMMEDIATE", "PRAGMA user_version", "COMMIT"]);
+    expect(harness.calls.slice(-4)).toEqual(["BEGIN IMMEDIATE", "PRAGMA user_version", "COMMIT", "PRAGMA journal_mode = WAL"]);
   });
 
   test("rejects a database created by a future app version without mutating it", async () => {
@@ -1112,6 +1203,7 @@ describe("encrypted database lifecycle", () => {
     const queryStarted = deferred();
     const allowQuery = deferred();
     harness.database.getFirstAsync.mockImplementation(async (sql: string) => {
+      if (sql === "PRAGMA cipher_version") return { cipher_version: "test-only-simulated" };
       if (sql === "SELECT blocked") {
         queryStarted.resolve();
         await allowQuery.promise;

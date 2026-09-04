@@ -53,7 +53,7 @@ test("returns to the intended protected journal route after login", async () => 
 
   await completeLogin();
 
-  expect(mockReplace).toHaveBeenCalledWith("/journal/new");
+  expect(mockReplace).toHaveBeenCalledWith({ pathname: "/journal/new" });
 });
 
 test("does not honor a non-journal return path", async () => {

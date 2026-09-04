@@ -26,6 +26,8 @@
     "build:gateway": "pnpm --filter @cave/gateway build",
     "build:web": "pnpm --filter @cave/web build",
     "verify:foundation": "pnpm typecheck && pnpm lint && pnpm test && pnpm build:gateway",
+    "verify:internal": "node scripts/verify-internal.mjs",
+    "verify:acceptance-isolation": "node scripts/verify-acceptance-isolation.mjs",
     "verify": "pnpm typecheck && pnpm lint && pnpm test && pnpm validate:content && pnpm build:gateway",
     "verify:release": "pnpm verify && pnpm --filter @cave/mobile expo:doctor && pnpm --filter @cave/mobile export:ios && pnpm security:scan-bundle && pnpm security:audit"
   },

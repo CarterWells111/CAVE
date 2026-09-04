@@ -3,6 +3,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { useAuth } from "../../src/features/auth/runtime/AuthProvider";
 import { EmailAuthScreen } from "../../src/features/auth/ui/EmailAuthScreen";
 import { useAdultDeclaration } from "../../src/features/journey/runtime/JourneyRuntimeProvider";
+import { backOrHome, journalReturnDestination } from "../../src/features/shell/ui/safe-navigation";
 
 export default function EmailAuthRoute() {
   const router = useRouter();
@@ -12,15 +13,14 @@ export default function EmailAuthRoute() {
   return <EmailAuthScreen
     adultAuthorized={adult.status === "authorized"}
     onAdultGate={() => router.push("/journey/adult-gate")}
-    onBack={() => router.back()}
+    onBack={() => backOrHome(router)}
     onDeleteAccount={() => router.push("/auth/delete-account")}
     onLogout={async () => { await auth.logout(); router.replace("/settings"); }}
     onRequestEmail={auth.requestEmailChallenge}
     onVerifyCode={async (challengeId, code, email) => {
       await auth.verifyEmailChallenge(challengeId, code, email);
-      if (typeof returnTo === "string" && /^\/journal(?:\/|$)/u.test(returnTo)) {
-        router.replace(returnTo as never);
-      }
+      const destination = journalReturnDestination(returnTo);
+      if (destination !== null) router.replace(destination);
     }}
     status={auth.status}
   />;

@@ -1,5 +1,6 @@
 import type { Ionicons } from "@expo/vector-icons";
 import type { ComponentProps } from "react";
+import type { Href } from "expo-router";
 
 export type LongTermTab = "home" | "reviews" | "practice" | "journal" | "profile";
 
@@ -22,13 +23,13 @@ export type LongTermDestination = Readonly<{
   tab: LongTermTab;
 }>;
 
-export const LONG_TERM_DESTINATIONS: ReadonlyArray<LongTermDestination> = [
+export const LONG_TERM_DESTINATIONS = [
   { icon: "home-outline", label: "首页", path: "/(tabs)", routeName: "index", tab: "home" },
   { icon: "time-outline", label: "回顾", path: "/(tabs)/reviews", routeName: "reviews", tab: "reviews" },
   { icon: "chatbubbles-outline", label: "练习", path: "/(tabs)/practice", routeName: "practice", tab: "practice" },
   { icon: "book-outline", label: "内界手记", path: "/(tabs)/journal", routeName: "journal", tab: "journal" },
   { icon: "person-outline", label: "我的", path: "/(tabs)/profile", routeName: "profile", tab: "profile" },
-];
+] as const satisfies ReadonlyArray<LongTermDestination & { path: Href }>;
 
 export const MAIN_TAB_DESTINATIONS: ReadonlyArray<LongTermDestination> =
   LONG_TERM_DESTINATIONS.filter(({ tab }) => tab !== "reviews");

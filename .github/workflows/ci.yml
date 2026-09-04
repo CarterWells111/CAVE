@@ -26,38 +26,18 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v7
         with:
-          node-version: "22"
+          node-version-file: ".nvmrc"
           cache: pnpm
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Validate CI configuration
-        run: pnpm test:ci-config
+      - name: Verify internal device readiness
+        run: pnpm verify:internal
 
-      - name: Typecheck
-        run: pnpm typecheck
-
-      - name: Lint
-        run: pnpm lint
-
-      - name: Test
-        run: pnpm test
-
-      - name: Build gateway
-        run: pnpm build:gateway
-
-      - name: Validate internal-test content
-        run: pnpm validate:content:internal
-
-      - name: Check Expo dependencies
-        run: pnpm --filter @cave/mobile expo:doctor
-
-      - name: Export production iOS JavaScript
-        run: pnpm --filter @cave/mobile export:ios
-
-      - name: Scan exported mobile bundle
-        run: pnpm security:scan-bundle
-
-      - name: Audit production dependencies
-        run: pnpm security:audit
+      - name: Preserve verification evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: internal-verification
+          path: outputs/p0-readiness/verification.*

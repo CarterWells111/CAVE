@@ -94,6 +94,8 @@ function nativePersistenceHarness({
     getAllAsync: jest.fn(async <T,>(sql: string) => { sqlCalls.push(sql); return [] as T[]; }),
     getFirstAsync: jest.fn(async <T,>(sql: string) => {
       sqlCalls.push(sql);
+      // Native persistence tests explicitly simulate capability, not encryption.
+      if (sql === "PRAGMA cipher_version") return { cipher_version: "test-only-simulated" } as T;
       if (sql.startsWith("SELECT schema_version, payload FROM journey_drafts_v4")) {
         return savedDraftRow as T | null;
       }

@@ -47,10 +47,12 @@ export function SupportingText({ children }: { children: string }) {
 
 export function MetadataCard({
   actionLabel,
+  testID,
   item,
   onAction,
 }: {
   actionLabel: string;
+  testID?: string;
   item: ShellMetadataItem;
   onAction?: ((id: string) => void) | undefined;
 }) {
@@ -61,7 +63,7 @@ export function MetadataCard({
       <Text selectable style={{ ...theme.typography.caption, color: theme.color.textSecondary }}>
         {`${item.dateLabel} · ${item.statusLabel}`}
       </Text>
-      <SecondaryButton disabled={!onAction} label={actionLabel} onPress={() => onAction?.(item.id)} />
+      <SecondaryButton {...(testID ? { testID } : {})} disabled={!onAction} label={actionLabel} onPress={() => onAction?.(item.id)} />
     </Card>
   );
 }

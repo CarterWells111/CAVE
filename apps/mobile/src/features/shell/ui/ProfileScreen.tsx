@@ -113,6 +113,7 @@ export function ProfileScreen({
           reviews.length > 0 ? reviews.map((review) => (
             <MetadataCard
               actionLabel={`打开${review.title}，${review.dateLabel}，${review.statusLabel}`}
+              testID="profile-review-open"
               item={review}
               key={review.id}
               onAction={onOpenReview}

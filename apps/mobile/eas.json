@@ -1,15 +1,22 @@
 {
   "cli": {
+    "appVersionSource": "local",
     "version": ">= 16.0.0"
   },
   "build": {
     "development": {
+      "node": "22.23.2",
       "developmentClient": true,
       "distribution": "internal"
     },
     "preview": {
+      "node": "22.23.2",
       "channel": "preview",
       "distribution": "internal"
+    },
+    "acceptance": {
+      "extends": "development",
+      "env": { "CAVE_ACCEPTANCE_TOOLS": "1" }
     },
     "production": {
       "channel": "production"

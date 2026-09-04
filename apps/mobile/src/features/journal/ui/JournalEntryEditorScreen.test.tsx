@@ -9,7 +9,20 @@ jest.mock("@react-native-community/datetimepicker", () => {
   return function MockDateTimePicker(props: Record<string, unknown>) {
     return React.createElement(View, { ...props, testID: "native-date-picker" });
   };
-}, { virtual: true });
+});
+
+test("blocks repeated saves and back navigation while saving an entry", async () => {
+  const onBack = jest.fn();
+  const addEntry = jest.fn(() => new Promise(() => undefined));
+  render(<JournalEntryEditorScreen onBack={onBack} recordId="synthetic" onSaved={jest.fn()} service={{ addEntry } as never} />);
+  fireEvent.press(await screen.findByRole("button", { name: "保存这个后来" }));
+  expect(screen.getByRole("button", { name: "返回手记列表" })).toBeDisabled();
+  expect(screen.getByRole("button", { name: "正在保存…" })).toBeDisabled();
+  fireEvent.press(screen.getByRole("button", { name: "返回手记列表" }));
+  fireEvent.press(screen.getByRole("button", { name: "正在保存…" }));
+  expect(addEntry).toHaveBeenCalledTimes(1);
+  expect(onBack).not.toHaveBeenCalled();
+});
 
 test("saves the calendar day selected for a later entry", async () => {
   const addEntry = jest.fn(async () => undefined);

@@ -50,13 +50,11 @@ corepack pnpm security:audit
 ## 建议的完整本地检查
 
 ```bash
-corepack pnpm test:ci-config
-corepack pnpm typecheck
-corepack pnpm lint
-corepack pnpm test
-corepack pnpm validate:content:internal
-corepack pnpm build:gateway
-corepack pnpm build:web
+corepack pnpm verify:internal
 ```
 
 完成后再运行 `git diff --check`，并人工检查 README、文档导航、Mermaid 图和所有公开链接的渲染结果。
+
+内部入口要求 `.nvmrc` 中的 Node 22，覆盖上述检查、移动端源码策略、Expo Doctor、iOS 导出、包秘密/验收工具隔离扫描及生产依赖审计。每项退出码与提交信息保存在 `outputs/p0-readiness/verification.json`。移动端类型检查会先运行 `routes:generate`，从实际路由重建 `.expo/types/router.d.ts`，不提交生成缓存。
+
+设备操作及两层关闭标准见 [P0 现行验收清单](p0-device-acceptance.md)。生产 `verify` 和 `verify:release` 继续要求专业内容复核，不能用内部通过替代。
