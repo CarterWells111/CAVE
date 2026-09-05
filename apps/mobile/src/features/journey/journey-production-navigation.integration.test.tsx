@@ -17,7 +17,8 @@ import {
 
 const mockRouter = { push: jest.fn(), replace: jest.fn() };
 let mockRouterValue = mockRouter;
-jest.mock("expo-router", () => ({ useRouter: () => mockRouterValue }));
+let mockEntry: string | undefined;
+jest.mock("expo-router", () => ({ useRouter: () => mockRouterValue, useLocalSearchParams: () => ({ entry: mockEntry }) }));
 let authorizedRuntimeRendered = false;
 let runtimeReadyWhenPrefaceOpened: boolean | null = null;
 
@@ -70,6 +71,7 @@ async function openRoute(element: ReactElement, journeyRuntime: JourneyRuntime):
 
 beforeEach(() => {
   jest.clearAllMocks();
+  mockEntry = undefined;
   mockRouterValue = mockRouter;
   authorizedRuntimeRendered = false;
   runtimeReadyWhenPrefaceOpened = null;
@@ -126,7 +128,7 @@ test.each([
   view.unmount();
 });
 
-test("a confirmed draft with completed onboarding resumes its formal page", async () => {
+test("a confirmed draft with completed onboarding opens the journey map", async () => {
   const journeyRuntime = runtime();
   await journeyRuntime.drafts.saveActive({
     ...createJourneyDraft({ id: "resumable", now: "2026-08-28T10:00:00.000Z" }),
@@ -138,7 +140,7 @@ test("a confirmed draft with completed onboarding resumes its formal page", asyn
 
   fireEvent.press(screen.getByRole("button", { name: "继续旅程" }));
 
-  expect(mockRouter.replace).toHaveBeenCalledWith("/journey/body-knowledge");
+  expect(mockRouter.replace).toHaveBeenCalledWith("/(tabs)");
   view.unmount();
 });
 
@@ -307,14 +309,14 @@ test("preface persists the chosen address before the welcome note can complete",
     currentPage: "body-knowledge",
   }));
   expect(await screen.findByRole("header", { name: "欢迎来到内界 CAVE" })).toBeTruthy();
-  expect(mockRouter.replace.mock.calls.filter(([path]) => path === "/journey/body-knowledge")).toHaveLength(0);
+  expect(mockRouter.replace.mock.calls.filter(([path]) => path === "/(tabs)")).toHaveLength(0);
 
-  fireEvent.press(screen.getByRole("button", { name: "我已了解，开始旅程" }));
+  fireEvent.press(screen.getByRole("button", { name: "我已了解，选择旅程" }));
   await waitFor(() => expect(journeyRuntime.service.getSnapshot()).toMatchObject({
     prefaceRead: true,
   }));
   await waitFor(() => {
-    expect(mockRouter.replace.mock.calls.filter(([path]) => path === "/journey/body-knowledge")).toHaveLength(1);
+    expect(mockRouter.replace.mock.calls.filter(([path]) => path === "/(tabs)")).toHaveLength(1);
   });
   view.unmount();
 });
@@ -327,11 +329,11 @@ test("an unread persisted preface resumes directly at the welcome note", async (
 
   expect(await screen.findByRole("header", { name: "欢迎来到内界 CAVE" })).toBeTruthy();
   expect(screen.queryAllByRole("radio")).toEqual([]);
-  expect(mockRouter.replace).not.toHaveBeenCalledWith("/journey/body-knowledge");
+  expect(mockRouter.replace).not.toHaveBeenCalledWith("/(tabs)");
   view.unmount();
 });
 
-test("a completed preface deep-link navigates to body knowledge exactly once", async () => {
+test("a completed preface deep-link navigates to the map exactly once", async () => {
   const journeyRuntime = runtime();
   await journeyRuntime.service.confirmAdult();
   await journeyRuntime.service.dispatch({ type: "set-address-preference", preference: "妳" });
@@ -344,7 +346,7 @@ test("a completed preface deep-link navigates to body knowledge exactly once", a
   );
 
   await waitFor(() => {
-    expect(mockRouter.replace.mock.calls.filter(([path]) => path === "/journey/body-knowledge")).toHaveLength(1);
+    expect(mockRouter.replace.mock.calls.filter(([path]) => path === "/(tabs)")).toHaveLength(1);
   });
   mockRouterValue = { ...mockRouter };
   view.rerender(
@@ -355,7 +357,7 @@ test("a completed preface deep-link navigates to body knowledge exactly once", a
     </JourneyRuntimeProvider>,
   );
   await waitFor(() => {
-    expect(mockRouter.replace.mock.calls.filter(([path]) => path === "/journey/body-knowledge")).toHaveLength(1);
+    expect(mockRouter.replace.mock.calls.filter(([path]) => path === "/(tabs)")).toHaveLength(1);
   });
   expect(screen.queryByRole("header", { name: "开始前，想告诉你" })).toBeNull();
   expect(screen.queryByRole("header", { name: "欢迎来到内界 CAVE" })).toBeNull();
@@ -383,7 +385,7 @@ test("an inconsistent read preface without an address cannot skip the welcome no
     [{ type: "set-address-preference", preference: "妳" }],
   ]);
   expect(await screen.findByRole("header", { name: "欢迎来到内界 CAVE" })).toBeTruthy();
-  expect(mockRouter.replace.mock.calls.filter(([path]) => path === "/journey/body-knowledge")).toHaveLength(0);
+  expect(mockRouter.replace.mock.calls.filter(([path]) => path === "/(tabs)")).toHaveLength(0);
   view.unmount();
 });
 
@@ -422,7 +424,7 @@ test("a failed inconsistent-state reset keeps address selection safe and retryab
     "accessibilityState",
     expect.objectContaining({ busy: false, disabled: false }),
   );
-  expect(mockRouter.replace.mock.calls.filter(([path]) => path === "/journey/body-knowledge")).toHaveLength(0);
+  expect(mockRouter.replace.mock.calls.filter(([path]) => path === "/(tabs)")).toHaveLength(0);
 
   dispatch.mockClear();
   fireEvent.press(screen.getByRole("button", { name: "这样称呼我" }));
@@ -437,7 +439,7 @@ test("a failed inconsistent-state reset keeps address selection safe and retryab
   expect(await screen.findByRole("header", { name: "欢迎来到内界 CAVE" })).toBeTruthy();
   expect(screen.queryByText("称呼暂时无法保存，请重试。")).toBeNull();
   expect(screen.queryByText("private reset failure")).toBeNull();
-  expect(mockRouter.replace.mock.calls.filter(([path]) => path === "/journey/body-knowledge")).toHaveLength(0);
+  expect(mockRouter.replace.mock.calls.filter(([path]) => path === "/(tabs)")).toHaveLength(0);
   view.unmount();
 });
 
@@ -448,5 +450,26 @@ test("an already confirmed declaration skips forward to the preface", async () =
 
   await waitFor(() => expect(mockRouter.replace).toHaveBeenCalledWith("/journey/preface"));
   expect(screen.queryByText("仅限已满 18 岁者")).toBeNull();
+  view.unmount();
+});
+
+test("explicit scenario entry survives the preface and resumes the formal page", async () => {
+  mockEntry = "first-overnight";
+  const journeyRuntime = runtime();
+  await journeyRuntime.service.confirmAdult();
+  await journeyRuntime.service.dispatch({ type: "set-address-preference", preference: "妳" });
+  await journeyRuntime.service.dispatch({ type: "set-preface-read", read: true });
+  const view = await openRoute(<PrefaceRoute />, journeyRuntime);
+  await waitFor(() => expect(mockRouter.replace).toHaveBeenCalledWith("/journey/body-knowledge"));
+  expect(mockRouter.replace).not.toHaveBeenCalledWith("/(tabs)");
+  view.unmount();
+});
+
+test("explicit scenario entry survives adult declaration", async () => {
+  mockEntry = "first-overnight";
+  const journeyRuntime = runtime(false);
+  const view = await openRoute(<AdultGateRoute />, journeyRuntime);
+  fireEvent.press(screen.getByRole("button", { name: "我已年满 18 岁，继续" }));
+  await waitFor(() => expect(mockRouter.replace).toHaveBeenCalledWith({ pathname: "/journey/preface", params: { entry: "first-overnight" } }));
   view.unmount();
 });

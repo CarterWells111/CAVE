@@ -1,143 +1,77 @@
+import { Pressable, Text, View } from "react-native";
 import { useState } from "react";
-import { View } from "react-native";
 
 import { useTheme } from "../../../core/design/theme-provider";
-import { Button } from "../../../core/ui/Button";
-import { Card } from "../../../core/ui/Card";
-import { EmptyState } from "../../../core/ui/EmptyState";
 import { ErrorState } from "../../../core/ui/ErrorState";
-import { SecondaryButton } from "../../../core/ui/secondary-button";
-import {
-  MetadataCard,
-  SectionHeading,
-  ShellFrame,
-  ShellLoading,
-  SupportingText,
-  type ActiveJourneyMetadataItem,
-  type ShellLoadState,
-  type ShellMetadataItem,
-} from "./shell-ui-components";
-import { ReplaceReviewConfirmation } from "./ReplaceReviewConfirmation";
+import { JourneyMap } from "../../explore/ui/journey-map";
+import { ShellLoading, type ShellLoadState } from "./shell-ui-components";
 
-type Props = {
+export type HomeScreenProps = {
   account?: {
     status: "signedOut" | "loading" | "ready" | "error";
     displayName?: string;
     onOpen(): void;
   };
   loadState?: ShellLoadState;
-  activeJourney?: ActiveJourneyMetadataItem | null;
-  currentCard?: ShellMetadataItem | null;
-  recentRecords: ShellMetadataItem[];
   onRetry?: () => void;
-  onContinueJourney?: (id: string) => void;
-  onOpenCurrentCard?: (id: string) => void;
-  onOpenRecord?: (id: string) => void;
-  onOpenJournal?: () => void;
-  onStartPractice: () => void;
-  onStartReview: () => void;
+  onOpenSample: (id: string) => void;
+  onOpenScenario: () => void | Promise<void>;
+  scenarioPending?: boolean;
+  scenarioError?: boolean;
 };
 
 export function HomeScreen({
-  account,
-  activeJourney,
-  currentCard,
-  loadState = "ready",
-  onContinueJourney,
-  onOpenCurrentCard,
-  onOpenRecord,
-  onOpenJournal,
-  onRetry,
-  onStartPractice,
-  onStartReview,
-  recentRecords,
-}: Props) {
+  account, loadState = "ready", onRetry, onOpenSample, onOpenScenario,
+  scenarioPending = false, scenarioError = false,
+}: HomeScreenProps) {
   const theme = useTheme();
-  const [confirmingReplacement, setConfirmingReplacement] = useState(false);
-  const requestReview = () => {
-    if (activeJourney?.kind === "review") setConfirmingReplacement(true);
-    else onStartReview();
-  };
+  const [accountFocused, setAccountFocused] = useState(false);
+  const accountLabel = account?.status === "signedOut" ? "登录"
+    : account?.status === "loading" ? "正在检查账号状态…"
+      : account?.status === "ready" ? `查看${account.displayName ?? "内界用户"}的账号` : "打开账号";
   return (
-    <ShellFrame title="首页">
-      {account?.status === "signedOut" ? (
-        <Button label="去登录，享受更多功能" onPress={account.onOpen} />
-      ) : null}
-      {account?.status === "loading" ? (
-        <SecondaryButton disabled label="正在检查账号状态…" onPress={account.onOpen} />
-      ) : null}
-      {account?.status === "ready" ? (
-        <SecondaryButton
-          label={`查看${account.displayName ?? "内界用户"}的账号`}
-          onPress={account.onOpen}
-        />
-      ) : null}
-      {account?.status === "error" ? (
-        <SecondaryButton label="打开账号" onPress={account.onOpen} />
-      ) : null}
+    <View style={{ gap: theme.space.xl, minWidth: 0 }}>
+      <View style={{ flexDirection: "row", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: theme.space.md }}>
+        <Text selectable style={{ ...theme.typography.heading, color: theme.color.text, letterSpacing: 2 }}>CAVE 内界</Text>
+        {account ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={accountLabel}
+            accessibilityState={{ disabled: account.status === "loading" }}
+            disabled={account.status === "loading"}
+            onFocus={() => setAccountFocused(true)}
+            onBlur={() => setAccountFocused(false)}
+            onPress={account.onOpen}
+            style={({ pressed }) => ({
+              minHeight: theme.size.minimumTouchTarget, minWidth: theme.size.minimumTouchTarget,
+              justifyContent: "center", borderRadius: theme.radius.pill,
+              paddingHorizontal: theme.space.md, backgroundColor: pressed ? theme.color.surfacePressed : theme.color.surface,
+              borderWidth: 1, borderColor: theme.color.border, flexShrink: 1,
+              outlineColor: theme.color.focus, outlineOffset: theme.border.focusOffset,
+              outlineWidth: accountFocused ? theme.border.focusWidth : 0,
+            })}
+          >
+            <Text style={{ ...theme.typography.caption, color: theme.color.textSecondary, flexShrink: 1 }}>
+              {account.status === "signedOut" ? "登录" : account.status === "loading" ? "账号加载中" : account.displayName ?? "我的"}
+            </Text>
+          </Pressable>
+        ) : null}
+      </View>
+      <View style={{ gap: theme.space.sm }}>
+        <Text selectable style={{ ...theme.typography.numericLabel, color: theme.color.brandSoft, letterSpacing: 2 }}>跟随自己的节奏</Text>
+        <Text accessibilityRole="header" selectable style={{ ...theme.typography.title, color: theme.color.text }}>选择一段旅程</Text>
+        <Text selectable style={{ ...theme.typography.body, color: theme.color.textSecondary }}>没有固定顺序，从此刻想探索的地方开始。</Text>
+      </View>
       {loadState === "loading" ? <ShellLoading /> : null}
       {loadState === "error" ? (
         <ErrorState
-          actionLabel="重试"
-          message="暂时无法读取本机首页内容。你的记录没有因此被删除。"
-          title="读取失败"
-          {...(onRetry ? { onAction: onRetry } : {})}
+          title="读取失败" message="暂时无法读取本机首页内容。你的记录没有因此被删除。"
+          actionLabel="重试" {...(onRetry ? { onAction: onRetry } : {})}
         />
       ) : null}
       {loadState === "ready" ? (
-        <>
-          {activeJourney ? (
-            <MetadataCard
-              actionLabel={activeJourney.kind === "initial" ? "继续首次旅程" : "继续本次回顾"}
-              item={activeJourney}
-              onAction={onContinueJourney}
-            />
-          ) : null}
-          {confirmingReplacement ? (
-            <ReplaceReviewConfirmation
-              onCancel={() => setConfirmingReplacement(false)}
-              onConfirm={() => {
-                setConfirmingReplacement(false);
-                onStartReview();
-              }}
-            />
-          ) : null}
-          <Card accessible={false} variant="accent">
-            <SectionHeading>现在想做什么？</SectionHeading>
-            <SupportingText>
-              {activeJourney?.kind === "initial"
-                ? "可以继续首次旅程，也可以直接使用练习、主题回顾和其他页面。"
-                : "可以直接练习，也可以开始一次新的回顾；已有进行中回顾不会封锁其他入口。"}
-            </SupportingText>
-            <View style={{ gap: theme.space.md }}>
-              <Button label="开始练习" onPress={onStartPractice} />
-              {activeJourney?.kind !== "initial" ? (
-                <SecondaryButton label="开始一次回顾" onPress={requestReview} />
-              ) : null}
-              <SecondaryButton disabled={!onOpenJournal} label="记下一件事" onPress={() => onOpenJournal?.()} />
-            </View>
-          </Card>
-          <View style={{ gap: theme.space.md }}>
-            <SectionHeading>当前沟通草稿</SectionHeading>
-            {currentCard ? (
-              <MetadataCard actionLabel="打开当前沟通草稿" item={currentCard} onAction={onOpenCurrentCard} />
-            ) : (
-              <EmptyState message="完成并保存沟通草稿后，可以在这里继续回顾。" title="还没有当前沟通草稿" />
-            )}
-          </View>
-          <View style={{ gap: theme.space.md }}>
-            <SectionHeading>最近手记</SectionHeading>
-            {recentRecords.length > 0 ? recentRecords.map((record) => (
-              <MetadataCard
-                actionLabel={`打开${record.title}`}
-                item={record}
-                key={record.id}
-                onAction={onOpenRecord}
-              />
-            )) : <EmptyState message="记录后，这里只显示标题、日期和重点提要。" title="还没有最近手记" />}
-          </View>
-        </>
+        <JourneyMap onOpenSample={onOpenSample} onOpenScenario={onOpenScenario} scenarioPending={scenarioPending} scenarioError={scenarioError} />
       ) : null}
-    </ShellFrame>
+    </View>
   );
 }

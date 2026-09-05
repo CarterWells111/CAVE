@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { View } from "react-native";
 
 import { useTheme } from "../../../core/design/theme-provider";
@@ -15,7 +14,6 @@ import {
   type ActiveJourneyMetadataItem,
   type ShellLoadState,
 } from "./shell-ui-components";
-import { ReplaceReviewConfirmation } from "./ReplaceReviewConfirmation";
 
 type Props = {
   loadState?: ShellLoadState;
@@ -23,7 +21,7 @@ type Props = {
   topics: Array<{ id: string; label: string }>;
   onContinueJourney?: (id: string) => void;
   onRetry?: () => void;
-  onStartFullReview: () => void;
+  onSelectJourney: () => void;
   onStartTopic: (id: string) => void;
 };
 
@@ -32,16 +30,11 @@ export function ReviewsHubScreen({
   loadState = "ready",
   onContinueJourney,
   onRetry,
-  onStartFullReview,
+  onSelectJourney,
   onStartTopic,
   topics,
 }: Props) {
   const theme = useTheme();
-  const [confirmingReplacement, setConfirmingReplacement] = useState(false);
-  const requestFullReview = () => {
-    if (activeJourney?.kind === "review") setConfirmingReplacement(true);
-    else onStartFullReview();
-  };
   return (
     <ShellFrame title="回顾">
       {loadState === "loading" ? <ShellLoading /> : null}
@@ -62,32 +55,17 @@ export function ReviewsHubScreen({
               onAction={onContinueJourney}
             />
           ) : null}
-          {confirmingReplacement ? (
-            <ReplaceReviewConfirmation
-              onCancel={() => setConfirmingReplacement(false)}
-              onConfirm={() => {
-                setConfirmingReplacement(false);
-                onStartFullReview();
-              }}
-            />
-          ) : null}
           <Card accessible={false} variant="accent">
             <SectionHeading>选择回顾方式</SectionHeading>
-            <SupportingText>
-              {activeJourney?.kind === "initial"
-                ? "首次旅程完成前，可以继续原旅程或直接从一个主题开始。"
-                : "可以直接从一个主题开始，也可以由你主动启动完整五页回顾。"}
-            </SupportingText>
-            {activeJourney?.kind !== "initial" ? (
-              <Button label="开始完整五页回顾" onPress={requestFullReview} />
-            ) : null}
+            <SupportingText>可以从主题开始，也可以到首页选择一段旅程。选择入口不会替换当前草稿。</SupportingText>
+            <Button label="选择旅程" onPress={onSelectJourney} />
           </Card>
           <View style={{ gap: theme.space.md }}>
             <SectionHeading>按主题进入</SectionHeading>
             {topics.map((topic) => (
               <SecondaryButton key={topic.id} label={`按主题回顾：${topic.label}`} onPress={() => onStartTopic(topic.id)} />
             ))}
-            {topics.length === 0 ? <SupportingText>当前没有可用主题，仍可启动完整回顾。</SupportingText> : null}
+            {topics.length === 0 ? <SupportingText>当前没有可用主题，可以先选择一段旅程。</SupportingText> : null}
           </View>
         </>
       ) : null}

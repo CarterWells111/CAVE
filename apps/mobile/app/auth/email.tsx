@@ -6,10 +6,12 @@ import { useAuth } from "../../src/features/auth/runtime/AuthProvider";
 import { EmailAuthScreen } from "../../src/features/auth/ui/EmailAuthScreen";
 import { useAdultDeclaration } from "../../src/features/journey/runtime/JourneyRuntimeProvider";
 import { backOrHome, journalReturnDestination } from "../../src/features/shell/ui/safe-navigation";
+import { onboardingHref, resolveJourneyEntry } from "../../src/features/shell/application/journey-entry";
 
 export default function EmailAuthRoute() {
   const router = useRouter();
-  const { returnTo } = useLocalSearchParams<{ returnTo?: string }>();
+  const { returnTo, entry: requestedEntry } = useLocalSearchParams<{ returnTo?: string; entry?: string }>();
+  const entry = resolveJourneyEntry(requestedEntry);
   const auth = useAuth();
   const preferences = useOptionalAccountPreferences();
   const adult = useAdultDeclaration();
@@ -26,11 +28,11 @@ export default function EmailAuthRoute() {
     if (preferences.syncStatus === "pending" || preferences.syncStatus === "syncing") return;
     if (preferences.preferences.ageConfirmed && adult.status !== "authorized") return;
     returned.current = true;
-    router.replace(preferences.preferences.ageConfirmed ? "/journey/preface" : "/journey/adult-gate");
-  }, [adult.status, auth.status, preferences, returnTo, router]);
+    router.replace(onboardingHref(preferences.preferences.ageConfirmed ? "/journey/preface" : "/journey/adult-gate", entry));
+  }, [adult.status, auth.status, entry, preferences, returnTo, router]);
   return <EmailAuthScreen
     adultAuthorized={adult.status === "authorized"}
-    onAdultGate={() => router.push("/journey/adult-gate")}
+    onAdultGate={() => router.push(onboardingHref("/journey/adult-gate", entry))}
     onBack={() => backOrHome(router)}
     onDeleteAccount={() => router.push("/auth/delete-account")}
     onLogout={async () => { await auth.logout(); router.replace("/settings"); }}

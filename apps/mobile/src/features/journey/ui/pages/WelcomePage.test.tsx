@@ -31,7 +31,7 @@ test("help explains product scope, 18+ gate, non-diagnosis and local-first priva
   expect(screen.getByRole("header", { name: "关于内界 CAVE" })).toBeTruthy();
   expect(screen.getByText(/亲密关系中的身体、安全、边界与沟通/u)).toBeTruthy();
   expect(screen.getByText(/点击“开启旅程”后.*本机.*年满 18 岁的自我声明/u)).toBeTruthy();
-  expect(screen.getByText(/声明后.*“开始前，想告诉你”.*五页正式内容/u)).toBeTruthy();
+  expect(screen.getByText(/声明后.*“开始前，想告诉你”.*选择旅程/u)).toBeTruthy();
   expect(screen.getByText(/不是身份核验.*不是真实年龄核验/u)).toBeTruthy();
   expect(screen.getByText(/不收集.*生日.*证件.*邮箱/u)).toBeTruthy();
   expect(screen.getByText(/不提供医疗诊断/u)).toBeTruthy();

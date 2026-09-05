@@ -10,10 +10,12 @@ const mockReplace = jest.fn();
 const mockRequest = jest.fn(async () => ({ challengeId: "challenge-1", expiresInSeconds: 600, resendAfterSeconds: 60 }));
 const mockVerify = jest.fn(async () => undefined);
 let mockReturnTo: string | undefined = "/journal/new";
+let mockEntry: string | undefined;
+let mockPreferences: { ready: boolean; syncStatus: string; preferences: { ageConfirmed: boolean } } | null = null;
 let mockAuthStatus: "signedOut" | "signedIn" = "signedOut";
 
 jest.mock("expo-router", () => ({
-  useLocalSearchParams: () => ({ returnTo: mockReturnTo }),
+  useLocalSearchParams: () => ({ returnTo: mockReturnTo, entry: mockEntry }),
   useRouter: () => ({ back: mockBack, push: mockPush, replace: mockReplace }),
 }));
 
@@ -31,7 +33,13 @@ jest.mock("../journey/runtime/JourneyRuntimeProvider", () => ({
   useAdultDeclaration: () => ({ status: "authorized" }),
 }));
 
+jest.mock("../account/runtime/AccountPreferencesProvider", () => ({
+  useOptionalAccountPreferences: () => mockPreferences,
+}));
+
 beforeEach(() => {
+  mockEntry = undefined;
+  mockPreferences = null;
   jest.clearAllMocks();
   mockReturnTo = "/journal/new";
   mockAuthStatus = "signedOut";
@@ -88,4 +96,25 @@ test("an already signed-in user can still open account management without being 
   render(<ThemeProvider repository={new InMemoryAppearancePreferencesRepository()}><EmailAuthRoute /></ThemeProvider>);
   await screen.findByRole("button", { name: "从这台设备退出登录" });
   expect(mockReplace).not.toHaveBeenCalled();
+});
+
+test.each([true, false])("retains explicitly selected scenario across login, adult confirmed: %s", async (ageConfirmed) => {
+  mockReturnTo = "/journey/preface";
+  mockEntry = "first-overnight";
+  mockAuthStatus = "signedIn";
+  mockPreferences = { ready: true, syncStatus: "saved", preferences: { ageConfirmed } };
+  render(<EmailAuthRoute />);
+  await waitFor(() => expect(mockReplace).toHaveBeenCalledWith({
+    pathname: ageConfirmed ? "/journey/preface" : "/journey/adult-gate",
+    params: { entry: "first-overnight" },
+  }));
+});
+
+test("ignores unrecognized scenario intent after login", async () => {
+  mockReturnTo = "/journey/preface";
+  mockEntry = "https://untrusted.invalid";
+  mockAuthStatus = "signedIn";
+  mockPreferences = { ready: true, syncStatus: "saved", preferences: { ageConfirmed: true } };
+  render(<EmailAuthRoute />);
+  await waitFor(() => expect(mockReplace).toHaveBeenCalledWith("/journey/preface"));
 });

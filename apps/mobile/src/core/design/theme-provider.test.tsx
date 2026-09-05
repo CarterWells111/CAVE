@@ -39,6 +39,7 @@ test("resolves explicit preferences and treats a missing system scheme as light"
   expect(resolveTheme("dark", "light")).toBe("dark");
   expect(resolveTheme("light", "dark")).toBe("light");
   expect(resolveTheme("system", "dark")).toBe("dark");
+  expect(resolveTheme("system", "unspecified")).toBe("light");
   expect(resolveTheme("system", null)).toBe("light");
 });
 

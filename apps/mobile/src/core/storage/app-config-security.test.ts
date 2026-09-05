@@ -21,6 +21,17 @@ test("allows native light and dark appearance changes on both platforms", () => 
   expect(config.plugins).toContain("expo-system-ui");
 });
 
+test("registers the native config plugins required by SDK 57", () => {
+  const config = getConfig({ config: {} } as ConfigContext);
+
+  expect(config.plugins).toEqual(
+    expect.arrayContaining([
+      "@react-native-community/datetimepicker",
+      "expo-font",
+    ])
+  );
+});
+
 test("requests only the photo-library access needed for local account avatars", () => {
   const config = getConfig({ config: {} } as ConfigContext);
 

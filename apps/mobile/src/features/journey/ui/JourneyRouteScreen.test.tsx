@@ -143,7 +143,7 @@ test("locks route back while a page-level operation is busy without an internal 
 });
 
 test("consumes system back at the first formal journey page without leaving it", () => {
-  const subscriptions: Array<() => boolean | null | undefined> = [];
+  const subscriptions: Array<Parameters<typeof BackHandler.addEventListener>[1]> = [];
   const addEventListener = jest.spyOn(BackHandler, "addEventListener").mockImplementation((_, listener) => {
     subscriptions.push(listener);
     return { remove: jest.fn() };
@@ -155,7 +155,7 @@ test("consumes system back at the first formal journey page without leaving it",
     </JourneyRouteScreen>,
   );
 
-  act(() => { subscriptions.at(-1)?.(); });
+  act(() => { subscriptions.at(-1)?.({ type: "hardwareBackPress", timeStamp: 0 }); });
 
   expect(mockReplace).not.toHaveBeenCalled();
   expect(mockRuntime.service.navigateTo).not.toHaveBeenCalled();
@@ -313,6 +313,20 @@ test("keeps an unresolved progress jump modal and suppresses late navigation aft
   await act(async () => pendingJump.resolve());
 
   expect(mockReplace).not.toHaveBeenCalledWith("/journey/final-preparation");
+});
+
+test("confirmed restart preserves the explicitly selected scenario", async () => {
+  const alert = jest.spyOn(Alert, "alert").mockImplementation(() => undefined);
+  mockRuntime.snapshot = createUnlockedDraft("reflection");
+  render(<JourneyRouteScreen pageId="reflection">{() => <Text>reflection</Text>}</JourneyRouteScreen>);
+  fireEvent.press(screen.getByRole("button", { name: "旅程选项" }));
+  fireEvent.press(screen.getByRole("button", { name: "重新开始" }));
+  expect(mockRuntime.restart).not.toHaveBeenCalled();
+  const destructive = alert.mock.calls[0]?.[2]?.find(({ style }) => style === "destructive");
+  await act(async () => { destructive?.onPress?.(); });
+  expect(mockRuntime.restart).toHaveBeenCalledTimes(1);
+  expect(mockReplace).toHaveBeenCalledWith({ pathname: "/journey/welcome", params: { entry: "first-overnight" } });
+  alert.mockRestore();
 });
 
 test("requires confirmation before restarting and hides a local deletion failure", async () => {

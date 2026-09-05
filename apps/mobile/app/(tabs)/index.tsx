@@ -1,29 +1,20 @@
-import { useRouter } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useWindowDimensions } from "react-native";
 
 import { Screen } from "../../src/core/ui/Screen";
 import { useAccountProfile } from "../../src/features/account/runtime/AccountProfileProvider";
 import { getResumePath } from "../../src/features/journey/application/journey-navigation";
-import {
-  type JourneyRuntimeContextValue,
-  useOptionalJourneyRuntime,
-} from "../../src/features/journey/runtime/JourneyRuntimeProvider";
+import { type JourneyRuntimeContextValue, useOptionalJourneyRuntime } from "../../src/features/journey/runtime/JourneyRuntimeProvider";
 import { WelcomePage } from "../../src/features/journey/ui/pages/WelcomePage";
 import { resolveFirstRunLayout } from "../../src/features/journey/ui/first-run-layout";
-import { useJournalAccess } from "../../src/features/journal/runtime/JournalAccessProvider";
-import { classifyActiveJourney } from "../../src/features/shell/application/app-shell-service";
-import type { AppShellState } from "../../src/features/shell/domain/app-shell-state";
+import { prepareFirstOvernight } from "../../src/features/shell/application/journey-entry";
 import { HomeScreen } from "../../src/features/shell/ui/HomeScreen";
-import type { ShellMetadataItem } from "../../src/features/shell/ui/shell-ui-components";
-
-type HomeLoadState = "loading" | "ready" | "error";
+import { useJourneyMapAccess } from "../../src/features/shell/ui/use-journey-map-access";
 
 export default function HomeRoute() {
   const runtime = useOptionalJourneyRuntime();
-  return runtime === null
-    ? <FirstRunHomeRoute runtime={null} />
-    : <AuthorizedHomeRoute runtime={runtime} />;
+  return runtime === null ? <FirstRunHomeRoute runtime={null} /> : <AuthorizedHomeRoute runtime={runtime} />;
 }
 
 function FirstRunHomeRoute({ runtime }: { runtime: JourneyRuntimeContextValue | null }) {
@@ -69,104 +60,64 @@ function FirstRunHomeRoute({ runtime }: { runtime: JourneyRuntimeContextValue | 
   );
 }
 
+
 function AuthorizedHomeRoute({ runtime }: { runtime: JourneyRuntimeContextValue }) {
   const router = useRouter();
   const accountProfile = useAccountProfile();
-  const journalAccess = useJournalAccess();
-  const [loadState, setLoadState] = useState<HomeLoadState>("loading");
-  const [cards, setCards] = useState<ShellMetadataItem[]>([]);
-  const [completion, setCompletion] = useState<AppShellState | null>(null);
-  const [journalRecords, setJournalRecords] = useState<ShellMetadataItem[]>([]);
-  const loadGeneration = useRef(0);
-
-  const load = useCallback(async () => {
-    const generation = ++loadGeneration.current;
-    setLoadState("loading");
-    if (journalAccess.status !== "ready") setJournalRecords([]);
-    try {
-      const [nextCompletion, journal] = await Promise.all([
-        runtime.shellState.load(),
-        journalAccess.status === "ready" && journalAccess.service !== undefined
-          ? journalAccess.service.listRecords()
-          : Promise.resolve([]),
-      ]);
-      if (generation !== loadGeneration.current) return;
-      setJournalRecords(journal.slice(0, 3).map((record) => ({
-        id: record.id,
-        title: record.title,
-        dateLabel: record.occurredAt.slice(0, 10),
-        statusLabel: record.highlight.text,
-      })));
-      if (nextCompletion === null) {
-        setCards([]);
-        setCompletion(null);
-        setLoadState("ready");
-        return;
-      }
-      const records = await runtime.cards.listMetadata();
-      if (generation !== loadGeneration.current) return;
-      setCards(records.map((record) => ({
-        id: record.id,
-        title: "沟通草稿",
-        dateLabel: record.savedAt.slice(0, 10),
-        statusLabel: "已保存到本机",
-      })));
-      setCompletion(nextCompletion);
-      setLoadState("ready");
-    } catch {
-      if (generation === loadGeneration.current) setLoadState("error");
-    }
-  }, [journalAccess.service, journalAccess.status, runtime.cards, runtime.shellState]);
-
+  const access = useJourneyMapAccess(runtime);
+  const [scenarioPending, setScenarioPending] = useState(false);
+  const [scenarioError, setScenarioError] = useState(false);
+  const inFlight = useRef(false);
+  const active = useRef(true);
+  const navigationEpoch = useRef(0);
   useEffect(() => {
-    void load();
-    return () => { loadGeneration.current += 1; };
-  }, [load]);
+    active.current = true;
+    return () => { active.current = false; navigationEpoch.current += 1; };
+  }, [runtime.service]);
+  useFocusEffect(useCallback(() => {
+    // Tabs stay mounted after navigation; invalidate an opening request on blur.
+    return () => { navigationEpoch.current += 1; };
+  }, []));
 
-  if (loadState === "ready" && completion === null) {
-    return <FirstRunHomeRoute runtime={runtime} />;
-  }
+  if (access.status === "onboarding") return <FirstRunHomeRoute runtime={runtime} />;
 
-  const activeKind = classifyActiveJourney(runtime.snapshot, completion);
-  const activeJourney = activeKind !== null && runtime.snapshot
-    ? {
-        id: runtime.snapshot.id,
-        kind: activeKind,
-        title: activeKind === "initial" ? "首次旅程" : "本次回顾",
-        dateLabel: runtime.snapshot.updatedAt.slice(0, 10),
-        statusLabel: "进行中",
-      }
-    : null;
+  const openScenario = async () => {
+    if (inFlight.current) return;
+    inFlight.current = true;
+    const epoch = ++navigationEpoch.current;
+    setScenarioPending(true);
+    setScenarioError(false);
+    try {
+      const destination = await prepareFirstOvernight(runtime);
+      if (active.current && navigationEpoch.current === epoch) router.push(destination);
+    } catch {
+      if (active.current && navigationEpoch.current === epoch) setScenarioError(true);
+    } finally {
+      inFlight.current = false;
+      if (active.current) setScenarioPending(false);
+    }
+  };
 
   return (
-    <Screen>
+    <Screen contentSafeAreaTop testID="journey-map-scroll">
       <HomeScreen
         account={{
           status: accountProfile.status,
-          ...(accountProfile.profile?.displayName === undefined
-            ? {}
-            : { displayName: accountProfile.profile.displayName }),
-          onOpen: () => router.push(
-            accountProfile.status === "signedOut" ? "/auth/email" : "/(tabs)/profile",
-          ),
+          ...(accountProfile.profile?.displayName === undefined ? {} : { displayName: accountProfile.profile.displayName }),
+          onOpen: () => {
+            navigationEpoch.current += 1;
+            router.push(accountProfile.status === "signedOut" ? "/auth/email" : "/(tabs)/profile");
+          },
         }}
-        activeJourney={activeJourney}
-        currentCard={cards[0] ?? null}
-        loadState={loadState}
-        onContinueJourney={() => router.push(getResumePath(runtime.snapshot))}
-        onOpenCurrentCard={(id) => router.push(`/cards/${id}`)}
-        onOpenJournal={() => router.push("/journal/new")}
-        onOpenRecord={(id) => router.push({ pathname: "/journal/[id]", params: { id } })}
-        onRetry={() => { void load(); }}
-        onStartPractice={() => router.push("/practice/session")}
-        onStartReview={() => {
-          if (activeKind === "initial") {
-            router.push(getResumePath(runtime.snapshot));
-            return;
-          }
-          void runtime.replaceActiveReview().then(() => router.push("/journey/welcome"));
+        loadState={access.status}
+        onRetry={access.retry}
+        onOpenSample={(id) => {
+          navigationEpoch.current += 1;
+          router.push({ pathname: "/explore/[journeyId]", params: { journeyId: id } });
         }}
-        recentRecords={journalRecords}
+        onOpenScenario={openScenario}
+        scenarioPending={scenarioPending}
+        scenarioError={scenarioError}
       />
     </Screen>
   );

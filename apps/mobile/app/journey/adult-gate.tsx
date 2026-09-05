@@ -1,4 +1,4 @@
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useEffect, useRef } from "react";
 
 import { Screen } from "../../src/core/ui/Screen";
@@ -10,8 +10,12 @@ import {
 } from "../../src/features/journey/runtime/JourneyRuntimeProvider";
 import { AdultGatePage } from "../../src/features/journey/ui/pages/adult-gate-page";
 
+import { onboardingHref, resolveJourneyEntry } from "../../src/features/shell/application/journey-entry";
+
 export default function AdultGateRoute() {
   const router = useRouter();
+  const params = useLocalSearchParams<{ entry?: string }>();
+  const entry = resolveJourneyEntry(params.entry);
   const auth = useOptionalAuth();
   const preferences = useOptionalAccountPreferences();
   const adultDeclaration = useAdultDeclaration();
@@ -34,8 +38,8 @@ export default function AdultGateRoute() {
     if (!activeRef.current || navigatedRef.current) return;
     navigatedRef.current = true;
     decisionRef.current = null;
-    router.replace("/journey/preface");
-  }, [router]);
+    router.replace(onboardingHref("/journey/preface", entry));
+  }, [entry, router]);
 
   useEffect(() => {
     if (authorizationReady) openPreface();
@@ -74,7 +78,7 @@ export default function AdultGateRoute() {
   return (
     <Screen>
       <AdultGatePage
-        onSignIn={auth?.status === "signedOut" ? () => router.push({ pathname: "/auth/email", params: { returnTo: "/journey/adult-gate" } }) : undefined}
+        onSignIn={auth?.status === "signedOut" ? () => router.push({ pathname: "/auth/email", params: { returnTo: "/journey/adult-gate", ...(entry === "first-overnight" ? { entry } : {}) } }) : undefined}
         onConfirmAdult={confirmAdult}
         onUnderage={exitUnderage}
       />

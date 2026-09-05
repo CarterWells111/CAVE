@@ -31,6 +31,8 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     userInterfaceStyle: "automatic",
     plugins: [
       "expo-router",
+      "@react-native-community/datetimepicker",
+      "expo-font",
       "expo-system-ui",
       [
         "expo-splash-screen",

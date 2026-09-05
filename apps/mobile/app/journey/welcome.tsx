@@ -1,4 +1,4 @@
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { useState } from "react";
 import { useWindowDimensions } from "react-native";
 
@@ -8,8 +8,12 @@ import { useOptionalJourneyRuntime } from "../../src/features/journey/runtime/Jo
 import { resolveFirstRunLayout } from "../../src/features/journey/ui/first-run-layout";
 import { WelcomePage } from "../../src/features/journey/ui/pages/WelcomePage";
 
+import { onboardingHref, resolveJourneyEntry } from "../../src/features/shell/application/journey-entry";
+
 export default function WelcomeRoute() {
   const router = useRouter();
+  const params = useLocalSearchParams<{ entry?: string }>();
+  const entry = resolveJourneyEntry(params.entry);
   const { fontScale, height, width } = useWindowDimensions();
   const [viewport, setViewport] = useState<{ height: number; width: number } | null>(null);
   const layout = resolveFirstRunLayout({
@@ -22,10 +26,10 @@ export default function WelcomeRoute() {
   const resumeAvailable = snapshot?.ageConfirmed === true;
   const resume = () => {
     if (snapshot === null || snapshot.addressPreference === null || !snapshot.prefaceRead) {
-      router.replace("/journey/preface");
+      router.replace(onboardingHref("/journey/preface", entry));
       return;
     }
-    router.replace(getResumePath(snapshot));
+    router.replace(entry === "first-overnight" ? getResumePath(snapshot) : "/(tabs)");
   };
   return (
     <Screen
@@ -44,7 +48,7 @@ export default function WelcomeRoute() {
         layout={layout.brandLayout}
         onOpenSettings={() => router.push("/settings")}
         onResume={resume}
-        onStart={() => router.push("/journey/adult-gate")}
+        onStart={() => router.push(onboardingHref("/journey/adult-gate", entry))}
         resumeAvailable={resumeAvailable}
       />
     </Screen>

@@ -7,6 +7,11 @@ overrides:
   fastq: "1.20.1"
   postcss: "8.5.26"
 
+packageExtensions:
+  "@react-native-community/datetimepicker@9.1.0":
+    dependencies:
+      "@expo/config-plugins": "57.0.9"
+
 allowBuilds:
   esbuild: true
   unrs-resolver: true

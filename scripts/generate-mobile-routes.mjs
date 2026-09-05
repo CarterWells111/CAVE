@@ -13,7 +13,7 @@ export function generateRoutes({
   outputDir = resolve(mobileRoot, ".expo/types"),
 } = {}) {
   if (!statSync(appRoot).isDirectory()) throw new Error("Mobile route root must be a directory");
-  const { getTypedRoutesDeclarationFile } = mobileRequire("expo-router/build/typed-routes/generate");
+  const { getTypedRoutesDeclarationFile } = mobileRequire("@expo/router-server/build/typed-routes/generate");
   const { default: requireContext } = mobileRequire("expo-router/build/testing-library/require-context-ponyfill");
   const { EXPO_ROUTER_CTX_IGNORE } = mobileRequire("expo-router/_ctx-shared");
   const { getRoutes } = mobileRequire("expo-router/build/getRoutes");
