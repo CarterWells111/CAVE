@@ -49,6 +49,10 @@ corepack pnpm security:audit
 
 安装和其他生命周期命令仍使用根目录锁定的 pnpm 10.34.5 / `.nvmrc` 中的 Node 22.23.2；不要为审计运行 pnpm 11 install 或全局替换 pnpm。独立工具 workspace 避免其可执行文件覆盖根目录 pnpm。审计启动器的 `--pm-on-fail=ignore` **仅禁止自动切换回根目录的 pnpm 10**，不是忽略漏洞；`high` 阈值和 `pnpm-workspace.yaml` 中原有的两个 GHSA 豁免保持不变。首次检出先执行 `pnpm install --frozen-lockfile`，不要使用仅生产依赖安装来运行开发门禁。
 
+两个精确豁免 `GHSA-w3rx-r6r6-pgpr` 与 `GHSA-5p2g-fcmc-qvqq` 都来自 `react-native -> Metro -> image-size@1.2.1` 的资源构建链，不进入移动端 JavaScript 运行时。上游截至 2026-09-05 仍无修复版本；仓库通过 `patches/image-size@1.2.1.patch` 阻断 ICNS 的零长度条目以及 JXL/HEIF 共用 box 解析器中的零尺寸循环，并由 `tests/image-size-security.test.ts` 在隔离子进程及一秒超时内验证 ICNS 与 JXL 恶意样本终止及合法 JXL 尾框行为。豁免只能与该补丁和测试同时存在；上游发布修复版后应优先升级并同时删除补丁及两个豁免，不能向列表加入未修复 advisory。
+
+`decode-uri-component@0.5.0` 与 `uuid@11.1.1` 通过精确 override 消除 `GHSA-vcc3-ghjq-m6fr` 和 `GHSA-w5hq-g745-h8pq`。前者经 Expo Router 进入查询串运行路径；由于安全版改为 ESM 默认导出，而 Expo Router 当前依赖的 `query-string@7.1.3` 和 Jest 29 仍按 CommonJS 加载它，`patches/decode-uri-component@0.5.0.patch` 保持修复算法不变，仅恢复 CommonJS 包装。后者仅经 Expo config-plugins 的 `xcode` 进入 iOS 配置构建链。`tests/dependency-advisory-compatibility.test.ts` 同时验证畸形 URL 有界返回以及 `xcode` 所需的 CommonJS `uuid.v4()` API。
+
 原因见 [pnpm 11 官方发布说明](https://github.com/pnpm/pnpm.io/blob/main/blog/releases/11.0.md)：旧 `audits/quick` 接口已退役，应使用 `advisories/bulk`，不能无限重试旧接口。`tests/security-audit.test.ts` 使用真实审计 CLI 和本机 HTTP 服务，验证 v9 锁文件的直接、传递、可选及 workspace 生产依赖覆盖、开发依赖排除、阈值、精确豁免、错误/超时阻断和文件不被重写。本机合成服务测试不替代对官方 npm 服务执行的真实审计。
 
 审计工具还应用 `patches/pnpm@11.25.0.patch`：上游会跳过非法公告 ID、未知严重度或无效版本范围，可能将坏报告误报为干净结果；此补丁在响应校验处拒绝这些字段，沿用上游的非零错误出口。它不改变合法漏洞匹配、严重度阈值或任何豁免。升级审计工具时必须先复验补丁及上述真实 CLI 测试，不能静默移除校验。

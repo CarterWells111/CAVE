@@ -32,20 +32,30 @@ describe("repository security configuration", () => {
     expect(mobilePackageJson.dependencies["expo-font"]).toBe("~57.0.3");
   });
 
-  it("pins patched build dependencies and narrowly allowlists patched advisories", () => {
+  it("pins remediated dependencies and narrowly allowlists patched advisories", () => {
     const workspace = readFileSync(
       new URL("../pnpm-workspace.yaml", import.meta.url),
       "utf8"
     );
+    const parsed = parse(workspace) as {
+      auditConfig?: { ignoreGhsas?: string[] };
+      overrides?: Record<string, string>;
+    };
     const imageSizePatch = readFileSync(
       new URL("../patches/image-size@1.2.1.patch", import.meta.url),
       "utf8"
     );
 
-    expect(workspace).toContain('postcss: "8.5.26"');
+    expect(parsed.overrides).toMatchObject({
+      "decode-uri-component": "0.5.0",
+      postcss: "8.5.26",
+      uuid: "11.1.1",
+    });
     expect(workspace).toContain('image-size@1.2.1: "patches/image-size@1.2.1.patch"');
-    expect(workspace).toContain("GHSA-w3rx-r6r6-pgpr");
-    expect(workspace).toContain("GHSA-5p2g-fcmc-qvqq");
+    expect(parsed.auditConfig?.ignoreGhsas).toEqual([
+      "GHSA-w3rx-r6r6-pgpr",
+      "GHSA-5p2g-fcmc-qvqq",
+    ]);
     expect(workspace).not.toContain("ignoreUnfixable");
     expect(imageSizePatch).toContain("box.size <= 0");
     expect(imageSizePatch).toContain("imageHeader[1] <= 0");
