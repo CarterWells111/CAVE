@@ -1,6 +1,8 @@
-import type { Href, Router } from "expo-router";
+import type { Href } from "expo-router";
 
-export function backOrHome(router: Pick<Router, "back" | "canGoBack" | "replace">): void {
+type ExpoRouter = ReturnType<(typeof import("expo-router"))["useRouter"]>;
+
+export function backOrHome(router: Pick<ExpoRouter, "back" | "canGoBack" | "replace">): void {
   if (router.canGoBack()) router.back();
   else router.replace("/(tabs)");
 }

@@ -32,8 +32,8 @@ test("keeps session-only routes public and protects only private detail routes",
   expect(existsSync(resolve(__dirname, "../../../app/journal/index.tsx"))).toBe(false);
 });
 
-test("loads long-term lists through metadata-only repository projections", () => {
-  expect(source("(tabs)/index.tsx")).toContain("cards.listMetadata()");
+test("keeps metadata lists in My and avoids repository reads on the map", () => {
+  expect(source("(tabs)/index.tsx")).not.toContain("cards.listMetadata()");
   expect(source("(tabs)/profile.tsx")).toContain("cards.listMetadata()");
   expect(source("(tabs)/profile.tsx")).toContain("reviewHistory.listMetadata()");
   expect(source("(tabs)/index.tsx")).not.toContain("cards.list()");
@@ -64,15 +64,17 @@ test("keeps the long-term navigation available during later full reviews", () =>
 
 test("classifies and resumes the unfinished initial journey without replacing it", () => {
   for (const route of ["(tabs)/index.tsx", "(tabs)/reviews.tsx"]) {
-    expect(source(route)).toContain("classifyActiveJourney");
-    expect(source(route)).toContain("getResumePath");
+    expect(source(route)).not.toContain("replaceActiveReview");
   }
+  expect(source("(tabs)/index.tsx")).toContain("prepareFirstOvernight");
+  expect(source("(tabs)/reviews.tsx")).toContain("classifyActiveJourney");
+  expect(source("(tabs)/reviews.tsx")).toContain("scenarioResumeHref");
 });
 
 test("opens standalone practice and saved-card details without journey prerequisites", () => {
   expect(source("(tabs)/practice.tsx")).toContain('pathname: "/practice/session"');
   expect(source("(tabs)/practice.tsx")).toContain("params: { scenario: id }");
-  expect(source("(tabs)/index.tsx")).toContain('router.push("/practice/session")');
+  expect(source("(tabs)/index.tsx")).toContain('pathname: "/explore/[journeyId]"');
   expect(source("practice/session.tsx")).toContain('context="standalone"');
   expect(source("practice/session.tsx")).toContain("parseStandalonePracticeScenario");
   expect(source("practice/session.tsx")).toContain("openJourneySources");

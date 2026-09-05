@@ -3,6 +3,7 @@ import { fireEvent, render, screen } from "@testing-library/react-native";
 import PracticeRoute from "../../../app/(tabs)/practice";
 import ProfileRoute from "../../../app/(tabs)/profile";
 import ReviewsRoute from "../../../app/(tabs)/reviews";
+import { createJourneyDraft } from "../journey/domain/types";
 
 const mockPush = jest.fn();
 const mockCardsListMetadata = jest.fn();
@@ -48,13 +49,13 @@ test("keeps public reviews useful without reading private shell state", () => {
   fireEvent.press(screen.getByRole("button", { name: "按主题回顾：身体感受" }));
   fireEvent.press(screen.getByRole("button", { name: "按主题回顾：边界与表达" }));
   fireEvent.press(screen.getByRole("button", { name: "按主题回顾：沟通练习" }));
-  fireEvent.press(screen.getByRole("button", { name: "开始完整五页回顾" }));
+  fireEvent.press(screen.getByRole("button", { name: "选择旅程" }));
 
   expect(mockPush.mock.calls).toEqual([
     ["/reviews/topic/body"],
     ["/reviews/topic/boundaries"],
     ["/practice/session"],
-    ["/journey/adult-gate"],
+    ["/(tabs)"],
   ]);
 });
 
@@ -86,7 +87,7 @@ test("keeps the authorized reviews completion error retryable", async () => {
   expect(screen.queryByText(/private shell failure/u)).toBeNull();
   fireEvent.press(screen.getByRole("button", { name: "重试" }));
 
-  expect(await screen.findByRole("button", { name: "开始完整五页回顾" })).toBeTruthy();
+  expect(await screen.findByRole("button", { name: "选择旅程" })).toBeTruthy();
   expect(mockShellStateLoad).toHaveBeenCalledTimes(2);
 });
 
@@ -103,4 +104,16 @@ test("keeps the public preset-practice destinations session-only", () => {
   expect(mockShellStateLoad).not.toHaveBeenCalled();
   expect(mockCardsListMetadata).not.toHaveBeenCalled();
   expect(mockReviewsListMetadata).not.toHaveBeenCalled();
+});
+
+test("selecting journeys with an active review only opens the map and preserves the draft", async () => {
+  const snapshot = { ...createJourneyDraft({ id: "existing-review", now: "2026-09-04" }), ageConfirmed: true, addressPreference: "你" as const, prefaceRead: true };
+  mockShellStateLoad.mockResolvedValue({ initialJourneyId: "older", initialJourneyCompletedAt: "2026-09-03" });
+  mockRuntime = { snapshot, shellState: { load: mockShellStateLoad }, replaceActiveReview: mockReplaceActiveReview };
+  render(<ReviewsRoute />);
+  fireEvent.press(await screen.findByRole("button", { name: "选择旅程" }));
+  expect(mockPush).toHaveBeenCalledWith("/(tabs)");
+  expect(mockReplaceActiveReview).not.toHaveBeenCalled();
+  expect(mockRuntime).toMatchObject({ snapshot });
+  expect(screen.queryByRole("button", { name: "确认开始新回顾" })).toBeNull();
 });

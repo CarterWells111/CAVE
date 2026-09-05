@@ -55,7 +55,7 @@ test("routes a completed left-edge gesture through the shared back action", () =
 });
 
 test("routes Android hardware back through the shared action and consumes the first-page boundary", () => {
-  const subscriptions: Array<() => boolean | null | undefined> = [];
+  const subscriptions: Array<Parameters<typeof BackHandler.addEventListener>[1]> = [];
   const addEventListener = jest.spyOn(BackHandler, "addEventListener").mockImplementation((_, listener) => {
     subscriptions.push(listener);
     return { remove: jest.fn() };
@@ -66,13 +66,13 @@ test("routes Android hardware back through the shared action and consumes the fi
   );
 
   let consumed = false;
-  act(() => { consumed = subscriptions.at(-1)?.() === true; });
+  act(() => { consumed = subscriptions.at(-1)?.({ type: "hardwareBackPress", timeStamp: 0 }) === true; });
   expect(consumed).toBe(true);
   expect(onBack).toHaveBeenCalledTimes(1);
   laterPage.unmount();
 
   render(<JourneyScreenShell pageId="body-knowledge" onExit={onExit} />);
-  act(() => { consumed = subscriptions.at(-1)?.() === true; });
+  act(() => { consumed = subscriptions.at(-1)?.({ type: "hardwareBackPress", timeStamp: 0 }) === true; });
   expect(consumed).toBe(true);
   expect(onBack).toHaveBeenCalledTimes(1);
   addEventListener.mockRestore();

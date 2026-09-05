@@ -2,7 +2,7 @@ import { useRouter } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
 
 import { Screen } from "../../src/core/ui/Screen";
-import { getResumePath } from "../../src/features/journey/application/journey-navigation";
+import { scenarioResumeHref } from "../../src/features/shell/application/journey-entry";
 import {
   type JourneyRuntimeContextValue,
   useOptionalJourneyRuntime,
@@ -35,7 +35,7 @@ function PublicReviewsRoute() {
       <ReviewsHubScreen
         activeJourney={null}
         loadState="ready"
-        onStartFullReview={() => router.push("/journey/adult-gate")}
+        onSelectJourney={() => router.push("/(tabs)")}
         onStartTopic={(id) => openTopic(router, id)}
         topics={topics}
       />
@@ -70,21 +70,15 @@ function AuthorizedReviewsRoute({ runtime }: { runtime: JourneyRuntimeContextVal
         statusLabel: "进行中",
       }
     : null;
-  const startFullReview = () => {
-    if (activeKind === "initial") {
-      router.push(getResumePath(runtime.snapshot));
-      return;
-    }
-    void runtime.replaceActiveReview().then(() => router.push("/journey/welcome"));
-  };
+  const selectJourney = () => router.push("/(tabs)");
 
   return (
     <Screen>
       <ReviewsHubScreen
         activeJourney={activeJourney}
         loadState={loadState}
-        onContinueJourney={() => router.push(getResumePath(runtime.snapshot))}
-        onStartFullReview={startFullReview}
+        onContinueJourney={() => router.push(scenarioResumeHref(runtime.snapshot))}
+        onSelectJourney={selectJourney}
         onStartTopic={(id) => openTopic(router, id)}
         onRetry={() => { void load(); }}
         topics={topics}

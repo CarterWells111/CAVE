@@ -23,6 +23,7 @@ jest.mock("expo-router", () => ({
     mockRouter.replace(href);
     return null;
   },
+  useLocalSearchParams: () => ({}),
   useRouter: () => mockRouter
 }));
 

@@ -22,7 +22,8 @@ test("wires history detail, branching, deletion, and one active replacement", ()
   const detail = source("../../../app/reviews/[id].tsx");
   expect(profile).toContain("reviewHistory.listMetadata()");
   expect(hub).not.toContain("reviewHistory.listMetadata()");
-  expect(hub).toContain("replaceActiveReview()");
+  expect(hub).not.toContain("replaceActiveReview()");
+  expect(hub).toContain('router.push("/(tabs)")');
   expect(detail).toContain("reviewHistory.loadDetail(id)");
   expect(detail).toContain("reviewHistory.loadBranchSeed(detail.id)");
   expect(detail).toContain("reviewHistory.deleteVersion(reviewId)");

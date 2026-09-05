@@ -53,6 +53,7 @@ jest.mock("../account/runtime/AccountProfileProvider", () => ({
 }));
 
 jest.mock("expo-router", () => ({
+  useLocalSearchParams: () => ({}),
   Redirect: (props: { href: string }) => {
     mockRedirect(props);
     return null;

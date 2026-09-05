@@ -7,12 +7,14 @@ import { JourneyAction } from "../components/JourneyAction";
 import { PreferenceSyncNotice } from "../../../account/ui/PreferenceSyncNotice";
 
 type PrefaceWelcomeSheetProps = {
+  actionLabel?: string;
   onConfirm(): void | Promise<void>;
   preference: Exclude<AddressPreference, null>;
   visible: boolean;
 };
 
 export function PrefaceWelcomeSheet({
+  actionLabel = "我已了解，开始旅程",
   onConfirm,
   preference,
   visible,
@@ -41,7 +43,7 @@ export function PrefaceWelcomeSheet({
       </Text>
       <JourneyAction
         errorMessage="阅读状态暂时无法保存，请重试。"
-        label="我已了解，开始旅程"
+        label={actionLabel}
         loadingLabel="正在进入旅程…"
         onAction={onConfirm}
       />

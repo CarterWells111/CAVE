@@ -10,7 +10,7 @@ import {
   useRef,
   useState,
 } from "react";
-import { Text, useColorScheme } from "react-native";
+import { Text, type ColorSchemeName, useColorScheme } from "react-native";
 
 import type { AppearancePreferencesRepository } from "./appearance-preferences";
 import {
@@ -38,7 +38,7 @@ const ThemePreferenceContext = createContext<ThemePreferenceContextValue | null>
 
 export function resolveTheme(
   preference: ThemePreference,
-  systemScheme: ResolvedTheme | null | undefined,
+  systemScheme: ColorSchemeName | null | undefined,
 ): ResolvedTheme {
   if (preference !== "system") return preference;
   return systemScheme === "dark" ? "dark" : "light";

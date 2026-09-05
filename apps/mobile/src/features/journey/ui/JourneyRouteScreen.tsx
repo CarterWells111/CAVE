@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useRouter } from "expo-router";
 import { Alert, Text, type View } from "react-native";
 
+import { onboardingHref } from "../../shell/application/journey-entry";
 import { useTheme } from "../../../core/design/theme-provider";
 import { BottomSheet } from "../../../core/ui/bottom-sheet";
 import { Button } from "../../../core/ui/Button";
@@ -113,7 +114,7 @@ export function JourneyRouteScreen({
           void runtime.restart()
             .then(() => {
               setOptionsOpen(false);
-              router.replace("/journey/welcome");
+              router.replace(onboardingHref("/journey/welcome", "first-overnight"));
             })
             .catch(() => setRestartFailed(true));
         },
