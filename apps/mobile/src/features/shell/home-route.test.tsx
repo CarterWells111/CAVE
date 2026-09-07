@@ -2,7 +2,7 @@ import { act, fireEvent, render, screen } from "@testing-library/react-native";
 import * as ReactNative from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
-import HomeRoute from "../../../app/(tabs)/index";
+import HomeRoute from "../../../app/(tabs)/journey";
 import { createJourneyDraft, type JourneyDraft } from "../journey/domain/types";
 
 const mockPush = jest.fn();

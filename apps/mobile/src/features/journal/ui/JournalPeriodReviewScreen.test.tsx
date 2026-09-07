@@ -1,4 +1,4 @@
-import { act, render, screen } from "@testing-library/react-native";
+import { act, fireEvent, render, screen } from "@testing-library/react-native";
 
 import { ThemeProvider } from "../../../core/design/theme-provider";
 import { JournalService } from "../application/journal-service";
@@ -28,3 +28,14 @@ test("does not offer future-dated records in the recent 30 day review", async ()
   expect(screen.getByRole("button", { name: /今天/u })).toBeTruthy();
   expect(screen.queryByRole("button", { name: /未来/u })).toBeNull();
 });
+
+ test("lets an empty week switch to a month containing older records", async () => {
+  const service = new JournalService(new InMemoryJournalRepository(), { now: () => "2026-09-07T10:00:00Z", createId: () => "r" }, "a");
+  await service.createRecord({ occurredAt: "2026-08-20", body: "更早的一句话" });
+  render(<JournalPeriodReviewScreen service={service} onSaved={jest.fn()} now={() => new Date(2026, 8, 7, 12)} />);
+  await act(async () => undefined);
+  fireEvent.press(screen.getByRole("button", { name: "最近一周" }));
+  expect(screen.getByText("这段时间还没有记录")).toBeTruthy();
+  fireEvent.press(screen.getByRole("button", { name: "最近一个月" }));
+  expect(screen.getByRole("button", { name: /更早的一句话/u })).toBeTruthy();
+ });

@@ -4,10 +4,10 @@ import { getResumePath } from "../../journey/application/journey-navigation";
 import type { JourneyDraft } from "../../journey/domain/types";
 import type { JourneyRuntimeContextValue } from "../../journey/runtime/JourneyRuntimeProvider";
 
-export type JourneyEntry = "map" | "first-overnight";
+export type JourneyEntry = "map" | "first-overnight" | "journal" | "ai";
 
 export function resolveJourneyEntry(value: unknown): JourneyEntry {
-  return value === "first-overnight" ? "first-overnight" : "map";
+  return value === "ai" ? "ai" : value === "journal" ? "journal" : value === "first-overnight" ? "first-overnight" : "map";
 }
 
 export function onboardingHref(

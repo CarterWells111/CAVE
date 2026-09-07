@@ -400,7 +400,7 @@ export function SettingsScreen({
               邮箱登录（不含同步）
             </Text>
             <Text selectable style={{ ...theme.typography.caption, color: theme.color.textSecondary }}>
-              登录不会上传日记、沟通卡、回顾或亲密内容。
+              登录不会上传日记、沟通卡、回顾或亲密内容。使用 AI 时，每次会先预览并由你确认发送的内容；没有一次授权后自动发送的设置。
             </Text>
           </View>
           {account?.status === "ready" && account.onManageAccount ? (

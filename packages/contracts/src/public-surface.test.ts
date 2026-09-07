@@ -82,6 +82,8 @@ describe("version one public contract surface", () => {
     expect(Object.keys(contractExports).sort()).toEqual(
       [
         "ApiErrorCodeSchema",
+        "AssistantRequestSchema",
+        "AssistantResponseSchema",
         "ApiErrorResponseSchema",
         "AccountDeletionChallengeRequestSchema",
         "AccountDeletionGrantResponseSchema",

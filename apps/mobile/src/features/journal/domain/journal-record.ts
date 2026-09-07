@@ -60,10 +60,10 @@ export class JournalValidationError extends Error {
 
 type CreateJournalRecordInput = Readonly<{
   id: string;
-  title: string;
+  title?: string;
   occurredAt: string;
   createdAt: string;
-  highlight: JournalHighlight;
+  highlight?: JournalHighlight;
   body?: string;
   topics?: readonly JournalTopic[];
   source: JournalSource;
@@ -109,8 +109,10 @@ export function canEditJournalItem(now: string, deadline: string): boolean {
 }
 
 export function createJournalRecord(input: CreateJournalRecordInput): JournalRecord {
-  const title = input.title.trim();
-  if (!title) throw new JournalValidationError("journal-title-required");
+  const body = (input.body ?? "").trim();
+  const excerpt = body || input.highlight?.text.trim() || input.title?.trim() || "";
+  if (!excerpt) throw new JournalValidationError("journal-body-required");
+  const title = input.title?.trim() || excerpt.slice(0, 24);
   const createdAt = requireIsoDate(input.createdAt);
   return {
     id: input.id,
@@ -119,8 +121,8 @@ export function createJournalRecord(input: CreateJournalRecordInput): JournalRec
     createdAt,
     updatedAt: createdAt,
     editableUntil: editableUntil(createdAt),
-    highlight: normalizeHighlight(input.highlight),
-    body: (input.body ?? "").trim(),
+    highlight: input.highlight?.text.trim() ? normalizeHighlight(input.highlight) : { kind: "impression", text: excerpt.slice(0, 120) },
+    body,
     topics: normalizeTopics(input.topics ?? []),
     source: input.source,
     cardSnapshot: input.cardSnapshot ?? null

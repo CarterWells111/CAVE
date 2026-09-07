@@ -29,18 +29,11 @@ describe("key event journal domain", () => {
     expect(record.editableUntil).toBe("2026-08-29T10:00:00.000Z");
   });
 
-  test("rejects an empty title and an empty highlight", () => {
-    expect(() => createJournalRecord({
-      id: "record-1", title: "  ", occurredAt: createdAt, createdAt,
-      highlight: { kind: "feeling", text: "有一点安心" }, body: "", topics: [],
-      source: { kind: "freeform" }
-    })).toThrow(new JournalValidationError("journal-title-required"));
-
-    expect(() => createJournalRecord({
-      id: "record-1", title: "一个事件", occurredAt: createdAt, createdAt,
-      highlight: { kind: "impression", text: "  " }, body: "", topics: [],
-      source: { kind: "freeform" }
-    })).toThrow(new JournalValidationError("journal-highlight-required"));
+  test("saves one sentence with literal defaults and rejects a completely empty record", () => {
+    const record = createJournalRecord({ id: "r", occurredAt: createdAt, createdAt, body: "今天想安静一会儿。", source: { kind: "freeform" } });
+    expect(record.title).toBe("今天想安静一会儿。");
+    expect(record.highlight).toEqual({ kind: "impression", text: "今天想安静一会儿。" });
+    expect(() => createJournalRecord({ id: "r", occurredAt: createdAt, createdAt, body: " ", source: { kind: "freeform" } })).toThrow(new JournalValidationError("journal-body-required"));
   });
 
   test("allows occurredAt before createdAt and rejects invalid topics", () => {

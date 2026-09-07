@@ -9,8 +9,8 @@ function source(path: string) {
 
 test("registers all five tab routes while the main tab bar selects its visible destinations", () => {
   const layout = source("(tabs)/_layout.tsx");
-  expect(layout.match(/<Tabs\.Screen/gu)).toHaveLength(5);
-  for (const label of ["首页", "回顾", "练习", "内界手记", "我的"]) expect(layout).toContain(`title: "${label}"`);
+  expect(layout.match(/<Tabs\.Screen/gu)).toHaveLength(7);
+  for (const label of ["旅程", "内界手记", "AI", "我的"]) expect(layout).toContain(`title: "${label}"`);
   expect(layout).not.toContain("ShellRouteGate");
   expect(layout).toContain("LongTermTabBar");
   expect(layout).toContain('type: "tabPress"');
@@ -26,23 +26,24 @@ test("keeps session-only routes public and protects only private detail routes",
   expect(source("practice/session.tsx")).toContain('context="standalone"');
   expect(source("reviews/topic/[id].tsx")).toContain('storageMode="session-only"');
   const journalTab = source("(tabs)/journal.tsx");
-  expect(journalTab).toContain("ShellRouteGate");
+  expect(source("journal/_layout.tsx")).toContain("JournalAdultGate");
   expect(journalTab).toContain("JournalRouteGate");
+  expect(source("(tabs)/index.tsx")).toContain('from "./journey"');
   expect(journalTab).toContain("JournalListScreen");
   expect(existsSync(resolve(__dirname, "../../../app/journal/index.tsx"))).toBe(false);
 });
 
 test("keeps metadata lists in My and avoids repository reads on the map", () => {
-  expect(source("(tabs)/index.tsx")).not.toContain("cards.listMetadata()");
+  expect(source("(tabs)/journey.tsx")).not.toContain("cards.listMetadata()");
   expect(source("(tabs)/profile.tsx")).toContain("cards.listMetadata()");
   expect(source("(tabs)/profile.tsx")).toContain("reviewHistory.listMetadata()");
-  expect(source("(tabs)/index.tsx")).not.toContain("cards.list()");
+  expect(source("(tabs)/journey.tsx")).not.toContain("cards.list()");
   expect(source("(tabs)/profile.tsx")).not.toContain("cards.list()");
   expect(source("(tabs)/reviews.tsx")).not.toContain("reviewHistory.listMetadata()");
 });
 
 test("keeps settings outside tabs and available before journey completion", () => {
-  expect(source("(tabs)/index.tsx")).toContain('router.push("/settings")');
+  expect(source("(tabs)/journey.tsx")).toContain('router.push("/settings")');
   expect(source("settings/_layout.tsx")).not.toContain("ShellRouteGate");
   expect(source("settings/index.tsx")).toContain("useOptionalJourneyRuntime");
   expect(source("settings/index.tsx")).not.toContain('<Redirect href="/journey/welcome"');
@@ -58,27 +59,26 @@ test("keeps the long-term navigation available during later full reviews", () =>
   const nav = source("../src/features/shell/ui/LongTermBottomNav.tsx");
   const destinations = source("../src/features/shell/ui/long-term-navigation.ts");
   expect(nav).toContain("destinations.map");
-  for (const label of ["首页", "回顾", "练习", "内界手记", "我的"]) expect(destinations).toContain(`label: "${label}"`);
+  for (const label of ["旅程", "内界手记", "AI", "我的"]) expect(destinations).toContain(`label: "${label}"`);
   expect(nav).toContain('accessibilityRole="tab"');
 });
 
 test("classifies and resumes the unfinished initial journey without replacing it", () => {
-  for (const route of ["(tabs)/index.tsx", "(tabs)/reviews.tsx"]) {
+  for (const route of ["(tabs)/journey.tsx", "(tabs)/reviews.tsx"]) {
     expect(source(route)).not.toContain("replaceActiveReview");
   }
-  expect(source("(tabs)/index.tsx")).toContain("prepareFirstOvernight");
-  expect(source("(tabs)/reviews.tsx")).toContain("classifyActiveJourney");
-  expect(source("(tabs)/reviews.tsx")).toContain("scenarioResumeHref");
+  expect(source("(tabs)/journey.tsx")).toContain("prepareFirstOvernight");
+  expect(source("(tabs)/reviews.tsx")).toContain('<Redirect href="/(tabs)/journal"');
 });
 
 test("opens standalone practice and saved-card details without journey prerequisites", () => {
   expect(source("(tabs)/practice.tsx")).toContain('pathname: "/practice/session"');
   expect(source("(tabs)/practice.tsx")).toContain("params: { scenario: id }");
-  expect(source("(tabs)/index.tsx")).toContain('pathname: "/explore/[journeyId]"');
+  expect(source("(tabs)/journey.tsx")).toContain('pathname: "/explore/[journeyId]"');
   expect(source("practice/session.tsx")).toContain('context="standalone"');
   expect(source("practice/session.tsx")).toContain("parseStandalonePracticeScenario");
   expect(source("practice/session.tsx")).toContain("openJourneySources");
-  expect(source("(tabs)/reviews.tsx")).toContain("`/reviews/topic/${id}`");
+  expect(source("(tabs)/journey.tsx")).toContain('router.push("/reviews/topic/body")');
   expect(source("reviews/topic/[id].tsx")).toContain('storageMode="session-only"');
   expect(source("(tabs)/profile.tsx")).toContain("`/cards/${id}`");
   expect(source("cards/[id].tsx")).toContain("runtime.cards.load(id)");

@@ -9,8 +9,9 @@ import BehaviorMapRoute from "../../../../app/journey/behavior-map";
 import PrefaceRoute from "../../../../app/journey/preface";
 import WelcomeRoute from "../../../../app/journey/welcome";
 import SettingsRoute from "../../../../app/settings";
-import HomeRoute from "../../../../app/(tabs)";
-import ReviewsRoute from "../../../../app/(tabs)/reviews";
+import HomeRoute from "../../../../app/(tabs)/journal";
+import JourneyRoute from "../../../../app/(tabs)/journey";
+import AiRoute from "../../../../app/(tabs)/ai";
 import PracticeRoute from "../../../../app/(tabs)/practice";
 import ProfileRoute from "../../../../app/(tabs)/profile";
 import {
@@ -57,6 +58,10 @@ jest.mock("../../account/runtime/AccountProfileProvider", () => ({
     error: null,
     retry: jest.fn(),
   }),
+}));
+
+jest.mock("../../journal/runtime/JournalAccessProvider", () => ({
+  useJournalAccess: () => ({ status: "locked", journalPersistence: "sqlcipher" }),
 }));
 
 beforeEach(() => {
@@ -511,7 +516,8 @@ test("keeps every public tab and settings usable without initializing private st
     <JourneyRuntimeProvider createRuntime={harness.createRuntime}>
       <View>
         <HomeRoute />
-        <ReviewsRoute />
+        <JourneyRoute />
+        <AiRoute />
         <PracticeRoute />
         <ProfileRoute />
         <SettingsRoute />
@@ -520,14 +526,17 @@ test("keeps every public tab and settings usable without initializing private st
   );
 
   expect(await screen.findByTestId("welcome-landing")).toBeTruthy();
-  expect(screen.getByRole("header", { name: "回顾" })).toBeTruthy();
+  expect(screen.getAllByRole("header", { name: "内界手记" }).length).toBeGreaterThan(0);
+  fireEvent.press(screen.getByRole("button", { name: "开始写手记" }));
+  expect(mockRouter.push).toHaveBeenCalledWith({ pathname: "/journey/adult-gate", params: { entry: "journal" } });
+  expect(screen.getByRole("header", { name: "AI" })).toBeTruthy();
   expect(screen.getByRole("header", { name: "练习" })).toBeTruthy();
   expect(screen.getByRole("header", { name: "我的" })).toBeTruthy();
   expect(screen.getByRole("header", { name: "设置" })).toBeTruthy();
   expect(screen.getByText("还没有沟通卡")).toBeTruthy();
   expect(screen.getByText("还没有历史回顾")).toBeTruthy();
-  fireEvent.press(screen.getByRole("button", { name: "按主题回顾：身体感受" }));
-  expect(mockRouter.push).toHaveBeenCalledWith("/reviews/topic/body");
+  fireEvent.press(screen.getByRole("button", { name: "成年声明后开始问答" }));
+  expect(mockRouter.push).toHaveBeenCalledWith({ pathname: "/journey/adult-gate", params: { entry: "ai" } });
   fireEvent.press(screen.getByRole("radio", { name: "亮色" }));
   await act(async () => undefined);
   expect(harness.adapters.secrets.getDatabaseKey).not.toHaveBeenCalled();

@@ -30,11 +30,11 @@ export function requestIdFrom(value: unknown): string {
     : "invalid-request";
 }
 
-export async function boundedJson(request: Request): Promise<unknown> {
+export async function boundedJson(request: Request, maxBytes = MAX_AUTH_REQUEST_BYTES): Promise<unknown> {
   const contentType = request.headers.get("content-type")?.toLowerCase() ?? "";
   if (!contentType.startsWith("application/json")) throw new AuthServiceError("INVALID_REQUEST", 400);
   const declaredLength = Number(request.headers.get("content-length"));
-  if (Number.isFinite(declaredLength) && declaredLength > MAX_AUTH_REQUEST_BYTES) {
+  if (Number.isFinite(declaredLength) && declaredLength > maxBytes) {
     throw new AuthServiceError("INVALID_REQUEST", 413);
   }
   if (request.body === null) throw new AuthServiceError("INVALID_REQUEST", 400);
@@ -47,7 +47,7 @@ export async function boundedJson(request: Request): Promise<unknown> {
       const result = await reader.read();
       if (result.done) break;
       length += result.value.byteLength;
-      if (length > MAX_AUTH_REQUEST_BYTES) {
+      if (length > maxBytes) {
         await reader.cancel().catch(() => undefined);
         throw new AuthServiceError("INVALID_REQUEST", 413);
       }

@@ -24,7 +24,7 @@ export default function PrefaceRoute() {
   const prefaceRead = runtime.snapshot?.prefaceRead === true;
   const completed = eligible && preference !== null && prefaceRead && !choosing;
   const replacedDestination = useRef<string | null>(null);
-  const destination = entry === "first-overnight" ? getResumePath(runtime.snapshot) : "/(tabs)";
+  const destination = entry === "first-overnight" ? getResumePath(runtime.snapshot) : entry === "journal" ? "/(tabs)/journal" : entry === "ai" ? "/(tabs)/ai" : "/(tabs)";
 
   useEffect(() => {
     if (!eligible) {

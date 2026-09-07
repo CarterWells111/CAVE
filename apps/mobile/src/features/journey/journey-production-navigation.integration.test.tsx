@@ -473,3 +473,14 @@ test("explicit scenario entry survives adult declaration", async () => {
   await waitFor(() => expect(mockRouter.replace).toHaveBeenCalledWith({ pathname: "/journey/preface", params: { entry: "first-overnight" } }));
   view.unmount();
 });
+
+test.each(["journal", "ai"])("%s adult declaration returns to its tab without requiring preface", async (entry) => {
+  mockEntry = entry;
+  const journeyRuntime = runtime(false);
+  const view = await openRoute(<AdultGateReadinessProbe />, journeyRuntime);
+  fireEvent.press(screen.getByRole("button", { name: "我已年满 18 岁，继续" }));
+  await waitFor(() => expect(mockRouter.replace).toHaveBeenCalledWith(`/(tabs)/${entry}`));
+  expect(journeyRuntime.service.getSnapshot()).toMatchObject({ ageConfirmed: true, prefaceRead: false });
+  expect(mockRouter.replace).not.toHaveBeenCalledWith("/journey/preface");
+  view.unmount();
+});

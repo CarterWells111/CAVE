@@ -56,6 +56,7 @@ type AuthContextValue = {
   deleteAccount(deletionGrant: string, idempotencyKey: string): Promise<void>;
   getAccountPreferences(accountId: string): Promise<AccountPreferences>;
   updateAccountPreferences(accountId: string, expectedRevision: number, changes: PreferenceChanges): Promise<AccountPreferences>;
+  getAssistantAccessToken(accountId: string): Promise<string>;
 };
 
 export class LocalAuthError extends Error {
@@ -320,10 +321,11 @@ export function AuthProvider({
     deleteAccount,
     getAccountPreferences,
     updateAccountPreferences,
+    getAssistantAccessToken: preferencesToken,
   }), [
     clearLocalSession, createAccountDeletionIdempotencyKey, deleteAccount, logout, requestAccountDeletionChallenge,
     requestEmailChallenge, status, verifyAccountDeletionChallenge, verifyEmailChallenge,
-    getAccountPreferences, updateAccountPreferences,
+    getAccountPreferences, updateAccountPreferences, preferencesToken,
   ]);
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

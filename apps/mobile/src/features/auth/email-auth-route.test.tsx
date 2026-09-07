@@ -118,3 +118,21 @@ test("ignores unrecognized scenario intent after login", async () => {
   render(<EmailAuthRoute />);
   await waitFor(() => expect(mockReplace).toHaveBeenCalledWith("/journey/preface"));
 });
+
+test.each([true, false])("journal login preserves only the adult prerequisite: %s", async (ageConfirmed) => {
+  mockReturnTo = "/journey/adult-gate";
+  mockEntry = "journal";
+  mockAuthStatus = "signedIn";
+  mockPreferences = { ready: true, syncStatus: "saved", preferences: { ageConfirmed } };
+  render(<EmailAuthRoute />);
+  await waitFor(() => expect(mockReplace).toHaveBeenCalledWith(ageConfirmed ? "/(tabs)/journal" : {
+    pathname: "/journey/adult-gate", params: { entry: "journal" },
+  }));
+});
+
+test.each(["/(tabs)/journal", "/(tabs)/ai"])("returns a signed-in user to the requested tab %s", async (destination) => {
+  mockReturnTo = destination;
+  mockAuthStatus = "signedIn";
+  render(<EmailAuthRoute />);
+  await waitFor(() => expect(mockReplace).toHaveBeenCalledWith(destination));
+});

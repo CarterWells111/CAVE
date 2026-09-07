@@ -38,7 +38,7 @@ export default function AdultGateRoute() {
     if (!activeRef.current || navigatedRef.current) return;
     navigatedRef.current = true;
     decisionRef.current = null;
-    router.replace(onboardingHref("/journey/preface", entry));
+    router.replace(entry === "journal" ? "/(tabs)/journal" : entry === "ai" ? "/(tabs)/ai" : onboardingHref("/journey/preface", entry));
   }, [entry, router]);
 
   useEffect(() => {
@@ -78,7 +78,7 @@ export default function AdultGateRoute() {
   return (
     <Screen>
       <AdultGatePage
-        onSignIn={auth?.status === "signedOut" ? () => router.push({ pathname: "/auth/email", params: { returnTo: "/journey/adult-gate", ...(entry === "first-overnight" ? { entry } : {}) } }) : undefined}
+        onSignIn={auth?.status === "signedOut" ? () => router.push({ pathname: "/auth/email", params: { returnTo: "/journey/adult-gate", ...(entry !== "map" ? { entry } : {}) } }) : undefined}
         onConfirmAdult={confirmAdult}
         onUnderage={exitUnderage}
       />

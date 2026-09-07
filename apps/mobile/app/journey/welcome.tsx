@@ -29,7 +29,7 @@ export default function WelcomeRoute() {
       router.replace(onboardingHref("/journey/preface", entry));
       return;
     }
-    router.replace(entry === "first-overnight" ? getResumePath(snapshot) : "/(tabs)");
+    router.replace(entry === "first-overnight" ? getResumePath(snapshot) : entry === "journal" ? "/(tabs)/journal" : entry === "ai" ? "/(tabs)/ai" : "/(tabs)");
   };
   return (
     <Screen

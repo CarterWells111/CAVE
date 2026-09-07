@@ -41,7 +41,7 @@ function PublicProfileRoute({ account }: { account: ReturnType<typeof useAccount
         cards={[]}
         cardsLoadState="ready"
         onOpenSettings={() => router.push("/settings")}
-        onOpenJournal={() => router.push("/journal" as never)}
+        onOpenJournal={() => router.push("/(tabs)/journal")}
         reviews={[]}
         reviewsLoadState="ready"
       />
@@ -116,7 +116,7 @@ function AuthorizedProfileRoute({
         onOpenCard={(id) => router.push(`/cards/${id}`)}
         onOpenReview={(id) => router.push(`/reviews/${id}`)}
         onOpenSettings={() => router.push("/settings")}
-        onOpenJournal={() => router.push("/journal" as never)}
+        onOpenJournal={() => router.push("/(tabs)/journal")}
         onRetryCards={() => { void loadCards(); }}
         onRetryReviews={() => { void loadReviews(); }}
         reviews={reviewItems}
