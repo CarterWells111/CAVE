@@ -39,7 +39,7 @@ export function JournalRouteGate({ children }: PropsWithChildren) {
         : "\n\n正式构建中的手记会在本机加密保存。";
     Alert.alert(
       "登录后使用内界手记",
-      `登录会把这台设备上的手记与账号关联，避免同一设备上的其他账号查看。手记正文、后来与阶段回顾仍只保存在本机，不会上传；卸载 App 或清除本机数据仍会丢失。${persistenceNotice}`,
+      `登录会把这台设备上的手记与账号关联，避免同一设备上的其他账号查看。手记正文、后来与阶段回顾默认不上传；仅主动使用 AI 并确认时，将选定内容发送至服务端与 DeepSeek，这不是云备份。卸载 App 或清除本机数据仍会丢失。${persistenceNotice}`,
       [
         { text: "取消", style: "cancel", onPress: () => backOrHome(router) },
         {

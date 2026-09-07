@@ -15,6 +15,8 @@ import { OpenAICompatibleProvider } from "./providers/openai-compatible";
 import type { JsonRepairer } from "./providers/repair";
 import type { ModelProvider } from "./providers/types";
 import { createHealthRoutes } from "./routes/health";
+import { createAssistantRoutes } from "./routes/assistant";
+import { createAssistantService } from "./services/assistant";
 import { createMetaRoutes } from "./routes/meta";
 import { createPracticeRoutes } from "./routes/practice";
 import { createAuthRoutes } from "./routes/auth";
@@ -283,6 +285,20 @@ export function createApp(
     requestMiddleware("debrief", knownScenarioIds, rateLimitStore, env, logger)
   );
   app.route("/", createHealthRoutes());
+  const assistantProvider = env.MODEL_MODE === "live" ? new OpenAICompatibleProvider({
+    baseUrl: env.MODEL_BASE_URL, apiKey: env.MODEL_API_KEY, modelName: env.MODEL_NAME,
+    logger: entry => logger(JSON.stringify({ event: "assistant.provider", ...entry })),
+    ...(options.fetch ? { fetch: options.fetch } : {}),
+  }) : undefined;
+  const assistantDb = (rawEnv as Partial<WorkerBindings>).AUTH_DB;
+  app.route("/", createAssistantRoutes({
+    ...(assistantDb ? { repository: new D1AuthRepository(assistantDb) } : {}),
+    rateLimitStore, providerMode: env.MODEL_MODE,
+    service: createAssistantService({ providerMode: env.MODEL_MODE, catalog,
+      logger: entry => logger(JSON.stringify(entry)),
+      ...(assistantProvider ? { complete: (prompt, data, signal) => assistantProvider.generateAssistant(prompt, data, signal) } : {}),
+    }),
+  }));
   app.route("/", createMetaRoutes(env));
   app.route("/", createAuthRoutes({ service: authService, logger }));
   app.route("/", createAccountPreferencesRoutes({ service: createBoundAccountPreferencesService(rawEnv), logger }));

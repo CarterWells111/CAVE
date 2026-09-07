@@ -11,7 +11,7 @@ export default function SampleJourneyRoute() {
   const { journeyId } = useLocalSearchParams<{ journeyId?: string }>();
   const journey = getSampleJourney(journeyId);
   const [focused, setFocused] = useState(false);
-  const exit = useCallback(() => router.replace("/(tabs)"), [router]);
+  const exit = useCallback(() => router.replace("/(tabs)/journey"), [router]);
   useFocusEffect(useCallback(() => {
     setFocused(true);
     return () => setFocused(false);

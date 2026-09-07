@@ -18,9 +18,9 @@ export default function EmailAuthRoute() {
   const returned = useRef(false);
   useEffect(() => {
     if (returned.current || auth.status !== "signedIn") return;
-    if (returnTo === "/(tabs)/profile") {
+    if (returnTo === "/(tabs)/profile" || returnTo === "/(tabs)/journal" || returnTo === "/(tabs)/ai") {
       returned.current = true;
-      router.replace("/(tabs)/profile");
+      router.replace(returnTo);
       return;
     }
     if (preferences === null || !preferences.ready) return;
@@ -28,7 +28,9 @@ export default function EmailAuthRoute() {
     if (preferences.syncStatus === "pending" || preferences.syncStatus === "syncing") return;
     if (preferences.preferences.ageConfirmed && adult.status !== "authorized") return;
     returned.current = true;
-    router.replace(onboardingHref(preferences.preferences.ageConfirmed ? "/journey/preface" : "/journey/adult-gate", entry));
+    router.replace(preferences.preferences.ageConfirmed && (entry === "journal" || entry === "ai")
+      ? entry === "journal" ? "/(tabs)/journal" : "/(tabs)/ai"
+      : onboardingHref(preferences.preferences.ageConfirmed ? "/journey/preface" : "/journey/adult-gate", entry));
   }, [adult.status, auth.status, entry, preferences, returnTo, router]);
   return <EmailAuthScreen
     adultAuthorized={adult.status === "authorized"}
@@ -39,7 +41,7 @@ export default function EmailAuthRoute() {
     onRequestEmail={auth.requestEmailChallenge}
     onVerifyCode={async (challengeId, code, email) => {
       await auth.verifyEmailChallenge(challengeId, code, email);
-      if (returned.current || returnTo === "/(tabs)/profile" || returnTo === "/journey/adult-gate" || returnTo === "/journey/preface") return;
+      if (returned.current || returnTo === "/(tabs)/profile" || returnTo === "/(tabs)/journal" || returnTo === "/(tabs)/ai" || returnTo === "/journey/adult-gate" || returnTo === "/journey/preface") return;
       const destination = journalReturnDestination(returnTo);
       returned.current = true;
       router.replace(destination ?? "/(tabs)/profile");

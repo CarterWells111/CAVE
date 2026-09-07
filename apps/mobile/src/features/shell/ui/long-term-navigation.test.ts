@@ -1,30 +1,12 @@
-import {
-  getLongTermDestination,
-  getLongTermDestinationByRouteName,
-  LONG_TERM_DESTINATIONS,
-  MAIN_TAB_DESTINATIONS,
-} from "./long-term-navigation";
-
-test("defines the five long-term destinations once with their routes and icons", () => {
-  expect(LONG_TERM_DESTINATIONS).toEqual([
-    { icon: "home-outline", label: "首页", path: "/(tabs)", routeName: "index", tab: "home" },
-    { icon: "time-outline", label: "回顾", path: "/(tabs)/reviews", routeName: "reviews", tab: "reviews" },
-    { icon: "chatbubbles-outline", label: "练习", path: "/(tabs)/practice", routeName: "practice", tab: "practice" },
-    { icon: "book-outline", label: "内界手记", path: "/(tabs)/journal", routeName: "journal", tab: "journal" },
-    { icon: "person-outline", label: "我的", path: "/(tabs)/profile", routeName: "profile", tab: "profile" },
-  ]);
-
-  expect(getLongTermDestination("practice")).toBe(LONG_TERM_DESTINATIONS[2]);
-  expect(getLongTermDestinationByRouteName("reviews")).toBe(LONG_TERM_DESTINATIONS[1]);
-  expect(getLongTermDestinationByRouteName("unknown")).toBeUndefined();
-});
-
-test("keeps the review route registered while omitting it from the current bottom nav", () => {
-  expect(MAIN_TAB_DESTINATIONS).toEqual([
-    { icon: "home-outline", label: "首页", path: "/(tabs)", routeName: "index", tab: "home" },
-    { icon: "chatbubbles-outline", label: "练习", path: "/(tabs)/practice", routeName: "practice", tab: "practice" },
-    { icon: "book-outline", label: "内界手记", path: "/(tabs)/journal", routeName: "journal", tab: "journal" },
-    { icon: "person-outline", label: "我的", path: "/(tabs)/profile", routeName: "profile", tab: "profile" },
-  ]);
-  expect(LONG_TERM_DESTINATIONS.map(({ label }) => label)).toEqual(["首页", "回顾", "练习", "内界手记", "我的"]);
+import { getLongTermDestination, getLongTermDestinationByRouteName, LONG_TERM_DESTINATIONS, MAIN_TAB_DESTINATIONS } from "./long-term-navigation";
+test("journey is the default with journal, AI and profile in order", () => {
+ expect(MAIN_TAB_DESTINATIONS.map(({ label }) => label)).toEqual(["旅程", "内界手记", "AI", "我的"]);
+ expect(getLongTermDestination("journey")).toMatchObject({ path: "/(tabs)", routeName: "index" });
+ expect(getLongTermDestination("journal").path).toBe("/(tabs)/journal");
+ expect(getLongTermDestination("ai").path).toBe("/(tabs)/ai");
+ expect(getLongTermDestination("practice").path).toBe("/(tabs)/practice");
+ expect(LONG_TERM_DESTINATIONS).toHaveLength(5);
+ expect(getLongTermDestinationByRouteName("journey")).toBe(getLongTermDestination("journey"));
+ expect(getLongTermDestinationByRouteName("reviews")).toBeUndefined();
+ expect(getLongTermDestinationByRouteName("unknown")).toBeUndefined();
 });

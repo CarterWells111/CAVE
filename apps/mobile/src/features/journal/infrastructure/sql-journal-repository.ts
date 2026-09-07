@@ -9,6 +9,8 @@ import {
   type JournalPeriodReview,
   type JournalRecordSummary,
   type JournalRepository,
+  type JournalDraft,
+  type JournalRevision,
 } from "./journal-repository";
 
 type RecordRow = {
@@ -132,10 +134,12 @@ export class SqlJournalRepository implements JournalRepository {
       });
     }
   }
-  async updateRecord(ownerAccountId: string, record: JournalRecord): Promise<void> {
-    const db = await this.connection();
+  async updateRecord(ownerAccountId: string, record: JournalRecord, revision?: JournalRevision): Promise<void> {
+    await this.database.withTransaction(async (db) => {
+    if (revision) await this.insertRevision(db, ownerAccountId, revision);
     await db.runAsync("UPDATE journal_records SET title=?,occurred_at=?,updated_at=?,highlight_kind=?,highlight_text=?,body=?,topics_json=? WHERE id=? AND owner_account_id=?",
       record.title, record.occurredAt, record.updatedAt, record.highlight.kind, record.highlight.text, record.body, JSON.stringify(record.topics), record.id, ownerAccountId);
+    });
   }
   async listRecords(ownerAccountId: string): Promise<readonly JournalRecordSummary[]> {
     const db = await this.connection();
@@ -154,6 +158,7 @@ export class SqlJournalRepository implements JournalRepository {
   }
   async deleteRecord(ownerAccountId: string, id: string): Promise<void> {
     await this.commitDeletion(async (db) => {
+      await db.runAsync("DELETE FROM journal_drafts WHERE owner_account_id=? AND draft_key=?", ownerAccountId, `record:${id}`);
       await db.runAsync("DELETE FROM journal_records WHERE id=? AND owner_account_id=?", id, ownerAccountId);
     });
   }
@@ -163,14 +168,17 @@ export class SqlJournalRepository implements JournalRepository {
       entry.id, entry.recordId, entry.kind, entry.occurredAt, entry.createdAt, entry.updatedAt, entry.editableUntil,
       entry.highlight === null ? null : JSON.stringify(entry.highlight), entry.body, entry.recordId, ownerAccountId);
   }
-  async updateEntry(ownerAccountId: string, entry: JournalEntry): Promise<void> {
-    const db = await this.connection();
+  async updateEntry(ownerAccountId: string, entry: JournalEntry, revision?: JournalRevision): Promise<void> {
+    await this.database.withTransaction(async (db) => {
+    if (revision) await this.insertRevision(db, ownerAccountId, revision);
     await db.runAsync("UPDATE journal_entries SET kind=?,occurred_at=?,updated_at=?,highlight_json=?,body=? WHERE id=? AND EXISTS (SELECT 1 FROM journal_records WHERE id=journal_entries.record_id AND owner_account_id=?)",
       entry.kind, entry.occurredAt, entry.updatedAt, entry.highlight === null ? null : JSON.stringify(entry.highlight), entry.body, entry.id, ownerAccountId);
+    });
   }
   async loadEntry(ownerAccountId: string, id: string): Promise<JournalEntry | null> { const db = await this.connection(); const row = await db.getFirstAsync<EntryRow>("SELECT journal_entries.* FROM journal_entries JOIN journal_records ON journal_records.id=journal_entries.record_id WHERE journal_entries.id=? AND journal_records.owner_account_id=?", id, ownerAccountId); return row === null ? null : mapEntry(row); }
   async deleteEntry(ownerAccountId: string, id: string): Promise<void> {
     await this.commitDeletion(async (db) => {
+      await db.runAsync("DELETE FROM journal_revisions WHERE owner_account_id=? AND item_id=?", ownerAccountId, id);
       await db.runAsync("DELETE FROM journal_entries WHERE id=? AND EXISTS (SELECT 1 FROM journal_records WHERE id=journal_entries.record_id AND owner_account_id=?)", id, ownerAccountId);
     });
   }
@@ -196,6 +204,8 @@ WHERE journal_period_reviews.owner_account_id=excluded.owner_account_id`,
   async listPeriodReviews(ownerAccountId: string): Promise<readonly JournalPeriodReview[]> { const db = await this.connection(); return (await db.getAllAsync<ReviewRow>("SELECT * FROM journal_period_reviews WHERE owner_account_id=? ORDER BY created_at DESC", ownerAccountId)).map(mapReview); }
   async clearOwner(ownerAccountId: string): Promise<void> {
     await this.database.withTransaction(async (db) => {
+      await db.runAsync("DELETE FROM journal_drafts WHERE owner_account_id=?", ownerAccountId);
+      await db.runAsync("DELETE FROM journal_revisions WHERE owner_account_id=?", ownerAccountId);
       if (this.database.markOwnerDeletionCleanupPending === undefined) {
         await this.database.markDeletionCleanupPending?.(db);
       } else {
@@ -212,6 +222,8 @@ WHERE journal_period_reviews.owner_account_id=excluded.owner_account_id`,
   }
   async clearAll(): Promise<void> {
     await this.database.withTransaction(async (db) => {
+      await db.runAsync("DELETE FROM journal_drafts");
+      await db.runAsync("DELETE FROM journal_revisions");
       await this.database.markDeletionCleanupPending?.(db);
       await db.runAsync("DELETE FROM journal_period_reviews");
       await db.runAsync("DELETE FROM journal_entries");
@@ -221,5 +233,27 @@ WHERE journal_period_reviews.owner_account_id=excluded.owner_account_id`,
       }
     });
     await this.checkpointCommittedDeletion();
+  }
+
+  private async insertRevision(db: DatabaseTransactionConnection, owner: string, revision: JournalRevision): Promise<void> {
+    await db.runAsync("INSERT INTO journal_revisions (id,owner_account_id,record_id,item_id,item_kind,saved_at,snapshot_json) SELECT ?,?,?,?,?,?,? WHERE EXISTS (SELECT 1 FROM journal_records WHERE id=? AND owner_account_id=?)",
+      revision.id, owner, revision.recordId, revision.itemId, revision.itemKind, revision.savedAt, JSON.stringify(revision.snapshot), revision.recordId, owner);
+  }
+  async loadDraft(owner: string, key: string): Promise<JournalDraft | null> {
+    const db = await this.connection();
+    const row = await db.getFirstAsync<{ payload_json: string }>("SELECT payload_json FROM journal_drafts WHERE owner_account_id=? AND draft_key=?", owner, key);
+    return row === null ? null : parse<JournalDraft>(row.payload_json);
+  }
+  async saveDraft(owner: string, key: string, draft: JournalDraft): Promise<void> {
+    const db = await this.connection();
+    await db.runAsync("INSERT INTO journal_drafts (owner_account_id,draft_key,payload_json) VALUES (?,?,?) ON CONFLICT(owner_account_id,draft_key) DO UPDATE SET payload_json=excluded.payload_json", owner, key, JSON.stringify(draft));
+  }
+  async clearDraft(owner: string, key: string): Promise<void> {
+    await this.commitDeletion(async (db) => { await db.runAsync("DELETE FROM journal_drafts WHERE owner_account_id=? AND draft_key=?", owner, key); });
+  }
+  async listRevisions(owner: string, recordId: string): Promise<readonly JournalRevision[]> {
+    const db = await this.connection();
+    const rows = await db.getAllAsync<{ id: string; record_id: string; item_id: string; item_kind: JournalRevision["itemKind"]; saved_at: string; snapshot_json: string }>("SELECT * FROM journal_revisions WHERE owner_account_id=? AND record_id=? ORDER BY saved_at DESC", owner, recordId);
+    return rows.map((row) => ({ id: row.id, recordId: row.record_id, itemId: row.item_id, itemKind: row.item_kind, savedAt: row.saved_at, snapshot: parse<JournalRecord | JournalEntry>(row.snapshot_json) }));
   }
 }

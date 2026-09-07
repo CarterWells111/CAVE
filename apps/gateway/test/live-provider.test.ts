@@ -30,6 +30,16 @@ function completion(content: unknown, status = 200, headers?: HeadersInit): Resp
 }
 
 describe("OpenAICompatibleProvider", () => {
+  it("preserves the global fetch receiver required by Workers", async () => {
+    vi.stubGlobal("fetch", function (this: unknown) {
+      if (this !== globalThis) throw new TypeError("Illegal invocation");
+      return Promise.resolve(completion({ status: "ok", message: "可以暂停。", observations: [] }));
+    });
+    try {
+      const provider = new OpenAICompatibleProvider({ baseUrl: "https://models.example.test", apiKey: "test", modelName: "model-a" });
+      await expect(provider.generateAssistant("JSON only", "{}", new AbortController().signal)).resolves.toMatchObject({ status: "ok" });
+    } finally { vi.unstubAllGlobals(); }
+  });
   it("posts the portable non-streaming request without response_format", async () => {
     let captured: { url: string; init: RequestInit } | undefined;
     const provider = new OpenAICompatibleProvider({

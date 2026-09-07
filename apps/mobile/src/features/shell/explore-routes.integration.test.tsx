@@ -28,7 +28,7 @@ function open(initialUrl: string) {
   const context = Object.fromEntries(actual.keys().map((key) => [
     key.replace(/^\.\//u, "").replace(/\.[tj]sx?$/u, ""),
     key === "./_layout.tsx" ? Root
-      : key === "./(tabs)/index.tsx" ? MapMarker
+      : key === "./(tabs)/journey.tsx" ? MapMarker
         : key === "./journey/_layout.tsx" ? (() => <Stack screenOptions={{ headerShown: false }} />)
           : key === "./journey/welcome.tsx" ? (() => <Text>欢迎引导</Text>)
             : key === "./journey/preface.tsx" ? (() => <Text>需要完成前言</Text>)
@@ -51,7 +51,7 @@ test("real dynamic sample route pages through and exits to the map", async () =>
   expect(screen.getByText("1 / 3")).toBeTruthy();
   fireEvent.press(screen.getByRole("button", { name: "退出旅程" }));
   await screen.findByText("地图入口");
-  expect(view.getPathname()).toBe("/");
+  expect(view.getPathname()).toBe("/journey");
   expect(mockRuntime?.snapshot).toBe(draft);
 });
 
@@ -59,7 +59,7 @@ test("unknown journey IDs have a working map-return action", async () => {
   const view = open("/explore/unknown");
   fireEvent.press(await screen.findByRole("button", { name: "返回地图" }));
   await screen.findByText("地图入口");
-  expect(view.getPathname()).toBe("/");
+  expect(view.getPathname()).toBe("/journey");
 });
 
 test("undeclared cold links cannot show sample content or read completion", async () => {
@@ -88,7 +88,7 @@ test("revocation hides active and retained sample screens", async () => {
 });
 
 test("switching IDs and reopening a sample both start at page one", async () => {
-  open("/(tabs)");
+  open("/(tabs)/journey");
   fireEvent.press(await screen.findByRole("button", { name: "进入样板" }));
   await screen.findByText("旅程 01");
   fireEvent.press(screen.getByRole("button", { name: "下一页" }));

@@ -10,7 +10,7 @@ tags:
     visible: "无法打开这条手记"
     timeout: 20000
 - tapOn: "返回手记列表"
-- assertVisible: "首页"
+- assertVisible: "旅程"
 - openLink: "cave:///journey/body-knowledge"
 - assertVisible: "1 / 5"
 - openLink: "cave:///journal/p0-record-does-not-exist/edit"

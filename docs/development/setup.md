@@ -6,7 +6,7 @@
 
 - Node.js `^22.12.0` 或 `>=24 <25`
 - Corepack 与 pnpm `10.34.5`
-- 移动端预览所需的 Expo SDK 54 环境
+- 移动端预览所需的 Expo SDK 57 环境
 - 原生安全能力验证所需的 iOS 构建环境或已签名开发包
 
 ## 安装依赖
@@ -26,7 +26,9 @@ corepack pnpm install --frozen-lockfile
 corepack pnpm dev:mobile
 ```
 
-该命令以 Expo Go 模式启动。核心旅程、预设练习和界面预览不需要 Gateway，但 Expo Go 只使用内存数据，进程结束后不保证保留内容。
+该命令以 Expo Go 模式启动。核心旅程、预设练习和界面预览不需要 Gateway；邮箱登录需要 Gateway。Expo Go 的手记、草稿、后来、修改历史与阶段回顾保存在账号隔离的明文 SQLite，其他旅程运行数据使用内存。
+
+手记 AI 模拟验收可用 `corepack pnpm --filter @cave/mobile start:journal-preview`，只启动 Expo Go JavaScript 服务，不构建原生包。AI 不联网且界面明确标注模拟；完整操作见[手记验收](journal-first-acceptance.md)。
 
 需要验证 SQLCipher、SecureStore、本地迁移或删除恢复时，使用开发客户端：
 
@@ -74,7 +76,7 @@ corepack pnpm --filter @cave/gateway exec wrangler d1 migrations apply neijie-ca
 
 4. 再启动 Gateway，并将移动端的 `EXPO_PUBLIC_GATEWAY_URL` 指向本地 Worker。
 
-测试使用注入的邮件适配器，不会发送真实邮件。真实验证码投递和生产密钥轮换见[邮箱身份运维](../operations/email-authentication.md)。当前移动端不调用 AI 练习接口，因此运行 App 不需要模型凭据。
+测试使用注入的邮件适配器，不会发送真实邮件。真实验证码投递和生产密钥轮换见[邮箱身份运维](../operations/email-authentication.md)。普通记录和预设练习不需要模型凭据；真实手记 AI 需在 Gateway 配置 MODEL_MODE=live、MODEL_BASE_URL=https://api.deepseek.com、MODEL_API_KEY 和已选模型的 MODEL_NAME。密钥不可放入移动端或使用 EXPO_PUBLIC_ 前缀。模拟验收无需这些凭据。
 
 ## 常用验证
 

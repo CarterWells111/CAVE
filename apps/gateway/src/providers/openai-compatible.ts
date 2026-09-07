@@ -154,7 +154,8 @@ export class OpenAICompatibleProvider implements ModelProvider, JsonRepairer {
     this.#baseUrl = options.baseUrl.replace(/\/+$/, "");
     this.#apiKey = options.apiKey;
     this.#modelName = options.modelName;
-    this.#fetch = options.fetch ?? fetch;
+    // Workers' native fetch requires the global receiver, not this provider.
+    this.#fetch = options.fetch ?? globalThis.fetch.bind(globalThis);
     this.#logger = options.logger;
     this.#sleep =
       options.sleep ??
@@ -250,9 +251,14 @@ export class OpenAICompatibleProvider implements ModelProvider, JsonRepairer {
     );
   }
 
+  async generateAssistant(systemPrompt: string, data: string, signal: AbortSignal): Promise<unknown> {
+    return this.#complete([{ role: "system", content: systemPrompt }, { role: "user", content: data }], signal, 2500);
+  }
+
   async #complete(
     messages: Array<{ role: "system" | "user"; content: string }>,
-    externalSignal: AbortSignal
+    externalSignal: AbortSignal,
+    maxTokens?: number
   ): Promise<unknown> {
     assertNotAborted(externalSignal);
     const controller = new AbortController();
@@ -279,7 +285,8 @@ export class OpenAICompatibleProvider implements ModelProvider, JsonRepairer {
             model: this.#modelName,
             messages,
             stream: false,
-            temperature: 0.3
+            temperature: 0.3,
+            ...(maxTokens === undefined ? {} : { max_tokens: maxTokens })
           }),
           signal: controller.signal
         });

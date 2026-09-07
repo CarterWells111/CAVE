@@ -1,4 +1,4 @@
-export const CURRENT_SCHEMA_VERSION = 12;
+export const CURRENT_SCHEMA_VERSION = 13;
 
 export type MigrationCallbackConnection = {
   runAsync(sql: string, ...params: unknown[]): Promise<{ changes: number }>;
@@ -182,6 +182,23 @@ CREATE TABLE IF NOT EXISTS journal_period_reviews (
 
 export const SCHEMA_V12 = `SELECT 1;`;
 
+export const SCHEMA_V13 = `
+CREATE TABLE IF NOT EXISTS journal_drafts (
+  owner_account_id TEXT NOT NULL,
+  draft_key TEXT NOT NULL,
+  payload_json TEXT NOT NULL,
+  PRIMARY KEY(owner_account_id, draft_key)
+);
+CREATE TABLE IF NOT EXISTS journal_revisions (
+  id TEXT PRIMARY KEY NOT NULL,
+  owner_account_id TEXT NOT NULL,
+  record_id TEXT NOT NULL REFERENCES journal_records(id) ON DELETE CASCADE,
+  item_id TEXT NOT NULL,
+  item_kind TEXT NOT NULL CHECK (item_kind IN ('record', 'entry')),
+  saved_at TEXT NOT NULL,
+  snapshot_json TEXT NOT NULL
+);`;
+
 type TableInfoRow = { name: string };
 
 async function copyLegacyJournalPreference(
@@ -239,5 +256,6 @@ export const DATABASE_MIGRATIONS: readonly DatabaseMigration[] = [
   { version: 9, schema: SCHEMA_V9, afterSchema: copyLegacyJournalPreference },
   { version: 10, schema: SCHEMA_V10 },
   { version: 11, schema: SCHEMA_V11 },
-  { version: 12, schema: SCHEMA_V12, afterSchema: ensureJournalOwnership }
+  { version: 12, schema: SCHEMA_V12, afterSchema: ensureJournalOwnership },
+  { version: 13, schema: SCHEMA_V13 }
 ];

@@ -57,7 +57,7 @@ function databaseConnection(userVersion = 0): ExpoGoJournalDatabaseConnection {
 }
 
 test("closes a failed migration handle and allows a clean retry", async () => {
-  const unsupported = databaseConnection(3);
+  const unsupported = databaseConnection(4);
   const supported = databaseConnection(0);
   const openDatabaseAsync = jest.fn()
     .mockResolvedValueOnce(unsupported)
@@ -390,3 +390,34 @@ test("reopens an actual SQLite file with account-scoped records, entries and rev
     }
   }
 });
+
+ test("persists isolated drafts and pre-edit snapshots across a database reopen", async () => {
+  const path = join(tmpdir(), `cave-drafts-${randomUUID()}.db`);
+  const opened: ExpoGoJournalDatabaseConnection[] = [];
+  let now = "2026-09-01T10:00:00Z";
+  let sequence = 0;
+  const deps = { now: () => now, createId: () => `r-${++sequence}` };
+  try {
+    const repository = createExpoGoJournalRepository(nodeSqliteDependencies(path, opened));
+    const service = new JournalService(repository, deps, "a");
+    const draft = { title: "", occurredAt: "2026-09-01", highlight: { kind: "feeling" as const, text: "" }, body: "一句草稿", topics: [] };
+    await service.saveDraft("new:freeform", draft);
+    const record = await service.createRecord({ occurredAt: "2026-09-01", body: "最初的话" });
+    const entry = await service.addEntry(record.id, { occurredAt: "2026-09-02", kind: "insight", body: "后来的话" });
+    now = "2026-09-07T10:00:00Z";
+    await service.updateRecord(record.id, { body: "修改后的话" });
+    await closeAll(opened);
+    const reopenedRepository = createExpoGoJournalRepository(nodeSqliteDependencies(path, opened));
+    const reopened = new JournalService(reopenedRepository, deps, "a");
+    const other = new JournalService(reopenedRepository, deps, "b");
+    expect(await reopened.loadDraft("new:freeform")).toEqual(draft);
+    expect(await other.loadDraft("new:freeform")).toBeNull();
+    expect(await reopened.listRevisions(record.id)).toMatchObject([{ snapshot: { body: "最初的话" } }]);
+    expect(await other.listRevisions(record.id)).toEqual([]);
+    expect(await reopened.loadRecord(record.id)).toMatchObject({ entries: [{ id: entry.id, body: "后来的话" }] });
+    await reopened.clearDraft("new:freeform");
+    expect(await reopened.loadDraft("new:freeform")).toBeNull();
+    await reopened.deleteRecord(record.id);
+    expect(await reopened.listRevisions(record.id)).toEqual([]);
+  } finally { await closeAll(opened); rmSync(path, { force: true }); }
+ });

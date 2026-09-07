@@ -5,6 +5,7 @@
   "main": "expo-router/entry",
   "scripts": {
     "start": "expo start --go",
+    "start:journal-preview": "node ../../scripts/start-journal-preview.mjs",
     "start:dev-client": "expo start --dev-client",
     "start:acceptance": "node ../../scripts/start-acceptance.mjs",
     "routes:generate": "node ../../scripts/generate-mobile-routes.mjs",

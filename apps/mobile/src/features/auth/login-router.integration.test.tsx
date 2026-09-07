@@ -69,7 +69,7 @@ function setup(ageConfirmed = true) {
   };
   const result = renderRouter({
     _layout: RootLayout, "auth/email": EmailAuthRoute, "(tabs)/_layout": TabsLayout,
-    "(tabs)/index": Home, "(tabs)/profile": Profile, "(tabs)/reviews": Home, "(tabs)/practice": Home, "(tabs)/journal": Home,
+    "(tabs)/index": Home, "(tabs)/ai": Home, "(tabs)/journey": Home, "(tabs)/profile": Profile, "(tabs)/reviews": Home, "(tabs)/practice": Home, "(tabs)/journal": Home,
     "journey/_layout": JourneyLayout, "journey/welcome": Home, "journey/body-knowledge": PrivatePage,
     "journey/adult-gate": Home, "journey/preface": PrivatePage, "journey/overnight": PrivatePage,
     "journey/behavior-map": PrivatePage, "journey/reflection": PrivatePage, "journey/final-preparation": PrivatePage,
@@ -115,7 +115,7 @@ test.each([false, true])("login keeps the real navigator stable with account adu
     }
     expect(profileMounts).toBe(mountsAfterLogin);
     expect(loadAppearance).toHaveBeenCalledTimes(ageConfirmed ? 1 : 0);
-    fireEvent.press(screen.getByRole("tab", { name: "首页" }));
+    fireEvent.press(screen.getByRole("tab", { name: "旅程" }));
     fireEvent.press(screen.getByRole("tab", { name: "我的" }));
     expect(result.getPathname()).toBe("/profile");
   } finally { listener.mockImplementation(originalAdd ?? (() => ({ remove: jest.fn() }))); }

@@ -75,6 +75,12 @@ afterEach(() => {
 });
 
 describe("mobile Demo source policy", () => {
+  it("allows only the explicit assistant HTTP adapter, keeping screen fetch forbidden", () => {
+    const allowed = scan({ "features/assistant/assistant-client.ts": "export const call = () => fetch('https://gateway.example/v1/assistant');" });
+    expect(allowed.status).toBe(0);
+    const forbidden = scan({ "features/assistant/screen.tsx": "export const call = () => fetch('https://gateway.example/v1/assistant');" });
+    expect(forbidden.status).toBe(1);
+  });
   it("allows fetch only in the explicit email authentication API adapter", () => {
     const root = mkdtempSync(join(tmpdir(), "mobile-policy-auth-adapter-"));
     const allowed = join(root, "features/auth/infrastructure/auth-api-client.ts");

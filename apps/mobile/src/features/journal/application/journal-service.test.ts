@@ -23,12 +23,13 @@ describe("JournalService", () => {
     expect((await service.listRecords()).map(({ title }) => title)).toEqual(["较晚", "较早"]);
   });
 
-  test("updates within 24 hours but refuses to overwrite a locked record", async () => {
+  test("preserves revisions when editing before and after 24 hours", async () => {
     const record = await service.createRecord({ title: "原来的标题", occurredAt: now, highlight: { kind: "feeling", text: "紧张" } });
     now = "2026-08-29T09:59:59.999Z";
     await expect(service.updateRecord(record.id, { title: "新的标题" })).resolves.toMatchObject({ title: "新的标题" });
     now = "2026-08-29T10:00:00.000Z";
-    await expect(service.updateRecord(record.id, { title: "不能覆盖" })).rejects.toEqual(new JournalServiceError("journal-item-locked"));
+    await expect(service.updateRecord(record.id, { title: "现在的标题" })).resolves.toMatchObject({ title: "现在的标题" });
+    expect((await service.listRevisions(record.id)).map((revision) => revision.snapshot)).toMatchObject([{ title: "原来的标题" }, { title: "新的标题" }]);
   });
 
   test("turns an expired edit into an explicit correction entry", async () => {
@@ -41,11 +42,12 @@ describe("JournalService", () => {
     expect((await service.loadRecord(record.id))?.record.highlight.text).toBe("困惑");
   });
 
-  test("each entry has its own lock and deleting one leaves its record", async () => {
+  test("later entries stay editable and deletion removes their revisions", async () => {
     const record = await service.createRecord({ title: "一件事", occurredAt: now, highlight: { kind: "feeling", text: "困惑" } });
     const entry = await service.addEntry(record.id, { kind: "insight", occurredAt: now, body: "后来明白了一点" });
     now = "2026-08-29T10:00:00.000Z";
-    await expect(service.updateEntry(entry.id, { body: "不能覆盖" })).rejects.toEqual(new JournalServiceError("journal-item-locked"));
+    await expect(service.updateEntry(entry.id, { body: "新的理解" })).resolves.toMatchObject({ body: "新的理解" });
+    expect(await service.listRevisions(record.id)).toMatchObject([{ snapshot: { body: "后来明白了一点" } }]);
     await service.deleteEntry(entry.id);
     expect(await service.loadRecord(record.id)).toMatchObject({ entries: [] });
   });
@@ -98,3 +100,18 @@ describe("JournalService", () => {
     await expect(accountB.listRecords()).resolves.toHaveLength(1);
   });
 });
+
+ test("drafts survive service recreation, are owner isolated, and clear with the account", async () => {
+  const repository = new InMemoryJournalRepository();
+  const deps = { now: () => "2026-09-07T10:00:00Z", createId: () => "r" };
+  const a = new JournalService(repository, deps, "a");
+  const b = new JournalService(repository, deps, "b");
+  const draft = { title: "", occurredAt: "2026-09-07", highlight: { kind: "feeling" as const, text: "" }, body: "只写一句", topics: [] };
+  await a.saveDraft("new:freeform", draft);
+  expect(await new JournalService(repository, deps, "a").loadDraft("new:freeform")).toEqual(draft);
+  expect(await b.loadDraft("new:freeform")).toBeNull();
+  await b.saveDraft("new:freeform", draft);
+  await a.clearCurrentAccount();
+  expect(await a.loadDraft("new:freeform")).toBeNull();
+  expect(await b.loadDraft("new:freeform")).toEqual(draft);
+ });

@@ -1,6 +1,6 @@
 import { act, fireEvent, render, screen } from "@testing-library/react-native";
 import { useEffect as mockUseEffect } from "react";
-import HomeRoute from "../../../app/(tabs)/index";
+import HomeRoute from "../../../app/(tabs)/journey";
 import { createJourneyDraft, type JourneyDraft } from "../journey/domain/types";
 
 const mockRouter = { push: jest.fn(), replace: jest.fn() };
@@ -108,4 +108,18 @@ test("does not navigate from a retained home tab after focus is lost", async () 
   act(() => { mockBlur?.(); });
   await act(async () => resolve());
   expect(mockRouter.push).not.toHaveBeenCalled();
+});
+
+test("journey offers retained practice and a contextual AI question entry", async () => {
+ mockRuntime = runtime(onboarded());
+ render(<HomeRoute />);
+ await screen.findByText("旅程 01");
+ fireEvent.press(screen.getByRole("button", { name: "沟通练习" }));
+ expect(mockRouter.push).toHaveBeenCalledWith("/(tabs)/practice");
+ fireEvent.press(screen.getByRole("button", { name: "问问 AI：第一次过夜" }));
+ expect(mockRouter.push).toHaveBeenCalledWith({ pathname: "/(tabs)/ai", params: { journeyId: "first-overnight" } });
+ fireEvent.press(screen.getByRole("button", { name: "主题探索：身体感受" }));
+ expect(mockRouter.push).toHaveBeenCalledWith("/reviews/topic/body");
+ fireEvent.press(screen.getByRole("button", { name: "主题探索：边界与表达" }));
+ expect(mockRouter.push).toHaveBeenCalledWith("/reviews/topic/boundaries");
 });

@@ -13,6 +13,7 @@ const targets = explicitTargets.length > 0
 const sourceExtensions = new Set([".js", ".jsx", ".mjs", ".ts", ".tsx"]);
 const imageSaveAdapter = "features/journey/infrastructure/expo-card-image-adapter.ts";
 const authApiAdapter = "features/auth/infrastructure/auth-api-client.ts";
+const assistantApiAdapter = "features/assistant/assistant-client.ts";
 const permissionMethods = new Set([
   "requestCameraPermissionsAsync",
   "requestMediaLibraryPermissionsAsync",
@@ -354,7 +355,7 @@ for (const file of files) {
   findings.push(...integrationFindings(
     sourceFile,
     reportPath,
-    normalizePath(file).endsWith(authApiAdapter)
+    normalizePath(file).endsWith(authApiAdapter) || normalizePath(file).endsWith(assistantApiAdapter)
   ));
   findings.push(...recordingFindings(sourceFile, reportPath));
 

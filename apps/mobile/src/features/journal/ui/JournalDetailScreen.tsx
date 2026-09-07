@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Alert, Text } from "react-native";
 import { useTheme } from "../../../core/design/theme-provider";
 import { Button } from "../../../core/ui/Button";
@@ -10,7 +10,7 @@ import { SecondaryButton } from "../../../core/ui/secondary-button";
 import type { JournalService } from "../application/journal-service";
 import type { JournalEntry, JournalRecord } from "../domain/journal-record";
 import { formatJournalDate } from "../domain/journal-date";
-import { JournalDeletionCleanupRequiredError } from "../infrastructure/journal-repository";
+import { JournalDeletionCleanupRequiredError, type JournalRevision } from "../infrastructure/journal-repository";
 
 type PendingDeletionCleanup =
   | { kind: "record"; id: string }
@@ -20,11 +20,27 @@ export function JournalDetailScreen({ id, service, onAdd, onBack, onDeleted, onE
   id: string; service: JournalService; onAdd(): void; onBack(): void; onDeleted(): void; onEdit?(): void; onEditEntry?(id: string): void;
 }>) {
   const theme = useTheme();
-  const [value, setValue] = useState<{ record: JournalRecord; entries: readonly JournalEntry[] } | null>(null);
+  const [value, setValue] = useState<{ record: JournalRecord; entries: readonly JournalEntry[]; revisions: readonly JournalRevision[]; service: JournalService } | null>(null);
+  const loadGeneration = useRef(0);
+  const activeContext = useRef<{ id: string; service: JournalService } | null>(null);
+  const [showHistory, setShowHistory] = useState(false);
   const [failed, setFailed] = useState(false);
   const [pendingDeletionCleanup, setPendingDeletionCleanup] = useState<PendingDeletionCleanup | null>(null);
-  const load = useCallback(() => { setFailed(false); void service.loadRecord(id).then((item) => { if (item === null) setFailed(true); else setValue(item); }, () => setFailed(true)); }, [id, service]);
-  useEffect(load, [load]);
+  const load = useCallback(() => {
+    if (activeContext.current?.id !== id || activeContext.current.service !== service) return;
+    const generation = ++loadGeneration.current;
+    setFailed(false); setValue(null);
+    void Promise.all([service.loadRecord(id), service.listRevisions(id)]).then(([item, revisions]) => {
+      if (loadGeneration.current !== generation) return;
+      if (item === null) setFailed(true);
+      else setValue({ ...item, revisions, service });
+    }, () => { if (loadGeneration.current === generation) setFailed(true); });
+  }, [id, service]);
+  useEffect(() => {
+    activeContext.current = { id, service };
+    load();
+    return () => { activeContext.current = null; ++loadGeneration.current; };
+  }, [load, id, service]);
   const handleDeletionFailure = (pending: PendingDeletionCleanup, error: unknown) => {
     if (error instanceof JournalDeletionCleanupRequiredError) {
       setPendingDeletionCleanup(pending);
@@ -55,8 +71,8 @@ export function JournalDetailScreen({ id, service, onAdd, onBack, onDeleted, onE
     /></Screen>;
   }
   if (failed) return <Screen><ErrorState title="无法打开这条手记" message="它可能已经被删除，或本机存储暂时不可用。" actionLabel="重试" onAction={load} /><SecondaryButton label="返回手记列表" onPress={onBack} /></Screen>;
-  if (value === null) return <Screen><Text accessibilityLiveRegion="polite" style={{ ...theme.typography.body, color: theme.color.text }}>正在读取本机手记…</Text></Screen>;
-  const { record, entries } = value;
+  if (value === null || value.record.id !== id || value.service !== service) return <Screen><Text accessibilityLiveRegion="polite" style={{ ...theme.typography.body, color: theme.color.text }}>正在读取本机手记…</Text></Screen>;
+  const { record, entries, revisions } = value;
   const deleteRecord = () => Alert.alert("永久删除这条记录？", "删除后无法恢复。", [
     { text: "取消", style: "cancel" },
     { text: "永久删除", style: "destructive", onPress: () => {
@@ -89,11 +105,18 @@ export function JournalDetailScreen({ id, service, onAdd, onBack, onDeleted, onE
       <Text style={{ ...theme.typography.caption, color: theme.color.textMuted }}>{formatJournalDate(entry.occurredAt)}</Text>
       {entry.highlight ? <Text style={{ ...theme.typography.body, color: theme.color.text }}>{entry.highlight.text}</Text> : null}
       {entry.body ? <Text style={{ ...theme.typography.body, color: theme.color.text }}>{entry.body}</Text> : null}
-      {Date.now() < Date.parse(entry.editableUntil) && onEditEntry ? <SecondaryButton label="修改这条后来" onPress={() => onEditEntry(entry.id)} /> : null}
+      {onEditEntry ? <SecondaryButton label="修改这条后来" onPress={() => onEditEntry(entry.id)} /> : null}
       <SecondaryButton label="删除这条后来" onPress={() => deleteEntry(entry.id)} />
     </Card>)}
     <Button label="为这件事增加一个后来" onPress={onAdd} />
-    {Date.now() < Date.parse(record.editableUntil) && onEdit ? <SecondaryButton label="修改初始记录" onPress={onEdit} /> : null}
+    {onEdit ? <SecondaryButton label="修改初始记录" onPress={onEdit} /> : null}
+    <SecondaryButton label={showHistory ? "收起修改历史" : "查看修改历史"} onPress={() => setShowHistory(!showHistory)} />
+    {showHistory ? revisions.length ? revisions.map((revision) => <Card key={revision.id} variant="muted">
+      <Text style={{ color: theme.color.textMuted }}>{revision.savedAt} · {revision.itemKind === "record" ? "记录旧版本" : "后来旧版本"}</Text>
+      {"title" in revision.snapshot ? <Text style={{ color: theme.color.text }}>{revision.snapshot.title}</Text> : null}
+      <Text style={{ color: theme.color.text }}>{revision.snapshot.highlight?.text}</Text>
+      <Text style={{ color: theme.color.text }}>{revision.snapshot.body}</Text>
+    </Card>) : <Text style={{ color: theme.color.textMuted }}>还没有修改历史。</Text> : null}
     <SecondaryButton label="永久删除这条记录" onPress={deleteRecord} />
   </Screen>;
 }

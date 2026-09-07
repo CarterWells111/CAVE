@@ -43,12 +43,13 @@ beforeEach(() => {
 
 test("shows one accurate local-only login prompt and routes back to the intended journal page", async () => {
   renderGate();
+  await act(async () => undefined);
 
   expect(screen.queryByText("私密手记内容")).toBeNull();
   await waitFor(() => expect(mockAlert).toHaveBeenCalledTimes(1));
   const [title, message, actions] = mockAlert.mock.calls[0]!;
   expect(title).toBe("登录后使用内界手记");
-  expect(message).toContain("仍只保存在本机，不会上传");
+  expect(message).toContain("默认不上传");
   expect(message).toContain("本机加密保存");
   expect(message).toContain("卸载 App 或清除本机数据仍会丢失");
 

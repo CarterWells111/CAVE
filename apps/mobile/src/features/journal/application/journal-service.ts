@@ -1,5 +1,4 @@
 import {
-  canEditJournalItem,
   createJournalEntry,
   createJournalRecord,
   type JournalEntry,
@@ -9,7 +8,7 @@ import {
   type JournalSource,
   type JournalTopic
 } from "../domain/journal-record";
-import type { JournalPeriodReview, JournalRecordSummary, JournalRepository } from "../infrastructure/journal-repository";
+import type { JournalDraft, JournalPeriodReview, JournalRecordSummary, JournalRepository, JournalRevision } from "../infrastructure/journal-repository";
 import { JOURNAL_EDIT_WINDOW_MS } from "../domain/journal-record";
 
 export type JournalServiceErrorCode = "journal-item-locked" | "journal-record-not-found" | "journal-entry-not-found";
@@ -41,9 +40,9 @@ export class JournalService {
   }
 
   createRecord(input: Readonly<{
-    title: string;
+    title?: string;
     occurredAt: string;
-    highlight: JournalHighlight;
+    highlight?: JournalHighlight;
     body?: string;
     topics?: readonly JournalTopic[];
     source?: JournalSource;
@@ -71,10 +70,9 @@ export class JournalService {
   async updateRecord(id: string, patch: Partial<Pick<JournalRecord, "title" | "occurredAt" | "highlight" | "body" | "topics">>): Promise<JournalRecord> {
     const current = await this.requireRecord(id);
     const now = this.dependencies.now();
-    if (!canEditJournalItem(now, current.editableUntil)) throw new JournalServiceError("journal-item-locked");
     const normalized = createJournalRecord({ ...current, ...patch, createdAt: current.createdAt });
     const updated = { ...normalized, editableUntil: current.editableUntil, updatedAt: new Date(now).toISOString() };
-    await this.repository.updateRecord(this.ownerAccountId, updated);
+    await this.repository.updateRecord(this.ownerAccountId, updated, { id: this.dependencies.createId(), recordId: id, itemId: id, itemKind: "record", savedAt: now, snapshot: current });
     return updated;
   }
 
@@ -98,10 +96,9 @@ export class JournalService {
     const current = await this.repository.loadEntry(this.ownerAccountId, id);
     if (current === null) throw new JournalServiceError("journal-entry-not-found");
     const now = this.dependencies.now();
-    if (!canEditJournalItem(now, current.editableUntil)) throw new JournalServiceError("journal-item-locked");
     const normalized = createJournalEntry({ ...current, ...patch, createdAt: current.createdAt });
     const updated = { ...normalized, editableUntil: current.editableUntil, updatedAt: new Date(now).toISOString() };
-    await this.repository.updateEntry(this.ownerAccountId, updated);
+    await this.repository.updateEntry(this.ownerAccountId, updated, { id: this.dependencies.createId(), recordId: current.recordId, itemId: id, itemKind: "entry", savedAt: now, snapshot: current });
     return updated;
   }
 
@@ -114,6 +111,7 @@ export class JournalService {
     periodStart: string; periodEnd: string; title: string; body: string; sourceRecordIds: readonly string[];
   }>): Promise<JournalPeriodReview> {
     const sourceRecordIds = [...new Set(input.sourceRecordIds)];
+    if (sourceRecordIds.length === 0 || !Number.isFinite(Date.parse(input.periodStart)) || !Number.isFinite(Date.parse(input.periodEnd)) || Date.parse(input.periodStart) > Date.parse(input.periodEnd)) throw new Error("journal-period-invalid");
     for (const id of sourceRecordIds) await this.requireRecord(id);
     const createdAt = new Date(this.dependencies.now()).toISOString();
     const review: JournalPeriodReview = {
@@ -128,6 +126,11 @@ export class JournalService {
   }
 
   listPeriodReviews(): Promise<readonly JournalPeriodReview[]> { return this.repository.listPeriodReviews(this.ownerAccountId); }
+
+  loadDraft(key: string): Promise<JournalDraft | null> { return this.repository.loadDraft(this.ownerAccountId, key); }
+  saveDraft(key: string, draft: JournalDraft): Promise<void> { return this.repository.saveDraft(this.ownerAccountId, key, draft); }
+  clearDraft(key: string): Promise<void> { return this.repository.clearDraft(this.ownerAccountId, key); }
+  listRevisions(recordId: string): Promise<readonly JournalRevision[]> { return this.repository.listRevisions(this.ownerAccountId, recordId); }
 
   private async requireRecord(id: string): Promise<JournalRecord> {
     const record = await this.repository.loadRecord(this.ownerAccountId, id);

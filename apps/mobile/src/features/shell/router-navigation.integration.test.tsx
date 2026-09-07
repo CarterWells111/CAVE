@@ -8,7 +8,7 @@ import type { JournalEntry, JournalRecord } from "../journal/domain/journal-reco
 const mockShellLoad = jest.fn(async () => null);
 const mockLoadRecord = jest.fn<Promise<{ record: JournalRecord; entries: readonly JournalEntry[] } | null>, [string]>(async () => null);
 const mockLoadEntry = jest.fn<Promise<JournalEntry | null>, [string]>(async () => null);
-const mockJournalService = { loadRecord: mockLoadRecord, loadEntry: mockLoadEntry };
+const mockJournalService = { loadDraft: jest.fn(async () => null), saveDraft: jest.fn(async () => undefined), listRevisions: jest.fn(async () => []), loadRecord: mockLoadRecord, loadEntry: mockLoadEntry };
 let mockAuthorized = false;
 let mockJournalStatus = "locked";
 jest.mock("../journey/runtime/JourneyRuntimeProvider", () => ({
@@ -17,6 +17,7 @@ jest.mock("../journey/runtime/JourneyRuntimeProvider", () => ({
   useAdultDeclaration: () => ({ status: mockAuthorized ? "authorized" : "public" }),
 }));
 jest.mock("../auth/runtime/AuthProvider", () => ({
+  useOptionalAuth: () => ({ status: "signedOut" }),
   useAuth: () => ({
     status: "signedOut",
     requestEmailChallenge: async () => ({ challengeId: "fixture-login", expiresInSeconds: 600, resendAfterSeconds: 60 }),
@@ -38,9 +39,12 @@ function open(initialUrl: string) {
       "./index.tsx": Marker,
       "./(tabs)/index.tsx": Marker,
       "./(tabs)/practice.tsx": Marker,
+      "./(tabs)/journey.tsx": Marker,
+      "./journey/adult-gate.tsx": Marker,
       "./(tabs)/profile.tsx": Marker,
       "./(tabs)/journal.tsx": Marker,
       "./(tabs)/reviews.tsx": Marker,
+      "./(tabs)/ai.tsx": Marker,
       "./journey/_layout.tsx": Root,
       "./journey/welcome.tsx": Marker,
       "./journey/body-knowledge.tsx": Marker,
@@ -66,15 +70,16 @@ beforeEach(() => {
 
 test("real tab layout navigates all four visible destinations", async () => {
   const result = open("/(tabs)");
-  for (const [label, path] of [["练习", "/practice"], ["内界手记", "/journal"], ["我的", "/profile"], ["首页", "/"]] as const) {
+  for (const [label, path] of [["内界手记", "/journal"], ["AI", "/ai"], ["我的", "/profile"], ["旅程", "/"]] as const) {
     fireEvent.press(await screen.findByRole("tab", { name: label }));
     expect(result.getPathname()).toBe(path);
   }
-  expect(screen.queryByRole("tab", { name: "回顾" })).toBeNull();
+  expect(screen.queryByRole("tab", { name: "练习" })).toBeNull();
   expect(mockShellLoad).not.toHaveBeenCalled();
 });
 
 test.each([
+  ["/assistant?journeyId=first-overnight", "/ai"],
   ["/journey/behavior-attitudes", "/journey/behavior-map"],
   ["/journey/checklist", "/journey/final-preparation"],
   ["/journey/communication-card", "/journey/final-preparation"],
@@ -88,7 +93,7 @@ test.each([
 test("cold private deep link is guarded before any private repository read", async () => {
   const result = open("/journal/private-record");
   await screen.findByText("公开入口");
-  expect(result.getPathname()).toBe("/journey/welcome");
+  expect(result.getPathname()).toBe("/journey/adult-gate");
   expect(mockLoadRecord).not.toHaveBeenCalled();
 });
 

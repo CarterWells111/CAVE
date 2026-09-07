@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ComponentProps } from "react";
 import { View } from "react-native";
 import type { JournalService } from "../application/journal-service";
 import type { JournalEntry, JournalRecord } from "../domain/journal-record";
@@ -16,6 +16,7 @@ type Props = {
   service: JournalService;
   onBack(): void;
   onSaved(): void;
+  renderAssistant?: ComponentProps<typeof JournalEditorScreen>["renderAssistant"];
 };
 
 export function JournalEditRouteContent(props: Props) {
@@ -23,7 +24,7 @@ export function JournalEditRouteContent(props: Props) {
   return <LoadedEditor key={`${props.mode}:${props.id}:${props.entryId ?? ""}`} {...props} />;
 }
 
-function LoadedEditor({ id, entryId, mode, service, onBack, onSaved }: Props) {
+function LoadedEditor({ id, entryId, mode, service, onBack, onSaved, renderAssistant }: Props) {
   const [attempt, setAttempt] = useState(0);
   const [state, setState] = useState<{
     service: JournalService; record: JournalRecord; entry: JournalEntry | null;
@@ -50,7 +51,7 @@ function LoadedEditor({ id, entryId, mode, service, onBack, onSaved }: Props) {
   if (!state || state.service !== service) return <JournalLoadingScreen message="正在读取本机手记…" />;
   return <View style={{ flex: 1 }}>
     {mode === "record"
-      ? <JournalEditorScreen service={service} initial={state.record} onSaved={onSaved} onBack={onBack} />
+      ? <JournalEditorScreen service={service} initial={state.record} {...(renderAssistant ? { renderAssistant } : {})} onSaved={onSaved} onBack={onBack} />
       : <JournalEntryEditorScreen recordId={id} service={service} onSaved={onSaved} onBack={onBack} {...(state.entry ? { initial: state.entry } : {})} />}
   </View>;
 }

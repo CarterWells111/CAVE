@@ -5,9 +5,9 @@ tags:
 ---
 - runFlow: core-flow.yaml
 - tapOn: "我的"
-- assertVisible: "首页"
+- assertVisible: "旅程"
 - assertVisible: "内界手记"
-- assertVisible: "练习"
+- assertVisible: "AI"
 - assertVisible: "我的"
 - scrollUntilVisible:
     element:
@@ -49,7 +49,7 @@ tags:
 - tapOn: "暂时不用，完成旅程"
 
 - extendedWaitUntil:
-    visible: "首页"
+    visible: "旅程"
     timeout: 20000
 - tapOn: "我的"
 - scrollUntilVisible:

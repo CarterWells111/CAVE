@@ -28,12 +28,12 @@ test("landing, adult declaration and preface precede the map without login", () 
   expect(source).toContain('onStart={() => router.push(onboardingHref("/journey/adult-gate", entry))}');
   const gate = route("adult-gate");
   expect(gate).toContain("adultDeclaration.confirmAdult()");
-  expect(gate).toContain('router.replace(onboardingHref("/journey/preface", entry))');
+  expect(gate).toContain('router.replace(entry === "journal" ? "/(tabs)/journal" : entry === "ai" ? "/(tabs)/ai" : onboardingHref("/journey/preface", entry))');
   expect(gate).toContain('router.replace("/underage-exit")');
   const preface = route("preface");
   expect(preface).not.toContain("service.beginJourney");
   expect(preface).toContain('router.replace(onboardingHref("/journey/welcome", entry))');
-  expect(preface).toContain('entry === "first-overnight" ? getResumePath(runtime.snapshot) : "/(tabs)"');
+  expect(preface).toContain('entry === "first-overnight" ? getResumePath(runtime.snapshot) : entry === "journal" ? "/(tabs)/journal" : entry === "ai" ? "/(tabs)/ai" : "/(tabs)"');
   expect([source, preface, gate].join("\n")).not.toMatch(/邮箱|验证码|Supabase|OTP/u);
 });
 

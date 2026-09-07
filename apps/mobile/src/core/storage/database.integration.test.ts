@@ -28,7 +28,7 @@ describe("real SQLite file migration durability (not encryption)", () => {
     const before = snapshot(h);
     const manager = h.manager();
     const connection = await manager.initialize();
-    expect(await connection.getFirstAsync("PRAGMA user_version")).toEqual({ user_version: 12 });
+    expect(await connection.getFirstAsync("PRAGMA user_version")).toEqual({ user_version: 13 });
     expect(await connection.getAllAsync("PRAGMA foreign_key_check")).toEqual([]);
     await manager.close();
     const after = snapshot(h);
@@ -72,7 +72,7 @@ describe("real SQLite file migration durability (not encryption)", () => {
     h.closeRaw(db);
     h.setFault();
     const reopened = await h.manager().initialize();
-    expect(await reopened.getFirstAsync("PRAGMA user_version")).toEqual({ user_version: 12 });
+    expect(await reopened.getFirstAsync("PRAGMA user_version")).toEqual({ user_version: 13 });
     expect(await reopened.getFirstAsync("SELECT show_save_notice FROM local_journal_preferences")).toEqual({ show_save_notice: 0 });
     await h.manager().close();
   });

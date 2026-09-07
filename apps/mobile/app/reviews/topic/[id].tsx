@@ -21,7 +21,7 @@ export default function StandaloneReviewTopicRoute() {
         {topicTitles[typeof id === "string" ? id : ""] ?? "主题回顾"}
       </Text>
       <ReflectionPage
-        onComplete={async () => { router.replace("/(tabs)/reviews"); }}
+        onComplete={async () => { router.replace("/(tabs)/profile"); }}
         storageMode="session-only"
       />
     </Screen>

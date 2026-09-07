@@ -5,11 +5,11 @@ import type {
   DatabaseTransactionConnection,
   ManagedDatabaseConnection,
 } from "../../../core/storage/database";
-import { SCHEMA_V11 } from "../../../core/storage/migrations";
+import { SCHEMA_V11, SCHEMA_V13 } from "../../../core/storage/migrations";
 import { SqlJournalRepository, type JournalDatabaseManager } from "./sql-journal-repository";
 
 export const EXPO_GO_JOURNAL_DATABASE_NAME = "cave-expo-go-journal.db";
-export const EXPO_GO_JOURNAL_SCHEMA_VERSION = 2;
+export const EXPO_GO_JOURNAL_SCHEMA_VERSION = 3;
 
 const EXPO_GO_JOURNAL_SCHEMA_V1 = `${SCHEMA_V11}
 CREATE INDEX IF NOT EXISTS journal_records_owner_date_idx
@@ -42,6 +42,7 @@ export type ExpoGoJournalDatabaseDependencies = {
 const migrations = [
   { version: 1, schema: EXPO_GO_JOURNAL_SCHEMA_V1 },
   { version: 2, schema: EXPO_GO_JOURNAL_SCHEMA_V2 },
+  { version: 3, schema: SCHEMA_V13 },
 ] as const;
 
 function assertMigrationRegistry(): void {

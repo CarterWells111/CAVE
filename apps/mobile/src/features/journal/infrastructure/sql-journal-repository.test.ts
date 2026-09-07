@@ -188,7 +188,8 @@ describe("SqlJournalRepository", () => {
     expect(markDeletionCleanupPending).toHaveBeenCalledTimes(1);
     expect(calls[0]).toBe("mark");
     expect(calls[1]).toContain("cleanup_pending=1");
-    expect(calls[2]).toContain("DELETE FROM journal_records");
+    expect(calls[2]).toContain("DELETE FROM journal_drafts");
+    expect(calls[3]).toContain("DELETE FROM journal_records");
   });
 
   test("clears one account's entries explicitly before deleting its records", async () => {
@@ -209,6 +210,8 @@ describe("SqlJournalRepository", () => {
 
     expect(withTransaction).toHaveBeenCalledTimes(1);
     expect(runAsync.mock.calls).toEqual([
+      ["DELETE FROM journal_drafts WHERE owner_account_id=?", "account-a"],
+      ["DELETE FROM journal_revisions WHERE owner_account_id=?", "account-a"],
       [
         "DELETE FROM journal_entries WHERE record_id IN (SELECT id FROM journal_records WHERE owner_account_id=?)",
         "account-a",
@@ -241,6 +244,8 @@ describe("SqlJournalRepository", () => {
 
     expect(withTransaction).toHaveBeenCalledTimes(1);
     expect(runAsync.mock.calls).toEqual([
+      ["DELETE FROM journal_drafts"],
+      ["DELETE FROM journal_revisions"],
       ["DELETE FROM journal_period_reviews"],
       ["DELETE FROM journal_entries"],
       ["DELETE FROM journal_records"],

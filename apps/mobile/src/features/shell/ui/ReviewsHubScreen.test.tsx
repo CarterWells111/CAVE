@@ -1,5 +1,7 @@
 import { fireEvent, render, screen } from "@testing-library/react-native";
 
+jest.mock("expo-router", () => ({ useRouter: () => ({ push: jest.fn() }) }));
+
 import { ReviewsHubScreen } from "./ReviewsHubScreen";
 
 test("supports continuing, topic entry, and journey selection without history or replacement", () => {

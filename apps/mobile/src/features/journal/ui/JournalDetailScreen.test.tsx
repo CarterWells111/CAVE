@@ -73,6 +73,7 @@ test("shows a retry path when a record deletion committed but cleanup is pending
   const service = {
     loadRecord: jest.fn(async () => ({ record: storedRecord, entries: [] })),
     deleteRecord,
+    listRevisions: jest.fn(async () => []),
   };
 
   render(
@@ -115,7 +116,7 @@ test("shows a retry path when an entry deletion committed but cleanup is pending
   const loadRecord = jest.fn()
     .mockResolvedValueOnce({ record: storedRecord, entries: [entry] })
     .mockResolvedValue({ record: storedRecord, entries: [] });
-  const service = { loadRecord, deleteEntry };
+  const service = { loadRecord, deleteEntry, listRevisions: jest.fn(async () => []) };
 
   render(
     <ThemeProvider repository={new InMemoryAppearancePreferencesRepository()}>
@@ -137,3 +138,28 @@ test("shows a retry path when an entry deletion committed but cleanup is pending
   expect(deleteEntry).toHaveBeenCalledTimes(2);
   alert.mockRestore();
 });
+
+ test("deleting a later entry refreshes its visible private revision history", async () => {
+  const alert = confirmDestructiveAlerts();
+  let sequence = 0;
+  const service = new JournalService(new InMemoryJournalRepository(), {
+    now: () => "2026-09-07T10:00:00Z", createId: () => `r-${++sequence}`,
+  }, "a");
+  const record = await service.createRecord({ occurredAt: "2026-09-07", body: "原记录" });
+  const entry = await service.addEntry(record.id, { occurredAt: "2026-09-07", kind: "insight", body: "旧版本私密文字" });
+  await service.updateEntry(entry.id, { body: "新的后来" });
+  render(<JournalDetailScreen id={record.id} service={service} onAdd={jest.fn()} onBack={jest.fn()} onDeleted={jest.fn()} />);
+  fireEvent.press(await screen.findByRole("button", { name: "查看修改历史" }));
+  expect(screen.getByText("旧版本私密文字")).toBeTruthy();
+  fireEvent.press(screen.getByRole("button", { name: "删除这条后来" }));
+  await screen.findByText("还没有后续补充。");
+  expect(screen.queryByText("旧版本私密文字")).toBeNull();
+  expect(screen.getByText("还没有修改历史。")).toBeTruthy();
+  alert.mockRestore();
+ });
+ test("a history read failure reports an error rather than an empty history", async () => {
+  const service = { loadRecord: async () => ({ record: storedRecord, entries: [] }), listRevisions: async () => { throw new Error("storage unavailable"); } };
+  render(<JournalDetailScreen id={storedRecord.id} service={service as never} onAdd={jest.fn()} onBack={jest.fn()} onDeleted={jest.fn()} />);
+  expect(await screen.findByText("无法打开这条手记")).toBeTruthy();
+  expect(screen.queryByText("还没有修改历史。")).toBeNull();
+ });
