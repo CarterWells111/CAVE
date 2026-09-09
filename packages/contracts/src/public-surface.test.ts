@@ -84,6 +84,7 @@ describe("version one public contract surface", () => {
         "ApiErrorCodeSchema",
         "AssistantRequestSchema",
         "AssistantResponseSchema",
+        "AssistantUsageSchema",
         "ApiErrorResponseSchema",
         "AccountDeletionChallengeRequestSchema",
         "AccountDeletionGrantResponseSchema",

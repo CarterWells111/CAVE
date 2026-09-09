@@ -1,5 +1,7 @@
 # DeepSeek 真实体验状态
 
+> 历史排障记录。2026-09-09 已核对线上 live 配置并写回仓库，以下临时端口与部署覆盖说明不再作为操作指南；请使用[团队 AI 服务配置](../operations/ai-service.md)。
+
 2026-09-07：用户已核对 Cloudflare/DeepSeek 账号，自行保存 MODEL_API_KEY Secret，并明确批准线上部署。
 - Worker neijie-cave-gateway，版本 b8b141f5-9594-4956-8c4f-43d7c0652960。
 - 部署 CLI 覆盖 MODEL_MODE=live，MODEL_BASE_URL=https://api.deepseek.com，MODEL_NAME=deepseek-v4-flash。仓库 wrangler.jsonc 仍默认 mock，后续部署需显式保留 live 参数，否则会退回模拟。

@@ -1,3 +1,4 @@
+import { getGatewayUrl, isAssistantPreview } from "../../config/gateway";
 import { AssistantRequestSchema, type AssistantRequest, type AssistantResponse } from "@cave/contracts";
 import { useEffect, useRef, useState } from "react";
 import { Text, TextInput, View } from "react-native";
@@ -10,8 +11,9 @@ import { useOptionalAuth } from "../auth/runtime/AuthProvider";
 import { AssistantClientError, createAssistantClient, previewAssistant, type AssistantRequester } from "./assistant-client";
 
 type Mode = AssistantRequest["mode"];
-const labels: Record<Mode, string> = { guide: "帮我继续写", summarize: "帮我整理", review: "帮我回顾", journey: "问问这一步" };
+const labels: Record<Mode, string> = { chat: "聊一聊", guide: "帮我继续写", summarize: "帮我整理", review: "帮我回顾", journey: "问问这一步" };
 const errorMessages: Record<AssistantClientError["code"], string> = {
+  "quota-exceeded": "这段时间的聊天额度已用完，休息一会儿再来聊吧。",
   configuration: "AI 服务地址尚未配置好，你仍可在本机保存。",
   "invalid-input": "请检查所选内容：最多 10 条，每条 4000 字，总计 12000 字；不会自动截断你的记录。",
   network: "AI 暂时无法连接，你的文字仍在这里，可以直接保存或稍后重试。",
@@ -51,7 +53,7 @@ function AssistantSession({ records, modes = ["guide", "summarize"], journeyId, 
   const [adopted, setAdopted] = useState(false);
   const controllerRef = useRef<AbortController | null>(null);
   const epoch = useRef(0);
-  const preview = __DEV__ && process.env.EXPO_PUBLIC_ASSISTANT_MODE === "mock";
+  const preview = isAssistantPreview();
   const inputKey = JSON.stringify({ records, question, journeyId });
   const latestInput = useRef(inputKey);
   latestInput.current = inputKey;
@@ -91,7 +93,7 @@ function AssistantSession({ records, modes = ["guide", "summarize"], journeyId, 
     setBusy(true); setResult(null); setError(null); setAdopted(false);
     try {
       const requester = request ?? (preview ? previewAssistant : createAssistantClient({
-        baseUrl: process.env.EXPO_PUBLIC_GATEWAY_URL?.trim() || "https://api.neijiecave.com",
+        baseUrl: getGatewayUrl(),
         getAccessToken: async () => {
           if (!accountId || !getToken) throw new AssistantClientError("unauthorized");
           return getToken(accountId);

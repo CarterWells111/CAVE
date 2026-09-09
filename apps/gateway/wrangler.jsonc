@@ -1,11 +1,16 @@
 {
 	"$schema": "../../node_modules/wrangler/config-schema.json",
 	"name": "neijie-cave-gateway",
+  "account_id": "3d3f8c9a0cd1392d912a00414155f7de",
 	"main": "src/index.ts",
 	"compatibility_date": "2026-08-26",
 	"workers_dev": true,
 	"vars": {
-		"MODEL_MODE": "mock",
+		"MODEL_MODE": "live",
+    "MODEL_BASE_URL": "https://api.deepseek.com",
+    "MODEL_NAME": "deepseek-v4-flash",
+    "ASSISTANT_HOURLY_LIMIT": "5",
+    "ASSISTANT_DAILY_LIMIT": "25",
 		"PROMPT_VERSION": "2026-08-26.1",
 		"POLICY_VERSION": "2026-08-26.1"
 	},

@@ -21,7 +21,23 @@ import {
 export type ProviderLogEntry = {
   status: number | "network_error" | "timeout";
   latencyMs: number;
+  event?: "model.usage";
+  model?: string;
+  measuredAt?: string;
+  usage?: {
+    prompt_tokens: number;
+    completion_tokens: number;
+    prompt_cache_hit_tokens?: number | undefined;
+    prompt_cache_miss_tokens?: number | undefined;
+  };
 };
+
+const TokenUsageSchema = z.object({
+  prompt_tokens: z.number().int().nonnegative(),
+  completion_tokens: z.number().int().nonnegative(),
+  prompt_cache_hit_tokens: z.number().int().nonnegative().optional(),
+  prompt_cache_miss_tokens: z.number().int().nonnegative().optional()
+});
 
 export const MAX_COMPLETION_BODY_BYTES = 64 * 1024;
 
@@ -251,14 +267,19 @@ export class OpenAICompatibleProvider implements ModelProvider, JsonRepairer {
     );
   }
 
+  async generateChat(systemPrompt: string, messages: Array<{ role: "user" | "assistant"; content: string }>, signal: AbortSignal): Promise<unknown> {
+    return this.#complete([{ role: "system", content: systemPrompt }, ...messages], signal, 2000, false);
+  }
+
   async generateAssistant(systemPrompt: string, data: string, signal: AbortSignal): Promise<unknown> {
     return this.#complete([{ role: "system", content: systemPrompt }, { role: "user", content: data }], signal, 2500);
   }
 
   async #complete(
-    messages: Array<{ role: "system" | "user"; content: string }>,
+    messages: Array<{ role: "system" | "user" | "assistant"; content: string }>,
     externalSignal: AbortSignal,
-    maxTokens?: number
+    maxTokens?: number,
+    parseJson = true
   ): Promise<unknown> {
     assertNotAborted(externalSignal);
     const controller = new AbortController();
@@ -312,6 +333,16 @@ export class OpenAICompatibleProvider implements ModelProvider, JsonRepairer {
         }
 
         const body = await readBoundedJson(response);
+        // Only allowlisted counters leave this boundary; never log provider bodies.
+        // Record before content validation: a rejected reply may still be billed.
+        const usage = TokenUsageSchema.safeParse(
+          typeof body === "object" && body !== null && "usage" in body ? body.usage : undefined
+        );
+        if (usage.success) this.#log({
+          event: "model.usage", status: response.status,
+          latencyMs: Date.now() - attemptStartedAt,
+          model: this.#modelName, measuredAt: new Date().toISOString(), usage: usage.data
+        });
         const parsed = ChatCompletionSchema.safeParse(body);
         if (!parsed.success) {
           throw new ProviderError("invalid_response", { status: response.status });
@@ -320,7 +351,7 @@ export class OpenAICompatibleProvider implements ModelProvider, JsonRepairer {
         if (content === undefined) {
           throw new ProviderError("invalid_response", { status: response.status });
         }
-        return decodeAssistantContent(content);
+        return parseJson ? decodeAssistantContent(content) : content;
         } catch (error) {
           if (externalSignal.aborted) throw abortError();
           if (timedOut) {

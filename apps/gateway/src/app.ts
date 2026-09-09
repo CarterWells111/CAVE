@@ -1,3 +1,4 @@
+import { D1AssistantUsageStore, parseAssistantLimit } from "./services/assistant-usage";
 import { loadCatalog } from "@cave/content";
 import type { ScenarioConfig } from "@cave/contracts";
 import { Hono, type MiddlewareHandler } from "hono";
@@ -39,8 +40,10 @@ import {
 
 export type WorkerBindings = Omit<
   Env,
-  "MODEL_MODE" | "PROMPT_VERSION" | "POLICY_VERSION"
+  "MODEL_MODE" | "MODEL_BASE_URL" | "MODEL_NAME" | "PROMPT_VERSION" | "POLICY_VERSION" | "ASSISTANT_HOURLY_LIMIT" | "ASSISTANT_DAILY_LIMIT"
 > & {
+  ASSISTANT_HOURLY_LIMIT?: string;
+  ASSISTANT_DAILY_LIMIT?: string;
   MODEL_MODE: string;
   PROMPT_VERSION: string;
   POLICY_VERSION: string;
@@ -293,10 +296,12 @@ export function createApp(
   const assistantDb = (rawEnv as Partial<WorkerBindings>).AUTH_DB;
   app.route("/", createAssistantRoutes({
     ...(assistantDb ? { repository: new D1AuthRepository(assistantDb) } : {}),
+    ...(assistantDb ? { usage: new D1AssistantUsageStore(assistantDb, { hour: parseAssistantLimit((rawEnv as Partial<WorkerBindings>).ASSISTANT_HOURLY_LIMIT), day: parseAssistantLimit((rawEnv as Partial<WorkerBindings>).ASSISTANT_DAILY_LIMIT) }) } : {}),
     rateLimitStore, providerMode: env.MODEL_MODE,
     service: createAssistantService({ providerMode: env.MODEL_MODE, catalog,
       logger: entry => logger(JSON.stringify(entry)),
-      ...(assistantProvider ? { complete: (prompt, data, signal) => assistantProvider.generateAssistant(prompt, data, signal) } : {}),
+      ...(assistantProvider ? { complete: (prompt, data, signal) => assistantProvider.generateAssistant(prompt, data, signal),
+        chat: (prompt, messages, signal) => assistantProvider.generateChat(prompt, messages, signal) } : {}),
     }),
   }));
   app.route("/", createMetaRoutes(env));

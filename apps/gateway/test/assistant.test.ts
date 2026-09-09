@@ -105,3 +105,38 @@ describe("assistant HTTP", () => {
     expect((await harness()({ ...input, question: "x".repeat(50000) })).status).toBe(413);
   });
 });
+
+it("accepts omitted empty observations without accepting malformed evidence", async () => {
+  const guide: AssistantRequest = { mode: "guide", consent: true, records: [], question: "带我开始写今天的日记" };
+  const reply = { status: "ok", message: "我们慢慢开始。", question: "今天有什么小事让你停留了一下？" };
+  expect(await make(reply)(guide)).toMatchObject({ status: "ok", observations: [] });
+  for (const observations of [null, "", {}, [{ text: "虚构观察", sourceRecordIds: ["not-selected"] }]]) {
+    expect(await make({ ...reply, observations })(guide)).toMatchObject({ status: "unavailable" });
+  }
+});
+
+it("authenticates usage and enforces account caps before any model work", async () => {
+  const token = `cave_at_${"a".repeat(43)}`;
+  const response = { status: "ok" as const, providerMode: "live" as const, message: "你好", observations: [], sources: [] };
+  const usage = { hour: { used: 2, limit: 2, resetsAt: "2099-01-01T01:00:00.000Z" }, day: { used: 2, limit: 10, resetsAt: "2099-01-02T00:00:00.000Z" }, measuredAt: "2026-09-09T12:00:00.000Z" };
+  const store = { read: vi.fn(async () => usage), consume: vi.fn(async () => false) };
+  const service = vi.fn(async () => response);
+  const routes = createAssistantRoutes({ providerMode: "live", rateLimitStore: new InMemoryRateLimitStore(), service, usage: store, repository: {
+    findSessionByAccessDigest: async () => ({ id: "s", accountId: "account-a", accessDigest: "a", refreshDigest: "r", accessExpiresAt: "2099-01-01", refreshExpiresAt: "2099-01-01", createdAt: "2026-01-01", lastSeenAt: "2026-01-01" }),
+    findAccountById: async () => ({ id: "account-a", emailLookup: "private", emailKeyVersion: 1, createdAt: "2026-01-01" }),
+  } });
+  expect((await routes.request("/v1/assistant/usage")).status).toBe(401);
+  expect(store.read).not.toHaveBeenCalled();
+  const headers = { authorization: `Bearer ${token}`, "content-type": "application/json" };
+  const read = await routes.request("/v1/assistant/usage?accountId=someone-else", { headers });
+  expect(await read.json()).toEqual(usage);
+  expect(store.read).toHaveBeenCalledWith("account-a", expect.any(Number));
+  const invalid = await routes.request("/v1/assistant", { method: "POST", headers, body: JSON.stringify({ ...input, consent: false }) });
+  expect(invalid.status).toBe(400); expect(store.consume).not.toHaveBeenCalled();
+  const denied = await routes.request("/v1/assistant", { method: "POST", headers, body: JSON.stringify(input) });
+  expect(denied.status).toBe(429); expect(service).not.toHaveBeenCalled();
+  expect(await denied.json()).toMatchObject({ code: "AI_QUOTA_EXCEEDED" });
+  store.consume.mockResolvedValue(true);
+  expect((await routes.request("/v1/assistant", { method: "POST", headers, body: JSON.stringify(input) })).status).toBe(200);
+  expect(service).toHaveBeenCalledOnce();
+});

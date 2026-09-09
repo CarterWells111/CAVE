@@ -244,8 +244,8 @@ test("creates one runtime across rerenders without rendering a global Expo Go no
     </JourneyRuntimeProvider>
   );
 
-  expect(screen.getByText("正在启动旅程运行时…")).toBeTruthy();
-  expect(screen.getByText("正在启动旅程运行时…")).toHaveProp("accessibilityLiveRegion", "polite");
+  expect(screen.getByText("正在打开内界 CAVE…")).toBeTruthy();
+  expect(screen.getByText("正在打开内界 CAVE…")).toHaveProp("accessibilityLiveRegion", "polite");
   expect(await screen.findByText("controller-ready")).toBeTruthy();
   expect(screen.queryByText("Expo Go 演示模式，数据仅在本次打开期间暂存")).toBeNull();
   expect(screen.getByText("theme-light")).toBeTruthy();
@@ -529,13 +529,13 @@ test("keeps every public tab and settings usable without initializing private st
   expect(screen.getAllByRole("header", { name: "内界手记" }).length).toBeGreaterThan(0);
   fireEvent.press(screen.getByRole("button", { name: "开始写手记" }));
   expect(mockRouter.push).toHaveBeenCalledWith({ pathname: "/journey/adult-gate", params: { entry: "journal" } });
-  expect(screen.getByRole("header", { name: "AI" })).toBeTruthy();
+  expect(screen.getByRole("header", { name: "内界 AI" })).toBeTruthy();
   expect(screen.getByRole("header", { name: "练习" })).toBeTruthy();
   expect(screen.getByRole("header", { name: "我的" })).toBeTruthy();
   expect(screen.getByRole("header", { name: "设置" })).toBeTruthy();
   expect(screen.getByText("还没有沟通卡")).toBeTruthy();
   expect(screen.getByText("还没有历史回顾")).toBeTruthy();
-  fireEvent.press(screen.getByRole("button", { name: "成年声明后开始问答" }));
+  fireEvent.press(screen.getByRole("button", { name: "成年声明后开始聊天" }));
   expect(mockRouter.push).toHaveBeenCalledWith({ pathname: "/journey/adult-gate", params: { entry: "ai" } });
   fireEvent.press(screen.getByRole("radio", { name: "亮色" }));
   await act(async () => undefined);

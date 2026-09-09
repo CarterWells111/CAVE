@@ -18,10 +18,13 @@ export async function cleanupAuthMetadata(database: D1Database, now: string): Pr
 
 const worker = {
   fetch(request, env, context) {
+    // Optional, non-secret correlation for an explicitly enabled development measurement.
+    const rawMeasurementId = request.headers.get("X-Cave-Measurement-Id") ?? "";
+    const measurementId = /^[a-f0-9-]{36}$/u.test(rawMeasurementId) ? rawMeasurementId : undefined;
     const app = createApp(env, {
       rateLimitStore: createWorkerRateLimitStore(env),
       logger(line) {
-        console.log(line);
+        console.log(measurementId ? JSON.stringify({ ...JSON.parse(line), measurementId }) : line);
       }
     });
     return app.fetch(request, env, context);

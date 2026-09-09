@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
 import worker from "./index";
+import type { WorkerBindings } from "./app";
 import {
   VALID_DEBRIEF_REQUEST,
   VALID_TURN_REQUEST
@@ -18,7 +19,7 @@ function createWorkerEnv() {
     DEBRIEF_RATE_LIMITER: {
       limit: vi.fn(async () => ({ success: true }))
     }
-  } satisfies Env;
+  } satisfies WorkerBindings;
 }
 
 const executionContext = {
@@ -28,7 +29,7 @@ const executionContext = {
 
 async function requestWorker(
   path: string,
-  env: Env,
+  env: WorkerBindings,
   body?: unknown
 ): Promise<Response> {
   if (!worker.fetch) throw new Error("missing Worker fetch handler");
@@ -46,6 +47,21 @@ async function requestWorker(
 }
 
 describe("gateway health route", () => {
+  it("correlates logs only with bounded measurement markers", async () => {
+    const log = vi.spyOn(console, "log").mockImplementation(() => undefined);
+    try {
+      for (const marker of ["8129f8ee-85c2-4351-96bc-d2618b693134", "private-invalid-marker"]) {
+        log.mockClear();
+        await worker.fetch(new Request("https://gateway.test/v1/practice/turn", {
+          method: "POST", headers: { "content-type": "application/json", "X-Cave-Measurement-Id": marker },
+          body: JSON.stringify(VALID_TURN_REQUEST)
+        }), createWorkerEnv(), executionContext);
+        expect(log).toHaveBeenCalled();
+        const entries = log.mock.calls.map(([line]) => JSON.parse(String(line)));
+        expect(entries.every(entry => entry.measurementId === (marker.startsWith("8129") ? marker : undefined))).toBe(true);
+      }
+    } finally { log.mockRestore(); }
+  });
   it("returns the versioned health contract", async () => {
     const response = await requestWorker("/health", createWorkerEnv());
 

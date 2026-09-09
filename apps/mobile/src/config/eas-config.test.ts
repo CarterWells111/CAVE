@@ -9,7 +9,7 @@ describe("EAS build profiles", () => {
   });
 
   it("uses internal preview distribution on the preview channel", () => {
-    expect(easConfig.build.preview).toEqual({
+    expect(easConfig.build.preview).toMatchObject({
       node: "22.23.2",
       channel: "preview",
       distribution: "internal"
@@ -22,8 +22,15 @@ describe("EAS build profiles", () => {
   });
 
   it("configures production without triggering a build", () => {
-    expect(easConfig.build.production).toEqual({
+    expect(easConfig.build.production).toMatchObject({
       channel: "production"
     });
+  });
+});
+
+test.each(["development", "preview", "production"] as const)("%s explicitly uses the shared live gateway", profile => {
+  expect(easConfig.build[profile].env).toEqual({
+    EXPO_PUBLIC_GATEWAY_URL: "https://api.neijiecave.com",
+    EXPO_PUBLIC_ASSISTANT_MODE: "live",
   });
 });
