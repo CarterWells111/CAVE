@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor, within, type RenderAPI } from "@testing-library/react-native";
+import { act, fireEvent, render, screen, waitFor, within, type RenderAPI } from "@testing-library/react-native";
 import type { ReactElement } from "react";
 
 import BehaviorMapRoute from "../../../app/journey/behavior-map";
@@ -85,10 +85,9 @@ async function openRoute(element: ReactElement, journeyRuntime: JourneyRuntime):
       {element}
     </JourneyRuntimeProvider>
   );
+  await act(async () => undefined);
   await waitFor(() => {
-    expect(screen.queryByText("正在启动旅程运行时…")).toBeNull();
-    expect(screen.queryByText("正在检查本机访问状态…")).toBeNull();
-    expect(screen.queryByText("正在读取外观设置…")).toBeNull();
+    expect(screen.queryByText("正在打开内界 CAVE…")).toBeNull();
     expect(screen.queryByText("正在恢复本机旅程…")).toBeNull();
   });
   expect(screen.queryByText("Expo Go 演示模式，数据仅在本次打开期间暂存")).toBeNull();

@@ -103,7 +103,7 @@ test.each([false, true])("login keeps the real navigator stable with account adu
     if (ageConfirmed) await waitFor(() => expect(mockRuntime.service.getSnapshot()?.ageConfirmed).toBe(true));
     await act(async () => { await Promise.resolve(); });
     expect(result.getPathname()).toBe("/profile");
-    expect(screen.queryByText("正在读取外观设置…")).toBeNull();
+    expect(screen.queryByText("正在打开内界 CAVE…")).toBeNull();
     expect(loadAppearance).toHaveBeenCalledTimes(ageConfirmed ? 1 : 0);
     expect(profileMounts).toBeLessThanOrEqual(2);
     const mountsAfterLogin = profileMounts;

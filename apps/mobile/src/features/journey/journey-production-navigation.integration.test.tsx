@@ -59,10 +59,9 @@ async function openRoute(element: ReactElement, journeyRuntime: JourneyRuntime):
   const view = render(
     <JourneyRuntimeProvider createRuntime={async () => journeyRuntime}>{element}</JourneyRuntimeProvider>,
   );
+  await act(async () => undefined);
   await waitFor(() => {
-    expect(screen.queryByText("正在启动旅程运行时…")).toBeNull();
-    expect(screen.queryByText("正在检查本机访问状态…")).toBeNull();
-    expect(screen.queryByText("正在读取外观设置…")).toBeNull();
+    expect(screen.queryByText("正在打开内界 CAVE…")).toBeNull();
     expect(screen.queryByText("正在恢复本机旅程…")).toBeNull();
   });
   expect(screen.queryByText("Expo Go 演示模式，数据仅在本次打开期间暂存")).toBeNull();
@@ -180,7 +179,8 @@ test("adult declaration publishes the confirmed snapshot before the preface rend
       <AdultGateRoute />
     </JourneyRuntimeProvider>,
   );
-  await waitFor(() => expect(screen.queryByText("正在启动旅程运行时…")).toBeNull());
+  await act(async () => undefined);
+  await screen.findByRole("button", { name: "我已年满 18 岁，继续" });
   expect(screen.queryByText("Expo Go 演示模式，数据仅在本次打开期间暂存")).toBeNull();
 
   fireEvent.press(screen.getByRole("button", { name: "我已年满 18 岁，继续" }));
