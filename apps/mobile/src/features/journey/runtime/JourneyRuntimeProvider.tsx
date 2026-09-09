@@ -16,6 +16,7 @@ import { DatabaseRecoveryRequiredError } from "../../../core/storage/database";
 import { Button } from "../../../core/ui/Button";
 import { ErrorState } from "../../../core/ui/ErrorState";
 import { SecondaryButton } from "../../../core/ui/secondary-button";
+import { StartupScreen } from "../../../core/ui/StartupScreen";
 import { useOptionalAccountPreferences } from "../../account/runtime/AccountPreferencesProvider";
 import { useOptionalAuth } from "../../auth/runtime/AuthProvider";
 import { AccountJournalDeletionContext } from "../../account/runtime/account-journal-deletion-context";
@@ -245,6 +246,12 @@ export function JourneyRuntimeProvider({
   const [authorizedOwner, setAuthorizedOwner] = useState<string | null | undefined>(undefined);
   const preferenceOperations = useRef<Promise<unknown>>(Promise.resolve());
   const [state, setState] = useState<RuntimeState>({ status: "loading" });
+  const [hasPresentedHome, setHasPresentedHome] = useState(false);
+  const startupReady = preferences === null || (preferences.ready && authorizedOwner === preferences.owner
+    && state.status === (preferences.preferences.ageConfirmed ? "authorized" : "public"));
+  useEffect(() => {
+    if (startupReady) setHasPresentedHome(true);
+  }, [startupReady]);
   const [runtimeAttempt, setRuntimeAttempt] = useState(0);
   const createRuntimeRef = useRef(createRuntime);
   const runtimePromiseRef = useRef<Promise<JourneyRuntime> | null>(null);
@@ -435,10 +442,10 @@ export function JourneyRuntimeProvider({
   }, [state]);
 
   if (state.status === "loading") {
-    return <Text accessibilityLiveRegion="polite">正在启动旅程运行时…</Text>;
+    return <StartupScreen />;
   }
   if (state.status === "authorization-checking") {
-    return <Text accessibilityLiveRegion="polite">正在检查本机访问状态…</Text>;
+    return <StartupScreen />;
   }
   if (state.status === "error") {
     return (
@@ -493,6 +500,11 @@ export function JourneyRuntimeProvider({
       }} />
     </PublicBoundary>;
   }
+
+  if (!hasPresentedHome && preferences?.error) {
+    return <PublicBoundary><AuthorizationErrorScreen onRetry={preferences.retry} /></PublicBoundary>;
+  }
+  if (!hasPresentedHome && !startupReady) return <StartupScreen />;
 
   const effectiveStatus = preferences !== null && (!preferences.ready || !preferences.preferences.ageConfirmed || authorizedOwner !== preferences.owner)
     ? "public" : state.status;

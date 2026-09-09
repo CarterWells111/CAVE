@@ -1,5 +1,5 @@
-export { AssistantRequestSchema, AssistantResponseSchema } from "./assistant";
-export type { AssistantRequest, AssistantResponse } from "./assistant";
+export { AssistantRequestSchema, AssistantResponseSchema, AssistantUsageSchema } from "./assistant";
+export type { AssistantRequest, AssistantResponse, AssistantUsage } from "./assistant";
 export {
   CourseSchema,
   DebriefKeySchema,

@@ -1,5 +1,5 @@
 import { readdirSync, readFileSync, realpathSync, statSync } from "node:fs";
-import { basename, extname, relative, resolve, sep } from "node:path";
+import { basename, dirname, extname, relative, resolve, sep } from "node:path";
 import ts from "typescript";
 
 const workspaceRoot = resolve(import.meta.dirname, "..");
@@ -148,7 +148,10 @@ function integrationFindings(sourceFile, file, allowNetworkFetch = false) {
   const findings = [];
   const visit = (node) => {
     const specifier = moduleSpecifier(node);
-    if (specifier !== null && isForbiddenIntegrationModule(specifier)) {
+    const publicGatewayConfig = specifier !== null && specifier.startsWith(".")
+      && resolve(dirname(file), `${specifier}.ts`) === resolve(workspaceRoot, "apps/mobile/src/config/gateway.ts");
+    // This exact module contains public settings only; fetch remains forbidden here and in callers.
+    if (specifier !== null && isForbiddenIntegrationModule(specifier) && !publicGatewayConfig) {
       findings.push({
         file,
         label: "AI/model/Gateway integration",

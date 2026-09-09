@@ -38,13 +38,7 @@ corepack pnpm --filter @cave/mobile start:dev-client
 
 开发客户端必须由匹配当前 Expo 配置的原生构建启动；Expo Go 结果不能替代这类验证。
 
-邮箱登录需要在 `apps/mobile/.env.local` 中配置公开 Gateway 地址：
-
-```dotenv
-EXPO_PUBLIC_GATEWAY_URL=http://localhost:8787
-```
-
-这个值是公开服务地址，不是密钥。模型凭据、邮箱摘要密钥和邮件凭据不得使用 `EXPO_PUBLIC_` 前缀。
+普通本地开发与安装包默认共用线上 HTTPS Gateway，无需配置 `.env` 或 DeepSeek 密钥。完成成年声明并登录自己的账号后可使用真实 AI。团队使用、构建环境与本地 Gateway 调试见[AI 服务配置](../operations/ai-service.md)。
 
 ## 官方网站
 

@@ -67,6 +67,16 @@ test("loads a persisted preference before rendering themed children", async () =
   expect(screen.getByText("theme:dark")).toBeTruthy();
 });
 
+test("does not flash the system background before the saved theme is loaded", async () => {
+  let resolve!: (value: "dark") => void;
+  const repository: AppearancePreferencesRepository = { load: () => new Promise(r => { resolve = r; }), save: async () => undefined };
+  render(<ThemeProvider repository={repository}><Probe /></ThemeProvider>);
+  expect(SystemUI.setBackgroundColorAsync).not.toHaveBeenCalled();
+  await act(async () => { resolve("dark"); });
+  expect(SystemUI.setBackgroundColorAsync).toHaveBeenCalledTimes(1);
+  expect(SystemUI.setBackgroundColorAsync).toHaveBeenCalledWith("#171217");
+});
+
 test("follows system changes and synchronizes native background and status bar", async () => {
   const repository: AppearancePreferencesRepository = {
     load: jest.fn(async () => "system"),

@@ -422,3 +422,15 @@ describe("mobile Demo source policy", () => {
     expect(result.stdout).toContain("mobile source policy passed (1 files)");
   });
 });
+
+it("does not exempt arbitrary modules just because they are named config/gateway", () => {
+  const result = scan({ "screen.ts": "import { client } from './config/gateway'; client.send();" });
+  expect(result.status).toBe(1);
+});
+it("allows the actual public configuration import while still scanning the module", () => {
+  const result = scanTargets([
+    fileURLToPath(new URL("../apps/mobile/src/config/gateway.ts", import.meta.url)),
+    fileURLToPath(new URL("../apps/mobile/src/features/assistant/assistant-chat.tsx", import.meta.url)),
+  ]);
+  expect(result.status).toBe(0);
+});

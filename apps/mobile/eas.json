@@ -7,19 +7,33 @@
     "development": {
       "node": "22.23.2",
       "developmentClient": true,
-      "distribution": "internal"
+      "distribution": "internal",
+      "env": {
+        "EXPO_PUBLIC_ASSISTANT_MODE": "live",
+        "EXPO_PUBLIC_GATEWAY_URL": "https://api.neijiecave.com"
+      }
     },
     "preview": {
       "node": "22.23.2",
       "channel": "preview",
-      "distribution": "internal"
+      "distribution": "internal",
+      "env": {
+        "EXPO_PUBLIC_ASSISTANT_MODE": "live",
+        "EXPO_PUBLIC_GATEWAY_URL": "https://api.neijiecave.com"
+      }
     },
     "acceptance": {
       "extends": "development",
-      "env": { "CAVE_ACCEPTANCE_TOOLS": "1" }
+      "env": {
+        "CAVE_ACCEPTANCE_TOOLS": "1"
+      }
     },
     "production": {
-      "channel": "production"
+      "channel": "production",
+      "env": {
+        "EXPO_PUBLIC_ASSISTANT_MODE": "live",
+        "EXPO_PUBLIC_GATEWAY_URL": "https://api.neijiecave.com"
+      }
     }
   }
 }

@@ -10,7 +10,8 @@ import {
   useRef,
   useState,
 } from "react";
-import { Text, type ColorSchemeName, useColorScheme } from "react-native";
+import { type ColorSchemeName, useColorScheme } from "react-native";
+import { StartupScreen } from "../ui/StartupScreen";
 
 import type { AppearancePreferencesRepository } from "./appearance-preferences";
 import {
@@ -71,8 +72,9 @@ export function ThemeProvider({ children, repository }: ThemeProviderProps) {
   const theme = resolvedTheme === "dark" ? darkTheme : lightTheme;
 
   useEffect(() => {
+    if (!ready) return;
     void SystemUI.setBackgroundColorAsync(theme.color.background).catch(() => undefined);
-  }, [theme]);
+  }, [ready, theme]);
 
   const setPreference = useCallback((nextPreference: ThemePreference): Promise<void> => {
     if (savePromiseRef.current !== null) return savePromiseRef.current;
@@ -103,14 +105,7 @@ export function ThemeProvider({ children, repository }: ThemeProviderProps) {
   }), [preference, reloadPreference, resolvedTheme, saving, setPreference]);
 
   if (!ready) {
-    return (
-      <>
-        <StatusBar style={resolvedTheme === "dark" ? "light" : "dark"} />
-        <Text accessibilityLiveRegion="polite" style={{ color: theme.color.text }}>
-          正在读取外观设置…
-        </Text>
-      </>
-    );
+    return <StartupScreen />;
   }
 
   return (

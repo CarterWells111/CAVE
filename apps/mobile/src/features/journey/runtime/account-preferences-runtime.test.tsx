@@ -14,10 +14,12 @@ let mockPreferences = {
 };
 jest.mock("../../account/runtime/AccountPreferencesProvider", () => ({ useOptionalAccountPreferences: () => mockPreferences }));
 let captured: ReturnType<typeof useOptionalJourneyRuntime>;
+let renderedStatuses: string[] = [];
 function Probe() {
   useEffect(() => () => { captured = null; }, []);
   captured = useOptionalJourneyRuntime();
   const adult = useAdultDeclaration();
+  renderedStatuses.push(adult.status);
   return <Text>{adult.status}:{captured?.snapshot?.addressPreference ?? "none"}</Text>;
 }
 function setup(declared = false) {
@@ -32,7 +34,36 @@ function setup(declared = false) {
 }
 beforeEach(() => {
   captured = null;
-  mockPreferences = { ...mockPreferences, ready: true, owner: "account-a", preferences: { ageConfirmed: true, addressPreference: "妳" } };
+  renderedStatuses = [];
+  mockPreferences = { ...mockPreferences, error: false, ready: true, owner: "account-a", preferences: { ageConfirmed: true, addressPreference: "妳" } };
+});
+
+test("does not briefly mount the public homepage while remembered account preferences load", async () => {
+  mockPreferences = { ...mockPreferences, ready: false };
+  const { rerender } = setup();
+  await act(async () => undefined);
+  expect(renderedStatuses).toEqual([]);
+  mockPreferences = { ...mockPreferences, ready: true };
+  await act(async () => { rerender(); });
+  await waitFor(() => expect(captured?.snapshot?.ageConfirmed).toBe(true));
+  expect(renderedStatuses).not.toContain("public");
+});
+
+test("startup still opens the public homepage for a new user", async () => {
+  mockPreferences = { ...mockPreferences, owner: null, preferences: { ageConfirmed: false, addressPreference: null } };
+  setup();
+  expect(await screen.findByText("public:none")).toBeTruthy();
+});
+
+test("a failed preference load offers retry instead of waiting forever", async () => {
+  mockPreferences = { ...mockPreferences, ready: false, error: true };
+  const { rerender } = setup();
+  await screen.findByText("无法验证本机访问状态");
+  fireEvent.press(screen.getByRole("button", { name: "重试检查" }));
+  expect(mockPreferences.retry).toHaveBeenCalled();
+  mockPreferences = { ...mockPreferences, ready: true, error: false };
+  await act(async () => { rerender(); });
+  await waitFor(() => expect(captured?.snapshot?.ageConfirmed).toBe(true));
 });
 
 test.each([false, true])("encrypted storage recovery remains an explicit delete path with marker %s", async (declared) => {
