@@ -9,7 +9,7 @@ test("saves edits made after draft cleanup fails without creating a duplicate", 
   const createRecord = jest.fn(async () => ({ id: "saved" }));
   const updateRecord = jest.fn(async () => ({ id: "saved" }));
   const onSaved = jest.fn();
-  render(<JournalEditorScreen service={{ loadDraft: async () => null, saveDraft: async () => undefined, clearDraft, createRecord, updateRecord } as never} onSaved={onSaved} />);
+  render(<JournalEditorScreen service={{ loadDraft: async () => null, saveDraft: async () => undefined, clearDraft, createRecord, updateRecord, listRecords: async () => [] } as never} onSaved={onSaved} />);
   await waitFor(() => expect(screen.getByLabelText("事件正文")).toHaveProp("editable", true));
   fireEvent.changeText(screen.getByLabelText("事件正文"), "第一次的文字");
   fireEvent.press(screen.getByRole("button", { name: "保存到本机" }));
@@ -33,7 +33,7 @@ jest.mock("@react-native-community/datetimepicker", () => {
 
 test("offers a back action and blocks it while saving", async () => {
   const onBack = jest.fn();
-  render(<JournalEditorScreen onBack={onBack} onSaved={jest.fn()} service={{ loadDraft: async () => null, saveDraft: async () => undefined, clearDraft: async () => undefined, createRecord: () => new Promise(() => undefined) } as never} />);
+  render(<JournalEditorScreen onBack={onBack} onSaved={jest.fn()} service={{ loadDraft: async () => null, saveDraft: async () => undefined, clearDraft: async () => undefined, createRecord: () => new Promise(() => undefined), listRecords: async () => [] } as never} />);
   fireEvent.press(await screen.findByRole("button", { name: "返回手记列表" }));
   expect(onBack).toHaveBeenCalledTimes(1);
   fireEvent.press(screen.getByRole("button", { name: "保存到本机" }));
@@ -48,7 +48,7 @@ test("uses a themed surface and a calendar control instead of an ISO text field"
       <JournalEditorScreen
         initial={{ occurredAt: "2026-08-29T23:30:00.000Z" }}
         onSaved={jest.fn()}
-        service={{ loadDraft: async () => null, saveDraft: async () => undefined, clearDraft: async () => undefined, createRecord: jest.fn() } as never}
+        service={{ loadDraft: async () => null, saveDraft: async () => undefined, clearDraft: async () => undefined, createRecord: jest.fn(), listRecords: async () => [] } as never}
       />
     </ThemeProvider>,
   );
@@ -68,7 +68,7 @@ test("uses a themed surface and a calendar control instead of an ISO text field"
   const clearDraft = jest.fn(async () => undefined);
   const createRecord = jest.fn(async () => ({ id: "saved" }));
   const onSaved = jest.fn();
-  render(<JournalEditorScreen service={{ loadDraft: async () => draft, saveDraft: async () => undefined, clearDraft, createRecord } as never} onSaved={onSaved} />);
+  render(<JournalEditorScreen service={{ loadDraft: async () => draft, saveDraft: async () => undefined, clearDraft, createRecord, listRecords: async () => [] } as never} onSaved={onSaved} />);
   await waitFor(() => expect(screen.getByLabelText("事件正文")).toHaveProp("value", draft.body));
   fireEvent.press(screen.getByRole("button", { name: "试试引导写作（可跳过）" }));
   expect(screen.getByText("今天有什么想记下的？")).toBeTruthy();
@@ -80,3 +80,26 @@ test("uses a themed surface and a calendar control instead of an ISO text field"
   expect(createRecord).toHaveBeenCalledWith(expect.objectContaining({ title: "", body: draft.body }));
   expect(clearDraft).toHaveBeenCalledWith("new:freeform");
  });
+
+test("adds a custom topic to the saved record", async () => {
+  const createRecord = jest.fn(async () => ({ id: "saved" }));
+  const onSaved = jest.fn();
+  render(<JournalEditorScreen service={{
+    loadDraft: async () => null, saveDraft: async () => undefined,
+    clearDraft: async () => undefined, createRecord, listRecords: async () => [],
+  } as never} onSaved={onSaved} />);
+  await waitFor(() => expect(screen.getByLabelText("事件正文")).toHaveProp("editable", true));
+  const buttons = screen.getAllByRole("button").map((button) => button.props.accessibilityLabel);
+  for (const preset of ["亲密关系", "自我边界", "健康性生活"]) {
+    expect(buttons.indexOf("自定义专题")).toBeLessThan(buttons.indexOf(preset));
+  }
+  expect(screen.getByRole("button", { name: "自定义专题" })).toHaveStyle({ backgroundColor: darkTheme.color.primary });
+  fireEvent.changeText(screen.getByLabelText("事件正文"), "一起散步");
+  fireEvent.press(screen.getByRole("button", { name: "自定义专题" }));
+  fireEvent.changeText(screen.getByLabelText("自定义专题名称"), "  友情  ");
+  fireEvent.press(screen.getByRole("button", { name: "添加专题" }));
+  expect(screen.getByRole("button", { name: "✓ 友情" })).toBeTruthy();
+  fireEvent.press(screen.getByRole("button", { name: "保存到本机" }));
+  await waitFor(() => expect(onSaved).toHaveBeenCalledWith("saved"));
+  expect(createRecord).toHaveBeenCalledWith(expect.objectContaining({ topics: ["custom:友情"] }));
+});

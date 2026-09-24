@@ -17,6 +17,11 @@ const NEXT_STAGE: Record<ScenarioStage, ScenarioStage> = {
   safety_stop: "safety_stop"
 };
 
+const STAGE_LABELS: Record<ScenarioStage, string> = {
+  setup: "准备", opening: "开始", response: "回应", clarification: "澄清",
+  resolution: "收尾", debrief: "回顾", safety_stop: "停止"
+};
+
 const DIMENSIONS: readonly DebriefKey[] = [
   "feeling",
   "willingness",
@@ -38,14 +43,10 @@ export class MockProvider implements ModelProvider {
     signal: AbortSignal
   ): Promise<unknown> {
     assertNotAborted(signal);
-    const turnCount = input.recentTurns.filter(
-      (turn) => turn.role === "user"
-    ).length;
-    const key = `${input.scenario.id}:${input.scenarioStage}:${turnCount}`;
-
+    const turnCount = input.recentTurns.filter(turn => turn.role === "user").length;
     return {
       requestId: input.requestId,
-      roleMessage: `Mock role response (${key})`,
+      roleMessage: `这是${input.scenario.title}的本机模拟练习（${STAGE_LABELS[input.scenarioStage]}，第${turnCount + 1}轮）。你可以继续表达自己的想法。`,
       candidateStage: NEXT_STAGE[input.scenarioStage]
     };
   }
@@ -64,8 +65,8 @@ export class MockProvider implements ModelProvider {
         status: evidenceQuote ? "expressed" : "not_observed",
         ...(evidenceQuote ? { evidenceQuote } : {}),
         explanation: evidenceQuote
-          ? "Mock provider observed user evidence."
-          : "Mock provider did not observe user evidence."
+          ? "你在练习中表达了自己的想法。"
+          : "这次练习中没有可引用的表达。"
       })),
       expressionCard: evidenceQuote ? { boundary: evidenceQuote } : {}
     };

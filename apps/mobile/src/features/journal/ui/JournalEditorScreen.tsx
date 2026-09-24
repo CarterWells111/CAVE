@@ -5,7 +5,7 @@ import { Button } from "../../../core/ui/Button";
 import { Screen } from "../../../core/ui/Screen";
 import { SecondaryButton } from "../../../core/ui/secondary-button";
 import type { JournalService } from "../application/journal-service";
-import type { JournalHighlight, JournalRecord, JournalSource, JournalTopic } from "../domain/journal-record";
+import { customJournalTopic, journalTopicLabel, MAX_CUSTOM_JOURNAL_TOPIC_LENGTH, type JournalHighlight, type JournalRecord, type JournalSource, type JournalTopic } from "../domain/journal-record";
 import { localJournalToday, normalizeJournalDate } from "../domain/journal-date";
 import { JournalDateField } from "./JournalDateField";
 
@@ -22,6 +22,10 @@ export function JournalEditorScreen({ service, onSaved, initial, onBack, renderA
   const [title, setTitle] = useState(initial?.title ?? ""); const [occurredAt, setOccurredAt] = useState(initial?.occurredAt ? normalizeJournalDate(initial.occurredAt) : localJournalToday());
   const [kind, setKind] = useState<JournalHighlight["kind"]>(initial?.highlight?.kind ?? "feeling"); const [highlight, setHighlight] = useState(initial?.highlight?.text ?? "");
   const [body, setBody] = useState(initial?.body ?? ""); const [topics, setTopics] = useState<JournalTopic[]>([...(initial?.topics ?? [])]);
+  const [availableCustomTopics, setAvailableCustomTopics] = useState<JournalTopic[]>(initial?.topics?.filter((item) => item.startsWith("custom:")) ?? []);
+  const [customTopicInput, setCustomTopicInput] = useState("");
+  const [showCustomTopicInput, setShowCustomTopicInput] = useState(false);
+  const [customTopicError, setCustomTopicError] = useState("");
   const [error, setError] = useState<string | null>(null); const [saving, setSaving] = useState(false);
   const draftKey = initial?.id ? `record:${initial.id}` : `new:${initial?.source?.kind === "journey" ? `${initial.source.journeyId}:${initial.source.cardId ?? ""}:${initial.source.reviewId ?? ""}` : "freeform"}`;
   const [ready, setReady] = useState(false);
@@ -50,6 +54,15 @@ export function JournalEditorScreen({ service, onSaved, initial, onBack, renderA
     return () => { active = false; };
   }, [service, draftKey]);
   useEffect(() => {
+    let active = true;
+    void service.listRecords().then((records) => {
+      if (!active) return;
+      const savedTopics = records.flatMap((record) => record.topics).filter((item) => item.startsWith("custom:"));
+      setAvailableCustomTopics((current) => [...new Set([...current, ...savedTopics])]);
+    }).catch(() => undefined);
+    return () => { active = false; };
+  }, [service]);
+  useEffect(() => {
     if (!ready || savingRef.current) return;
     const draft = { title, occurredAt, highlight: { kind, text: highlight }, body, topics,
       ...(sourceRef.current ? { source: sourceRef.current } : {}), ...(snapshotRef.current !== undefined ? { cardSnapshot: snapshotRef.current } : {}) };
@@ -57,6 +70,15 @@ export function JournalEditorScreen({ service, onSaved, initial, onBack, renderA
     void writeQueue.current.then(() => setDraftStatus("草稿已保存在本机"), () => setDraftStatus("草稿保存失败，请保持此页并重试保存。"));
   }, [ready, title, occurredAt, kind, highlight, body, topics, service, draftKey]);
   const field = { backgroundColor: theme.color.surface, borderColor: theme.color.border, borderRadius: theme.radius.md, borderWidth: 1, color: theme.color.text, padding: theme.space.md } as const;
+  const addCustomTopic = () => {
+    const label = customTopicInput.trim();
+    const existing = topicOptions.find((option) => option.label === label)?.value;
+    const value = existing ?? customJournalTopic(label);
+    if (!value) { setCustomTopicError(`请输入不超过 ${MAX_CUSTOM_JOURNAL_TOPIC_LENGTH} 个字的专题名称。`); return; }
+    setTopics((items) => items.includes(value) ? items : [...items, value]);
+    if (value.startsWith("custom:")) setAvailableCustomTopics((items) => items.includes(value) ? items : [...items, value]);
+    setCustomTopicInput(""); setCustomTopicError(""); setShowCustomTopicInput(false);
+  };
   const save = async () => {
     if (saving || !ready) return;
     savingRef.current = true;
@@ -95,7 +117,16 @@ export function JournalEditorScreen({ service, onSaved, initial, onBack, renderA
     <TextInput editable={ready && !saving} accessibilityLabel="重点提要" placeholder="想单独保留的重点（选填）" placeholderTextColor={theme.color.textMuted} selectionColor={theme.color.primary} value={highlight} onChangeText={setHighlight} style={field} />
     {renderAssistant?.({ records: [{ id: initial?.id ?? "current-draft", text: [title, occurredAt, highlight, body].filter(Boolean).join("\n") }], onAdopt: (text) => setBody((current) => current ? `${current}\n\n${text}` : text) })}
     <Text style={{ ...theme.typography.heading, color: theme.color.text }}>专题（选填，由你决定）</Text>
-    <View style={{ gap: theme.space.sm }}>{topicOptions.map((option) => <SecondaryButton key={option.value} label={`${topics.includes(option.value) ? "✓ " : ""}${option.label}`} onPress={() => setTopics((items) => items.includes(option.value) ? items.filter((item) => item !== option.value) : [...items, option.value])} />)}</View>
+    <View style={{ gap: theme.space.sm }}>
+      <Button label="自定义专题" onPress={() => setShowCustomTopicInput((shown) => !shown)} />
+      {showCustomTopicInput ? <View style={{ gap: theme.space.sm }}>
+        <TextInput editable={ready && !saving} accessibilityLabel="自定义专题名称" placeholder="输入专题名称" placeholderTextColor={theme.color.textMuted} selectionColor={theme.color.primary} value={customTopicInput} onChangeText={(value) => { setCustomTopicInput(value); setCustomTopicError(""); }} onSubmitEditing={addCustomTopic} style={field} />
+        <SecondaryButton disabled={!ready || saving} label="添加专题" onPress={addCustomTopic} />
+        {customTopicError ? <Text accessibilityRole="alert" style={{ color: theme.color.danger }}>{customTopicError}</Text> : null}
+      </View> : null}
+      {topicOptions.map((option) => <SecondaryButton key={option.value} label={`${topics.includes(option.value) ? "✓ " : ""}${option.label}`} onPress={() => setTopics((items) => items.includes(option.value) ? items.filter((item) => item !== option.value) : [...items, option.value])} />)}
+      {[...new Set([...availableCustomTopics, ...topics.filter((item) => item.startsWith("custom:"))])].map((value) => <SecondaryButton key={value} label={`${topics.includes(value) ? "✓ " : ""}${journalTopicLabel(value)}`} onPress={() => setTopics((items) => items.includes(value) ? items.filter((item) => item !== value) : [...items, value])} />)}
+    </View>
     {error ? <Text accessibilityRole="alert" style={{ color: theme.color.danger }}>{error}</Text> : null}
     <Text style={{ ...theme.typography.caption, color: theme.color.textMuted }}>随时可以修改，旧版本会保留在修改历史中。也可以为这件事增加一个“后来”。</Text>
     <Button disabled={saving || !ready} label={saving ? "正在保存…" : "保存到本机"} onPress={() => { void save(); }} />

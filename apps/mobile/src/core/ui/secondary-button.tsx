@@ -10,11 +10,13 @@ export type SecondaryButtonProps = {
   onPress: () => void;
   disabled?: boolean;
   loading?: boolean;
+  inline?: boolean;
+  accent?: boolean;
   testID?: string;
 };
 
 export const SecondaryButton = forwardRef<View, SecondaryButtonProps>(function SecondaryButton(
-  { label, accessibilityLabel, onPress, disabled = false, loading = false, testID },
+  { label, accessibilityLabel, onPress, disabled = false, loading = false, inline = false, accent = false, testID },
   ref,
 ) {
   const theme = useTheme();
@@ -33,17 +35,17 @@ export const SecondaryButton = forwardRef<View, SecondaryButtonProps>(function S
       onPress={() => { if (!unavailable) onPress(); }}
       style={({ pressed }) => ({
         alignItems: "center",
-        backgroundColor: pressed ? theme.color.surfacePressed : "transparent",
-        borderColor: disabled ? theme.color.disabledText : theme.color.interactiveBorder,
+        backgroundColor: disabled ? accent ? theme.color.disabledFill : "transparent" : accent ? pressed ? theme.color.primaryPressed : theme.color.primary : pressed ? theme.color.surfacePressed : "transparent",
+        borderColor: disabled ? theme.color.disabledText : accent ? theme.color.primary : theme.color.interactiveBorder,
         borderCurve: "continuous",
         borderRadius: theme.radius.control,
         borderWidth: theme.border.width,
         flexDirection: "row",
-        flexShrink: 1,
-        flexWrap: "wrap",
+        flexShrink: inline ? 0 : 1,
+        flexWrap: inline ? "nowrap" : "wrap",
         gap: theme.space.sm,
         justifyContent: "center",
-        maxWidth: "100%",
+        maxWidth: inline ? 240 : "100%",
         minHeight: theme.size.secondaryActionHeight,
         minWidth: theme.size.minimumTouchTarget,
         opacity: disabled ? 0.65 : pressed && !reducedMotion ? 0.82 : 1,
@@ -52,11 +54,11 @@ export const SecondaryButton = forwardRef<View, SecondaryButtonProps>(function S
         outlineWidth: focused ? theme.border.focusWidth : 0,
         paddingHorizontal: theme.space.md,
         paddingVertical: theme.space.compact,
-        width: "100%",
+        width: inline ? "auto" : "100%",
       })}
       testID={testID}
     >
-      <Text style={{ ...theme.typography.button, color: disabled ? theme.color.disabledText : theme.color.text, flexShrink: 1, flexWrap: "wrap", textAlign: "center" }}>
+      <Text numberOfLines={inline ? 1 : undefined} style={{ ...theme.typography.button, color: disabled ? theme.color.disabledText : accent ? theme.color.onPrimary : theme.color.text, flexShrink: inline ? 0 : 1, flexWrap: inline ? "nowrap" : "wrap", textAlign: "center" }}>
         {label}
       </Text>
       {loading ? <Text style={{ ...theme.typography.caption, color: theme.color.textSecondary }}>加载中</Text> : null}

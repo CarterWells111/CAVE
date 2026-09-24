@@ -33,6 +33,17 @@ test("rejects forged record citations and malformed results", async () => {
   await expect(client(input, signal())).rejects.toMatchObject({ code: "invalid-response" });
 });
 
+test.each([
+  { ...output, message: "Here is your journal summary." },
+  { ...output, summary: "A walk with your friend." },
+  { ...output, question: "How did that feel?" },
+  { ...output, observations: [{ text: "You mentioned a friend.", sourceRecordIds: ["record-1"] }] },
+])("does not display English model prose from the gateway: %#", async englishOutput => {
+  const client = createAssistantClient({ baseUrl: "https://gateway.example", getAccessToken: async () => "token",
+    fetch: jest.fn(async () => response(englishOutput)) });
+  await expect(client(input, signal())).rejects.toMatchObject({ code: "invalid-response" });
+});
+
 test.each([401, 429, 503])("handles HTTP %s without disclosing server response", async status => {
   const client = createAssistantClient({ baseUrl: "https://gateway.example", getAccessToken: async () => "token",
     fetch: jest.fn(async () => response({ secret: "private-server-error" }, status)) });

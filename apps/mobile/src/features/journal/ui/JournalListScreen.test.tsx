@@ -6,6 +6,7 @@ import { InMemoryJournalRepository } from "../infrastructure/in-memory-journal-r
 import { JournalListScreen } from "./JournalListScreen";
 import { darkTheme } from "../../../core/design/theme";
 import { formatJournalDate } from "../domain/journal-date";
+import { lightTheme } from "../../../core/design/theme";
 
 test("lists private metadata and searches titles without showing bodies", async () => {
   const service = new JournalService(new InMemoryJournalRepository(), { now: () => "2026-08-28T10:00:00Z", createId: (() => { let id = 0; return () => `${++id}`; })() }, "account-a");
@@ -61,4 +62,29 @@ test("reloads records when the journal list regains focus", async () => {
   );
 
   expect(await screen.findByText("刚刚保存的事件")).toBeTruthy();
+});
+
+test("keeps topic filters at a fixed height and filters saved custom topics", async () => {
+  const service = new JournalService(new InMemoryJournalRepository(), {
+    now: () => "2026-09-24T10:00:00Z",
+    createId: (() => { let id = 0; return () => `${++id}`; })(),
+  }, "account-a");
+  await service.createRecord({ title: "朋友的支持", occurredAt: "2026-09-24", body: "一起散步", topics: ["custom:友情"] });
+  await service.createRecord({ title: "留给自己", occurredAt: "2026-09-23", body: "休息", topics: ["self-boundaries"] });
+  render(<ThemeProvider repository={new InMemoryAppearancePreferencesRepository()}>
+    <JournalListScreen onCreate={jest.fn()} onOpen={jest.fn()} onReview={jest.fn()} service={service} />
+  </ThemeProvider>);
+  await screen.findByText("朋友的支持");
+  expect(screen.getByTestId("journal-topic-filters")).toHaveStyle({ flexGrow: 0, height: lightTheme.size.secondaryActionHeight, width: "100%" });
+  expect(screen.getByTestId("journal-topic-filters")).toHaveProp("nestedScrollEnabled", true);
+  expect(screen.getByRole("button", { name: "全部" })).toHaveStyle({ flexShrink: 0, width: "auto" });
+  expect(screen.getByRole("button", { name: "友情" })).toHaveStyle({ flexShrink: 0, width: "auto", backgroundColor: lightTheme.color.primary });
+  const buttons = screen.getAllByRole("button").map((button) => button.props.accessibilityLabel);
+  expect(buttons.indexOf("友情")).toBeLessThan(buttons.indexOf("全部"));
+  expect(buttons.indexOf("友情")).toBeLessThan(buttons.indexOf("亲密关系"));
+  fireEvent.press(screen.getByRole("button", { name: "友情" }));
+  expect(screen.getByText("朋友的支持")).toBeTruthy();
+  expect(screen.queryByText("留给自己")).toBeNull();
+  fireEvent.press(screen.getByRole("button", { name: "全部" }));
+  expect(screen.getByText("留给自己")).toBeTruthy();
 });

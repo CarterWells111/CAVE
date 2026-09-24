@@ -277,7 +277,8 @@ describe("MockProvider deterministic key", () => {
     const otherScenario = turnInput("setup");
     otherScenario.scenario = {
       ...structuredClone(TEST_SCENARIO),
-      id: "scenario-other"
+      id: "scenario-other",
+      title: "另一个场景"
     };
 
     const outputs = await Promise.all([

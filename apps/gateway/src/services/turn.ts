@@ -28,6 +28,7 @@ import {
   guardModelOutput,
   type OutputGuard
 } from "../security/output-guard";
+import { isChineseProse } from "./chinese-output";
 
 export interface ScenarioSource {
   getScenario(id: string): ScenarioConfig | undefined;
@@ -144,7 +145,7 @@ export function createTurnService(
         return PracticeTurnResponseSchema.parse({
           contractVersion: "1",
           requestId: request.requestId,
-          roleMessage: "Practice stopped by the server safety policy.",
+          roleMessage: "为了安全，这次练习已停止。",
           nextStage: next.stage,
           shouldEnd: next.terminal,
           safety,
@@ -204,6 +205,7 @@ export function createTurnService(
       if (!guarded.ok) {
         throw new GatewayError("UNSAFE_CONTEXT", 502);
       }
+      if (!isChineseProse(guarded.value.roleMessage)) throw new InvalidModelOutputError();
 
       return PracticeTurnResponseSchema.parse({
         contractVersion: "1",

@@ -6,7 +6,24 @@ export const JOURNAL_TOPICS = [
   "sexual-health"
 ] as const;
 
-export type JournalTopic = (typeof JOURNAL_TOPICS)[number];
+export type JournalTopic = (typeof JOURNAL_TOPICS)[number] | `custom:${string}`;
+export const MAX_CUSTOM_JOURNAL_TOPIC_LENGTH = 40;
+
+const topicLabels: Record<(typeof JOURNAL_TOPICS)[number], string> = {
+  "intimate-relationship": "亲密关系",
+  "self-boundaries": "自我边界",
+  "sexual-health": "健康性生活"
+};
+
+export function customJournalTopic(label: string): JournalTopic | null {
+  const normalized = label.trim();
+  return normalized && Array.from(normalized).length <= MAX_CUSTOM_JOURNAL_TOPIC_LENGTH
+    ? `custom:${normalized}` : null;
+}
+
+export function journalTopicLabel(topic: JournalTopic): string {
+  return topic.startsWith("custom:") ? topic.slice("custom:".length) : topicLabels[topic as (typeof JOURNAL_TOPICS)[number]];
+}
 export type JournalHighlight = Readonly<{ kind: "feeling" | "impression"; text: string }>;
 export type JournalEntryKind = "event-change" | "feeling-change" | "action" | "insight" | "correction";
 export type JournalSource =
@@ -98,7 +115,8 @@ function normalizeHighlight(highlight: JournalHighlight): JournalHighlight {
 }
 
 function normalizeTopics(topics: readonly JournalTopic[]): readonly JournalTopic[] {
-  if (topics.some((topic) => !JOURNAL_TOPICS.includes(topic))) {
+  if (topics.some((topic) => !JOURNAL_TOPICS.includes(topic as (typeof JOURNAL_TOPICS)[number])
+    && (!topic.startsWith("custom:") || customJournalTopic(topic.slice("custom:".length)) !== topic))) {
     throw new JournalValidationError("journal-topic-invalid");
   }
   return [...new Set(topics)];
