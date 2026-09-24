@@ -29,7 +29,7 @@ describe("repository security configuration", () => {
   });
 
   it("declares the Expo font peer dependency directly", () => {
-    expect(mobilePackageJson.dependencies["expo-font"]).toBe("~57.0.3");
+    expect(mobilePackageJson.dependencies["expo-font"]).toBe("~57.0.4");
   });
 
   it("pins remediated dependencies and narrowly allowlists patched advisories", () => {
