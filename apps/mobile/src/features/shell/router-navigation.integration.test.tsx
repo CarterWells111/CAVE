@@ -8,7 +8,7 @@ import type { JournalEntry, JournalRecord } from "../journal/domain/journal-reco
 const mockShellLoad = jest.fn(async () => null);
 const mockLoadRecord = jest.fn<Promise<{ record: JournalRecord; entries: readonly JournalEntry[] } | null>, [string]>(async () => null);
 const mockLoadEntry = jest.fn<Promise<JournalEntry | null>, [string]>(async () => null);
-const mockJournalService = { loadDraft: jest.fn(async () => null), saveDraft: jest.fn(async () => undefined), listRevisions: jest.fn(async () => []), loadRecord: mockLoadRecord, loadEntry: mockLoadEntry };
+const mockJournalService = { loadDraft: jest.fn(async () => null), saveDraft: jest.fn(async () => undefined), listRecords: jest.fn(async () => []), listRevisions: jest.fn(async () => []), loadRecord: mockLoadRecord, loadEntry: mockLoadEntry };
 let mockAuthorized = false;
 let mockJournalStatus = "locked";
 jest.mock("../journey/runtime/JourneyRuntimeProvider", () => ({
