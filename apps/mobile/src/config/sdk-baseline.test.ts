@@ -11,23 +11,23 @@ const pnpmWorkspace = readFileSync(
 
 describe("Expo SDK baseline", () => {
   it("uses the approved SDK 57 dependency matrix", () => {
-    expect(packageJson.dependencies.expo).toBe("~57.0.21");
+    expect(packageJson.dependencies.expo).toBe("~57.0.25");
     expect(packageJson.dependencies.react).toBe("19.2.3");
     expect(packageJson.dependencies["react-native"]).toBe("0.86.3");
-    expect(packageJson.dependencies["expo-router"]).toBe("~57.0.20");
-    expect(packageJson.dependencies["expo-dev-client"]).toBe("~57.0.18");
+    expect(packageJson.dependencies["expo-router"]).toBe("~57.0.23");
+    expect(packageJson.dependencies["expo-dev-client"]).toBe("~57.0.19");
     expect(
       (packageJson.dependencies as Record<string, string | undefined>)[
         "expo-splash-screen"
       ]
-    ).toBe("~57.0.8");
-    expect(packageJson.dependencies["expo-system-ui"]).toBe("~57.0.3");
+    ).toBe("~57.0.9");
+    expect(packageJson.dependencies["expo-system-ui"]).toBe("~57.0.4");
     expect(packageJson.dependencies["@expo/vector-icons"]).toBe("^15.1.1");
     expect(
       (packageJson.dependencies as Record<string, string | undefined>)[
         "@expo/metro-runtime"
       ]
-    ).toBe("~57.0.15");
+    ).toBe("~57.0.16");
     expect(packageJson.devDependencies["@expo/router-server"]).toBe(
       "~57.0.9"
     );
