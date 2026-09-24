@@ -1,7 +1,7 @@
 import { loadCatalog } from "@cave/content";
 import type { AssistantRequest } from "@cave/contracts";
 import { describe, expect, it, vi } from "vitest";
-import { createAssistantService } from "../src/services/assistant";
+import { ASSISTANT_PROMPT, createAssistantService } from "../src/services/assistant";
 import { createAssistantRoutes } from "../src/routes/assistant";
 import { InMemoryRateLimitStore } from "../src/security/rate-limit";
 import { OpenAICompatibleProvider } from "../src/providers/openai-compatible";
@@ -11,6 +11,16 @@ const input: AssistantRequest = { mode: "summarize", consent: true, records: [{ 
 const output = { status: "ok", message: "你记录了一次散步。", summary: "和朋友散步", observations: [{ text: "你提到了朋友。", sourceRecordIds: ["a"] }] };
 const make = (value: unknown = output) => createAssistantService({ providerMode: "live", catalog: loadCatalog(), complete: async () => value });
 describe("private assistant", () => {
+  it("retries English record summaries and never exposes an English field", async () => {
+    const complete = vi.fn().mockResolvedValueOnce({ ...output, summary: "A walk with a friend." }).mockResolvedValueOnce(output);
+    const service = createAssistantService({ providerMode: "live", catalog: loadCatalog(), complete });
+    expect(await service(input)).toMatchObject({ status: "ok", summary: output.summary });
+    expect(complete).toHaveBeenCalledTimes(2);
+    expect(ASSISTANT_PROMPT).toContain("only in Simplified Chinese");
+    expect(complete.mock.calls[1]?.[0]).toContain("所有给用户看的文字必须使用简体中文");
+    const english = createAssistantService({ providerMode: "live", catalog: loadCatalog(), complete: async () => ({ ...output, observations: [{ text: "You mentioned your friend.", sourceRecordIds: ["a"] }] }) });
+    expect(await english(input)).toMatchObject({ status: "unavailable", message: expect.stringMatching(/中文/u), observations: [] });
+  });
   it("treats blank optional model fields as omitted while preserving strict required fields", async () => {
     expect(await make({ ...output, summary: "", question: "  " })(input)).toMatchObject({ status: "ok" });
     expect(await make({ ...output, message: "" })(input)).toMatchObject({ status: "unavailable" });

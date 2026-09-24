@@ -21,6 +21,16 @@ it("sends recent turns as user/assistant roles while keeping safety in system in
   expect(body.messages).toEqual([{ role: "system", content: CHAT_PROMPT }, { role: "user", content: "我去散步了" }, { role: "assistant", content: "那时有什么感受？" }, { role: "user", content: "接着聊" }]);
   expect(CHAT_PROMPT).toContain("Refuse only the part");
   expect(CHAT_PROMPT).toContain("Never encourage suicide");
+  expect(CHAT_PROMPT).toContain("Reply only in Simplified Chinese");
+});
+it("retries English chat replies and only returns Chinese text", async () => {
+  const chat = vi.fn().mockResolvedValueOnce("Let's talk about your journal entry.").mockResolvedValueOnce("我们可以聊聊这条记录。");
+  const service = createAssistantService({ providerMode: "live", catalog: loadCatalog(), chat });
+  expect(await service({ mode: "chat", consent: true, records: [], question: "Help me with my record" })).toMatchObject({ status: "ok", message: "我们可以聊聊这条记录。" });
+  expect(chat).toHaveBeenCalledTimes(2);
+  expect(chat.mock.calls[1]?.[0]).toContain("所有给用户看的文字必须使用简体中文");
+  const persistentEnglish = createAssistantService({ providerMode: "live", catalog: loadCatalog(), chat: async () => "Here is your answer." });
+  expect(await persistentEnglish({ mode: "chat", consent: true, records: [], question: "你好" })).toMatchObject({ status: "unavailable", message: expect.stringMatching(/中文/u) });
 });
 it("returns safe fallback for empty, oversize and failed responses", async () => {
   for (const value of ["", "a".repeat(2001), { message: "not plain text" }]) {

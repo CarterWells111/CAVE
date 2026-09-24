@@ -79,6 +79,14 @@ describe("turn service", () => {
     ).resolves.toMatchObject({ nextStage: "setup", shouldEnd: false });
   });
 
+  it("does not return an English role message", async () => {
+    const service = createTurnService({
+      provider: providerWith({ requestId: VALID_TURN_REQUEST.requestId, roleMessage: "Let's keep practicing.", candidateStage: "opening" }),
+      scenarioSource, safety: safe, ...versions
+    });
+    await expect(service.execute(VALID_TURN_REQUEST, new AbortController().signal)).rejects.toMatchObject({ code: "INVALID_MODEL_OUTPUT" });
+  });
+
   it("stops before the model when the injected safety interface says stop", async () => {
     let providerCalls = 0;
     const service = createTurnService({
@@ -101,6 +109,7 @@ describe("turn service", () => {
     await expect(
       service.execute(VALID_TURN_REQUEST, new AbortController().signal)
     ).resolves.toMatchObject({
+      roleMessage: "为了安全，这次练习已停止。",
       nextStage: "safety_stop",
       shouldEnd: true,
       safety: { level: "stop", reasonCode: "danger" }

@@ -8,13 +8,9 @@ import { ErrorState } from "../../../core/ui/ErrorState";
 import { Screen } from "../../../core/ui/Screen";
 import { SecondaryButton } from "../../../core/ui/secondary-button";
 import type { JournalService } from "../application/journal-service";
-import type { JournalTopic } from "../domain/journal-record";
+import { JOURNAL_TOPICS, journalTopicLabel, type JournalTopic } from "../domain/journal-record";
 import { formatJournalDate } from "../domain/journal-date";
 import type { JournalPeriodReview, JournalRecordSummary } from "../infrastructure/journal-repository";
-
-const topicLabels: Record<JournalTopic, string> = {
-  "intimate-relationship": "亲密关系", "self-boundaries": "自我边界", "sexual-health": "健康性生活"
-};
 
 export function JournalListScreen({ service, focusRevision = 0, onCreate, onOpen, onReview }: Readonly<{
   service: JournalService; focusRevision?: number; onCreate(): void; onOpen(id: string): void; onReview(): void;
@@ -35,6 +31,7 @@ export function JournalListScreen({ service, focusRevision = 0, onCreate, onOpen
   const visible = useMemo(() => records.filter((record) =>
     record.title.toLocaleLowerCase().includes(query.trim().toLocaleLowerCase())
     && (topic === null || record.topics.includes(topic))), [query, records, topic]);
+  const customTopics = useMemo(() => [...new Set(records.flatMap((record) => record.topics).filter((item) => item.startsWith("custom:")))], [records]);
   return <Screen testID="journal-list-screen">
     <Text accessibilityRole="header" style={{ ...theme.typography.title, color: theme.color.text }}>内界手记</Text>
     <Text style={{ ...theme.typography.body, color: theme.color.textMuted }}>记下一句话和后来发生的变化。内容默认只在本机；主动使用 AI 并确认后，才发送所选内容。</Text>
@@ -44,9 +41,10 @@ export function JournalListScreen({ service, focusRevision = 0, onCreate, onOpen
     <TextInput accessibilityLabel="搜索事件标题" onChangeText={setQuery} placeholder="搜索事件标题" value={query}
       placeholderTextColor={theme.color.textMuted} selectionColor={theme.color.primary}
       style={{ backgroundColor: theme.color.surface, borderColor: theme.color.border, borderRadius: theme.radius.md, borderWidth: 1, color: theme.color.text, padding: theme.space.md }} />
-    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: theme.space.sm }}>
-      <SecondaryButton label="全部" onPress={() => setTopic(null)} />
-      {(Object.keys(topicLabels) as JournalTopic[]).map((key) => <SecondaryButton key={key} label={topicLabels[key]} onPress={() => setTopic(key)} />)}
+    <ScrollView horizontal nestedScrollEnabled showsHorizontalScrollIndicator={false} testID="journal-topic-filters" style={{ flexGrow: 0, height: theme.size.secondaryActionHeight, width: "100%" }} contentContainerStyle={{ alignItems: "center", gap: theme.space.sm, paddingRight: theme.space.sm }}>
+      {customTopics.map((key) => <SecondaryButton accent inline key={key} label={journalTopicLabel(key)} onPress={() => setTopic(key)} />)}
+      <SecondaryButton inline label="全部" onPress={() => setTopic(null)} />
+      {JOURNAL_TOPICS.map((key) => <SecondaryButton inline key={key} label={journalTopicLabel(key)} onPress={() => setTopic(key)} />)}
     </ScrollView>
     {state === "error" ? <ErrorState title="手记读取失败" message="本机内容没有因此被删除。" actionLabel="重试" onAction={load} /> : null}
     {state === "ready" && visible.length === 0 ? <EmptyState title="还没有符合条件的记录" message="可以从一件对你重要的事开始。" /> : null}
@@ -54,7 +52,7 @@ export function JournalListScreen({ service, focusRevision = 0, onCreate, onOpen
       <Text style={{ ...theme.typography.heading, color: theme.color.text }}>{record.title}</Text>
       <Text style={{ ...theme.typography.body, color: theme.color.textMuted }}>{formatJournalDate(record.occurredAt)}</Text>
       <Text style={{ ...theme.typography.body, color: theme.color.text }}>{record.highlight.text}</Text>
-      {record.topics.length ? <Text style={{ ...theme.typography.caption, color: theme.color.textMuted }}>{record.topics.map((item) => topicLabels[item]).join(" · ")}</Text> : null}
+      {record.topics.length ? <Text style={{ ...theme.typography.caption, color: theme.color.textMuted }}>{record.topics.map(journalTopicLabel).join(" · ")}</Text> : null}
       <SecondaryButton label={`打开${record.title}`} onPress={() => onOpen(record.id)} />
     </Card>)}
     {reviews.length ? <View style={{ gap: theme.space.md }}>

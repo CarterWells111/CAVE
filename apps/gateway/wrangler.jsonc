@@ -11,7 +11,7 @@
     "MODEL_NAME": "deepseek-v4-flash",
     "ASSISTANT_HOURLY_LIMIT": "5",
     "ASSISTANT_DAILY_LIMIT": "25",
-		"PROMPT_VERSION": "2026-08-26.1",
+		"PROMPT_VERSION": "2026-09-24.1",
 		"POLICY_VERSION": "2026-08-26.1"
 	},
 	"routes": [

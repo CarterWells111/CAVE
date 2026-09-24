@@ -31,6 +31,22 @@ test("SecondaryButton uses the 3:1 interactive border in its default state", () 
   });
 });
 
+test("inline SecondaryButton keeps its intrinsic width in a horizontal scroller", () => {
+  render(<SecondaryButton inline label="自定义专题" onPress={jest.fn()} />);
+  const button = screen.getByRole("button", { name: "自定义专题" });
+  expect(button).toHaveStyle({ flexShrink: 0, width: "auto", minHeight: 48 });
+  expect(screen.getByText("自定义专题")).toHaveProp("numberOfLines", 1);
+});
+
+test("accent SecondaryButton uses the theme's primary contrast colors", () => {
+  render(<SecondaryButton accent inline label="友情" onPress={jest.fn()} />);
+  expect(screen.getByRole("button", { name: "友情" })).toHaveStyle({
+    backgroundColor: theme.color.primary,
+    borderColor: theme.color.primary,
+  });
+  expect(screen.getByText("友情")).toHaveStyle({ color: theme.color.onPrimary });
+});
+
 test("SecondaryButton and TextAction expose the approved focus treatment", () => {
   render(<><SecondaryButton label="返回" onPress={jest.fn()} /><TextAction label="来源与说明" onPress={jest.fn()} underlined /></>);
   for (const label of ["返回", "来源与说明"]) {

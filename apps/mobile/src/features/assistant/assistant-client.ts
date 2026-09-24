@@ -1,4 +1,5 @@
 import { AssistantRequestSchema, AssistantResponseSchema, AssistantUsageSchema, type AssistantUsage, type AssistantRequest, type AssistantResponse } from "@cave/contracts";
+import { isChineseProse } from "./assistant-language";
 
 export type AssistantRequester = (input: AssistantRequest, signal: AbortSignal) => Promise<AssistantResponse>;
 
@@ -43,6 +44,9 @@ export function createAssistantClient(options: {
       if (!result.success) throw new AssistantClientError("invalid-response");
       const ids = new Set(input.records.map(record => record.id));
       if (result.data.observations.some(observation => observation.sourceRecordIds.some(id => !ids.has(id)))) throw new AssistantClientError("invalid-response");
+      const prose = [result.data.message, result.data.question, result.data.summary, ...result.data.observations.map(item => item.text)]
+        .filter((value): value is string => value !== undefined);
+      if (!prose.every(isChineseProse)) throw new AssistantClientError("invalid-response");
       if (signal.aborted) throw new AssistantClientError("cancelled");
       return result.data;
     } catch (error) {

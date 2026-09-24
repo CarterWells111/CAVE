@@ -3,7 +3,9 @@ import {
   JournalValidationError,
   canEditJournalItem,
   createJournalEntry,
-  createJournalRecord
+  createJournalRecord,
+  customJournalTopic,
+  journalTopicLabel
 } from "./journal-record";
 import { journalDateFromDate } from "./journal-date";
 
@@ -47,6 +49,23 @@ describe("key event journal domain", () => {
       id: "record-1", title: "一个事件", occurredAt: createdAt, createdAt,
       highlight: { kind: "feeling", text: "平静" }, body: "", topics: ["diagnosis" as never],
       source: { kind: "freeform" }
+    })).toThrow(new JournalValidationError("journal-topic-invalid"));
+  });
+
+  test("stores a trimmed custom topic and rejects malformed names", () => {
+    const topic = customJournalTopic("  友情  ");
+    expect(topic).toBe("custom:友情");
+    const record = createJournalRecord({
+      id: "custom-topic", occurredAt: createdAt, createdAt, body: "一起散步",
+      topics: [topic!, topic!], source: { kind: "freeform" }
+    });
+    expect(record.topics).toEqual(["custom:友情"]);
+    expect(journalTopicLabel(record.topics[0]!)).toBe("友情");
+    expect(customJournalTopic("  ")).toBeNull();
+    expect(customJournalTopic("字".repeat(41))).toBeNull();
+    expect(() => createJournalRecord({
+      id: "invalid-topic", occurredAt: createdAt, createdAt, body: "一起散步",
+      topics: ["custom: "], source: { kind: "freeform" }
     })).toThrow(new JournalValidationError("journal-topic-invalid"));
   });
 

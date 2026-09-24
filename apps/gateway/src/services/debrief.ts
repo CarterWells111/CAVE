@@ -21,6 +21,7 @@ import {
 } from "../providers/types";
 import type { OutputGuard } from "../security/output-guard";
 import { normalizeDebriefDimensions } from "./evidence";
+import { isChineseProse } from "./chinese-output";
 import type { ScenarioSource } from "./turn";
 
 type DebriefServiceDependencies = {
@@ -129,6 +130,12 @@ export function createDebriefService(
       } catch {
         throw new InvalidModelOutputError();
       }
+
+      const generatedProse = [
+        ...dimensions.flatMap(dimension => [dimension.explanation, dimension.optionalAlternative]),
+        ...Object.values(candidate.expressionCard).filter(text => text !== undefined && !request.turns.some(turn => turn.role === "user" && turn.text.includes(text)))
+      ].filter((text): text is string => text !== undefined);
+      if (!generatedProse.every(isChineseProse)) throw new InvalidModelOutputError();
 
       return DebriefResponseSchema.parse({
         contractVersion: "1",

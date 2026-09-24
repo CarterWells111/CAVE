@@ -12,10 +12,10 @@ function candidate(overrides: Record<string, unknown> = {}) {
   return {
     requestId: VALID_DEBRIEF_REQUEST.requestId,
     dimensions: [
-      { key: "next_step", status: "expressed", evidenceQuote: quote, explanation: "d" },
-      { key: "boundary", status: "expressed", evidenceQuote: quote, explanation: "c" },
-      { key: "willingness", status: "expressed", evidenceQuote: quote, explanation: "b" },
-      { key: "feeling", status: "expressed", evidenceQuote: quote, explanation: "a" }
+      { key: "next_step", status: "expressed", evidenceQuote: quote, explanation: "下一步" },
+      { key: "boundary", status: "expressed", evidenceQuote: quote, explanation: "边界" },
+      { key: "willingness", status: "expressed", evidenceQuote: quote, explanation: "意愿" },
+      { key: "feeling", status: "expressed", evidenceQuote: quote, explanation: "感受" }
     ],
     expressionCard: { boundary: "我需要停下来" },
     ...overrides
@@ -98,5 +98,29 @@ describe("debrief service", () => {
     await expect(
       service.execute(VALID_DEBRIEF_REQUEST, new AbortController().signal)
     ).rejects.toMatchObject({ code: "UNSAFE_CONTEXT", status: 502 });
+  });
+
+  it("does not return English generated explanation text", async () => {
+    const english = candidate({ dimensions: [
+      { key: "feeling", status: "not_observed", explanation: "You felt uncertain." },
+      { key: "willingness", status: "not_observed", explanation: "意愿" },
+      { key: "boundary", status: "not_observed", explanation: "边界" },
+      { key: "next_step", status: "not_observed", explanation: "下一步" }
+    ] });
+    const service = createDebriefService({
+      provider: providerWith(english), scenarioSource,
+      promptVersion: "prompt-v1", policyVersion: "policy-v1"
+    });
+    await expect(service.execute(VALID_DEBRIEF_REQUEST, new AbortController().signal)).rejects.toMatchObject({ code: "INVALID_MODEL_OUTPUT" });
+  });
+
+  it("preserves an English sentence only when it is the user's own exact quote", async () => {
+    const quote = "I need a break.";
+    const service = createDebriefService({
+      provider: providerWith(candidate({ expressionCard: { boundary: quote } })), scenarioSource,
+      promptVersion: "prompt-v1", policyVersion: "policy-v1"
+    });
+    const request = { ...VALID_DEBRIEF_REQUEST, turns: [...VALID_DEBRIEF_REQUEST.turns, { role: "user" as const, text: quote }] };
+    await expect(service.execute(request, new AbortController().signal)).resolves.toMatchObject({ expressionCard: { boundary: quote } });
   });
 });
