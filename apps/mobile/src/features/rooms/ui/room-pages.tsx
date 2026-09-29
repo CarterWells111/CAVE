@@ -9,6 +9,7 @@ import { Screen } from "../../../core/ui/Screen";
 import { SecondaryButton } from "../../../core/ui/secondary-button";
 import { ROOM_QUESTIONS, ROOM_SCENARIOS, ROOM_QUESTION_IDS, mayGenerateReport, normalizeInviteToken, type Room, type RoomApi, type RoomQuestionId, type RoomReport, type RoomScenarioId } from "../domain/room";
 import { formatRoomReport, REPORT_ROLE_NOTE, roomReportAiDraft } from "../domain/report-text";
+import { RoomApiError } from "../infrastructure/room-api-client";
 
 function Feedback({ message }: { message: string | null }) {
   const theme = useTheme();
@@ -42,7 +43,12 @@ export function RoomListPage({ api }: { api: RoomApi | null }) {
   const load = useCallback(async () => {
     if (!api) { setRooms([]); return; }
     setLoading(true); setError(null);
-    try { setRooms(await api.list()); } catch { setError("房间状态暂时无法读取，请重试。"); }
+    try { setRooms(await api.list()); }
+    catch (error) {
+      setError(error instanceof RoomApiError && error.status === 404
+        ? "双人房间内测尚未开启。你可以先查看情景，选择单人模式体验。"
+        : "房间状态暂时无法读取，请重试。");
+    }
     finally { setLoading(false); }
   }, [api]);
   useFocusEffect(useCallback(() => { void load(); }, [load]));

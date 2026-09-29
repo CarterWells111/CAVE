@@ -1,11 +1,19 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react-native";
 import { createFakeRoomServer } from "../infrastructure/fake-room-api";
-import { RoomDetailPage } from "./room-pages";
+import { RoomApiError } from "../infrastructure/room-api-client";
+import { RoomDetailPage, RoomListPage } from "./room-pages";
 
 jest.mock("expo-router", () => ({
   useRouter: () => ({ push: jest.fn(), replace: jest.fn() }),
   useFocusEffect: (callback: () => void) => { const React = jest.requireActual<typeof import("react")>("react"); React.useEffect(callback, [callback]); },
 }));
+
+test("room list explains when the remote beta route is not enabled", async () => {
+  const api = createFakeRoomServer().forAccount("alice");
+  render(<RoomListPage api={{ ...api, list: async () => { throw new RoomApiError("HTTP_404", 404); } }} />);
+  expect(await screen.findByText("双人房间内测尚未开启。你可以先查看情景，选择单人模式体验。")).toBeTruthy();
+  expect(screen.getByText("第一次过夜")).toBeTruthy();
+});
 
 test("room permits skipped questions and waits for explicit report consent", async () => {
   const api = createFakeRoomServer().forAccount("alice");
