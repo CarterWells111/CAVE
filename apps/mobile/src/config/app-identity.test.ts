@@ -19,6 +19,11 @@ afterEach(() => {
 });
 
 describe("Expo app identity", () => {
+  test("an export without an explicit profile defaults to production", () => {
+    delete process.env.EAS_BUILD_PROFILE;
+    expect(getConfig({ config: {} } as ConfigContext).extra?.environment).toBe("production");
+  });
+
   test("internal packages have distinct reproducible build numbers", () => {
     expect(configFor("preview").ios?.buildNumber).toBe("3");
     expect(configFor("acceptance").ios?.buildNumber).toBe("4");

@@ -1,7 +1,7 @@
 import type { ConfigContext, ExpoConfig } from "expo/config";
 
 function getEnvironment() {
-  return process.env.EAS_BUILD_PROFILE ?? "development";
+  return process.env.EAS_BUILD_PROFILE ?? "production";
 }
 
 function getDisplayName(environment: string) {
@@ -72,6 +72,12 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     },
     ios: {
       ...(environment === "preview" ? { buildNumber: "3" } : environment === "acceptance" ? { buildNumber: "4" } : {}),
+      ...(environment === "development" || environment === "acceptance" ? {
+        infoPlist: {
+          NSAppTransportSecurity: { NSAllowsLocalNetworking: true },
+          NSLocalNetworkUsageDescription: "允许开发包连接同一局域网内的本地 Gateway 进行调试。"
+        }
+      } : {}),
       icon: "./assets/app-icon.png",
       bundleIdentifier: "com.neijie.cave",
       supportsTablet: false,

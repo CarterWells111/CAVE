@@ -27,6 +27,7 @@ test("starter fills editable draft, cancellation preserves it, only explicit con
   expect(request).not.toHaveBeenCalled();
   fireEvent.press(screen.getByRole("button", { name: "允许并发送" }));
   expect(await screen.findByText(response.message)).toBeTruthy();
+  expect(screen.getByText("内界 AI · 模拟回复")).toBeTruthy();
   expect(request).toHaveBeenCalledTimes(1);
   expect(request).toHaveBeenCalledWith({ mode: "chat", consent: true, records: [], question: "今天去散步了", history: [], journeyId: "first-overnight" }, expect.anything());
   expect(screen.getByLabelText("聊天消息").props.value).toBe("");

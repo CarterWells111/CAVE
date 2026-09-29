@@ -113,7 +113,7 @@ function AssistantSession({ records, modes = ["guide", "summarize"], journeyId, 
   return <Card variant="muted">
     <Text accessibilityRole="header" style={{ ...theme.typography.heading, color: theme.color.text }}>可选的 AI 辅助</Text>
     <Text style={{ ...theme.typography.caption, color: theme.color.textSecondary }}>
-      {preview ? "本机模拟模式 · 不调用 DeepSeek，不发送内容。" : "每次先预览并同意，才把选定内容发送至内界服务端及 DeepSeek 处理；不会读取其他手记，也不是云备份。"}
+      {preview ? "本机模拟模式 · 不调用 DeepSeek，不发送内容。" : "每次先预览并同意，才把选定内容发送至当前内界服务端；服务端可能调用 DeepSeek，结果会标明是否为模拟。不会读取其他手记，也不是云备份。"}
     </Text>
     {modes.includes("journey") ? <TextInput accessibilityLabel="想问的旅程问题" placeholder="例如：做到一半想暂停，可以吗？" placeholderTextColor={theme.color.textMuted}
       value={question} onChangeText={setQuestion} maxLength={1000} multiline style={{ color: theme.color.text, borderColor: theme.color.border, borderWidth: 1, borderRadius: theme.radius.md, padding: theme.space.md, minHeight: 80 }} /> : null}

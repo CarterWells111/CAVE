@@ -6,7 +6,7 @@
 
 - 已核对的生产地址是 `https://api.neijiecave.com`。邮箱认证已部署在 Cloudflare Workers，使用 D1 与 Resend；本架构不使用 Railway。
 - 截至 2026-08-29，健康检查正常、D1 没有待应用 migration，Worker 已配置 `RESEND_API_KEY`、`AUTH_EMAIL_LOOKUP_KEY_V1` 和 `AUTH_OTP_KEY_V1` 三个 Secret binding。这里只记录配置名称，不记录值。
-- 移动端默认使用生产地址。`EXPO_PUBLIC_GATEWAY_URL` 仅作为明确的开发或构建覆盖；HTTP 只允许在 `__DEV__` bundle 中连接经核对的本地 Gateway，非开发 bundle 会拒绝非 HTTPS 覆盖，手机不会静默回退到 `localhost`。
+- 移动端 Expo Go 本地 Metro 使用显式局域网 Gateway；development/acceptance 开发包默认 staging；preview 和 production 安装包固定生产地址。`EXPO_PUBLIC_GATEWAY_URL` 是公开配置；本地 HTTP 只允许在开发 JS 中连接私有局域网 IP，手机不会回退到 `localhost`。
 - 身份服务保存账号、会话元数据以及成年确认和界面称呼。手记不会上传到 Worker 或 D1，也不存在远程手记正文表。
 
 ## 账号偏好发布顺序
@@ -48,7 +48,7 @@
    corepack pnpm --filter @cave/gateway exec wrangler d1 migrations apply neijie-cave-auth --local
    ```
 
-4. 在 `apps/mobile/.env.local` 中把 `EXPO_PUBLIC_GATEWAY_URL` 指向本地 Worker。
+4. 以 `--ip 0.0.0.0 --port 8787` 启动本地 Worker；在 Metro 终端把 `CAVE_LOCAL_GATEWAY_URL` 设置为电脑局域网地址，运行 `corepack pnpm dev:mobile` 或 `start:dev-client:local`。详见[开发环境](../development/setup.md)。
 5. 运行 Gateway、契约测试、完整测试、类型检查、代码规范和 dry-run 构建。
 
 没有 Resend 凭据时，自动化测试仍可使用注入的邮件发送器，但从 App 发起的真实验证码不能完成投递。

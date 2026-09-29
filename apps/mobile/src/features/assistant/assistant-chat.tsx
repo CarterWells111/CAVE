@@ -124,7 +124,7 @@ export function AssistantChat({ journeyId, authorized, request }: { journeyId: s
         <View accessibilityViewIsModal style={{ maxHeight: "90%", width: "100%", maxWidth: 560, alignSelf: "center", backgroundColor: theme.color.surface, borderRadius: 24, padding: 24, gap: 16 }}>
           <Text accessibilityRole="header" style={{ ...theme.typography.heading, color: theme.color.text }}>{preview ? "确认本次模拟内容" : "允许将这些内容发送云端吗？"}</Text>
           <ScrollView contentContainerStyle={{ gap: 12 }}>
-            <Text style={caption}>{preview ? "以下内容仅用于本机模拟。" : "接收方：内界服务端及 DeepSeek。用途：AI 思考并生成本次回复。"}</Text>
+            <Text style={caption}>{preview ? "以下内容仅用于本机模拟。" : "接收方：当前内界服务端；服务端可能调用 DeepSeek。用途：生成本次回复，结果会标明是否为模拟。"}</Text>
             <Text style={textStyle}>资源：本条消息</Text><Text selectable style={{ ...textStyle, backgroundColor: theme.color.surfaceAccent, padding: 12, borderRadius: 12 }}>{pending?.question}</Text>
             {pending?.history?.length ? <View style={{ gap: 8 }}><Text style={textStyle}>最近对话：{pending.history.length} 条</Text>{pending.history.map((item, index) => <Text selectable key={index} style={caption}>{item.role === "user" ? "你" : "内界 AI"}：{item.content}</Text>)}<SecondaryButton label="这次仅发送本条消息" onPress={() => setPending(current => current ? { ...current, history: [] } : null)} /></View> : null}
             <Text style={caption}>用途：{"日常聊天、记录与旅程问答"}</Text>

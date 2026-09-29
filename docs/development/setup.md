@@ -22,23 +22,44 @@ corepack pnpm install --frozen-lockfile
 
 ## 移动端
 
+Expo Go 使用电脑的局域网 Gateway。先在仓库根目录应用本地 D1 migration，并在一个终端运行：
+
 ```bash
+corepack pnpm --filter @cave/gateway exec wrangler dev --ip 0.0.0.0 --port 8787 --var MODEL_MODE:mock
+```
+
+在启动 Metro 的终端设置电脑当前的局域网 IP（示例地址要换成自己的，手机与电脑须能互通）：
+
+```powershell
+$env:CAVE_LOCAL_GATEWAY_URL = "http://192.168.1.23:8787"
 corepack pnpm dev:mobile
 ```
 
-该命令以 Expo Go 模式启动。核心旅程、预设练习和界面预览不需要 Gateway；邮箱登录需要 Gateway。Expo Go 的手记、草稿、后来、修改历史与阶段回顾保存在账号隔离的明文 SQLite，其他旅程运行数据使用内存。
+也可使用可从手机访问的 HTTPS 安全隧道 URL。启动脚本会拒绝缺失的地址、`localhost`、回环地址和公网 HTTP，并关闭 Expo 的 `.env` 自动加载，避免旧设置覆盖所选目标。
 
-手记 AI 模拟验收可用 `corepack pnpm --filter @cave/mobile start:journal-preview`，只启动 Expo Go JavaScript 服务，不构建原生包。AI 不联网且界面明确标注模拟；完整操作见[手记验收](journal-first-acceptance.md)。
+开发包的 Metro 默认连 staging；需要在**同一个已安装开发包**上切到局域网本地 Gateway 时，重启 Metro 并换用本地命令：
 
-需要验证 SQLCipher、SecureStore、本地迁移或删除恢复时，使用开发客户端：
-
-```bash
+```powershell
 corepack pnpm --filter @cave/mobile start:dev-client
+$env:CAVE_LOCAL_GATEWAY_URL = "http://192.168.1.23:8787"
+corepack pnpm --filter @cave/mobile start:dev-client:local
 ```
 
-开发客户端必须由匹配当前 Expo 配置的原生构建启动；Expo Go 结果不能替代这类验证。
+以上两条 Metro 命令是二选一。验收工具使用 `start:acceptance`，只在 acceptance 开发包及开发 JS 中出现，默认连 staging。preview/internal、外测和 production 安装包只连生产 `https://api.neijiecave.com`。构建 profile 的环境值见 `apps/mobile/eas.json`；修改后需要重新启动 Metro 或重新构建相应安装包。
 
-普通本地开发与安装包默认共用线上 HTTPS Gateway，无需配置 `.env` 或 DeepSeek 密钥。完成成年声明并登录自己的账号后可使用真实 AI。团队使用、构建环境与本地 Gateway 调试见[AI 服务配置](../operations/ai-service.md)。
+```bash
+node scripts/start-mobile.mjs dev-staging --print-env
+```
+
+这条只打印将要使用的客户端、profile 和公开 Gateway 地址，不启动 Metro。核心旅程、预设练习和界面预览不需要 Gateway；邮箱登录需要 Gateway。Expo Go 的手记、草稿、后来、修改历史与阶段回顾保存在账号隔离的明文 SQLite，其他旅程运行数据使用内存。
+
+手记 AI 模拟验收可在设置同一个 `CAVE_LOCAL_GATEWAY_URL` 后运行 `corepack pnpm --filter @cave/mobile start:journal-preview`，只启动 Expo Go JavaScript 服务，不构建原生包。AI 不联网且界面明确标注模拟；完整操作见[手记验收](journal-first-acceptance.md)。
+
+开发客户端必须由匹配当前 Expo 配置的原生构建启动。本次 development/acceptance 原生配置添加了仅限本地网络的 iOS 访问许可，旧开发包需重新构建安装后才能验收局域网 HTTP；preview/production 不带这项许可。Expo Go 结果不能替代原生安全能力验证。
+
+目前各 iOS profile 仍共用 `com.neijie.cave`。同一设备无法同时安装开发包与正式包；切换安装包前须留意本机数据。若将来需要并排安装，须为开发变体配置独立 bundle ID 和相应签名。
+
+本地 Gateway 的身份验证仍需下文所列 Secret；Expo Go 无法替代 SQLCipher、SecureStore、本地迁移或删除恢复的原生验证。开发包 staging 的 AI 模式及服务状态由 staging Worker 决定；密钥不可放入移动端。团队使用和构建环境见[AI 服务配置](../operations/ai-service.md)。
 
 ## 官方网站
 
@@ -68,7 +89,7 @@ corepack pnpm dev:gateway
 corepack pnpm --filter @cave/gateway exec wrangler d1 migrations apply neijie-cave-auth --local
 ```
 
-4. 再启动 Gateway，并将移动端的 `EXPO_PUBLIC_GATEWAY_URL` 指向本地 Worker。
+4. 再以 `--ip 0.0.0.0 --port 8787` 启动 Gateway，并按上文设置 `CAVE_LOCAL_GATEWAY_URL` 后启动 Expo Go 或开发包的本地 Metro。
 
 测试使用注入的邮件适配器，不会发送真实邮件。真实验证码投递和生产密钥轮换见[邮箱身份运维](../operations/email-authentication.md)。普通记录和预设练习不需要模型凭据；真实手记 AI 需在 Gateway 配置 MODEL_MODE=live、MODEL_BASE_URL=https://api.deepseek.com、MODEL_API_KEY 和已选模型的 MODEL_NAME。密钥不可放入移动端或使用 EXPO_PUBLIC_ 前缀。模拟验收无需这些凭据。
 

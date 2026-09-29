@@ -14,6 +14,16 @@ test("posts only selected records with session token, never a model key", async 
   }));
 });
 
+test("development AI calls use the selected LAN Gateway and reject public HTTP", async () => {
+  const fetch = jest.fn(async () => response(output));
+  const local = createAssistantClient({ baseUrl: "http://192.168.1.23:8787", getAccessToken: async () => "session-token", fetch });
+  await expect(local(input, signal())).resolves.toEqual(output);
+  expect(fetch).toHaveBeenCalledWith("http://192.168.1.23:8787/v1/assistant", expect.any(Object));
+  const publicHttp = createAssistantClient({ baseUrl: "http://8.8.8.8:8787", getAccessToken: async () => "session-token", fetch });
+  await expect(publicHttp(input, signal())).rejects.toMatchObject({ code: "configuration" });
+  expect(fetch).toHaveBeenCalledTimes(1);
+});
+
 test("adds the explicitly enabled development measurement marker", async () => {
   const previous = process.env.EXPO_PUBLIC_AI_MEASUREMENT_ID;
   try {
@@ -95,4 +105,11 @@ test("usage API is account authenticated, bounded and reports quota rejection di
   expect(fetch).toHaveBeenCalledWith("https://gateway.example/v1/assistant/usage", expect.objectContaining({ headers: { Authorization: "Bearer session-token" }, cache: "no-store" }));
   const client = createAssistantClient({ baseUrl: "https://gateway.example", getAccessToken: async () => "token", fetch: async () => response({ code: "AI_QUOTA_EXCEEDED" }, 429) });
   await expect(client(input, signal())).rejects.toMatchObject({ code: "quota-exceeded" });
+});
+
+test("development usage lookup accepts only the selected LAN HTTP origin", async () => {
+  const body = { hour: { used: 1, limit: 5, resetsAt: "2026-09-09T13:00:00.000Z" }, day: { used: 1, limit: 25, resetsAt: "2026-09-10T12:00:00.000Z" }, measuredAt: "2026-09-09T12:00:00.000Z" };
+  const fetch = jest.fn(async () => response(body));
+  await expect(fetchAssistantUsage({ baseUrl: "http://192.168.1.23:8787", getAccessToken: async () => "token", signal: signal(), fetch })).resolves.toEqual(body);
+  expect(fetch).toHaveBeenCalledWith("http://192.168.1.23:8787/v1/assistant/usage", expect.any(Object));
 });
