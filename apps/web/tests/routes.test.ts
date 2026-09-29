@@ -140,7 +140,7 @@ describe("official site routes", () => {
     expect(homeCallout).toContain('href="/privacy/"');
     expect(homeCallout).toContain('href="/support/"');
     expect(textContent(homeCallout)).toContain(
-      "日常旅程、手记和沟通草稿默认留在当前设备；受邀内测用户主动参加双人异步演练时，双方各自授权提交本次内容，彼此只共享共同报告。"
+      "日常旅程、手记和沟通草稿默认留在当前设备。双人房间的作答每次保存即加密存储到云端，原文仅本人可见；双方完成时各自确认后才共享共同报告。"
     );
     expect(textContent(homeCallout)).toContain(
       "查看常见问题、删除说明、联系渠道，以及 CAVE 能做与不能做的事。"
@@ -258,7 +258,11 @@ describe("official site routes", () => {
     expect(html).toContain("邮箱地址以不可逆的带密钥摘要用于查找");
     expect(html).toContain("删除云端账户与删除本机内容是两个独立操作");
     expect(html.match(/data-privacy-point/gu) ?? []).toHaveLength(7);
-    expect(textContent(html)).toContain("双方只共享共同报告，个人作答不会直接向对方开放");
+    expect(textContent(html)).toContain("每次点击“保存”，本次作答就会上传并加密存储到云端");
+    expect(textContent(html)).toContain("作答原文仅本人可见，对方无法查看");
+    expect(textContent(html)).toContain("完成时，双方还须各自独立确认");
+    expect(textContent(html)).toContain("主动导出为本机图片");
+    expect(textContent(html)).toContain("相册和设备备份设置控制");
     expect(textContent(html)).toContain("房间数据 30 天后自动删除");
     expect(html).toContain('href="/join/"');
     expect(html).toContain("保留");
@@ -267,7 +271,6 @@ describe("official site routes", () => {
     expect(html).toContain("系统剪贴板");
     expect(html).toContain("当前版本不会把沟通草稿写入系统相册");
     expect(html).not.toContain("沟通卡图片才会进入系统相册");
-    expect(html).not.toContain("导出");
     expect(html).toContain("ZHIQI LIANG（以内界 CAVE 名义运营）");
     expect(html).toContain("support@neijiecave.com");
     expect(html).toMatch(/<h1\b[^>]*\bid=["']privacy-title["']/u);

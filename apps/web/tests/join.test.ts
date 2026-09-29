@@ -87,7 +87,11 @@ describe("invite handoff", () => {
     expect(publishedScript).not.toMatch(/\bfetch\s*\(|XMLHttpRequest|sendBeacon|console\./u);
     expect(html).toContain("data-open-app disabled");
     expect(html).toContain("双人异步演练");
-    expect(html).toContain("双方都要自己授权");
+    expect(html).toContain("保存作答与共享报告，是两次不同的选择");
+    expect(html).toContain("每次点击“保存”，本次作答就会上传并加密存储到云端");
+    expect(html).toContain("作答原文仅本人可见，对方无法查看");
+    expect(html).toContain("完成时，双方还须各自独立确认");
+    expect(html).toContain("导出副本会受相册与设备备份设置控制");
     expect(html).toContain("只共享共同报告");
     expect(html).toContain("30 天后自动删除");
     expect(html).toContain("仅向受邀内测用户开放");
