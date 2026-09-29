@@ -112,6 +112,7 @@ describe("version one public contract surface", () => {
         "PracticeTurnRequestSchema",
         "PracticeTurnResponseSchema",
         "PracticeTurnSchema",
+        "PublicRoomReportSchema",
         "LogoutSessionRequestSchema",
         "QuizQuestionSchema",
         "ReviewStatusSchema",

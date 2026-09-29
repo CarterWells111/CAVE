@@ -87,11 +87,11 @@ export {
   SaveRoomAnswersRequestSchema, CompleteRoomAnswersRequestSchema, RoomActionRequestSchema,
   RoomStatusSchema, RoomStatusResponseSchema, RoomListResponseSchema, CreateRoomResponseSchema,
   ReissueRoomInvitationResponseSchema,
-  RoomReportSchema, RoomReportResponseSchema,
+  RoomReportSchema, PublicRoomReportSchema, RoomReportResponseSchema,
 } from "./rooms";
 export type {
   RoomScenario, RoomAnswers, CreateRoomRequest, JoinRoomRequest,
   SaveRoomAnswersRequest, CompleteRoomAnswersRequest, RoomStatus,
   RoomStatusResponse, RoomListResponse, CreateRoomResponse, RoomReport, RoomReportResponse,
-  ReissueRoomInvitationResponse,
+  ReissueRoomInvitationResponse, PublicRoomReport,
 } from "./rooms";

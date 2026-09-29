@@ -9,7 +9,7 @@ import { AuthServiceError } from "../auth/service";
 import type { AccountPreferencesRepository } from "../account-preferences/repository";
 import { newInvitationToken, newRoomId, type RoomCipher } from "./crypto";
 import type { RoomReportProvider } from "./report-provider";
-import { insufficientReport, safetyPause, validateRoomReport } from "./report-provider";
+import { createRoomReportInput, insufficientReport, publicRoomReport, safetyPause, validateRoomReport } from "./report-provider";
 import type { RoomRepository, RoomRow } from "./repository";
 
 const DAY = 86_400_000;
@@ -126,14 +126,14 @@ export function createRoomService({ auth, preferences, rooms, cipher, reportProv
         throw new AuthServiceError("ROOM_NOT_READY", 409);
       }
       return { contractVersion: "1", requestId, roomId: id,
-        report: RoomReportSchema.parse(await cipher.decrypt(id, "report", row.report_ciphertext)) };
+        report: publicRoomReport(RoomReportSchema.parse(await cipher.decrypt(id, "report", row.report_ciphertext))) };
     },
     async report(token: string, id: string, requestId: string): Promise<RoomReportResponse> {
       const account = await accountFor(token);
       let { row } = await visible(id, account.id);
       if (!row.owner_completed_at || !row.invitee_completed_at || !row.joined_at) throw new AuthServiceError("ROOM_NOT_READY", 409);
       if (row.report_ciphertext && (row.report_status === "ready" || row.report_status === "paused" || row.report_status === "insufficient")) {
-        return { contractVersion: "1", requestId, roomId: id, report: RoomReportSchema.parse(await cipher.decrypt(id, "report", row.report_ciphertext)) };
+        return { contractVersion: "1", requestId, roomId: id, report: publicRoomReport(RoomReportSchema.parse(await cipher.decrypt(id, "report", row.report_ciphertext))) };
       }
       const claim = newRoomId();
       if (!await rooms.claim(id, claim, new Date(now()).toISOString(), new Date(now() + 120_000).toISOString())) {
@@ -145,7 +145,7 @@ export function createRoomService({ auth, preferences, rooms, cipher, reportProv
         if (row.generation_claim !== claim || !row.owner_answers_ciphertext || !row.invitee_answers_ciphertext) throw new AuthServiceError("ROOM_CONFLICT", 409);
         const ownerAnswers: RoomAnswers = RoomAnswersSchema.parse(await cipher.decrypt(id, "owner-answers", row.owner_answers_ciphertext));
         const inviteeAnswers: RoomAnswers = RoomAnswersSchema.parse(await cipher.decrypt(id, "invitee-answers", row.invitee_answers_ciphertext));
-        const reportInput = { scenario: row.scenario, ownerAnswers, inviteeAnswers };
+        const reportInput = createRoomReportInput(row.scenario, ownerAnswers, inviteeAnswers);
         const pause = safetyPause(reportInput) ?? insufficientReport(reportInput);
         const controller = new AbortController();
         const timeout = setTimeout(() => controller.abort(), 30_000);
@@ -154,7 +154,7 @@ export function createRoomService({ auth, preferences, rooms, cipher, reportProv
         finally { clearTimeout(timeout); }
         const encrypted = await cipher.encrypt(id, "report", report);
         if (!await rooms.finish(id, claim, encrypted, report.status, new Date(now()).toISOString())) throw new AuthServiceError("ROOM_CONFLICT", 409);
-        return { contractVersion: "1", requestId, roomId: id, report };
+        return { contractVersion: "1", requestId, roomId: id, report: publicRoomReport(report) };
       } catch (error) {
         await rooms.release(id, claim);
         throw error;

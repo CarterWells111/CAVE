@@ -29,7 +29,8 @@ export function createRoomRoutes({ service, logger = () => undefined }: { servic
       const typed = error instanceof AuthServiceError ? error : new AuthServiceError("INTERNAL_ERROR", 500);
       const responseStatus = statusOf(typed);
       status = responseStatus;
-      return context.json(errorBody(typed.code, requestIdFrom(input)), responseStatus);
+      if (typed.retryAfterSeconds !== undefined) context.header("Retry-After", String(typed.retryAfterSeconds));
+      return context.json(errorBody(typed.code, requestIdFrom(input), typed.retryAfterSeconds), responseStatus);
     } finally {
       try { logger(JSON.stringify({ route: `room_${name}`, status, latencyMs: Date.now() - start })); }
       catch { /* Never log answers, tokens, emails or reports. */ }

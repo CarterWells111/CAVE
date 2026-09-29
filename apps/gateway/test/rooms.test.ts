@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { createRoomCipher } from "../src/rooms/crypto";
-import { createRoomReportProvider, safetyPause, validateRoomReport, type RoomReportProvider } from "../src/rooms/report-provider";
+import { createRoomReportInput, createRoomReportProvider, safetyPause, validateRoomReport, type RoomReportProvider } from "../src/rooms/report-provider";
 import { createRoomService } from "../src/rooms/service";
 import type { RoomRepository, RoomRow } from "../src/rooms/repository";
 import { digestOpaqueToken } from "../src/auth/crypto";
@@ -9,6 +9,14 @@ import type { AuthRepository } from "../src/auth/repository";
 const requestId = "6cc380dd-f5b0-4e39-bac4-54fa9b4abcc1";
 const answers = ["自己的界限", "希望慢一点", "可以暂停", "先确认感受"] as const;
 const secret = "ab".repeat(32);
+const readyReport = (scenarioId: "pause" | "adjust" | "first-overnight") => ({
+  version: "paired-report-v0.2" as const, scenarioId, status: "ready" as const,
+  sections: {
+    commonAndDifferences: { text: "双方都提供了可以讨论的内容，但各自关注的事情并不完全相同，还需要继续确认。", evidence: ["A.expectation", "B.expectation"] as ["A.expectation", "B.expectation"] },
+    adviceForBoth: { text: "双方可以在愿意时确认各自的关注点，讨论过程中保留暂停和不继续的选择。", evidence: ["A.concern", "B.concern"] as ["A.concern", "B.concern"] },
+    nextSteps: { text: "若双方愿意，可先确认下一次交流的时间；具体要讨论的内容仍由双方另行决定。", evidence: ["A.response_next_step", "B.response_next_step"] as ["A.response_next_step", "B.response_next_step"] },
+  },
+});
 
 async function harness(overrideProvider?: RoomReportProvider) {
   let current = Date.parse("2026-09-29T00:00:00.000Z");
@@ -82,17 +90,7 @@ async function harness(overrideProvider?: RoomReportProvider) {
     async terminate(id, accountId) { const row = rows.get(id); if (!row || (row.owner_account_id !== accountId && !(row.invitee_account_id === accountId && row.joined_at))) return false; rows.delete(id); return true; },
     async cleanupExpired(now) { for (const [id, row] of rows) if (row.expires_at <= now) rows.delete(id); return false; },
   };
-  const generate = vi.fn(async (input: { scenario: "pause" | "adjust" | "first-overnight" }) => ({
-    version: "paired-report-v0.1" as const, scenarioId: input.scenario, status: "ready" as const,
-    commonGround: [{ text: "双方都提供了信息。", evidence: ["A.expectation", "B.expectation"] as ["A.expectation", "B.expectation"] }],
-    differences: [{ text: "双方关注点不同。", evidence: ["A.concern", "B.concern"] as ["A.concern", "B.concern"] }],
-    advice: {
-      A: [{ say: "我想听听你的想法。", do: "留出暂停空间。", evidence: ["A.expectation"] as ["A.expectation"] }],
-      B: [{ say: "我想表达自己的想法。", do: "确认自己的边界。", evidence: ["B.expectation"] as ["B.expectation"] }],
-    },
-    togetherNextSteps: [{ text: "继续确认想法。", evidence: ["A.expectation", "B.expectation"] as ["A.expectation", "B.expectation"] }],
-    uncertainties: [{ text: "后续选择尚不确定。", evidence: ["A.concern", "B.concern"] as ["A.concern", "B.concern"] }],
-  }));
+  const generate = vi.fn(async (input: { scenarioId: "pause" | "adjust" | "first-overnight" }) => readyReport(input.scenarioId));
   const preferences = { async get(accountId: string) { return { ageConfirmed: adult[ids.indexOf(accountId)] ?? false, addressPreference: null, updatedAt: null, revision: 0 }; } };
   const creators = new Set([ids[0]]);
   const service = createRoomService({ auth, preferences, rooms, cipher: createRoomCipher(secret), reportProvider: overrideProvider ?? { generate }, creatorAccountIds: creators, now: () => current });
@@ -100,11 +98,6 @@ async function harness(overrideProvider?: RoomReportProvider) {
 }
 
 describe("two-person rooms", () => {
-  it("does not publish a generic report when the model provider is unavailable", async () => {
-    const provider = createRoomReportProvider();
-    await expect(provider.generate({ scenario: "pause", ownerAnswers: [...answers], inviteeAnswers: [...answers] }, new AbortController().signal))
-      .rejects.toThrow("room-report-provider-unavailable");
-  });
   it("keeps drafts private, requires both explicit completions, and generates once", async () => {
     const { service, rows, tokens, generate } = await harness();
     const created = await service.create(tokens[0], { contractVersion: "1", requestId, scenario: "pause", adultConfirmed: true });
@@ -122,12 +115,12 @@ describe("two-person rooms", () => {
     await service.complete(tokens[0], id, { contractVersion: "1", requestId, authorizeSharedReport: true });
     await expect(service.report(tokens[0], id, requestId)).rejects.toMatchObject({ code: "ROOM_NOT_READY" });
     await service.complete(tokens[1], id, { contractVersion: "1", requestId, authorizeSharedReport: true });
-    const concurrent = await Promise.allSettled([service.report(tokens[0], id, requestId), service.report(tokens[1], id, requestId)]);
-    expect(concurrent.some(result => result.status === "fulfilled")).toBe(true);
-    for (const result of concurrent) if (result.status === "rejected") expect(result.reason).toMatchObject({ code: "ROOM_CONFLICT" });
+    const simultaneous = await Promise.allSettled([service.report(tokens[0], id, requestId), service.report(tokens[1], id, requestId)]);
+    expect(simultaneous.some(result => result.status === "fulfilled")).toBe(true);
     expect((await service.report(tokens[1], id, requestId)).report.status).toBe("ready");
     expect(generate).toHaveBeenCalledTimes(1);
     expect((await service.readReport(tokens[1], id, requestId)).report.status).toBe("ready");
+    expect(JSON.stringify(await service.readReport(tokens[1], id, requestId))).not.toContain("evidence");
     expect(generate).toHaveBeenCalledTimes(1);
     await expect(service.readReport(tokens[2], id, requestId)).rejects.toMatchObject({ code: "ROOM_NOT_FOUND" });
     await service.save(tokens[0], id, { contractVersion: "1", requestId, answers: [...answers] });
@@ -237,22 +230,18 @@ describe("two-person rooms", () => {
   });
 
   it("does not pause ordinary boundary setting", () => {
-    expect(safetyPause({ scenario: "pause",
-      ownerAnswers: ["暂停就是立刻停止触碰和追问。", "我怕暂停后还要解释原因。", "我说停就请先停，给我一小时独处。", "希望先听到好，我们停。"],
-      inviteeAnswers: ["暂停就是当下停止。", "我担心不知道是否还能再谈。", "听到停会停止触碰。", "之后等对方提出。"],
-    })).toBeNull();
+    expect(safetyPause(createRoomReportInput("pause",
+      ["暂停就是立刻停止触碰和追问。", "我怕暂停后还要解释原因。", "我说停就请先停，给我一小时独处。", "希望先听到好，我们停。"],
+      ["暂停就是当下停止。", "我担心不知道是否还能再谈。", "听到停会停止触碰。", "之后等对方提出。"],
+    ))).toBeNull();
   });
 
   it("drops a report that copies a private answer verbatim", () => {
-    const input = { scenario: "pause" as const, ownerAnswers: ["我希望今晚单独回家", "担心对方误会", "不想触碰", "明天再谈"] as [string, string, string, string],
-      inviteeAnswers: ["希望暂停", "担心误会", "尊重暂停", "明天再问"] as [string, string, string, string] };
-    expect(() => validateRoomReport({ version: "paired-report-v0.1", scenarioId: "pause", status: "ready",
-      commonGround: [{ text: "我希望今晚单独回家", evidence: ["A.expectation"] }],
-      differences: [{ text: "双方的想法不同。", evidence: ["A.concern", "B.concern"] }],
-      advice: { A: [{ say: "可以先停。", do: "保留选择。", evidence: ["A.boundary"] }], B: [{ say: "我会尊重。", do: "先暂停。", evidence: ["B.boundary"] }] },
-      togetherNextSteps: [{ text: "以后再确认。", evidence: ["A.response_next_step", "B.response_next_step"] }],
-      uncertainties: [{ text: "时间尚未确定。", evidence: ["A.response_next_step"] }],
-    }, input)).toThrow("verbatim-room-report");
+    const input = createRoomReportInput("pause", ["我希望今晚单独回家", "担心对方误会", "不想触碰", "明天再谈"],
+      ["希望暂停", "担心误会", "尊重暂停", "明天再问"]);
+    const report = readyReport("pause");
+    report.sections.commonAndDifferences.text = "双方都希望平静讨论，但我希望今晚单独回家的想法需要尊重，也要确认另一方的安排。";
+    expect(() => validateRoomReport(report, input)).toThrow("verbatim-room-report");
   });
 
   it("cannot restore a report after termination during generation", async () => {
@@ -262,7 +251,7 @@ describe("two-person rooms", () => {
     const hold = new Promise<void>(resolve => { unblock = resolve; });
     const { service, rows, tokens } = await harness({ generate: async input => {
       started(); await hold;
-      return { version: "paired-report-v0.1", scenarioId: input.scenario, status: "insufficient",
+      return { version: "paired-report-v0.2", scenarioId: input.scenarioId, status: "insufficient",
         message: "目前没有足够的双方信息生成有依据的共同报告。可以各自补充、跳过，或结束本次填写。" };
     } });
     const created = await service.create(tokens[0], { contractVersion: "1", requestId, scenario: "pause", adultConfirmed: true });
@@ -277,5 +266,51 @@ describe("two-person rooms", () => {
     unblock();
     await expect(running).rejects.toMatchObject({ code: "ROOM_CONFLICT" });
     expect(rows.has(created.room.id)).toBe(false);
+  });
+
+  it("sends the calibrated input shape and fails when the model is unavailable", async () => {
+    const input = createRoomReportInput("pause", ["希望停下", "担心误会", "", "明天再谈"],
+      ["愿意暂停", "想确认时间", "会停下", ""]);
+    expect(input).toEqual({
+      scenarioId: "pause", consent: { A: true, B: true },
+      answers: {
+        A: { expectation: "希望停下", concern: "担心误会", boundary: null, response_next_step: "明天再谈" },
+        B: { expectation: "愿意暂停", concern: "想确认时间", boundary: "会停下", response_next_step: null },
+      },
+    });
+    await expect(createRoomReportProvider().generate(input, new AbortController().signal)).rejects.toMatchObject({ code: "MODEL_UNAVAILABLE" });
+    const complete = vi.fn(async (prompt: string, data: string) => {
+      expect(prompt).toContain("不代写任何一方的台词");
+      expect(JSON.parse(data)).toEqual(input);
+      const report = readyReport("pause");
+      report.sections.nextSteps.evidence = ["A.response_next_step", "B.concern"] as ["A.response_next_step", "B.response_next_step"];
+      return report;
+    });
+    await createRoomReportProvider(complete).generate(input, new AbortController().signal);
+    expect(complete).toHaveBeenCalledTimes(1);
+  });
+
+  it("releases the generation claim and stores no invented report when the model is unavailable", async () => {
+    const { service, rows, tokens } = await harness(createRoomReportProvider());
+    const created = await service.create(tokens[0], { contractVersion: "1", requestId, scenario: "pause", adultConfirmed: true });
+    await service.join(tokens[1], { contractVersion: "1", requestId, invitationToken: created.invitationToken, adultConfirmed: true });
+    await service.save(tokens[0], created.room.id, { contractVersion: "1", requestId, answers: [...answers] });
+    await service.save(tokens[1], created.room.id, { contractVersion: "1", requestId, answers: [...answers] });
+    await service.complete(tokens[0], created.room.id, { contractVersion: "1", requestId, authorizeSharedReport: true });
+    await service.complete(tokens[1], created.room.id, { contractVersion: "1", requestId, authorizeSharedReport: true });
+    await expect(service.report(tokens[0], created.room.id, requestId)).rejects.toMatchObject({ code: "MODEL_UNAVAILABLE", status: 503 });
+    expect(rows.get(created.room.id)?.report_ciphertext).toBeNull();
+    expect(rows.get(created.room.id)?.report_status).toBe("waiting");
+    await expect(service.readReport(tokens[1], created.room.id, requestId)).rejects.toMatchObject({ code: "ROOM_NOT_READY" });
+  });
+
+  it("rejects one-sided evidence and role scripts", () => {
+    const input = createRoomReportInput("pause", [...answers], [...answers]);
+    const oneSided = readyReport("pause");
+    oneSided.sections.commonAndDifferences.evidence = ["A.expectation", "A.concern"] as ["A.expectation", "A.concern"];
+    expect(() => validateRoomReport(oneSided, input)).toThrow("room-report-both-sides-required");
+    const scripted = readyReport("pause");
+    scripted.sections.adviceForBoth.text = "A可以说：我现在想暂停；B可以说：我会等你。双方之后再确认是否继续。";
+    expect(() => validateRoomReport(scripted, input)).toThrow("unsafe-room-report");
   });
 });

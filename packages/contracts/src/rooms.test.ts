@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { CreateRoomRequestSchema, JoinRoomRequestSchema, RoomAnswersSchema, RoomReportSchema } from "./rooms";
+import { CreateRoomRequestSchema, JoinRoomRequestSchema, RoomAnswersSchema, RoomReportResponseSchema, RoomReportSchema } from "./rooms";
 
 const requestId = "6cc380dd-f5b0-4e39-bac4-54fa9b4abcc1";
 
@@ -17,17 +17,15 @@ describe("paired room contracts", () => {
 
   it("accepts a grounded draft report and rejects invented evidence identifiers", () => {
     const report = {
-      version: "paired-report-v0.1", scenarioId: "pause", status: "ready",
-      commonGround: [{ text: "双方愿意暂停。", evidence: ["A.expectation", "B.expectation"] }],
-      differences: [{ text: "双方关注点不同。", evidence: ["A.concern", "B.concern"] }],
-      advice: {
-        A: [{ say: "我先停。", do: "保留暂停。", evidence: ["A.boundary"] }],
-        B: [{ say: "我会停。", do: "尊重边界。", evidence: ["B.boundary"] }],
+      version: "paired-report-v0.2", scenarioId: "pause", status: "ready",
+      sections: {
+        commonAndDifferences: { text: "双方都希望暂停后先停止触碰，但对何时再谈仍有不同期待，需要继续确认。", evidence: ["A.expectation", "B.expectation"] },
+        adviceForBoth: { text: "值得共同确认暂停后的空间与联系时机，讨论时保留各自不继续的选择。", evidence: ["A.boundary", "B.boundary"] },
+        nextSteps: { text: "若双方愿意，可先约定暂停即停止；至于再次交流的时间，仍需要另行确认。", evidence: ["A.response_next_step", "B.response_next_step"] },
       },
-      togetherNextSteps: [{ text: "另行确认。", evidence: ["A.response_next_step"] }],
-      uncertainties: [{ text: "是否再谈未定。", evidence: ["B.response_next_step"] }],
     };
     expect(RoomReportSchema.safeParse(report).success).toBe(true);
-    expect(RoomReportSchema.safeParse({ ...report, commonGround: [{ text: "无根据", evidence: ["A.imaginary"] }] }).success).toBe(false);
+    expect(RoomReportSchema.safeParse({ ...report, sections: { ...report.sections, commonAndDifferences: { ...report.sections.commonAndDifferences, evidence: ["A.imaginary"] } } }).success).toBe(false);
+    expect(RoomReportResponseSchema.safeParse({ contractVersion: "1", requestId, roomId: requestId, report }).success).toBe(false);
   });
 });
