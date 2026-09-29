@@ -63,9 +63,9 @@ export function createRoomApiClient({ baseUrl, getAccessToken, fetch = globalThi
   if (!/^https?:\/\//u.test(origin)) throw new Error("room-api-base-url-required");
   const action = () => ({ contractVersion: "1" as const, requestId: requestId() });
 
-  async function request(path: string, method: "GET" | "POST" | "PUT" | "DELETE", body?: object): Promise<unknown> {
+  async function request(path: string, method: "GET" | "POST" | "PUT" | "DELETE", body?: object, timeoutMs = 30_000): Promise<unknown> {
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 30_000);
+    const timeout = setTimeout(() => controller.abort(), timeoutMs);
     let response: Response;
     try {
       response = await fetch(`${origin}${path}`, {
@@ -139,7 +139,7 @@ export function createRoomApiClient({ baseUrl, getAccessToken, fetch = globalThi
       return roomFromContract(result.room, result.ownAnswers);
     },
     generateReport: async (roomId) => {
-      const result = parse(RoomReportResponseSchema, await request(`/v1/rooms/${encodeURIComponent(roomId)}/report`, "POST", action()));
+      const result = parse(RoomReportResponseSchema, await request(`/v1/rooms/${encodeURIComponent(roomId)}/report`, "POST", action(), 40_000));
       const current = await status(roomId);
       return roomFromContract(current.room, current.ownAnswers, reportFromContract(result.report));
     },

@@ -62,3 +62,19 @@ test("server error code is preserved for an expired invite", async () => {
   const api = createRoomApiClient({ baseUrl: "https://api.example.test", getAccessToken: async () => "access", fetch });
   await expect(api.join("cave_ri_" + "a".repeat(43))).rejects.toEqual(new RoomApiError("ROOM_INVITATION_INVALID", 400));
 });
+
+test("report generation can finish after the server's thirty-second deadline", async () => {
+  jest.useFakeTimers();
+  try {
+    const fetch = jest.fn().mockImplementationOnce((_url: string, options: RequestInit) => new Promise((resolve, reject) => {
+      const done = setTimeout(() => resolve(ok({ roomId: id, report: readyReport })), 35_000);
+      options.signal?.addEventListener("abort", () => { clearTimeout(done); reject(new Error("aborted")); });
+    })).mockResolvedValueOnce(ok({ room: room({ reportStatus: "ready", ownCompleted: true, partnerCompleted: true }), ownAnswers: ["", "", "", ""] })) as typeof globalThis.fetch;
+    const api = createRoomApiClient({ baseUrl: "https://api.example.test", getAccessToken: async () => "access", fetch });
+    const result = api.generateReport(id);
+    await jest.advanceTimersByTimeAsync(35_000);
+    await expect(result).resolves.toMatchObject({ report: { status: "ready" } });
+  } finally {
+    jest.useRealTimers();
+  }
+});
