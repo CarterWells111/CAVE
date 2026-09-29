@@ -59,6 +59,9 @@ export function createRoomRoutes({ service, logger = () => undefined }: { servic
   app.post("/v1/rooms/:roomId/report", context => execute(context, "report", false, async (body, id) => Response.json(
     await service.report(bearerAccessToken(context), id, parse(RoomActionRequestSchema, body).requestId),
   )));
+  app.get("/v1/rooms/:roomId/report", context => execute(context, "read_report", true, async (query, id) => Response.json(
+    await service.readReport(bearerAccessToken(context), id, parse(Query, query).requestId),
+  )));
   app.delete("/v1/rooms/:roomId", context => execute(context, "terminate", false, async (body, id) => {
     parse(RoomActionRequestSchema, body);
     await service.terminate(bearerAccessToken(context), id);

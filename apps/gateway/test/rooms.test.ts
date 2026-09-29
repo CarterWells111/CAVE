@@ -106,6 +106,7 @@ describe("two-person rooms", () => {
     const id = created.room.id;
     await service.save(tokens[0], id, { contractVersion: "1", requestId, answers: [...answers] });
     await expect(service.report(tokens[0], id, requestId)).rejects.toMatchObject({ code: "ROOM_NOT_READY" });
+    await expect(service.readReport(tokens[0], id, requestId)).rejects.toMatchObject({ code: "ROOM_NOT_READY" });
     await service.join(tokens[1], { contractVersion: "1", requestId, invitationToken: created.invitationToken, adultConfirmed: true });
     const guest = await service.get(tokens[1], id, requestId);
     expect(guest.ownAnswers).toBeNull();
@@ -119,6 +120,9 @@ describe("two-person rooms", () => {
     await Promise.all([service.report(tokens[0], id, requestId), service.report(tokens[1], id, requestId).catch(() => undefined)]);
     expect((await service.report(tokens[1], id, requestId)).report.status).toBe("ready");
     expect(generate).toHaveBeenCalledTimes(1);
+    expect((await service.readReport(tokens[1], id, requestId)).report.status).toBe("ready");
+    expect(generate).toHaveBeenCalledTimes(1);
+    await expect(service.readReport(tokens[2], id, requestId)).rejects.toMatchObject({ code: "ROOM_NOT_FOUND" });
     await service.save(tokens[0], id, { contractVersion: "1", requestId, answers: [...answers] });
     await expect(service.report(tokens[1], id, requestId)).rejects.toMatchObject({ code: "ROOM_NOT_READY" });
     await service.complete(tokens[0], id, { contractVersion: "1", requestId, authorizeSharedReport: true });
@@ -172,6 +176,7 @@ describe("two-person rooms", () => {
     await expect(service.get(tokens[1], created.room.id, requestId)).rejects.toMatchObject({ code: "ROOM_ADULT_REQUIRED" });
     await expect(service.list(tokens[1], requestId)).rejects.toMatchObject({ code: "ROOM_ADULT_REQUIRED" });
     await expect(service.report(tokens[1], created.room.id, requestId)).rejects.toMatchObject({ code: "ROOM_ADULT_REQUIRED" });
+    await expect(service.readReport(tokens[1], created.room.id, requestId)).rejects.toMatchObject({ code: "ROOM_ADULT_REQUIRED" });
     await service.terminate(tokens[1], created.room.id);
     await expect(service.get(tokens[0], created.room.id, requestId)).rejects.toMatchObject({ code: "ROOM_NOT_FOUND" });
   });

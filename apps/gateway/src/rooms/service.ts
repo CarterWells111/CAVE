@@ -119,6 +119,15 @@ export function createRoomService({ auth, preferences, rooms, cipher, reportProv
         && !await rooms.complete(id, account.id, role, new Date(now()).toISOString())) throw new AuthServiceError("ROOM_NOT_READY", 409);
       return response(id, account.id, input.requestId);
     },
+    async readReport(token: string, id: string, requestId: string): Promise<RoomReportResponse> {
+      const account = await accountFor(token);
+      const { row } = await visible(id, account.id);
+      if (!row.report_ciphertext || !["ready", "paused", "insufficient"].includes(row.report_status)) {
+        throw new AuthServiceError("ROOM_NOT_READY", 409);
+      }
+      return { contractVersion: "1", requestId, roomId: id,
+        report: RoomReportSchema.parse(await cipher.decrypt(id, "report", row.report_ciphertext)) };
+    },
     async report(token: string, id: string, requestId: string): Promise<RoomReportResponse> {
       const account = await accountFor(token);
       let { row } = await visible(id, account.id);

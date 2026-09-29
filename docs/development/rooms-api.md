@@ -12,6 +12,7 @@
 | `PUT /v1/rooms/:roomId/answers` | `answers: [string,string,string,string]` | `RoomStatusResponse` |
 | `POST /v1/rooms/:roomId/complete` | `authorizeSharedReport: true` | `RoomStatusResponse` |
 | `POST /v1/rooms/:roomId/report` | 无附加字段 | `RoomReportResponse` |
+| `GET /v1/rooms/:roomId/report?requestId=UUID` | 无请求体；只读，不触发生成 | 已有报告时 `RoomReportResponse`，否则 `ROOM_NOT_READY`（409） |
 | `DELETE /v1/rooms/:roomId` | 无附加字段 | `204` |
 
 `scenario` 只能是 `first-overnight`、`pause`、`adjust`。四题可为空字符串，单题至多 2000 字。`RoomStatusResponse` 包含房间 ID、情景、本人角色、双方加入与完成状态、报告状态、30 天到期时间及仅本人的 `ownAnswers`。空项保持原有题位。邀请凭证最多 7 天有效且不超过房间寿命，只存 SHA-256 摘要；第一个使用凭证加入的**其他已登录账号**成为伴侣，发起账号不可加入自己的房间。除终止外，房间操作均要求账号已保存的 `ageConfirmed` 为真；创建和加入还要求请求中的 `adultConfirmed: true`。取消成年声明后无法读取答案或报告，但仍可终止并删除房间。房主可在伴侣加入前重新签发邀请，旧凭证立即失效。分享链接只需携带邀请凭证；不要把邀请凭证放入日志或分析事件。
