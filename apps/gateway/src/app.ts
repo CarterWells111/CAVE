@@ -327,7 +327,7 @@ export function createApp(
         cipher: createRoomCipher(roomBindings.ROOM_ENCRYPTION_KEY_V1),
         reportProvider: options.roomReportProvider ?? createRoomReportProvider(
           env.MODEL_MODE === "live" && assistantProvider
-            ? (prompt, data, signal) => assistantProvider.generateAssistant(prompt, data, signal)
+            ? (prompt, data, signal) => assistantProvider.generateRoomReport(prompt, data, signal)
             : undefined,
         ),
         creatorAccountIds: new Set((roomBindings.ROOMS_CREATOR_ACCOUNT_IDS ?? "").split(",").map(id => id.trim()).filter(id => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu.test(id))),
