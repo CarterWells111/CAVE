@@ -2,12 +2,13 @@ import type { Ionicons } from "@expo/vector-icons";
 import type { ComponentProps } from "react";
 import type { Href } from "expo-router";
 
-export type LongTermTab = "journey" | "ai" | "practice" | "journal" | "profile";
+export type LongTermTab = "journey" | "rooms" | "ai" | "practice" | "journal" | "profile";
 
-export type LongTermRouteName = "index" | "journey" | "ai" | "reviews" | "practice" | "journal" | "profile";
+export type LongTermRouteName = "index" | "journey" | "rooms" | "ai" | "reviews" | "practice" | "journal" | "profile";
 
 export type LongTermPath =
   | "/(tabs)/journey"
+  | "/(tabs)/rooms"
   | "/(tabs)"
   | "/(tabs)/reviews"
   | "/(tabs)/practice"
@@ -27,6 +28,7 @@ export type LongTermDestination = Readonly<{
 
 export const LONG_TERM_DESTINATIONS = [
   { icon: "compass-outline", label: "旅程", path: "/(tabs)", routeName: "index", tab: "journey" },
+  { icon: "people-outline", label: "房间", path: "/(tabs)/rooms", routeName: "rooms", tab: "rooms" },
   { icon: "book-outline", label: "内界手记", path: "/(tabs)/journal", routeName: "journal", tab: "journal" },
   { icon: "sparkles-outline", label: "AI", path: "/(tabs)/ai", routeName: "ai", tab: "ai" },
   { icon: "person-outline", label: "我的", path: "/(tabs)/profile", routeName: "profile", tab: "profile" },

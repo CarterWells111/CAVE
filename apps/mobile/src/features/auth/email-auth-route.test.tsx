@@ -136,3 +136,10 @@ test.each(["/(tabs)/journal", "/(tabs)/ai"])("returns a signed-in user to the re
   render(<EmailAuthRoute />);
   await waitFor(() => expect(mockReplace).toHaveBeenCalledWith(destination));
 });
+
+test("restores a pending room invitation after login", async () => {
+  mockReturnTo = "/join?invite=opaque_token-1234567890";
+  mockAuthStatus = "signedIn";
+  render(<EmailAuthRoute />);
+  await waitFor(() => expect(mockReplace).toHaveBeenCalledWith("/join?invite=opaque_token-1234567890"));
+});

@@ -20,6 +20,7 @@ export default function LongTermTabsLayout() {
       )}
     >
       <Tabs.Screen name="index" options={{ title: "旅程", tabBarAccessibilityLabel: "旅程，底部导航" }} />
+      <Tabs.Screen name="rooms" options={{ title: "房间", tabBarAccessibilityLabel: "房间，底部导航" }} />
       <Tabs.Screen name="journal" options={{ title: "内界手记", tabBarAccessibilityLabel: "内界手记，底部导航" }} />
       <Tabs.Screen name="ai" options={{ title: "AI", tabBarAccessibilityLabel: "AI，底部导航" }} />
       <Tabs.Screen name="profile" options={{ title: "我的", tabBarAccessibilityLabel: "我的，底部导航" }} />

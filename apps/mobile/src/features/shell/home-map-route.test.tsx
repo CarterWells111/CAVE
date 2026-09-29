@@ -13,8 +13,7 @@ const mockGetSnapshot = jest.fn();
 const mockRunAndRefresh = jest.fn(async (action: () => Promise<unknown>) => action());
 let mockRuntime: ReturnType<typeof runtime> | null = null;
 let mockAccount = { status: "signedOut" as "signedOut" | "ready" | "loading", profile: { displayName: "阿岚" } };
-let mockBlur: (() => void) | undefined;
-jest.mock("expo-router", () => ({ useRouter: () => mockRouter, useFocusEffect: (callback: () => (() => void) | undefined) => mockUseEffect(() => { const cleanup = callback(); mockBlur = cleanup; return cleanup; }, [callback]) }));
+jest.mock("expo-router", () => ({ useRouter: () => mockRouter, useFocusEffect: (callback: () => (() => void) | undefined) => mockUseEffect(() => callback(), [callback]) }));
 jest.mock("../journey/runtime/JourneyRuntimeProvider", () => ({ useOptionalJourneyRuntime: () => mockRuntime }));
 jest.mock("../account/runtime/AccountProfileProvider", () => ({ useAccountProfile: () => mockAccount }));
 jest.mock("../journal/runtime/JournalAccessProvider", () => ({ useJournalAccess: () => ({ status: "ready", service: { listRecords: mockJournal } }) }));
@@ -57,36 +56,12 @@ test("opening a sample never replaces or initializes scenario data", async () =>
   expect(mockRouter.push).toHaveBeenCalledWith({ pathname: "/explore/[journeyId]", params: { journeyId: "journey-04" } });
   expect(mockConfirmAdult).not.toHaveBeenCalled(); expect(mockReplaceReview).not.toHaveBeenCalled(); expect(mockRuntime.snapshot).toBe(draft);
 });
-test("scenario entry continues an existing draft without initialization", async () => {
+test("scenario entry opens the shared choice without reading or initializing a private draft", async () => {
   mockRuntime = runtime(onboarded()); render(<HomeRoute />);
   fireEvent.press(await screen.findByRole("button", { name: "体验第一次过夜" }));
   await act(async () => undefined);
-  expect(mockRouter.push).toHaveBeenCalledWith("/journey/body-knowledge");
+  expect(mockRouter.push).toHaveBeenCalledWith({ pathname: "/rooms/choose", params: { scenario: "first-overnight" } });
   expect(mockConfirmAdult).not.toHaveBeenCalled(); expect(mockReplaceReview).not.toHaveBeenCalled();
-});
-test("scenario entry deliberately initializes only when no draft exists", async () => {
-  mockRuntime = runtime(); mockShellLoad.mockResolvedValue(completed);
-  mockConfirmAdult.mockImplementation(async () => { mockGetSnapshot.mockReturnValue({ ...onboarded(), prefaceRead: false }); });
-  render(<HomeRoute />); fireEvent.press(await screen.findByRole("button", { name: "体验第一次过夜" }));
-  await act(async () => undefined);
-  expect(mockConfirmAdult).toHaveBeenCalledTimes(1);
-  expect(mockRouter.push).toHaveBeenCalledWith({ pathname: "/journey/preface", params: { entry: "first-overnight" } });
-  expect(mockReplaceReview).not.toHaveBeenCalled();
-});
-test("scenario initialization failure is retryable without losing map or displaying raw errors", async () => {
-  mockRuntime = runtime(); mockShellLoad.mockResolvedValue(completed); mockConfirmAdult.mockRejectedValueOnce(new Error("private failure"));
-  render(<HomeRoute />); fireEvent.press(await screen.findByRole("button", { name: "体验第一次过夜" }));
-  await act(async () => undefined);
-  expect(mockRouter.push).not.toHaveBeenCalled(); expect(screen.getByText("旅程 01")).toBeTruthy(); expect(screen.queryByText("private failure")).toBeNull();
-  fireEvent.press(screen.getByRole("button", { name: "体验第一次过夜" })); await act(async () => undefined);
-  expect(mockConfirmAdult).toHaveBeenCalledTimes(2);
-});
-test("ignores scenario completion after home unmounts and prevents duplicate initialization", async () => {
-  let resolve!: () => void; mockRuntime = runtime(); mockShellLoad.mockResolvedValue(completed);
-  mockConfirmAdult.mockReturnValue(new Promise<void>((done) => { resolve = done; }));
-  const view = render(<HomeRoute />); fireEvent.press(await screen.findByRole("button", { name: "体验第一次过夜" }));
-  fireEvent.press(screen.getByRole("button", { name: "体验第一次过夜" })); expect(mockConfirmAdult).toHaveBeenCalledTimes(1);
-  view.unmount(); await act(async () => resolve()); expect(mockRouter.push).not.toHaveBeenCalled();
 });
 test("revocation hides an already displayed map", async () => {
   mockRuntime = runtime(onboarded()); const view = render(<HomeRoute />); await screen.findByText("旅程 01");
@@ -98,16 +73,6 @@ test("compact account action keeps login and profile destinations", async () => 
   fireEvent.press(await screen.findByRole("button", { name: "登录" })); expect(mockRouter.push).toHaveBeenCalledWith("/auth/email");
   mockAccount = { status: "ready", profile: { displayName: "阿岚" } }; view.rerender(<HomeRoute />);
   fireEvent.press(screen.getByRole("button", { name: "查看阿岚的账号" })); expect(mockRouter.push).toHaveBeenCalledWith("/(tabs)/profile");
-});
-test("does not navigate from a retained home tab after focus is lost", async () => {
-  let resolve!: () => void;
-  mockRuntime = runtime(); mockShellLoad.mockResolvedValue(completed);
-  mockConfirmAdult.mockReturnValue(new Promise<void>((done) => { resolve = done; }));
-  render(<HomeRoute />);
-  fireEvent.press(await screen.findByRole("button", { name: "体验第一次过夜" }));
-  act(() => { mockBlur?.(); });
-  await act(async () => resolve());
-  expect(mockRouter.push).not.toHaveBeenCalled();
 });
 
 test("journey offers retained practice and a contextual AI question entry", async () => {
