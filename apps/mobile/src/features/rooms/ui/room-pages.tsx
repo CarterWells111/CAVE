@@ -8,7 +8,7 @@ import { Button } from "../../../core/ui/Button";
 import { Screen } from "../../../core/ui/Screen";
 import { SecondaryButton } from "../../../core/ui/secondary-button";
 import { ROOM_QUESTIONS, ROOM_SCENARIOS, ROOM_QUESTION_IDS, mayGenerateReport, normalizeInviteToken, type Room, type RoomApi, type RoomQuestionId, type RoomReport, type RoomScenarioId } from "../domain/room";
-import { formatRoomReport, roomReportAiDraft } from "../domain/report-text";
+import { formatRoomReport, REPORT_ROLE_NOTE, roomReportAiDraft } from "../domain/report-text";
 
 function Feedback({ message }: { message: string | null }) {
   const theme = useTheme();
@@ -145,6 +145,7 @@ function ReportContent({ report }: { report: RoomReport }) {
   return <View style={{ gap: theme.space.md }}>
     <Text accessibilityRole="header" selectable style={{ ...theme.typography.title, color: theme.color.text }}>共同报告</Text>
     {report.status === "ready" ? <>
+      <Text selectable style={{ ...theme.typography.body, color: theme.color.textSecondary }}>{REPORT_ROLE_NOTE}</Text>
       {section("共同点与差异", report.sections.commonAndDifferences)}
       {section("给你们的建议", report.sections.adviceForBoth)}
       {section("接下来的建议", report.sections.nextSteps)}

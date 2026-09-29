@@ -37,6 +37,7 @@ test("shared report shows three sections and offers explicit export, AI and jour
   const onRecord = jest.fn();
   render(<RoomDetailPage api={bob} roomId={room.id} onDiscuss={onDiscuss} onRecord={onRecord} onExport={async () => undefined} />);
   expect(await screen.findByText("共同点与差异")).toBeTruthy();
+  expect(screen.getByText("A 是房间发起人，B 是受邀者。")).toBeTruthy();
   expect(screen.getByText("给你们的建议")).toBeTruthy();
   expect(screen.getByText("接下来的建议")).toBeTruthy();
   expect(screen.queryByText(/可以说：/u)).toBeNull();

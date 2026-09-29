@@ -10,6 +10,7 @@ test("shared report has exactly three visible sections and an editable AI follow
   const text = formatRoomReport(report);
   expect(text.split("\n\n")).toHaveLength(3);
   expect(text).toContain("共同点与差异\n");
+  expect(text).toContain("A 是房间发起人，B 是受邀者。");
   expect(text).toContain("给你们的建议\n");
   expect(text).toContain("接下来的建议\n");
   expect(text).not.toContain("evidence");
