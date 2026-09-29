@@ -1,7 +1,7 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
 
 import { useOptionalJourneyRuntime } from "../../src/features/journey/runtime/JourneyRuntimeProvider";
-import { prepareFirstOvernight } from "../../src/features/shell/application/journey-entry";
+import { onboardingHref, prepareFirstOvernight } from "../../src/features/shell/application/journey-entry";
 import { isRoomScenarioId } from "../../src/features/rooms/domain/room";
 import { RoomChoicePage } from "../../src/features/rooms/ui/room-pages";
 import { Screen } from "../../src/core/ui/Screen";
@@ -22,6 +22,6 @@ function Content({ scenario }: { scenario: "first-overnight" | "pause" | "adjust
       return;
     }
     if (runtime) router.push(await prepareFirstOvernight(runtime));
-    else router.push("/journey/adult-gate");
+    else router.push(onboardingHref("/journey/adult-gate", "first-overnight"));
   }} />;
 }

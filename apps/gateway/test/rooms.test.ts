@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { createRoomCipher } from "../src/rooms/crypto";
-import { safetyPause, validateRoomReport, type RoomReportProvider } from "../src/rooms/report-provider";
+import { createRoomReportProvider, safetyPause, validateRoomReport, type RoomReportProvider } from "../src/rooms/report-provider";
 import { createRoomService } from "../src/rooms/service";
 import type { RoomRepository, RoomRow } from "../src/rooms/repository";
 import { digestOpaqueToken } from "../src/auth/crypto";
@@ -100,6 +100,11 @@ async function harness(overrideProvider?: RoomReportProvider) {
 }
 
 describe("two-person rooms", () => {
+  it("does not publish a generic report when the model provider is unavailable", async () => {
+    const provider = createRoomReportProvider();
+    await expect(provider.generate({ scenario: "pause", ownerAnswers: [...answers], inviteeAnswers: [...answers] }, new AbortController().signal))
+      .rejects.toThrow("room-report-provider-unavailable");
+  });
   it("keeps drafts private, requires both explicit completions, and generates once", async () => {
     const { service, rows, tokens, generate } = await harness();
     const created = await service.create(tokens[0], { contractVersion: "1", requestId, scenario: "pause", adultConfirmed: true });
@@ -117,7 +122,9 @@ describe("two-person rooms", () => {
     await service.complete(tokens[0], id, { contractVersion: "1", requestId, authorizeSharedReport: true });
     await expect(service.report(tokens[0], id, requestId)).rejects.toMatchObject({ code: "ROOM_NOT_READY" });
     await service.complete(tokens[1], id, { contractVersion: "1", requestId, authorizeSharedReport: true });
-    await Promise.all([service.report(tokens[0], id, requestId), service.report(tokens[1], id, requestId).catch(() => undefined)]);
+    const concurrent = await Promise.allSettled([service.report(tokens[0], id, requestId), service.report(tokens[1], id, requestId)]);
+    expect(concurrent.some(result => result.status === "fulfilled")).toBe(true);
+    for (const result of concurrent) if (result.status === "rejected") expect(result.reason).toMatchObject({ code: "ROOM_CONFLICT" });
     expect((await service.report(tokens[1], id, requestId)).report.status).toBe("ready");
     expect(generate).toHaveBeenCalledTimes(1);
     expect((await service.readReport(tokens[1], id, requestId)).report.status).toBe("ready");

@@ -14,6 +14,11 @@ function Feedback({ message }: { message: string | null }) {
   return message ? <Text accessibilityRole="alert" selectable style={{ ...theme.typography.body, color: theme.color.text }}>{message}</Text> : null;
 }
 
+function BackToRooms() {
+  const router = useRouter();
+  return <SecondaryButton label="返回" onPress={() => router.canGoBack() ? router.back() : router.replace("/(tabs)/rooms")} />;
+}
+
 function useOperation() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -54,7 +59,7 @@ export function RoomListPage({ api }: { api: RoomApi | null }) {
       {api ? <SecondaryButton label="刷新房间状态" loading={loading} onPress={() => { void load(); }} /> : <Text selectable style={{ ...theme.typography.body, color: theme.color.textSecondary }}>登录后可查看自己的房间状态。</Text>}
       <Feedback message={error} />
       {api && !loading && !error && rooms.length === 0 ? <Text selectable style={{ ...theme.typography.body, color: theme.color.textSecondary }}>还没有房间。</Text> : null}
-      {rooms.map((room) => <SecondaryButton key={room.id} label={`${ROOM_SCENARIOS.find((scenario) => scenario.id === room.scenarioId)?.title ?? "房间"} · ${room.status === "ended" ? "已终止" : room.report ? "查看报告" : room.myCompleted ? "等待共同完成" : "继续作答"}`} onPress={() => router.push({ pathname: "/rooms/[roomId]", params: { roomId: room.id } })} />)}
+      {rooms.map((room) => <SecondaryButton key={room.id} label={`${ROOM_SCENARIOS.find((scenario) => scenario.id === room.scenarioId)?.title ?? "房间"} · ${room.status === "reported" ? "查看报告" : room.status === "ready" ? "待生成报告" : room.participantCount < 2 ? "待加入" : room.myCompleted ? "等待对方完成" : "继续作答"}`} onPress={() => router.push({ pathname: "/rooms/[roomId]", params: { roomId: room.id } })} />)}
     </View>
   </Screen>;
 }
@@ -65,6 +70,7 @@ export function RoomChoicePage({ scenarioId, onSingle, onDuo }: { scenarioId: Ro
   const scenario = ROOM_SCENARIOS.find((item) => item.id === scenarioId)!;
   return <Screen contentSafeAreaTop>
     <View style={{ gap: theme.space.md }}>
+      <BackToRooms />
       <Text accessibilityRole="header" selectable style={{ ...theme.typography.title, color: theme.color.text }}>{scenario.title}</Text>
       <Text selectable style={{ ...theme.typography.body, color: theme.color.textSecondary }}>{scenario.introduction}</Text>
       <Button label="一个人探索" loading={operation.busy} onPress={() => { void operation.run(async () => { await onSingle(); }); }} />
@@ -81,6 +87,7 @@ export function RoomStartPage({ api, scenarioId }: { api: RoomApi; scenarioId: R
   const operation = useOperation();
   const scenario = ROOM_SCENARIOS.find((item) => item.id === scenarioId)!;
   return <Screen contentSafeAreaTop><View style={{ gap: theme.space.md }}>
+    <BackToRooms />
     <Text accessibilityRole="header" selectable style={{ ...theme.typography.title, color: theme.color.text }}>{scenario.title} · 双人房间</Text>
     <Text selectable style={{ ...theme.typography.body, color: theme.color.textSecondary }}>创建后可以先独立作答，再邀请对方。你的回答逐题上传并保存在云端，原文只给你查看。完成时还需另行同意生成双方可见的共同报告。</Text>
     <Button label="同意云端保存，创建房间" loading={operation.busy} onPress={() => { void operation.run(async () => {
@@ -100,6 +107,7 @@ export function RoomJoinPage({ api, initialToken }: { api: RoomApi; initialToken
   const normalized = normalizeInviteToken(token);
   return <Screen contentSafeAreaTop>
     <View style={{ gap: theme.space.md }}>
+      <BackToRooms />
       <Text accessibilityRole="header" selectable style={{ ...theme.typography.title, color: theme.color.text }}>加入双人房间</Text>
       <Text selectable style={{ ...theme.typography.body, color: theme.color.textSecondary }}>请用自己的账号加入。加入后，你的回答会逐题保存到云端，原文只给你查看。共同报告需要双方完成并同意。</Text>
       <TextInput accessibilityLabel="邀请令牌" autoCapitalize="none" autoCorrect={false} maxLength={256} onChangeText={setToken} placeholder="输入邀请令牌" style={{ borderColor: theme.color.border, borderWidth: 1, borderRadius: theme.radius.control, color: theme.color.text, padding: theme.space.md }} value={token} />
@@ -116,12 +124,13 @@ function Question({ api, question, room, onUpdate }: { api: RoomApi; question: {
   const theme = useTheme();
   const [draft, setDraft] = useState(room.myAnswers[question.id] ?? "");
   const operation = useOperation();
-  useEffect(() => { setDraft(room.myAnswers[question.id] ?? ""); }, [question.id, room.myAnswers]);
+  const canEdit = !room.myCompleted || room.report?.status === "insufficient";
+  useEffect(() => { setDraft(room.myAnswers[question.id] ?? ""); }, [question.id, room.myAnswers[question.id]]);
   return <View style={{ gap: theme.space.sm, padding: theme.space.md, borderWidth: 1, borderColor: theme.color.border, borderRadius: theme.radius.feature }}>
     <Text selectable style={{ ...theme.typography.cardTitle, color: theme.color.text }}>{question.title}</Text>
     <Text selectable style={{ ...theme.typography.body, color: theme.color.textSecondary }}>{question.prompt}（可跳过）</Text>
-    <TextInput accessibilityLabel={`${question.title}的回答`} editable={!room.myCompleted && room.status !== "ended"} multiline onChangeText={setDraft} placeholder="写下你的想法" style={{ borderColor: theme.color.border, borderWidth: 1, borderRadius: theme.radius.control, color: theme.color.text, minHeight: 100, padding: theme.space.md, textAlignVertical: "top" }} value={draft} />
-    {!room.myCompleted && room.status !== "ended" ? <SecondaryButton disabled={draft === (room.myAnswers[question.id] ?? "")} label={draft.trim() ? "保存这题到云端" : "清空这题"} loading={operation.busy} onPress={() => { void operation.run(async () => onUpdate(await api.saveAnswer(room.id, question.id, draft.trim()))); }} /> : null}
+    <TextInput accessibilityLabel={`${question.title}的回答`} editable={canEdit && room.status !== "ended"} maxLength={2000} multiline onChangeText={setDraft} placeholder="写下你的想法" style={{ borderColor: theme.color.border, borderWidth: 1, borderRadius: theme.radius.control, color: theme.color.text, minHeight: 100, padding: theme.space.md, textAlignVertical: "top" }} value={draft} />
+    {canEdit && room.status !== "ended" ? <SecondaryButton disabled={draft === (room.myAnswers[question.id] ?? "")} label={draft.trim() ? "保存这题到云端" : "清空这题"} loading={operation.busy} onPress={() => { void operation.run(async () => onUpdate(await api.saveAnswer(room.id, question.id, draft.trim()))); }} /> : null}
     <Feedback message={operation.error} />
   </View>;
 }
@@ -163,6 +172,7 @@ export function RoomDetailPage({ api, roomId, onExport }: { api: RoomApi; roomId
   const scenario = ROOM_SCENARIOS.find((item) => item.id === room?.scenarioId);
   return <Screen contentSafeAreaTop>
     <View style={{ gap: theme.space.md }}>
+      <BackToRooms />
       <Text accessibilityRole="header" selectable style={{ ...theme.typography.title, color: theme.color.text }}>{scenario?.title ?? "双人房间"}</Text>
       <SecondaryButton label="刷新状态" loading={loading} onPress={() => { void load(); }} />
       <Feedback message={loadError} />
@@ -185,7 +195,7 @@ export function RoomDetailPage({ api, roomId, onExport }: { api: RoomApi; roomId
               <Text selectable style={{ ...theme.typography.body, color: theme.color.text, flex: 1 }}>我同意在双方完成后，从各自已上传的回答生成双方可见的共同报告；我的原文仍只给我查看。</Text>
             </Pressable>
             <Button disabled={!reportConsent} label="完成我的回答" loading={operation.busy} onPress={() => { void operation.run(async () => setRoom(await api.complete(room.id, true))); }} />
-          </> : room.partnerCompleted ? <Text selectable style={{ ...theme.typography.body, color: theme.color.text }}>双方已完成，可以查看共同报告。</Text> : <Text selectable style={{ ...theme.typography.body, color: theme.color.textSecondary }}>你的回答已完成。等待对方完成后刷新状态。</Text>}
+          </> : room.report?.status === "insufficient" ? <Text selectable style={{ ...theme.typography.body, color: theme.color.textSecondary }}>信息不足时可以补充自己的回答；保存后需再次确认生成共同报告。</Text> : room.partnerCompleted ? <Text selectable style={{ ...theme.typography.body, color: theme.color.text }}>双方已完成，可以查看共同报告。</Text> : <Text selectable style={{ ...theme.typography.body, color: theme.color.textSecondary }}>你的回答已完成。等待对方完成后刷新状态。</Text>}
           {mayGenerateReport(room) ? <Button label="生成共同报告" loading={operation.busy} onPress={() => { void operation.run(async () => setRoom(await api.generateReport(room.id))); }} /> : null}
           {room.report ? <>
             <View collapsable={false} ref={reportView} style={{ backgroundColor: theme.color.surface, gap: theme.space.md, padding: theme.space.lg }}>
