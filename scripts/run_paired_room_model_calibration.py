@@ -8,6 +8,7 @@ import argparse
 import datetime as dt
 import hashlib
 import json
+import re
 import time
 import urllib.error
 import urllib.request
@@ -44,16 +45,24 @@ def validate_candidate(candidate, case):
     try:
         import jsonschema
     except ImportError:
-        return {"json": True, "schema": "not_checked", "evidence": "not_checked", "statusMatchesExpected": candidate.get("status") == case["expected"]["status"]}
+        return {"json": True, "schema": "not_checked", "evidence": "not_checked", "visibleText": "not_checked", "statusMatchesExpected": candidate.get("status") == case["expected"]["status"]}
 
     schema = json.loads((CALIBRATION / "report.schema.json").read_text(encoding="utf-8"))
     errors = list(jsonschema.Draft202012Validator(schema).iter_errors(candidate))
     evidence_valid = True
+    visible_text_valid = True
     if candidate.get("status") == "ready":
-        groups = candidate.get("commonGround", []) + candidate.get("differences", []) + candidate.get("togetherNextSteps", []) + candidate.get("uncertainties", [])
-        advice = candidate.get("advice", {})
-        groups += advice.get("A", []) + advice.get("B", [])
-        for item in groups:
+        sections = candidate.get("sections", {})
+        if not isinstance(sections, dict):
+            sections = {}
+        for item in sections.values():
+            if not isinstance(item, dict):
+                evidence_valid = False
+                visible_text_valid = False
+                continue
+            text = item.get("text", "")
+            if not isinstance(text, str) or "\n" in text or re.search(r"[AB]\.(?:expectation|concern|boundary|response_next_step)|可以说[：:]|可以做[：:]|\[[^\]]+\]|[“”「」\"]", text):
+                visible_text_valid = False
             for answer_id in item.get("evidence", []):
                 try:
                     participant, dimension = answer_id.split(".")
@@ -61,7 +70,7 @@ def validate_candidate(candidate, case):
                         evidence_valid = False
                 except (ValueError, KeyError, TypeError):
                     evidence_valid = False
-    return {"json": True, "schema": not errors, "schemaErrorCount": len(errors), "evidence": evidence_valid, "statusMatchesExpected": candidate.get("status") == case["expected"]["status"]}
+    return {"json": True, "schema": not errors, "schemaErrorCount": len(errors), "evidence": evidence_valid, "visibleText": visible_text_valid, "statusMatchesExpected": candidate.get("status") == case["expected"]["status"]}
 
 
 def run_one(key, system_prompt, case):
@@ -100,7 +109,7 @@ def run_one(key, system_prompt, case):
             record["candidate"] = candidate
             record["checks"] = validate_candidate(candidate, case)
         except (ValueError, TypeError):
-            record["checks"] = {"json": False, "schema": False, "evidence": False, "statusMatchesExpected": False}
+            record["checks"] = {"json": False, "schema": False, "evidence": False, "visibleText": False, "statusMatchesExpected": False}
         return record
     except urllib.error.HTTPError as error:
         error.close()
@@ -135,13 +144,14 @@ def main():
         "endpoint": URL,
         "thinking": THINKING,
         "maxTokens": MAX_TOKENS,
-        "promptVersion": "paired-report-v0.1",
+        "promptVersion": "paired-report-v0.2",
+        "promptRevision": "2",
         "promptSha256": hashlib.sha256(prompt_bytes).hexdigest(),
         "schemaSha256": hashlib.sha256(schema_bytes).hexdigest(),
         "casesSha256": hashlib.sha256(cases_bytes).hexdigest(),
         "questionsVersion": "paired-questions-v0.1",
-        "casesVersion": "paired-cases-v0.1",
-        "rubricVersion": "paired-rubric-v0.1",
+        "casesVersion": "paired-cases-v0.2",
+        "rubricVersion": "paired-rubric-v0.2",
         "results": [],
     }
     for case in cases:

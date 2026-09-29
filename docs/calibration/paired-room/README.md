@@ -1,12 +1,12 @@
 # 双人情景房间 AI 报告校准草案
 
-状态：`review_draft`；版本：`paired-report-v0.1`；基线：`origin/main@1ee5348`（2026-09-29 抓取后核对）。本文档和同目录文件仅供逐轮人工审阅，不接入房间 API、App 或官网，也不表示提示词已定稿。
+状态：`review_draft`；当前草案版本：`paired-report-v0.2`；基线：`origin/main@1ee5348`（2026-09-29 抓取后核对）。本文档和同目录文件仅供逐轮人工审阅，不接入房间 API、App 或官网，也不表示提示词已定稿。
 
 ## 本轮范围与验收
 
 三个情景各有相同四类、各一题的中文题干，见 [questions.json](questions.json)。两位成年人分别填写，允许跳过、修改、撤回；每次形成共同报告前，两人都须明确同意提交自己选定的回答并查看生成结果。输入只含这次获同意的四题回答和情景 ID，不带手记、历史聊天或身份信息。`A` / `B` 是本次临时标签，不推断性别或关系角色。
 
-[report.schema.json](report.schema.json) 定义三种互斥结果：`ready` 包含有依据的共同点、差异、分别给 A/B 的沟通和行为建议、共同下一步及不确定处；`paused` 只有中性暂停提示；`insufficient` 表示材料不足。[prompt.md](prompt.md) 是待审的模型指令，[cases.json](cases.json) 是人工编写的合成输入和期望输出，[rubric.md](rubric.md) 是逐轮评审量表。运行 `python scripts/check_paired_room_calibration.py` 检查题干、样例结构、证据标识和暂停不泄露内容。
+[report.schema.json](report.schema.json) 定义三种互斥结果：`ready` 仅含三段正文——“共同点与差异”“给你们的建议”“接下来的建议”；各段证据 ID 只供内部校验，界面、图片、AI 预填和手记预填均不展示引用。三段最多 660 字，为 AI 输入框的报告、标题和末尾提问留出空间；`paused` 只有中性暂停提示；`insufficient` 表示材料不足。[prompt.md](prompt.md) 是待审的模型指令，[cases.json](cases.json) 是人工编写的合成输入和期望输出，[rubric.md](rubric.md) 是逐轮评审量表。运行 `python scripts/check_paired_room_calibration.py` 检查题干、样例结构、证据标识和暂停不泄露内容。
 
 ## 处理边界
 
@@ -18,8 +18,20 @@
 
 这些规则与现有单人旅程中“可暂停、改变主意”和忽视暂停时停止普通练习的方向一致。设计依据包括 [WHO 性健康定义](https://www.who.int/en/health-topics/sexual-health)中的免于胁迫与暴力，以及 [WHO 对亲密伴侣暴力回应的指南](https://www.who.int/publications/i/item/9789241548595)；这里的报告不是专业咨询或安全评估。发布前仍需产品、安全及合格领域专家审核。
 
+## App 展示与动作交接
+
+仅 `ready` 报告展示三个固定标题，各标题下只显示对应 `sections.*.text` 自然段；不显示 `evidence`、A/B 建议清单或额外小节。底部三个动作：
+
+1. **导出报告（图片）**：导出三段正文和标题；保留相册及系统备份提示。
+2. **和内界AI详细聊聊**：跳转 AI，输入框预填三段标题与正文，末尾加问句“请根据这份报告问我一个具体问题，帮助我补充未涉及的情景或进一步说明仍不确定的地方。”不带证据 ID，不自动发送；沿用 AI 每次云端提交确认。
+3. **记录此次沟通**：跳转内界手记，新记录主文本框预填相同三段标题与正文，不带证据 ID，不自动保存；由用户继续编辑、主动保存。
+
+三段最多 660 字，连标题和末尾问句应低于现有 AI 聊天输入的 1000 字上限。按钮接线与页面实现由整合分支负责，本校准分支只定义报告内容契约。
+
 ## 本轮验证记录
 
 `cases.json` 全为人工合成，不含真实用户内容。最初本机没有可用模型密钥；用户随后自行将密钥输入 Git 忽略的 `apps/gateway/.dev.vars`，并授权合成样例测试。密钥没有进入仓库、测试记录或终端输出。
 
-2026-09-29 使用 `scripts/run_paired_room_model_calibration.py` 直接调用 DeepSeek `/chat/completions`：请求模型为仓库当前配置的 `deepseek-v4-flash`，接口返回 `deepseek-flash`。默认推理的一次连通性测试将 2,000 个 token 全用于推理，最终内容为空，见 [失败记录](model-runs/2026-09-29-default-thinking-failure.json)。根据 [DeepSeek 推理模式说明](https://api-docs.deepseek.com/guides/thinking_mode/)显式关闭推理后，单例成功；随后 8 个合成样例各调用三次，24/24 返回可解析且符合 JSON Schema 的结果，证据 ID 均指向非空输入，状态与人工期望一致。完整输入和输出见 [第一轮审阅稿](review-round-1.md)，原始输出、模型返回名、参数和版本散列见 [运行记录](model-runs/2026-09-29-nonthinking-3x.json)。这些机器检查不代表事实表述、建议质量或安全性已通过人工评审；等待用户逐轮反馈，不将提示词标为定稿。
+2026-09-29 使用 `scripts/run_paired_room_model_calibration.py` 直接调用 DeepSeek `/chat/completions`：请求模型为仓库当前配置的 `deepseek-v4-flash`，接口返回 `deepseek-flash`。默认推理的一次连通性测试将 2,000 个 token 全用于推理，最终内容为空，见 [失败记录](model-runs/2026-09-29-default-thinking-failure.json)。根据 [DeepSeek 推理模式说明](https://api-docs.deepseek.com/guides/thinking_mode/)显式关闭推理后，`v0.1` 单例成功；随后 8 个合成样例各调用三次，24/24 返回可解析且符合当时 JSON Schema 的结果，证据 ID 均指向非空输入，状态与人工期望一致。完整输入和输出见 [第一轮审阅稿](review-round-1.md)，原始输出、模型返回名、参数和版本散列见 [v0.1 运行记录](model-runs/2026-09-29-nonthinking-3x.json)。这批结果仅代表 `v0.1`，不能用于宣称 `v0.2` 通过。用户反馈要求改成三段、正文不显示引用、不代写双方台词，因此另行修订和复测。所有机器检查都不代表事实表述、建议质量或安全性已通过人工评审；等待用户逐轮反馈，不将提示词标为定稿。
+
+`v0.2` 三段结构的修订 2 再次对 8 组合成输入各调用三次；24/24 通过 JSON Schema、证据 ID、正文引用/台词形式和预期状态的机器检查，最大三段正文合计 404 字。完整结果见 [第二轮审阅稿](review-round-2.md)与 [原始运行记录](model-runs/2026-09-29-v0.2-r2-nonthinking-3x.json)。人工阅读仍发现少量未由输入支持的关系含义，以及把已明确的再谈发起者说成待确认的句子；因此尚未达到量表的无硬性失败要求，继续等待用户逐项评审。第一次 `v0.2` 试跑及一次显示检查误报修正保留在 [历史运行记录](model-runs/2026-09-29-v0.2-nonthinking-3x.json)。
