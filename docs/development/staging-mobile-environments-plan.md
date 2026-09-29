@@ -45,3 +45,10 @@
 - [ ] B：移动端环境选择。
 - [ ] 集成验收。
 - [ ] iOS development build。
+
+## 2026-09-29 阶段记录
+
+- Codex 集成分支 `b46ef35`；原工作区未提交改动未触碰。Cloudflare 浏览器账号与 Wrangler account_id 一致；Expo 浏览器和 EAS CLI 均为 `carter_wells`。
+- 基线验证：Node 24 / pnpm 10 下仓库配置测试 123/123、移动端配置测试 12/12 通过。默认 Node 20 不满足项目 Node 要求，导致独立 pnpm 11 安全审计测试无法运行；切换 Node 24 后通过。
+- Cloudflare 已有 staging Worker、独立 D1 和 staging-api.neijiecave.com；Gateway 会话负责复用并补齐配置/迁移。移动端会话负责路由和启动脚本。
+- Apple Developer 团队 GS99UP3542 已确认，但用户暂时无法登录；设备注册、Ad-hoc 签名和真机 development build 等用户通知后继续。Resend 登录同样等待用户通知；现有 staging Secret 由 Gateway 会话核对。
