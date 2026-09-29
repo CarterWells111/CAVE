@@ -10,7 +10,7 @@ const activeLines = (source: string) =>
     .filter((line) => line.length > 0 && !line.startsWith("#"));
 
 const expectedHeaders = [
-  "Content-Security-Policy: default-src 'self'; base-uri 'self'; connect-src 'self'; font-src 'self'; form-action 'none'; frame-ancestors 'none'; img-src 'self' data:; object-src 'none'; script-src 'none'; style-src 'self'; upgrade-insecure-requests",
+  "Content-Security-Policy: default-src 'self'; base-uri 'self'; connect-src 'self'; font-src 'self'; form-action 'none'; frame-ancestors 'none'; img-src 'self' data:; object-src 'none'; script-src 'self'; style-src 'self'; upgrade-insecure-requests",
   "Referrer-Policy: strict-origin-when-cross-origin",
   "X-Content-Type-Options: nosniff",
   "X-Frame-Options: DENY",
@@ -20,6 +20,7 @@ const expectedHeaders = [
 const expectedSitemapLocations = [
   "https://neijiecave.com/",
   "https://neijiecave.com/demo/",
+  "https://neijiecave.com/join/",
   "https://neijiecave.com/privacy/",
   "https://neijiecave.com/support/",
   "https://neijiecave.com/safety/",
@@ -82,9 +83,9 @@ const assertSitemapControls = (source: string) => {
     );
 
     expect(locationMatches).toHaveLength(1);
-    expect(lastModifiedMatches).toEqual(["2026-08-29"]);
+    expect(lastModifiedMatches).toEqual(["2026-09-29"]);
     expect(contents.replace(/\s+/gu, "")).toBe(
-      `<loc>${locationMatches[0]}</loc><lastmod>2026-08-29</lastmod>`
+      `<loc>${locationMatches[0]}</loc><lastmod>2026-09-29</lastmod>`
     );
   }
 };
@@ -151,11 +152,11 @@ describe("static control regression guards", () => {
       sitemap.replace("</url>", "<changefreq>daily</changefreq></url>"),
       sitemap.replace(
         "</urlset>",
-        "<url><loc>https://neijiecave.com/extra</loc><lastmod>2026-08-29</lastmod></url></urlset>"
+        "<url><loc>https://neijiecave.com/extra</loc><lastmod>2026-09-29</lastmod></url></urlset>"
       ),
       sitemap.replace("</urlset>", "<loc>https://neijiecave.com/extra</loc></urlset>"),
-      sitemap.replace("<lastmod>2026-08-29</lastmod>", "<lastmod>2026-08-28</lastmod>"),
-      sitemap.replace(/ {4}<lastmod>2026-08-29<\/lastmod>\r?\n/u, "")
+      sitemap.replace("<lastmod>2026-09-29</lastmod>", "<lastmod>2026-09-28</lastmod>"),
+      sitemap.replace(/ {4}<lastmod>2026-09-29<\/lastmod>\r?\n/u, "")
     ];
 
     for (const variant of invalidVariants) {

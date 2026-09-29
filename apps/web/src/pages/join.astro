@@ -1,0 +1,51 @@
+---
+import ContentCard from "../components/ContentCard.astro";
+import PageHero from "../components/PageHero.astro";
+import BaseLayout from "../layouts/BaseLayout.astro";
+---
+
+<BaseLayout
+  title="双人异步演练内测｜CAVE 内界"
+  description="了解内界 CAVE 双人异步演练的邀请、双方授权、共同报告与 30 天数据删除安排。仅内测用户可用。"
+  path="/join/"
+>
+  <section class="section page-section" aria-labelledby="join-title">
+    <PageHero
+      eyebrow="Invitation · Internal Test"
+      title="一起练习，但各自决定说什么"
+      description="双人异步演练让两个人按自己的节奏分别完成练习，不必同时在线。当前仅向受邀内测用户开放。"
+      headingId="join-title"
+    />
+
+    <section class="join-grid" aria-labelledby="join-method-title">
+      <div class="section-heading">
+        <p class="eyebrow">开始之前</p>
+        <h2 id="join-method-title">双方都要自己授权</h2>
+        <p>邀请只用于进入这次演练。双方分别查看说明并授权后，才会提交各自本次演练的内容；不能替对方同意。彼此只共享共同报告，个人作答不会直接展示给对方。</p>
+      </div>
+      <div class="join-action content-card">
+        <h3>在内界 App 中打开邀请</h3>
+        <p>请先确认你的设备已安装内测版内界 App。只有点击下面的按钮后，网页才会尝试打开 App。</p>
+        <button class="action-button" type="button" data-open-app disabled>打开内界 App</button>
+        <p class="join-status" data-join-status role="status" aria-live="polite">正在检查邀请链接…</p>
+        <noscript><p>此页面需要浏览器 JavaScript 才能读取邀请并打开 App。请启用后，从原邀请链接重新打开。</p></noscript>
+      </div>
+    </section>
+
+    <div class="card-grid card-grid--two">
+      <ContentCard title="只共享共同报告" eyebrow="共享范围">
+        <p>各自的演练作答只用于生成这次共同报告。报告形成后，双方都能查看共同报告；个人作答不向对方开放。</p>
+      </ContentCard>
+      <ContentCard title="30 天后自动删除" eyebrow="保留期限">
+        <p>双人房间数据会在 30 天后自动删除。你们也可以在 App 内提前终止房间，结束这次演练并删除房间数据。</p>
+      </ContentCard>
+    </div>
+
+    <aside class="callout" aria-labelledby="join-privacy-title">
+      <h2 id="join-privacy-title">邀请与隐私</h2>
+      <p>邀请凭证只放在链接的 <code>#invite=</code> 片段中。网页不会把它提交给官网服务器；点击按钮后，才把凭证交给已安装的内界 App。请勿把完整邀请链接转发给无关的人。</p>
+      <p>双人房间是本机私密内容规则的主动使用例外。了解提交、共享和删除范围，请阅读<a href="/privacy/">隐私说明</a>。</p>
+    </aside>
+  </section>
+  <script is:inline type="module" src="/join.js"></script>
+</BaseLayout>

@@ -5,11 +5,12 @@ import { describe, expect, it } from "vitest";
 
 import { demoFeatures, experienceSteps, principles } from "../src/content/site";
 
-const routeNames = ["", "demo", "privacy", "support", "safety", "sources"] as const;
+const routeNames = ["", "demo", "join", "privacy", "support", "safety", "sources"] as const;
 
 const expectedCanonicals = [
   "https://neijiecave.com/",
   "https://neijiecave.com/demo/",
+  "https://neijiecave.com/join/",
   "https://neijiecave.com/privacy/",
   "https://neijiecave.com/support/",
   "https://neijiecave.com/safety/",
@@ -58,7 +59,7 @@ const textContent = (html: string) =>
     .trim();
 
 describe("official site routes", () => {
-  it("builds six complete, distinct, static routes with matching metadata", async () => {
+  it("builds seven complete, distinct, static routes with matching metadata", async () => {
     const htmlDocuments = await Promise.all(routeNames.map(readRoute));
     const titles: string[] = [];
     const descriptions: string[] = [];
@@ -90,7 +91,7 @@ describe("official site routes", () => {
       expect(html).toMatch(/<html\b[^>]*\blang=["']zh-CN["']/u);
       expect(html).toMatch(/<a\b[^>]*\bclass=["'][^"']*skip-link[^"']*["'][^>]*\bhref=["']#main-content["']/u);
       expect(html).toMatch(/<footer\b/u);
-      expect(html).not.toMatch(/<script\b/iu);
+      if (routeNames[index] !== "join") expect(html).not.toMatch(/<script\b/iu);
       expect(html).not.toMatch(/<(?:img|iframe|video|audio|source)\b[^>]*\b(?:src|srcset)=["']https?:/iu);
       expect(
         tags(html, "link")
@@ -139,11 +140,12 @@ describe("official site routes", () => {
     expect(homeCallout).toContain('href="/privacy/"');
     expect(homeCallout).toContain('href="/support/"');
     expect(textContent(homeCallout)).toContain(
-      "旅程、练习、沟通草稿和普通回顾无需账号；内界手记需登录以隔离同一设备上的不同账号。所有私密正文仍只保存在当前设备。"
+      "日常旅程、手记和沟通草稿默认留在当前设备；受邀内测用户主动参加双人异步演练时，双方各自授权提交本次内容，彼此只共享共同报告。"
     );
     expect(textContent(homeCallout)).toContain(
       "查看常见问题、删除说明、联系渠道，以及 CAVE 能做与不能做的事。"
     );
+    expect(homeCallout).toContain('href="/join/"');
     expect(html).not.toMatch(/立即下载|App\s*Store|Google\s*Play|商店徽章|下载(?:应用|App)|AI\s*对话|云同步/iu);
   });
 
@@ -179,7 +181,7 @@ describe("official site routes", () => {
     }
   });
 
-  it("builds a noindex 404 document outside the six canonical routes", async () => {
+  it("builds a noindex 404 document outside the seven canonical routes", async () => {
     const [html, sitemap] = await Promise.all([
       readFile(new URL("../dist/404.html", import.meta.url), "utf8"),
       readFile(new URL("../dist/sitemap.xml", import.meta.url), "utf8")
@@ -211,7 +213,7 @@ describe("official site routes", () => {
   });
 
   it("preserves semantics for every markerless navigation and content list", async () => {
-    const [homeHtml, demoHtml, privacyHtml, supportHtml, safetyHtml, sourcesHtml] = await Promise.all(
+    const [homeHtml, demoHtml, joinHtml, privacyHtml, supportHtml, safetyHtml, sourcesHtml] = await Promise.all(
       routeNames.map(readRoute)
     );
     const homePrinciples = tags(homeHtml ?? "", "ul").filter((tag) =>
@@ -236,7 +238,7 @@ describe("official site routes", () => {
     expect(safetyLists).toHaveLength(1);
     expect(safetyLists.map((tag) => attribute(tag, "role"))).toEqual(["list"]);
 
-    for (const html of [homeHtml, demoHtml, privacyHtml, supportHtml, safetyHtml, sourcesHtml]) {
+    for (const html of [homeHtml, demoHtml, joinHtml, privacyHtml, supportHtml, safetyHtml, sourcesHtml]) {
       const navigationBlocks = Array.from(
         (html ?? "").matchAll(/<nav\b[^>]*>([\s\S]*?)<\/nav>/gu),
         ([, contents = ""]) => contents
@@ -255,7 +257,10 @@ describe("official site routes", () => {
 
     expect(html).toContain("邮箱地址以不可逆的带密钥摘要用于查找");
     expect(html).toContain("删除云端账户与删除本机内容是两个独立操作");
-    expect(html.match(/data-privacy-point/gu) ?? []).toHaveLength(6);
+    expect(html.match(/data-privacy-point/gu) ?? []).toHaveLength(7);
+    expect(textContent(html)).toContain("双方只共享共同报告，个人作答不会直接向对方开放");
+    expect(textContent(html)).toContain("房间数据 30 天后自动删除");
+    expect(html).toContain('href="/join/"');
     expect(html).toContain("保留");
     expect(html).toContain("删除");
     expect(html).toContain("操作系统");

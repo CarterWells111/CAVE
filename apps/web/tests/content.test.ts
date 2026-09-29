@@ -11,7 +11,7 @@ import {
 } from "../src/content/site";
 
 describe("official site content", () => {
-  it("uses the approved identity and six routes", () => {
+  it("uses the approved identity and seven routes", () => {
     expect(site).toEqual({
       name: "内界 CAVE",
       owner: "ZHIQI LIANG",
@@ -20,11 +20,12 @@ describe("official site content", () => {
       eyebrow: "Consent · Awareness · Voice · Exploration",
       statement: "探索那些隐于沉默、未被好好说清的事。循着内心的回响，找到属于自己的靠近方式。",
       reassurance: "期待、紧张和犹豫，可以同时存在。",
-      updatedAt: "2026-08-29"
+      updatedAt: "2026-09-29"
     });
     expect(navItems).toEqual([
       { href: "/", label: "了解 CAVE" },
       { href: "/demo/", label: "App 演示" },
+      { href: "/join/", label: "双人内测" },
       { href: "/privacy/", label: "隐私" },
       { href: "/support/", label: "支持" },
       { href: "/safety/", label: "安全" },
@@ -65,7 +66,8 @@ describe("official site content", () => {
   it("states the reviewed current-device privacy boundary", () => {
     expect(privacyPoints).toEqual([
       "旅程、练习、沟通草稿和普通回顾无需账号；内界手记需要邮箱登录，以便在同一设备上按账号隔离。",
-      "登录后，成年确认与界面称呼会保存到账号，支持换设备恢复；旅程内容、手记、反思记录、练习结果、沟通草稿和其他本机偏好不会上传到 CAVE 自有服务器。",
+      "登录后，成年确认与界面称呼会保存到账号，支持换设备恢复；日常旅程、手记、反思记录、预设练习结果和沟通草稿默认只保存在本机，不会随登录上传。双人异步演练另见下方主动参与的房间规则。",
+      "受邀内测用户主动加入双人房间时，双方各自授权提交本次演练所需内容；彼此只共享共同报告，个人作答不会直接展示给对方。房间数据 30 天后自动删除，也可在 App 内提前终止并删除。",
       "登录服务保存账户、验证码、速率限制和会话所需的最少元数据；邮箱地址以不可逆的带密钥摘要用于查找，发送验证码时会临时交给邮件服务商。",
       "CAVE 不把本机内容或登录元数据用于广告、画像或行为分析。",
       "当前版本没有沟通草稿的复制全文、保存图片或系统分享入口。只有在预设练习的安全资源中主动点击“复制号码”时，该号码才会写入系统剪贴板。",
@@ -75,7 +77,7 @@ describe("official site content", () => {
 
   it("keeps the approved support FAQ and excludes forbidden exact phrases", () => {
     expect(supportFaq).toEqual([
-      ["使用 CAVE 需要账号吗？", "旅程、练习、沟通草稿和普通回顾无需账号；内界手记需要邮箱登录，以便在同一设备上按账号隔离。手记仍只保存在本机，不会开启内容同步。"],
+      ["使用 CAVE 需要账号吗？", "旅程、预设练习、沟通草稿和普通回顾无需账号；内界手记需要邮箱登录，以便在同一设备上按账号隔离。日常手记仍只保存在本机；受邀内测用户主动参加双人异步演练时，适用单独的房间授权与删除规则。"],
       ["怎样删除邮箱账户？", "登录后在账户管理中完成一次新的邮箱验证码确认，并选择保留锁定的本机手记，或先删除当前账号手记再删除云端账户。其他本机内容不受影响。"],
       ["沟通草稿会自动发给别人吗？", "不会。当前版本没有沟通草稿的复制全文、保存图片或系统分享入口。编辑、全屏展示或保存到内界手记都不会把内容发给别人；预设练习中的“复制”只复制支持号码。"],
       ["怎样删除本机数据？", "在 App 的“设置”中选择“删除全部本机数据”，再次确认后完成清除。"],
