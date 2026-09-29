@@ -41,9 +41,9 @@
 ## 当前状态
 
 - [x] 远端 main 已拉取并创建独立工作区/分支。
-- [ ] A：staging Gateway。
-- [ ] B：移动端环境选择。
-- [ ] 集成验收。
+- [x] A：staging Gateway 已部署。
+- [x] B：移动端环境选择已合入。
+- [x] 集成代码与环境验收（iOS 原生包待签名）。
 - [ ] iOS development build。
 
 ## 2026-09-29 阶段记录
@@ -52,3 +52,11 @@
 - 基线验证：Node 24 / pnpm 10 下仓库配置测试 123/123、移动端配置测试 12/12 通过。默认 Node 20 不满足项目 Node 要求，导致独立 pnpm 11 安全审计测试无法运行；切换 Node 24 后通过。
 - Cloudflare 已有 staging Worker、独立 D1 和 staging-api.neijiecave.com；Gateway 会话负责复用并补齐配置/迁移。移动端会话负责路由和启动脚本。
 - Apple Developer 团队 GS99UP3542 已确认，但用户暂时无法登录；设备注册、Ad-hoc 签名和真机 development build 等用户通知后继续。Resend 登录同样等待用户通知；现有 staging Secret 由 Gateway 会话核对。
+
+## 2026-09-29 集成验收记录
+
+- 集成分支已合入移动端 `bc15404`、Gateway `983bbfd` 和 staging live 模型 `c317750`；原工作区未提交改动未触碰。
+- staging 专用 DeepSeek key 已作为 staging Worker `MODEL_API_KEY` Secret 配置；部署版本 `a1622817-5a73-4c9e-bbe5-16430d5875ff`。staging 与 production 的 `/health`、`/v1/meta` 均返回 HTTP 200；staging 元数据为 `providerMode: live`。Secret 名称核对通过，值未输出。真实 AI 调用与验证码邮件仍需受控账号端到端验收。
+- 集成分支类型检查与 lint 通过；测试通过：移动端 168 套/1412 项、Gateway 29 套/279 项、仓库配置 14 套/123 项，以及启动脚本 4 项。staging Wrangler dry-run、移动端源码策略检查、production iOS JS 导出、Secret 扫描（45 个文件）和 acceptance 工具隔离检查均通过。
+- 全仓 `verify` 在 `validate:content` 退出：既有 `internal_test_approved` 内容条目尚未满足 production 内容发布门槛；本分支没有修改 `packages/content`。其后的 Gateway 构建以 staging dry-run 单独完成。
+- Apple Developer 团队已确认，用户暂时无法登录；因此尚未注册设备、取得 Ad-hoc 签名或创建可安装的 iOS development build。Resend 登录和真实邮件验收同样等用户通知。
