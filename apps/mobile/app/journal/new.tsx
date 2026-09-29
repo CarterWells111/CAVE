@@ -1,5 +1,7 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
+import { useOptionalAuth } from "../../src/features/auth/runtime/AuthProvider";
+import { reportJournalDraftKey, takeReportHandoff } from "../../src/features/rooms/application/report-handoff";
 import { useJourneyRuntime } from "../../src/features/journey/runtime/JourneyRuntimeProvider";
 import { useReadyJournalService } from "../../src/features/journal/runtime/JournalAccessProvider";
 import type { JournalHighlight, JournalRecord, JournalSource } from "../../src/features/journal/domain/journal-record";
@@ -14,9 +16,11 @@ type Initial = Readonly<{ title?: string; occurredAt?: string; highlight?: Journ
 export default function NewJournalRoute() {
   const router = useRouter();
   const { cardId, reviewId } = useLocalSearchParams<{ cardId?: string; reviewId?: string }>();
+  const accountId = useOptionalAuth()?.accountId;
+  const [reportHandoff] = useState(() => cardId || reviewId ? null : takeReportHandoff("journal", accountId));
   const runtime = useJourneyRuntime();
   const journalService = useReadyJournalService();
-  const [initial, setInitial] = useState<Initial | null>(cardId || reviewId ? null : {});
+  const [initial, setInitial] = useState<Initial | null>(cardId || reviewId ? null : reportHandoff ? { title: "此次沟通", body: reportHandoff.text } : {});
   useEffect(() => {
     let active = true;
     void (async () => {
@@ -44,5 +48,5 @@ export default function NewJournalRoute() {
     return () => { active = false; };
   }, [cardId, reviewId, runtime.cards, runtime.reviewHistory]);
   if (initial === null) return <JournalLoadingScreen message="正在从本机整理可编辑框架…" />;
-  return <JournalEditorScreen initial={initial} service={journalService} renderAssistant={(context) => <AssistantPanel {...context} />} onBack={() => backOrHome(router)} onSaved={(id) => router.replace({ pathname: "/journal/[id]", params: { id } })} />;
+  return <JournalEditorScreen initial={initial} service={journalService} {...(reportHandoff ? { draftKeyOverride: reportJournalDraftKey(reportHandoff.roomId, reportHandoff.text) } : {})} renderAssistant={(context) => <AssistantPanel {...context} />} onBack={() => backOrHome(router)} onSaved={(id) => router.replace({ pathname: "/journal/[id]", params: { id } })} />;
 }

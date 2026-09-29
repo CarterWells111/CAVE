@@ -12,15 +12,12 @@ const room = (overrides: object = {}) => ({
 const wrapped = (data: object) => ({ contractVersion: "1", requestId, ...data });
 const ok = (data: object) => ({ ok: true, status: 200, json: async () => wrapped(data) });
 const readyReport = {
-  version: "paired-report-v0.1", scenarioId: "pause", status: "ready",
-  commonGround: [{ text: "共同点", evidence: ["A.expectation", "B.expectation"] }],
-  differences: [{ text: "差异", evidence: ["A.boundary", "B.boundary"] }],
-  advice: {
-    A: [{ say: "A 说", do: "A 做", evidence: ["A.expectation"] }],
-    B: [{ say: "B 说", do: "B 做", evidence: ["B.expectation"] }],
+  version: "paired-report-v0.2", scenarioId: "pause", status: "ready",
+  sections: {
+    commonAndDifferences: { text: "双方都希望暂停后先停下来，重新开始的时间还需要彼此确认。" },
+    adviceForBoth: { text: "可以讨论暂停时各自需要的空间，以及何时适合再次确认。" },
+    nextSteps: { text: "双方愿意时可先约定一个暂停信号，再确认是否需要进一步讨论。" },
   },
-  togetherNextSteps: [{ text: "下一步", evidence: ["A.expectation", "B.expectation"] }],
-  uncertainties: [{ text: "未知", evidence: ["A.concern"] }],
 };
 
 test("list and read use the backend envelope; only own answers enter the app model", async () => {
@@ -30,8 +27,9 @@ test("list and read use the backend envelope; only own answers enter the app mod
   const api = createRoomApiClient({ baseUrl: "https://api.example.test/", getAccessToken: async () => "access", fetch });
   expect((await api.list())[0]).toMatchObject({ myAnswers: { expectation: "mine" }, status: "active" });
   const detail = await api.get(id);
-  expect(detail.report).toMatchObject({ status: "ready", advice: { A: [{ say: "A 说", do: "A 做" }] } });
+  expect(detail.report).toMatchObject({ status: "ready", sections: { commonAndDifferences: readyReport.sections.commonAndDifferences.text } });
   expect(JSON.stringify(detail)).not.toContain("partnerAnswers");
+  expect(JSON.stringify(detail)).not.toContain("evidence");
   expect(fetch).toHaveBeenCalledWith(expect.stringMatching(/\/v1\/rooms\?requestId=/u), expect.objectContaining({
     method: "GET", headers: expect.objectContaining({ Authorization: "Bearer access" }),
   }));

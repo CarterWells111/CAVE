@@ -10,6 +10,15 @@ jest.mock("../journey/runtime/JourneyRuntimeProvider", () => ({ useAdultDeclarat
 jest.mock("../auth/runtime/AuthProvider", () => ({ useOptionalAuth: () => ({ accountId: mockAccountId }) }));
 const response: AssistantResponse = { status: "ok", providerMode: "mock", message: "我们可以从今天的一件小事开始。", observations: [], sources: [] };
 beforeEach(() => { jest.clearAllMocks(); mockAdult = "authorized"; mockAccountId = "one"; delete process.env.EXPO_PUBLIC_ASSISTANT_MODE; });
+test("report handoff fills an editable AI draft without sending it", () => {
+  const request = jest.fn<Promise<AssistantResponse>, [AssistantRequest, AbortSignal]>(async () => response);
+  render(<AssistantChat authorized journeyId="pause" initialDraft="共同报告。还有哪些不确定的地方？" request={request} />);
+  expect(screen.getByLabelText("聊天消息")).toHaveProp("value", "共同报告。还有哪些不确定的地方？");
+  expect(request).not.toHaveBeenCalled();
+  fireEvent.press(screen.getByRole("button", { name: "发送消息" }));
+  expect(screen.getByText("允许将这些内容发送云端吗？")).toBeTruthy();
+  expect(request).not.toHaveBeenCalled();
+});
 function prepare() {
   fireEvent.press(screen.getByRole("button", { name: "带我写一次日记" }));
   fireEvent.press(screen.getByRole("button", { name: "发送消息" }));

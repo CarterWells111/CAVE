@@ -45,9 +45,11 @@ export type Room = Readonly<{
 }>;
 
 export type RoomReport = Readonly<
-  | { status: "ready"; commonGround: readonly string[]; differences: readonly string[];
-      advice: { A: readonly { say: string; do: string }[]; B: readonly { say: string; do: string }[] };
-      togetherNextSteps: readonly string[]; uncertainties: readonly string[] }
+  | { status: "ready"; sections: Readonly<{
+      commonAndDifferences: string;
+      adviceForBoth: string;
+      nextSteps: string;
+    }> }
   | { status: "paused" | "insufficient"; message: string }
 >;
 

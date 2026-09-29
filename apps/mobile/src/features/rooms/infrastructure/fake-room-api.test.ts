@@ -1,21 +1,23 @@
 import { ROOM_QUESTION_IDS, mayGenerateReport } from "../domain/room";
 import { createFakeRoomServer } from "./fake-room-api";
 
-test("two accounts answer independently, skip questions, and receive the same report", async () => {
+test("two accounts answer independently, skip some questions, and receive the same report", async () => {
   const server = createFakeRoomServer();
   const alice = server.forAccount("alice");
   const bob = server.forAccount("bob");
   const created = await alice.create("pause");
   expect(created.status).toBe("waiting");
   await alice.saveAnswer(created.id, "expectation", "需要一点时间");
+  await alice.saveAnswer(created.id, "concern", "担心对方误会");
   const firstToken = await alice.issueInvite(created.id);
   const secondToken = await alice.issueInvite(created.id);
   await expect(bob.join(firstToken)).rejects.toThrow("INVITE_UNAVAILABLE");
   const joined = await bob.join(secondToken);
   expect(joined.myAnswers).toEqual({});
   await bob.saveAnswer(created.id, "boundary", "请先停下来");
-  expect((await alice.get(created.id)).myAnswers).toEqual({ expectation: "需要一点时间" });
-  expect((await bob.get(created.id)).myAnswers).toEqual({ boundary: "请先停下来" });
+  await bob.saveAnswer(created.id, "response_next_step", "之后再约时间聊");
+  expect((await alice.get(created.id)).myAnswers).toEqual({ expectation: "需要一点时间", concern: "担心对方误会" });
+  expect((await bob.get(created.id)).myAnswers).toEqual({ boundary: "请先停下来", response_next_step: "之后再约时间聊" });
   await expect(alice.complete(created.id, false)).rejects.toThrow("CONSENT_REQUIRED");
   await alice.complete(created.id, true);
   expect(mayGenerateReport(await alice.get(created.id))).toBe(false);

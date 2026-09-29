@@ -8,6 +8,7 @@ import { Button } from "../../../core/ui/Button";
 import { Screen } from "../../../core/ui/Screen";
 import { SecondaryButton } from "../../../core/ui/secondary-button";
 import { ROOM_QUESTIONS, ROOM_SCENARIOS, ROOM_QUESTION_IDS, mayGenerateReport, normalizeInviteToken, type Room, type RoomApi, type RoomQuestionId, type RoomReport, type RoomScenarioId } from "../domain/room";
+import { formatRoomReport, roomReportAiDraft } from "../domain/report-text";
 
 function Feedback({ message }: { message: string | null }) {
   const theme = useTheme();
@@ -135,26 +136,23 @@ function Question({ api, question, room, onUpdate }: { api: RoomApi; question: {
   </View>;
 }
 
-function ReportContent({ report, myRole }: { report: RoomReport; myRole?: "A" | "B" }) {
+function ReportContent({ report }: { report: RoomReport }) {
   const theme = useTheme();
-  const section = (title: string, lines: readonly string[]) => <View style={{ gap: theme.space.xs }}>
+  const section = (title: string, body: string) => <View style={{ gap: theme.space.xs }}>
     <Text selectable style={{ ...theme.typography.cardTitle, color: theme.color.text }}>{title}</Text>
-    {lines.map((line, index) => <Text key={`${title}-${index}`} selectable style={{ ...theme.typography.body, color: theme.color.text }}>{line}</Text>)}
+    <Text selectable style={{ ...theme.typography.body, color: theme.color.text }}>{body}</Text>
   </View>;
   return <View style={{ gap: theme.space.md }}>
     <Text accessibilityRole="header" selectable style={{ ...theme.typography.title, color: theme.color.text }}>共同报告</Text>
     {report.status === "ready" ? <>
-      {section("共同点", report.commonGround)}
-      {section("差异", report.differences)}
-      {section(`给发起人 A${myRole ? myRole === "A" ? "（给我）" : "（给对方）" : ""}：可以说 / 可以做`, report.advice.A.map((item) => `可以说：${item.say}\n可以做：${item.do}`))}
-      {section(`给受邀者 B${myRole ? myRole === "B" ? "（给我）" : "（给对方）" : ""}：可以说 / 可以做`, report.advice.B.map((item) => `可以说：${item.say}\n可以做：${item.do}`))}
-      {section("共同下一步", report.togetherNextSteps)}
-      {section("不确定处", report.uncertainties)}
+      {section("共同点与差异", report.sections.commonAndDifferences)}
+      {section("给你们的建议", report.sections.adviceForBoth)}
+      {section("接下来的建议", report.sections.nextSteps)}
     </> : <Text selectable style={{ ...theme.typography.body, color: theme.color.text }}>{report.message}</Text>}
   </View>;
 }
 
-export function RoomDetailPage({ api, roomId, onExport }: { api: RoomApi; roomId: string; onExport?: (view: View) => Promise<void> }) {
+export function RoomDetailPage({ api, roomId, onExport, onDiscuss, onRecord }: { api: RoomApi; roomId: string; onExport?: (view: View) => Promise<void>; onDiscuss?: (draft: string, scenarioId: RoomScenarioId) => void; onRecord?: (text: string, roomId: string) => void }) {
   const theme = useTheme();
   const [room, setRoom] = useState<Room | null>(null);
   const [loading, setLoading] = useState(true);
@@ -199,10 +197,15 @@ export function RoomDetailPage({ api, roomId, onExport }: { api: RoomApi; roomId
           {mayGenerateReport(room) ? <Button label="生成共同报告" loading={operation.busy} onPress={() => { void operation.run(async () => setRoom(await api.generateReport(room.id))); }} /> : null}
           {room.report ? <>
             <View collapsable={false} ref={reportView} style={{ backgroundColor: theme.color.surface, gap: theme.space.md, padding: theme.space.lg }}>
-              <ReportContent report={room.report} {...(room.myRole ? { myRole: room.myRole } : {})} />
+              <ReportContent report={room.report} />
             </View>
-            <Text selectable style={{ ...theme.typography.body, color: theme.color.textSecondary }}>导出图片仅保存到本机相册。相册权限、系统云照片或设备备份可能同步这张图片；房间不会自动替你备份导出文件。</Text>
-            {onExport && room.report.status === "ready" ? <SecondaryButton label="保存报告图片到相册" onPress={() => { const view = reportView.current; if (!view) return; setExportMessage(null); void onExport(view).then(() => setExportMessage("已保存到本机相册。"), () => setExportMessage("保存失败，请检查相册权限后重试。")); }} /> : null}
+            {room.report.status === "ready" ? <>
+              <Text selectable style={{ ...theme.typography.body, color: theme.color.textSecondary }}>导出图片仅保存到本机相册。相册权限、系统云照片或设备备份可能同步这张图片；房间不会自动替你备份导出文件。</Text>
+              {onExport ? <SecondaryButton label="导出报告（图片）" onPress={() => { const view = reportView.current; if (!view) return; setExportMessage(null); void onExport(view).then(() => setExportMessage("已保存到本机相册。"), () => setExportMessage("保存失败，请检查相册权限后重试。")); }} /> : null}
+              {onDiscuss ? <SecondaryButton label="和内界AI详细聊聊" onPress={() => { try { onDiscuss(roomReportAiDraft(room.report!), room.scenarioId); } catch { operation.setError("报告暂时无法完整带入 AI，请稍后重试。"); } }} /> : null}
+              {onRecord ? <SecondaryButton label="记录此次沟通" onPress={() => onRecord(formatRoomReport(room.report!), room.id)} /> : null}
+              <Text selectable style={{ ...theme.typography.body, color: theme.color.textSecondary }}>AI 只会预填可编辑草稿，发送前需再次确认。手记会预填主文本框并在本机保留草稿；只有你点击保存才成为记录。</Text>
+            </> : null}
             <Feedback message={exportMessage} />
           </> : null}
           <SecondaryButton label="终止房间" onPress={() => Alert.alert("终止房间？", "终止后双方都不能继续作答或生成报告。", [

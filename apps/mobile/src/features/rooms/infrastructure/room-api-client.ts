@@ -1,7 +1,7 @@
 import {
   CreateRoomResponseSchema, ReissueRoomInvitationResponseSchema, RoomListResponseSchema,
   RoomReportResponseSchema, RoomStatusResponseSchema,
-  type RoomAnswers, type RoomReport as ContractReport, type RoomStatus as ContractStatus,
+  type RoomAnswers, type PublicRoomReport as ContractReport, type RoomStatus as ContractStatus,
 } from "@cave/contracts";
 import * as ExpoCrypto from "expo-crypto";
 import type { Room, RoomApi, RoomQuestionId, RoomScenarioId, RoomReport } from "../domain/room";
@@ -24,14 +24,11 @@ function reportFromContract(report: ContractReport): RoomReport {
   if (report.status !== "ready") return { status: report.status, message: report.message };
   return {
     status: "ready",
-    commonGround: report.commonGround.map(item => item.text),
-    differences: report.differences.map(item => item.text),
-    advice: {
-      A: report.advice.A.map(({ say, do: action }) => ({ say, do: action })),
-      B: report.advice.B.map(({ say, do: action }) => ({ say, do: action })),
+    sections: {
+      commonAndDifferences: report.sections.commonAndDifferences.text,
+      adviceForBoth: report.sections.adviceForBoth.text,
+      nextSteps: report.sections.nextSteps.text,
     },
-    togetherNextSteps: report.togetherNextSteps.map(item => item.text),
-    uncertainties: report.uncertainties.map(item => item.text),
   };
 }
 

@@ -66,8 +66,11 @@ export function createFakeRoomServer() {
         saveAnswer: async (id: string, questionId: RoomQuestionId, answer: string) => {
           const room = stored(id, accountId);
           const mine = room.participants[accountId]!;
-          if (room.ended || mine.completed) throw new Error("ROOM_CLOSED");
+          if (room.ended || (mine.completed && room.report?.status !== "insufficient")) throw new Error("ROOM_CLOSED");
           mine.answers[questionId] = answer;
+          mine.completed = false;
+          mine.consent = false;
+          delete room.report;
           return project(room, accountId);
         },
         complete: async (id: string, reportConsent: boolean) => {
@@ -83,12 +86,14 @@ export function createFakeRoomServer() {
           const partner = room.partnerId ? room.participants[room.partnerId] : undefined;
           if (room.ended || !partner || !Object.values(room.participants).every((entry) => entry.completed && entry.consent)) throw new Error("NOT_READY");
           if (!room.report) {
-            const answerCount = Object.values(room.participants).flatMap((entry) => Object.values(entry.answers)).filter((answer) => answer?.trim()).length;
-            room.report = answerCount < 2
+            const enough = Object.values(room.participants).every((entry) => Object.values(entry.answers).filter((answer) => answer?.trim()).length >= 2);
+            room.report = !enough
               ? { status: "insufficient", message: "目前没有足够的双方信息生成有依据的共同报告。可以各自补充、跳过，或结束本次填写。" }
-              : { status: "ready", commonGround: ["你们都留下了可继续讨论的内容。"], differences: ["具体差异仍需由彼此确认。"],
-                  advice: { A: [{ say: "我想再确认你的想法。", do: "留出回应时间。" }], B: [{ say: "我也可以说说自己的节奏。", do: "明确表达是否愿意继续。" }] },
-                  togetherNextSteps: ["一起确认下一次讨论的时间。"], uncertainties: ["未回答的部分仍需由本人说明。"] };
+              : { status: "ready", sections: {
+                  commonAndDifferences: "你们都留下了愿意讨论的内容，关注之处也有不同。",
+                  adviceForBoth: "可以先确认彼此在意的议题和边界，留出暂停的空间。",
+                  nextSteps: "双方愿意时再选一个小步骤尝试；未回答的部分仍需分别确认。",
+                } };
           }
           return project(room, accountId);
         },
