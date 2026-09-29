@@ -313,4 +313,52 @@ describe("two-person rooms", () => {
     scripted.sections.adviceForBoth.text = "A可以说：我现在想暂停；B可以说：我会等你。双方之后再确认是否继续。";
     expect(() => validateRoomReport(scripted, input)).toThrow("unsafe-room-report");
   });
+
+  it("rejects invented relationship meaning while allowing an explicitly cited relationship concern", () => {
+    const ordinary = createRoomReportInput("pause",
+      ["希望先暂停", "担心产生误会", "停止触碰", "休息后再谈"],
+      ["愿意暂停", "担心不知时间", "尊重暂停", "之后再确认"]);
+    const report = readyReport("pause");
+    report.sections.adviceForBoth.text = "双方可共同确认暂停后的安排，避免把短暂安静理解为关系疏远，仍保留各自选择。";
+    expect(() => validateRoomReport(report, ordinary)).toThrow("ungrounded-relationship-meaning");
+
+    const explicit = createRoomReportInput("pause",
+      ["希望先暂停", "担心关系会变得疏远", "停止触碰", "休息后再谈"],
+      ["愿意暂停", "担心不知时间", "尊重暂停", "之后再确认"]);
+    expect(validateRoomReport(report, explicit).status).toBe("ready");
+  });
+
+  it("does not mark a known re-talk initiator as unknown", () => {
+    const input = createRoomReportInput("pause",
+      ["希望说停就停", "担心解释太多", "是否再谈由我另行提出", "我会先独处一会儿"],
+      ["愿意先暂停", "担心没有机会再聊", "会停止触碰", "之后等对方提出，再问是否愿意聊"]);
+    const report = readyReport("pause");
+    report.sections.nextSteps.text = "双方可以先各自休息，再谈由谁提出仍待确认；若愿意，之后再核对边界与交流时间。";
+    expect(() => validateRoomReport(report, input)).toThrow("known-retalk-initiator-marked-unknown");
+    report.sections.nextSteps.text = "双方可以先各自休息，由先提出暂停的一方发起再谈；届时是否继续交流仍由双方选择。";
+    expect(validateRoomReport(report, input).status).toBe("ready");
+  });
+
+  it.each([
+    "沟通时不把过夜或回家与关系含义挂钩，只谈当晚的实际安排和双方愿意保留的选择。",
+    "这次回家并不意味着拒绝关系或关系变淡，双方可以在愿意时再确认晚饭和留宿安排。",
+  ])("rejects an overnight report with unsupported relationship meaning: %s", async advice => {
+    const input = createRoomReportInput("first-overnight",
+      ["想一起做饭聊天，晚上能各自休息。", "我睡眠浅，怕临时住下会睡不好。", "这次不想有性行为；疲惫时想回家。", "希望对方听到我想回家时说好。"],
+      ["想一起吃晚饭，看看能否待到第二天。", "担心提议留宿会给对方压力。", "不把过夜当作亲密行为的承诺。", "可以先定晚饭，之后再问是否留宿。"]);
+    const report = readyReport("first-overnight");
+    report.sections.adviceForBoth.text = advice;
+    await expect(createRoomReportProvider(async () => report).generate(input, new AbortController().signal))
+      .rejects.toMatchObject({ code: "INVALID_MODEL_OUTPUT", status: 502 });
+  });
+
+  it("rejects a closeness report that copies a quoted user phrase or scripts a line", async () => {
+    const input = createRoomReportInput("adjust",
+      ["想散步聊天，身体接触先少一点。", "担心慢一点被理解成迟早答应拥抱。", "现在不想拥抱，牵手也不确定。", "希望对方说可以不碰，这周先散步。"],
+      ["想多一些陪伴，一起散步也好。", "担心问太多会打断相处。", "不会在未确认前拥抱或牵手。", "可以先说我们先散步，需要触碰时再问。"]);
+    const report = readyReport("adjust");
+    report.sections.adviceForBoth.text = "双方可以讨论散步与触碰前的确认；A 担心“慢一点”被误会，B 可说“我们先散步”。";
+    await expect(createRoomReportProvider(async () => report).generate(input, new AbortController().signal))
+      .rejects.toMatchObject({ code: "INVALID_MODEL_OUTPUT", status: 502 });
+  });
 });
