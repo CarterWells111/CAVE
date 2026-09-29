@@ -17,4 +17,18 @@ describe("shared deployed AI configuration", () => {
     expect(packageJson.scripts["dev:live"]).toBe("wrangler dev");
     expect(packageJson.scripts.deploy).toBe("wrangler deploy");
   });
+  it("isolates staging routing, D1, rate limits and deployment commands", () => {
+    const staging = config.env.staging;
+    expect(staging.name).toBe("neijie-cave-gateway-staging");
+    expect(staging.workers_dev).toBe(false);
+    expect(staging.routes).toEqual([{ pattern: "staging-api.neijiecave.com", zone_name: "neijiecave.com", custom_domain: true }]);
+    expect(staging.d1_databases).toEqual([{ binding: "AUTH_DB", database_name: "neijie-cave-auth-staging", database_id: "014af9e1-ebb2-4b46-aaf2-c9ce2b4de6e6", migrations_dir: "migrations" }]);
+    expect(staging.d1_databases[0].database_id).not.toBe(config.d1_databases[0].database_id);
+    expect(staging.vars.MODEL_MODE).toBe("mock");
+    expect(staging.vars).not.toHaveProperty("MODEL_API_KEY");
+    expect(new Set(staging.ratelimits.map((limit: { namespace_id: string }) => limit.namespace_id)).size).toBe(staging.ratelimits.length);
+    expect(staging.ratelimits.map((limit: { namespace_id: string }) => limit.namespace_id)).not.toEqual(config.ratelimits.map((limit: { namespace_id: string }) => limit.namespace_id));
+    expect(packageJson.scripts["deploy:staging"]).toBe("node scripts/run-staging.mjs deploy");
+    expect(packageJson.scripts["migrate:staging"]).toBe("node scripts/run-staging.mjs migrate");
+  });
 });
