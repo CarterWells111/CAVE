@@ -23,6 +23,13 @@ const SELF_INITIATES = /(?:由我|我来|我会|我再|等我|我主动).{0,12}(
 const OTHER_INITIATES = /(?:由对方|等对方|对方来|对方会|对方主动).{0,12}(?:提出|发起|联系|找)|(?:再谈|再聊).{0,10}(?:由对方|等对方|对方来|对方主动)/iu;
 const UNKNOWN_INITIATOR = /(?:由谁|谁来|谁|哪一方|发起者).{0,18}(?:未定|未知|不确定|待确认|不清楚|尚未明确|没有明确)|(?:未定|未知|不确定|待确认|不清楚|尚未明确|没有明确).{0,18}(?:由谁|谁来|哪一方|发起者)/iu;
 const UNKNOWN_WAIT_ACCEPTANCE = /(?:是否|能否|愿不愿意|会不会)(?:接受|同意|愿意)?(?:等|等待)|(?:等|等待).{0,12}(?:是否|能否)(?:被)?(?:接受|同意)/iu;
+const OVERNIGHT_PRESSURE = /(?:留宿|过夜|住下).{0,12}(?:压力|施压)|(?:压力|施压).{0,12}(?:留宿|过夜|住下)/iu;
+const SHARED_OVERNIGHT_PRESSURE = /(?:双方|两人|二人).{0,16}(?:都|均).{0,20}(?:留宿|过夜|住下).{0,12}(?:压力|施压)/iu;
+const ACCEPTS_OTHER_RETURN = /(?:对方|另一方|任一方|任何一方)(?:想|要|决定|提出)?回家.{0,8}(?:可|可以|会|就|愿意)?(?:停|结束|同意|接受|好)/iu;
+const SHARED_RETURN_RESPONSE = /(?:双方|两人|二人).{0,55}(?:都|均)(?:表示|认为|承诺|同意).{0,10}(?:对方|另一方|任一方|任何一方)(?:想|要|决定|提出)?回家.{0,8}(?:可|可以|会|就|愿意)?(?:停|结束)/iu;
+const ASKS_ME_BEFORE_TOUCH = /(?:先问我|先询问我|先征求我|问过我)/iu;
+const OFFERS_TO_ASK_BEFORE_TOUCH = /(?:需要|想|要|打算).{0,6}(?:触碰|牵手|拥抱).{0,8}(?:再|先)?(?:问|询问|征求)/iu;
+const UNKNOWN_TOUCH_ASKER = /(?:由谁|谁来|哪一方).{0,10}(?:先)?(?:问|询问|开口)/iu;
 const PAUSED_MESSAGE = "这次暂不生成共同报告。请先在各自安全、自在的条件下决定是否继续使用；不需要为了完成报告而继续讨论。";
 const INSUFFICIENT_MESSAGE = "目前没有足够的双方信息生成有依据的共同报告。可以各自补充、跳过，或结束本次填写。";
 
@@ -63,6 +70,13 @@ function agreedRetalkWait(input: RoomReportInput): boolean {
     || (has("B", SELF_INITIATES) && has("A", OTHER_INITIATES));
 }
 
+function knownTouchAsker(input: RoomReportInput): boolean {
+  const agreed = (recipient: "A" | "B", asker: "A" | "B") =>
+    Boolean(input.answers[recipient].boundary && ASKS_ME_BEFORE_TOUCH.test(input.answers[recipient].boundary))
+    && Boolean(input.answers[asker].response_next_step && OFFERS_TO_ASK_BEFORE_TOUCH.test(input.answers[asker].response_next_step));
+  return agreed("A", "B") || agreed("B", "A");
+}
+
 export function safetyPause(input: RoomReportInput): RoomReport | null {
   if (!answerValues(input).some(value => UNSAFE.test(value) || NARRATIVE_RISK.test(value))) return null;
   return { version: "paired-report-v0.2", scenarioId: input.scenarioId, status: "paused", message: PAUSED_MESSAGE };
@@ -82,6 +96,7 @@ export function validateRoomReport(value: unknown, input: RoomReportInput): Room
   const { commonAndDifferences, adviceForBoth, nextSteps } = report.sections;
   const retalkInitiator = knownRetalkInitiator(input);
   const retalkWaitAgreed = Boolean(retalkInitiator && agreedRetalkWait(input));
+  const touchAskerKnown = input.scenarioId === "adjust" && knownTouchAsker(input);
   if (!commonAndDifferences.evidence.some(id => id.startsWith("A."))
     || !commonAndDifferences.evidence.some(id => id.startsWith("B."))) throw new Error("room-report-both-sides-required");
   for (const section of [commonAndDifferences, adviceForBoth, nextSteps]) {
@@ -92,22 +107,36 @@ export function validateRoomReport(value: unknown, input: RoomReportInput): Room
     if (!isChineseProse(text) || INSTRUCTION.test(text) || SCRIPT.test(text) || MARKUP.test(text)) throw new Error("unsafe-room-report");
     if (retalkInitiator && marksRetalkInitiatorUnknown(text)) throw new Error("known-retalk-initiator-marked-unknown");
     if (retalkWaitAgreed && UNKNOWN_WAIT_ACCEPTANCE.test(text)) throw new Error("agreed-retalk-wait-marked-unknown");
+    if (touchAskerKnown && text.split(/[。；]/u).some(sentence =>
+      /触碰|牵手|拥抱|身体接触/iu.test(sentence) && UNKNOWN_TOUCH_ASKER.test(sentence)
+      && /待确认|需确认|尚未明确|未定|未知|不确定|讨论|商量/iu.test(sentence))) {
+      throw new Error("known-touch-asker-marked-unknown");
+    }
     const plain = text.replace(/\s+/gu, "");
     if (answerValues(input).some(answer => {
       const source = answer.replace(/\s+/gu, "");
       return source.length >= 4 && (plain.includes(source)
         || (source.length >= 16 && Array.from({ length: source.length - 15 }, (_value, index) => source.slice(index, index + 16)).some(fragment => plain.includes(fragment))));
     })) throw new Error("verbatim-room-report");
-    const citedAnswers: string[] = [];
+    const citedAnswers: { A: string[]; B: string[] } = { A: [], B: [] };
     for (const id of section.evidence) {
-      const fields = id.startsWith("A.") ? input.answers.A : input.answers.B;
+      const side = id.startsWith("A.") ? "A" : "B";
+      const fields = input.answers[side];
       const key = id.slice(2) as AnswerKey;
       const cited = fields[key];
       if (!cited) throw new Error("ungrounded-room-report");
-      citedAnswers.push(cited);
+      citedAnswers[side].push(cited);
     }
-    if (RELATIONSHIP_MEANING.test(text) && !citedAnswers.some(answer => RELATIONSHIP_MEANING.test(answer))) {
+    if (RELATIONSHIP_MEANING.test(text) && ![...citedAnswers.A, ...citedAnswers.B].some(answer => RELATIONSHIP_MEANING.test(answer))) {
       throw new Error("ungrounded-relationship-meaning");
+    }
+    const citedByBoth = (pattern: RegExp) => citedAnswers.A.some(answer => pattern.test(answer))
+      && citedAnswers.B.some(answer => pattern.test(answer));
+    if (input.scenarioId === "first-overnight" && SHARED_OVERNIGHT_PRESSURE.test(text) && !citedByBoth(OVERNIGHT_PRESSURE)) {
+      throw new Error("one-sided-overnight-pressure-marked-shared");
+    }
+    if (input.scenarioId === "first-overnight" && SHARED_RETURN_RESPONSE.test(text) && !citedByBoth(ACCEPTS_OTHER_RETURN)) {
+      throw new Error("one-sided-return-response-marked-shared");
     }
   }
   return report;

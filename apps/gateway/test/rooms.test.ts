@@ -360,6 +360,46 @@ describe("two-person rooms", () => {
     expect(validateRoomReport(report, oneSided).status).toBe("ready");
   });
 
+  it("rejects an overnight concern or response falsely attributed to both people", async () => {
+    const input = createRoomReportInput("first-overnight",
+      ["想一起做饭、聊天，晚上能各自休息。", "我睡眠浅，怕临时决定住下会睡不好。", "这次不想有性行为；如果疲惫，我想随时回家。", "希望对方听到我想回家时说好。可以先约好结束时间。"],
+      ["想一起吃晚饭，看看能不能自然地待到第二天。", "担心提议留宿会给对方压力。", "不把过夜当作任何亲密行为的承诺；对方想回家就停。", "希望能直接知道对方是否想留宿。可以先确定晚饭，之后再问一次。"]);
+    const report = readyReport("first-overnight");
+    report.sections.commonAndDifferences.text = "双方都提到一起吃饭、聊天，也都在意是否留宿带来的压力，并都表示对方想回家时可停下。";
+    report.sections.commonAndDifferences.evidence = ["A.expectation", "A.concern", "A.boundary", "A.response_next_step", "B.expectation", "B.concern", "B.boundary"] as ["A.expectation", "B.expectation"];
+    expect(() => validateRoomReport(report, input)).toThrow("one-sided-overnight-pressure-marked-shared");
+    await expect(createRoomReportProvider(async () => report).generate(input, new AbortController().signal))
+      .rejects.toMatchObject({ code: "INVALID_MODEL_OUTPUT", status: 502 });
+
+    report.sections.commonAndDifferences.text = "双方都表示对方想回家时可停下，晚饭和留宿仍可以分开确认。";
+    expect(() => validateRoomReport(report, input)).toThrow("one-sided-return-response-marked-shared");
+
+    const bothRespond = createRoomReportInput("first-overnight",
+      ["想一起做饭、聊天，晚上能各自休息。", "担心留宿会给彼此压力。", "这次不想有性行为；对方想回家就停。", "可以先约好结束时间。"],
+      ["想一起吃晚饭，看看能不能自然地待到第二天。", "担心提议留宿会给对方压力。", "对方想回家就停。", "可以先确定晚饭，之后再问一次。"]);
+    expect(validateRoomReport(report, bothRespond).status).toBe("ready");
+    report.sections.commonAndDifferences.text = "双方都在意留宿带来的压力，也希望先把晚饭安排说清楚。";
+    expect(validateRoomReport(report, bothRespond).status).toBe("ready");
+  });
+
+  it("rejects an unknown touch asker only when both answers establish who asks", () => {
+    const agreed = createRoomReportInput("adjust",
+      ["想散步聊天，身体接触先少一点。", "担心慢一点被误会。", "现在不想拥抱；牵手也暂不确定，先问我。", "这周先一起散步。"],
+      ["想多一些陪伴，一起散步也好。", "担心问太多会打断相处。", "不会在未确认前拥抱或牵手。", "我可以先提议散步，需要触碰时再问。"]);
+    const report = readyReport("adjust");
+    report.sections.nextSteps.text = "双方愿意时可以先一起散步；仍待确认的是牵手是否接受，以及触碰前由谁先开口更自在。";
+    report.sections.nextSteps.evidence = ["A.boundary", "B.response_next_step"] as ["A.response_next_step", "B.response_next_step"];
+    expect(() => validateRoomReport(report, agreed)).toThrow("known-touch-asker-marked-unknown");
+    report.sections.nextSteps.text = "双方愿意时可以先一起散步；触碰前由另一方先问，牵手是否接受仍待确认。";
+    expect(validateRoomReport(report, agreed).status).toBe("ready");
+
+    const oneSided = createRoomReportInput("adjust",
+      ["想散步聊天，身体接触先少一点。", "担心慢一点被误会。", "现在不想拥抱；牵手也暂不确定，先问我。", "这周先一起散步。"],
+      ["想多一些陪伴，一起散步也好。", "担心问太多会打断相处。", "不会在未确认前拥抱或牵手。", "先散步，之后再商量触碰安排。"]);
+    report.sections.nextSteps.text = "双方愿意时可以先一起散步；仍待确认的是牵手是否接受，以及触碰前由谁先开口更自在。";
+    expect(validateRoomReport(report, oneSided).status).toBe("ready");
+  });
+
   it.each([
     "沟通时不把过夜或回家与关系含义挂钩，只谈当晚的实际安排和双方愿意保留的选择。",
     "这次回家并不意味着拒绝关系或关系变淡，双方可以在愿意时再确认晚饭和留宿安排。",
