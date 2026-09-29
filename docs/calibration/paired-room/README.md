@@ -1,6 +1,6 @@
-# 双人情景房间 AI 报告校准草案
+# 双人情景房间 AI 报告校准
 
-状态：`review_draft`；当前草案版本：`paired-report-v0.2`；基线：`origin/main@1ee5348`（2026-09-29 抓取后核对）。本文档和同目录文件仅供逐轮人工审阅，不接入房间 API、App 或官网，也不表示提示词已定稿。
+状态：三段报告与页面动作标准已获用户确认；模型提示词仍须经过服务端发布前校验。当前版本：`paired-report-v0.2`（修订 5）；基线：`origin/main@1ee5348`（2026-09-29 抓取后核对）。本文档和同目录文件记录校准依据，页面与房间 API 的接线由整合分支负责。
 
 ## 本轮范围与验收
 
@@ -32,6 +32,6 @@
 
 `cases.json` 全为人工合成，不含真实用户内容。最初本机没有可用模型密钥；用户随后自行将密钥输入 Git 忽略的 `apps/gateway/.dev.vars`，并授权合成样例测试。密钥没有进入仓库、测试记录或终端输出。
 
-2026-09-29 使用 `scripts/run_paired_room_model_calibration.py` 直接调用 DeepSeek `/chat/completions`：请求模型为仓库当前配置的 `deepseek-v4-flash`，接口返回 `deepseek-flash`。默认推理的一次连通性测试将 2,000 个 token 全用于推理，最终内容为空，见 [失败记录](model-runs/2026-09-29-default-thinking-failure.json)。根据 [DeepSeek 推理模式说明](https://api-docs.deepseek.com/guides/thinking_mode/)显式关闭推理后，`v0.1` 单例成功；随后 8 个合成样例各调用三次，24/24 返回可解析且符合当时 JSON Schema 的结果，证据 ID 均指向非空输入，状态与人工期望一致。完整输入和输出见 [第一轮审阅稿](review-round-1.md)，原始输出、模型返回名、参数和版本散列见 [v0.1 运行记录](model-runs/2026-09-29-nonthinking-3x.json)。这批结果仅代表 `v0.1`，不能用于宣称 `v0.2` 通过。用户反馈要求改成三段、正文不显示引用、不代写双方台词，因此另行修订和复测。所有机器检查都不代表事实表述、建议质量或安全性已通过人工评审；等待用户逐轮反馈，不将提示词标为定稿。
+2026-09-29 使用 `scripts/run_paired_room_model_calibration.py` 直接调用 DeepSeek `/chat/completions`：请求模型为仓库当前配置的 `deepseek-v4-flash`，接口返回 `deepseek-flash`。默认推理的一次连通性测试将 2,000 个 token 全用于推理，最终内容为空，见 [失败记录](model-runs/2026-09-29-default-thinking-failure.json)。根据 [DeepSeek 推理模式说明](https://api-docs.deepseek.com/guides/thinking_mode/)显式关闭推理后，`v0.1` 单例成功；随后 8 个合成样例各调用三次，24/24 返回可解析且符合当时 JSON Schema 的结果，证据 ID 均指向非空输入，状态与人工期望一致。完整输入和输出见 [第一轮审阅稿](review-round-1.md)，原始输出、模型返回名、参数和版本散列见 [v0.1 运行记录](model-runs/2026-09-29-nonthinking-3x.json)。这批结果仅代表 `v0.1`，不能用于宣称 `v0.2` 通过。用户反馈要求改成三段、正文不显示引用、不代写双方台词，因此另行修订和复测。所有机器检查都不代表事实表述、建议质量或安全性已通过人工评审；当时等待用户逐轮反馈，未将提示词标为定稿。
 
-`v0.2` 三段结构的修订 2 再次对 8 组合成输入各调用三次；24/24 通过 JSON Schema、证据 ID、正文引用/台词形式和预期状态的机器检查，最大三段正文合计 404 字。完整结果见 [第二轮审阅稿](review-round-2.md)与 [原始运行记录](model-runs/2026-09-29-v0.2-r2-nonthinking-3x.json)。人工阅读仍发现少量未由输入支持的关系含义，以及把已明确的再谈发起者说成待确认的句子；因此尚未达到量表的无硬性失败要求，继续等待用户逐项评审。第一次 `v0.2` 试跑及一次显示检查误报修正保留在 [历史运行记录](model-runs/2026-09-29-v0.2-nonthinking-3x.json)。
+`v0.2` 三段结构的修订 2 再次对 8 组合成输入各调用三次；24/24 通过 JSON Schema、证据 ID、正文引用/台词形式和预期状态的机器检查，最大三段正文合计 404 字。完整结果见 [第二轮审阅稿](review-round-2.md)与 [原始运行记录](model-runs/2026-09-29-v0.2-r2-nonthinking-3x.json)。人工阅读仍发现少量未由输入支持的关系含义，以及把已明确的再谈发起者说成待确认的句子；因此尚未达到量表的无硬性失败要求，用户随后确认了三段呈现标准；模型语义问题和后续复测见 [第三轮记录](review-round-3.md)。第一次 `v0.2` 试跑及一次显示检查误报修正保留在 [历史运行记录](model-runs/2026-09-29-v0.2-nonthinking-3x.json)。

@@ -45,12 +45,13 @@ def validate_candidate(candidate, case):
     try:
         import jsonschema
     except ImportError:
-        return {"json": True, "schema": "not_checked", "evidence": "not_checked", "visibleText": "not_checked", "statusMatchesExpected": candidate.get("status") == case["expected"]["status"]}
+        return {"json": True, "schema": "not_checked", "evidence": "not_checked", "visibleText": "not_checked", "unsupportedRelationshipMeaning": "not_checked", "statusMatchesExpected": candidate.get("status") == case["expected"]["status"]}
 
     schema = json.loads((CALIBRATION / "report.schema.json").read_text(encoding="utf-8"))
     errors = list(jsonschema.Draft202012Validator(schema).iter_errors(candidate))
     evidence_valid = True
     visible_text_valid = True
+    unsupported_relationship_meaning = False
     if candidate.get("status") == "ready":
         sections = candidate.get("sections", {})
         if not isinstance(sections, dict):
@@ -70,7 +71,11 @@ def validate_candidate(candidate, case):
                         evidence_valid = False
                 except (ValueError, KeyError, TypeError):
                     evidence_valid = False
-    return {"json": True, "schema": not errors, "schemaErrorCount": len(errors), "evidence": evidence_valid, "visibleText": visible_text_valid, "statusMatchesExpected": candidate.get("status") == case["expected"]["status"]}
+        answer_text = " ".join(str(value or "") for participant in case["input"]["answers"].values() for value in participant.values())
+        section_text = " ".join(str(item.get("text", "")) for item in sections.values() if isinstance(item, dict))
+        if not re.search(r"关系|疏远|变淡|拒绝关系|不爱", answer_text):
+            unsupported_relationship_meaning = bool(re.search(r"关系|疏远|(?:回家|暂停|停下|不碰|停止).{0,12}(?:理解|看成|当作|视为).{0,8}(?:拒绝|否定)", section_text))
+    return {"json": True, "schema": not errors, "schemaErrorCount": len(errors), "evidence": evidence_valid, "visibleText": visible_text_valid, "unsupportedRelationshipMeaning": unsupported_relationship_meaning, "statusMatchesExpected": candidate.get("status") == case["expected"]["status"]}
 
 
 def run_one(key, system_prompt, case):
@@ -109,7 +114,7 @@ def run_one(key, system_prompt, case):
             record["candidate"] = candidate
             record["checks"] = validate_candidate(candidate, case)
         except (ValueError, TypeError):
-            record["checks"] = {"json": False, "schema": False, "evidence": False, "visibleText": False, "statusMatchesExpected": False}
+            record["checks"] = {"json": False, "schema": False, "evidence": False, "visibleText": False, "unsupportedRelationshipMeaning": "not_checked", "statusMatchesExpected": False}
         return record
     except urllib.error.HTTPError as error:
         error.close()
@@ -145,7 +150,7 @@ def main():
         "thinking": THINKING,
         "maxTokens": MAX_TOKENS,
         "promptVersion": "paired-report-v0.2",
-        "promptRevision": "2",
+        "promptRevision": "5",
         "promptSha256": hashlib.sha256(prompt_bytes).hexdigest(),
         "schemaSha256": hashlib.sha256(schema_bytes).hexdigest(),
         "casesSha256": hashlib.sha256(cases_bytes).hexdigest(),
