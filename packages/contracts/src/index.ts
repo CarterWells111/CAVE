@@ -82,3 +82,16 @@ export type {
 } from "./practice";
 export { SafetyDecisionSchema } from "./safety";
 export type { SafetyDecision } from "./safety";
+export {
+  RoomScenarioSchema, RoomAnswersSchema, CreateRoomRequestSchema, JoinRoomRequestSchema,
+  SaveRoomAnswersRequestSchema, CompleteRoomAnswersRequestSchema, RoomActionRequestSchema,
+  RoomStatusSchema, RoomStatusResponseSchema, RoomListResponseSchema, CreateRoomResponseSchema,
+  ReissueRoomInvitationResponseSchema,
+  RoomReportSchema, RoomReportResponseSchema,
+} from "./rooms";
+export type {
+  RoomScenario, RoomAnswers, CreateRoomRequest, JoinRoomRequest,
+  SaveRoomAnswersRequest, CompleteRoomAnswersRequest, RoomStatus,
+  RoomStatusResponse, RoomListResponse, CreateRoomResponse, RoomReport, RoomReportResponse,
+  ReissueRoomInvitationResponse,
+} from "./rooms";

@@ -1,0 +1,269 @@
+import { describe, expect, it, vi } from "vitest";
+import { createRoomCipher } from "../src/rooms/crypto";
+import { safetyPause, validateRoomReport, type RoomReportProvider } from "../src/rooms/report-provider";
+import { createRoomService } from "../src/rooms/service";
+import type { RoomRepository, RoomRow } from "../src/rooms/repository";
+import { digestOpaqueToken } from "../src/auth/crypto";
+import type { AuthRepository } from "../src/auth/repository";
+
+const requestId = "6cc380dd-f5b0-4e39-bac4-54fa9b4abcc1";
+const answers = ["自己的界限", "希望慢一点", "可以暂停", "先确认感受"] as const;
+const secret = "ab".repeat(32);
+
+async function harness(overrideProvider?: RoomReportProvider) {
+  let current = Date.parse("2026-09-29T00:00:00.000Z");
+  const adult = [true, true, true];
+  const rows = new Map<string, RoomRow>();
+  const ids = [crypto.randomUUID(), crypto.randomUUID(), crypto.randomUUID()];
+  const tokens = ["cave_at_" + "a".repeat(43), "cave_at_" + "b".repeat(43), "cave_at_" + "c".repeat(43)];
+  const digests = await Promise.all(tokens.map(digestOpaqueToken));
+  const auth = {
+    async findSessionByAccessDigest(digest: string) {
+      const index = digests.indexOf(digest);
+      return index < 0 ? null : { id: crypto.randomUUID(), accountId: ids[index], accessDigest: digest,
+        accessExpiresAt: new Date(current + 60_000).toISOString(), refreshDigest: "", refreshExpiresAt: "",
+        createdAt: "", lastSeenAt: "" };
+    },
+    async findAccountById(id: string) {
+      const index = ids.indexOf(id);
+      return index < 0 ? null : { id, emailLookup: `email-digest-${index}`, emailKeyVersion: 1, createdAt: "" };
+    },
+  } as Pick<AuthRepository, "findSessionByAccessDigest" | "findAccountById">;
+  const rooms: RoomRepository = {
+    async create(input) { rows.set(input.id, {
+      id: input.id, scenario: input.scenario, owner_account_id: input.ownerId, invitee_account_id: null, invitation_digest: input.invitationDigest,
+      invitation_expires_at: input.invitationExpiresAt, expires_at: input.expiresAt, joined_at: null,
+      owner_answers_ciphertext: null, invitee_answers_ciphertext: null, owner_completed_at: null,
+      invitee_completed_at: null, report_ciphertext: null, report_status: "waiting", generation_claim: null, generation_lease_until: null,
+    }); },
+    async get(id) { return rows.get(id) ?? null; },
+    async listForAccount(accountId, now, limit) { return [...rows.values()].filter(row => row.expires_at > now && (row.owner_account_id === accountId || (row.invitee_account_id === accountId && !!row.joined_at))).slice(0, limit); },
+    async findByInvitationDigest(digest) { return [...rows.values()].find(row => row.invitation_digest === digest) ?? null; },
+    async join(id, accountId, digest, now) {
+      const row = rows.get(id);
+      if (!row || row.owner_account_id === accountId || row.joined_at || row.invitation_digest !== digest
+        || row.invitation_expires_at <= now || row.expires_at <= now
+        || (row.invitee_account_id && row.invitee_account_id !== accountId)) return false;
+      row.invitee_account_id = accountId; row.joined_at = now; return true;
+    },
+    async reissueInvitation(id, ownerId, digest, expiresAt, now) {
+      const row = rows.get(id);
+      if (!row || row.owner_account_id !== ownerId || row.joined_at || row.expires_at <= now) return false;
+      row.invitation_digest = digest; row.invitation_expires_at = expiresAt; return true;
+    },
+    async save(id, accountId, role, ciphertext, now) {
+      const row = rows.get(id);
+      if (!row || row.expires_at <= now || (role === "owner" ? row.owner_account_id : row.invitee_account_id) !== accountId
+        || (role === "invitee" && !row.joined_at)) return false;
+      row[role === "owner" ? "owner_answers_ciphertext" : "invitee_answers_ciphertext"] = ciphertext;
+      row[role === "owner" ? "owner_completed_at" : "invitee_completed_at"] = null;
+      row.report_ciphertext = null; row.report_status = "waiting"; row.generation_claim = null; row.generation_lease_until = null;
+      return true;
+    },
+    async complete(id, accountId, role, now) {
+      const row = rows.get(id);
+      if (!row || row.expires_at <= now || row.report_status !== "waiting" || (role === "owner" ? row.owner_account_id : row.invitee_account_id) !== accountId
+        || (role === "invitee" && !row.joined_at) || !(role === "owner" ? row.owner_answers_ciphertext : row.invitee_answers_ciphertext)
+        || (role === "owner" ? row.owner_completed_at : row.invitee_completed_at)) return false;
+      row[role === "owner" ? "owner_completed_at" : "invitee_completed_at"] = now; return true;
+    },
+    async claim(id, claim, now, lease) {
+      const row = rows.get(id);
+      if (!row || row.expires_at <= now || !row.joined_at || !row.owner_completed_at || !row.invitee_completed_at
+        || (row.report_status !== "waiting" && !(row.report_status === "generating" && row.generation_lease_until! < now))) return false;
+      row.report_status = "generating"; row.generation_claim = claim; row.generation_lease_until = lease; return true;
+    },
+    async finish(id, claim, ciphertext, status, now) {
+      const row = rows.get(id);
+      if (!row || row.generation_claim !== claim || row.expires_at <= now || !row.owner_completed_at || !row.invitee_completed_at) return false;
+      row.report_status = status; row.report_ciphertext = ciphertext; row.generation_claim = null; return true;
+    },
+    async release(id, claim) { const row = rows.get(id); if (row?.generation_claim === claim) { row.report_status = "waiting"; row.generation_claim = null; } },
+    async terminate(id, accountId) { const row = rows.get(id); if (!row || (row.owner_account_id !== accountId && !(row.invitee_account_id === accountId && row.joined_at))) return false; rows.delete(id); return true; },
+    async cleanupExpired(now) { for (const [id, row] of rows) if (row.expires_at <= now) rows.delete(id); return false; },
+  };
+  const generate = vi.fn(async (input: { scenario: "pause" | "adjust" | "first-overnight" }) => ({
+    version: "paired-report-v0.1" as const, scenarioId: input.scenario, status: "ready" as const,
+    commonGround: [{ text: "双方都提供了信息。", evidence: ["A.expectation", "B.expectation"] as ["A.expectation", "B.expectation"] }],
+    differences: [{ text: "双方关注点不同。", evidence: ["A.concern", "B.concern"] as ["A.concern", "B.concern"] }],
+    advice: {
+      A: [{ say: "我想听听你的想法。", do: "留出暂停空间。", evidence: ["A.expectation"] as ["A.expectation"] }],
+      B: [{ say: "我想表达自己的想法。", do: "确认自己的边界。", evidence: ["B.expectation"] as ["B.expectation"] }],
+    },
+    togetherNextSteps: [{ text: "继续确认想法。", evidence: ["A.expectation", "B.expectation"] as ["A.expectation", "B.expectation"] }],
+    uncertainties: [{ text: "后续选择尚不确定。", evidence: ["A.concern", "B.concern"] as ["A.concern", "B.concern"] }],
+  }));
+  const preferences = { async get(accountId: string) { return { ageConfirmed: adult[ids.indexOf(accountId)] ?? false, addressPreference: null, updatedAt: null, revision: 0 }; } };
+  const creators = new Set([ids[0]]);
+  const service = createRoomService({ auth, preferences, rooms, cipher: createRoomCipher(secret), reportProvider: overrideProvider ?? { generate }, creatorAccountIds: creators, now: () => current });
+  return { service, rows, tokens, generate, adult, creators, advance: (days: number) => { current += days * 86_400_000; } };
+}
+
+describe("two-person rooms", () => {
+  it("keeps drafts private, requires both explicit completions, and generates once", async () => {
+    const { service, rows, tokens, generate } = await harness();
+    const created = await service.create(tokens[0], { contractVersion: "1", requestId, scenario: "pause", adultConfirmed: true });
+    const id = created.room.id;
+    await service.save(tokens[0], id, { contractVersion: "1", requestId, answers: [...answers] });
+    await expect(service.report(tokens[0], id, requestId)).rejects.toMatchObject({ code: "ROOM_NOT_READY" });
+    await service.join(tokens[1], { contractVersion: "1", requestId, invitationToken: created.invitationToken, adultConfirmed: true });
+    const guest = await service.get(tokens[1], id, requestId);
+    expect(guest.ownAnswers).toBeNull();
+    expect(JSON.stringify(guest)).not.toContain(answers[0]);
+    expect(JSON.stringify([...rows.values()])).not.toContain(answers[0]);
+    await expect(service.get(tokens[2], id, requestId)).rejects.toMatchObject({ code: "ROOM_NOT_FOUND" });
+    await service.save(tokens[1], id, { contractVersion: "1", requestId, answers: ["另一人", "愿意", "保持边界", "再沟通"] });
+    await service.complete(tokens[0], id, { contractVersion: "1", requestId, authorizeSharedReport: true });
+    await expect(service.report(tokens[0], id, requestId)).rejects.toMatchObject({ code: "ROOM_NOT_READY" });
+    await service.complete(tokens[1], id, { contractVersion: "1", requestId, authorizeSharedReport: true });
+    await Promise.all([service.report(tokens[0], id, requestId), service.report(tokens[1], id, requestId).catch(() => undefined)]);
+    expect((await service.report(tokens[1], id, requestId)).report.status).toBe("ready");
+    expect(generate).toHaveBeenCalledTimes(1);
+    await service.save(tokens[0], id, { contractVersion: "1", requestId, answers: [...answers] });
+    await expect(service.report(tokens[1], id, requestId)).rejects.toMatchObject({ code: "ROOM_NOT_READY" });
+    await service.complete(tokens[0], id, { contractVersion: "1", requestId, authorizeSharedReport: true });
+    await service.report(tokens[1], id, requestId);
+    expect(generate).toHaveBeenCalledTimes(2);
+  });
+
+  it("rejects wrong identity or token, deletes both sides, and expires invite and room", async () => {
+    const { service, rows, tokens, advance } = await harness();
+    const created = await service.create(tokens[0], { contractVersion: "1", requestId, scenario: "adjust", adultConfirmed: true });
+    await expect(service.join(tokens[0], { contractVersion: "1", requestId, invitationToken: created.invitationToken, adultConfirmed: true })).rejects.toMatchObject({ code: "ROOM_INVITATION_INVALID" });
+    await expect(service.join(tokens[1], { contractVersion: "1", requestId, invitationToken: "cave_ri_" + "x".repeat(43), adultConfirmed: true })).rejects.toMatchObject({ code: "ROOM_INVITATION_INVALID" });
+    advance(8);
+    await expect(service.join(tokens[1], { contractVersion: "1", requestId, invitationToken: created.invitationToken, adultConfirmed: true })).rejects.toMatchObject({ code: "ROOM_INVITATION_INVALID" });
+    const next = await service.create(tokens[0], { contractVersion: "1", requestId, scenario: "first-overnight", adultConfirmed: true });
+    await service.join(tokens[1], { contractVersion: "1", requestId, invitationToken: next.invitationToken, adultConfirmed: true });
+    await service.terminate(tokens[1], next.room.id);
+    expect(rows.has(next.room.id)).toBe(false);
+    await expect(service.get(tokens[0], next.room.id, requestId)).rejects.toMatchObject({ code: "ROOM_NOT_FOUND" });
+    advance(31);
+    await expect(service.get(tokens[0], created.room.id, requestId)).rejects.toMatchObject({ code: "ROOM_NOT_FOUND" });
+  });
+
+  it("lets only an unjoined room owner reissue an invitation and revokes the old token", async () => {
+    const { service, tokens } = await harness();
+    const created = await service.create(tokens[0], { contractVersion: "1", requestId, scenario: "pause", adultConfirmed: true });
+    await expect(service.reissueInvitation(tokens[2], created.room.id, requestId)).rejects.toMatchObject({ code: "ROOM_NOT_FOUND" });
+    const renewed = await service.reissueInvitation(tokens[0], created.room.id, requestId);
+    await expect(service.join(tokens[1], { contractVersion: "1", requestId, invitationToken: created.invitationToken, adultConfirmed: true })).rejects.toMatchObject({ code: "ROOM_INVITATION_INVALID" });
+    await service.join(tokens[1], { contractVersion: "1", requestId, invitationToken: renewed.invitationToken, adultConfirmed: true });
+    await expect(service.reissueInvitation(tokens[0], created.room.id, requestId)).rejects.toMatchObject({ code: "ROOM_CONFLICT" });
+  });
+
+  it("uses persisted account age confirmation and lists only the caller's answers", async () => {
+    const { service, tokens, adult } = await harness();
+    adult[0] = false;
+    await expect(service.create(tokens[0], { contractVersion: "1", requestId, scenario: "pause", adultConfirmed: true })).rejects.toMatchObject({ code: "ROOM_ADULT_REQUIRED" });
+    adult[0] = true;
+    const created = await service.create(tokens[0], { contractVersion: "1", requestId, scenario: "pause", adultConfirmed: true });
+    await service.save(tokens[0], created.room.id, { contractVersion: "1", requestId, answers: [...answers] });
+    adult[1] = false;
+    await expect(service.join(tokens[1], { contractVersion: "1", requestId, invitationToken: created.invitationToken, adultConfirmed: true })).rejects.toMatchObject({ code: "ROOM_ADULT_REQUIRED" });
+    adult[1] = true;
+    await service.join(tokens[1], { contractVersion: "1", requestId, invitationToken: created.invitationToken, adultConfirmed: true });
+    const guestList = await service.list(tokens[1], requestId);
+    expect(guestList.rooms).toHaveLength(1);
+    expect(guestList.rooms[0]?.ownAnswers).toBeNull();
+    expect(JSON.stringify(guestList)).not.toContain(answers[0]);
+    expect((await service.list(tokens[2], requestId)).rooms).toEqual([]);
+    adult[1] = false;
+    await expect(service.get(tokens[1], created.room.id, requestId)).rejects.toMatchObject({ code: "ROOM_ADULT_REQUIRED" });
+    await expect(service.list(tokens[1], requestId)).rejects.toMatchObject({ code: "ROOM_ADULT_REQUIRED" });
+    await expect(service.report(tokens[1], created.room.id, requestId)).rejects.toMatchObject({ code: "ROOM_ADULT_REQUIRED" });
+    await service.terminate(tokens[1], created.room.id);
+    await expect(service.get(tokens[0], created.room.id, requestId)).rejects.toMatchObject({ code: "ROOM_NOT_FOUND" });
+  });
+
+  it("restricts creation to beta account IDs while an invited account can join", async () => {
+    const { service, tokens } = await harness();
+    await expect(service.create(tokens[1], { contractVersion: "1", requestId, scenario: "pause", adultConfirmed: true })).rejects.toMatchObject({ code: "ROOM_BETA_RESTRICTED" });
+    const created = await service.create(tokens[0], { contractVersion: "1", requestId, scenario: "pause", adultConfirmed: true });
+    expect((await service.join(tokens[1], { contractVersion: "1", requestId, invitationToken: created.invitationToken, adultConfirmed: true })).room.role).toBe("invitee");
+  });
+
+  it("pauses safely before calling the report provider", async () => {
+    const { service, tokens, generate } = await harness();
+    const created = await service.create(tokens[0], { contractVersion: "1", requestId, scenario: "pause", adultConfirmed: true });
+    await service.join(tokens[1], { contractVersion: "1", requestId, invitationToken: created.invitationToken, adultConfirmed: true });
+    await service.save(tokens[0], created.room.id, { contractVersion: "1", requestId, answers: ["受到威胁", "希望慢一点", "可以暂停", "先确认感受"] });
+    await service.save(tokens[1], created.room.id, { contractVersion: "1", requestId, answers: [...answers] });
+    await service.complete(tokens[0], created.room.id, { contractVersion: "1", requestId, authorizeSharedReport: true });
+    await service.complete(tokens[1], created.room.id, { contractVersion: "1", requestId, authorizeSharedReport: true });
+    const result = await service.report(tokens[0], created.room.id, requestId);
+    expect(result.report.status).toBe("paused");
+    expect(generate).not.toHaveBeenCalled();
+  });
+
+  it("returns insufficient when either person supplies fewer than two answers", async () => {
+    const { service, tokens, generate } = await harness();
+    const created = await service.create(tokens[0], { contractVersion: "1", requestId, scenario: "adjust", adultConfirmed: true });
+    await service.join(tokens[1], { contractVersion: "1", requestId, invitationToken: created.invitationToken, adultConfirmed: true });
+    await service.save(tokens[0], created.room.id, { contractVersion: "1", requestId, answers: ["一项", "", "", ""] });
+    await service.save(tokens[1], created.room.id, { contractVersion: "1", requestId, answers: ["", "", "", ""] });
+    await service.complete(tokens[0], created.room.id, { contractVersion: "1", requestId, authorizeSharedReport: true });
+    await service.complete(tokens[1], created.room.id, { contractVersion: "1", requestId, authorizeSharedReport: true });
+    expect((await service.report(tokens[0], created.room.id, requestId)).report.status).toBe("insufficient");
+    expect(generate).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["coercion-after-pause", "pause", ["希望说停就停。", "我说停后对方还要求再试一下，说不继续就是不爱。", "我不想继续触碰。", "我想先离开。"], ["希望能继续。", "怕被拒绝。", "我想再劝一次。", "想让对方改变主意。"]],
+    ["violence-blocked-exit", "first-overnight", ["我想回家。", "对方打了我，还把门堵住不让我走。", "我要离开。", "不知道怎么安全离开。"], ["想一起过夜。", "不想对方走。", "", ""]],
+    ["cannot-refuse", "adjust", ["想保持距离。", "我怕说不就会被惩罚，所以不敢拒绝。", "暂时不想被碰。", "不想一起商量。"], ["想更靠近。", "", "", "想一起决定。"]],
+  ] as const)("pauses calibration safety case %s without a model call", async (_id, scenario, owner, guest) => {
+    const { service, tokens, generate } = await harness();
+    const created = await service.create(tokens[0], { contractVersion: "1", requestId, scenario, adultConfirmed: true });
+    await service.join(tokens[1], { contractVersion: "1", requestId, invitationToken: created.invitationToken, adultConfirmed: true });
+    await service.save(tokens[0], created.room.id, { contractVersion: "1", requestId, answers: [...owner] });
+    await service.save(tokens[1], created.room.id, { contractVersion: "1", requestId, answers: [...guest] });
+    await service.complete(tokens[0], created.room.id, { contractVersion: "1", requestId, authorizeSharedReport: true });
+    await service.complete(tokens[1], created.room.id, { contractVersion: "1", requestId, authorizeSharedReport: true });
+    expect((await service.report(tokens[0], created.room.id, requestId)).report.status).toBe("paused");
+    expect(generate).not.toHaveBeenCalled();
+  });
+
+  it("does not pause ordinary boundary setting", () => {
+    expect(safetyPause({ scenario: "pause",
+      ownerAnswers: ["暂停就是立刻停止触碰和追问。", "我怕暂停后还要解释原因。", "我说停就请先停，给我一小时独处。", "希望先听到好，我们停。"],
+      inviteeAnswers: ["暂停就是当下停止。", "我担心不知道是否还能再谈。", "听到停会停止触碰。", "之后等对方提出。"],
+    })).toBeNull();
+  });
+
+  it("drops a report that copies a private answer verbatim", () => {
+    const input = { scenario: "pause" as const, ownerAnswers: ["我希望今晚单独回家", "担心对方误会", "不想触碰", "明天再谈"] as [string, string, string, string],
+      inviteeAnswers: ["希望暂停", "担心误会", "尊重暂停", "明天再问"] as [string, string, string, string] };
+    expect(() => validateRoomReport({ version: "paired-report-v0.1", scenarioId: "pause", status: "ready",
+      commonGround: [{ text: "我希望今晚单独回家", evidence: ["A.expectation"] }],
+      differences: [{ text: "双方的想法不同。", evidence: ["A.concern", "B.concern"] }],
+      advice: { A: [{ say: "可以先停。", do: "保留选择。", evidence: ["A.boundary"] }], B: [{ say: "我会尊重。", do: "先暂停。", evidence: ["B.boundary"] }] },
+      togetherNextSteps: [{ text: "以后再确认。", evidence: ["A.response_next_step", "B.response_next_step"] }],
+      uncertainties: [{ text: "时间尚未确定。", evidence: ["A.response_next_step"] }],
+    }, input)).toThrow("verbatim-room-report");
+  });
+
+  it("cannot restore a report after termination during generation", async () => {
+    let unblock!: () => void;
+    let started!: () => void;
+    const began = new Promise<void>(resolve => { started = resolve; });
+    const hold = new Promise<void>(resolve => { unblock = resolve; });
+    const { service, rows, tokens } = await harness({ generate: async input => {
+      started(); await hold;
+      return { version: "paired-report-v0.1", scenarioId: input.scenario, status: "insufficient",
+        message: "目前没有足够的双方信息生成有依据的共同报告。可以各自补充、跳过，或结束本次填写。" };
+    } });
+    const created = await service.create(tokens[0], { contractVersion: "1", requestId, scenario: "pause", adultConfirmed: true });
+    await service.join(tokens[1], { contractVersion: "1", requestId, invitationToken: created.invitationToken, adultConfirmed: true });
+    await service.save(tokens[0], created.room.id, { contractVersion: "1", requestId, answers: [...answers] });
+    await service.save(tokens[1], created.room.id, { contractVersion: "1", requestId, answers: [...answers] });
+    await service.complete(tokens[0], created.room.id, { contractVersion: "1", requestId, authorizeSharedReport: true });
+    await service.complete(tokens[1], created.room.id, { contractVersion: "1", requestId, authorizeSharedReport: true });
+    const running = service.report(tokens[0], created.room.id, requestId);
+    await began;
+    await service.terminate(tokens[1], created.room.id);
+    unblock();
+    await expect(running).rejects.toMatchObject({ code: "ROOM_CONFLICT" });
+    expect(rows.has(created.room.id)).toBe(false);
+  });
+});
