@@ -11,9 +11,9 @@ Cloudflare 账号为 `carterwellsdeveloper@gmail.com`，Account ID 为 `3d3f8c9a
 
 `apps/gateway/wrangler.jsonc` 的顶层仍是生产环境。staging 的域名、D1、限流命名空间和定时任务都在 `env.staging` 中单独声明。staging 的 `workers.dev` 地址关闭。对 staging 的 Wrangler 操作始终使用 `--env staging`；不要用无环境参数的 `deploy` 或 D1 命令代替。
 
-staging 模型为 `MODEL_MODE=mock`，不调用 DeepSeek，也不需要 `MODEL_API_KEY`。配置中的 `MODEL_BASE_URL` 和 `MODEL_NAME` 是与生产声明对齐的非秘密占位值，在 mock 模式下不会用于请求。`/v1/meta` 会公开返回 `providerMode: "mock"`。staging 邮箱使用真实 Resend 投递，Worker Secret 名称为 `RESEND_API_KEY`、`AUTH_EMAIL_LOOKUP_KEY_V1` 和 `AUTH_OTP_KEY_V1`；这些值与生产 Worker 的 Secret 独立管理，不写入仓库或日志。缺少任一必需 Secret 时，身份接口返回不可用，不能把邮件视为已发送。staging 的账户、会话、偏好和 AI 用量只写入 staging D1。
+staging 模型为 `MODEL_MODE=live`，使用 `https://api.deepseek.com` 上的 `deepseek-v4-flash`，所需 `MODEL_API_KEY` 仅保存在 staging Worker 的 Secret 中。`/v1/meta` 会公开返回 `providerMode: "live"`。staging 邮箱使用真实 Resend 投递，Worker Secret 名称为 `RESEND_API_KEY`、`AUTH_EMAIL_LOOKUP_KEY_V1` 和 `AUTH_OTP_KEY_V1`；这些值由 staging Worker 单独管理，不写入仓库或日志。缺少任一必需邮箱 Secret 时，身份接口返回不可用，不能把邮件视为已发送。staging 的账户、会话、偏好和 AI 用量只写入 staging D1。
 
-当前 staging 只能验收服务端路由、身份/D1 隔离和模拟响应，不能据此声称真实 DeepSeek 链路已通过。移动端 `EXPO_PUBLIC_ASSISTANT_MODE=live` 表示使用远程 Gateway；如果它指向 staging，Gateway 仍会返回 `providerMode: "mock"`。移动端开发版应在发送前说明“发送到 staging，由服务端模拟回复，不调用 DeepSeek”，不能沿用真实模型的接收方文案。真正需要 staging 真实模型时，在已核对的 DeepSeek 账号中创建专用凭据，把值仅作为 staging Worker 的 `MODEL_API_KEY` Secret 写入，再单独将 staging `MODEL_MODE` 改为 `live` 并完成真实模型调用验收。
+移动端 `EXPO_PUBLIC_ASSISTANT_MODE=live` 表示使用远程 Gateway；连接 staging 时，服务端会按 live 模式调用 DeepSeek。staging 使用独立模型凭据，移动端不持有密钥。`/health`、`/v1/meta` 和 Secret 名称检查只能证明配置与连通性；真实模型回复仍须使用受控测试账号完成端到端调用验收，不能把配置检查称为模型调用成功。
 
 ## 发布顺序
 
@@ -40,4 +40,4 @@ curl -i https://staging-api.neijiecave.com/v1/meta
 corepack pnpm --filter @cave/gateway migrations:staging:list
 ```
 
-`/health` 应为 HTTP 200、`Cache-Control: no-store`、`{"contractVersion":"1","status":"ok"}`；`/v1/meta` 应为 mock。迁移列表应为空。健康检查不能证明邮件实际投递；需要使用受控测试邮箱单独完成验证码登录和账号删除的端到端验收，不记录邮箱、验证码或 Token。异常时先检查 staging Worker 版本、Secret 名称和 staging D1 迁移。回退只回滚 staging Worker 版本；追加式 D1 迁移通常保留，生产 Worker、D1、Secret 和域名不参与回退。
+`/health` 应为 HTTP 200、`Cache-Control: no-store`、`{"contractVersion":"1","status":"ok"}`；`/v1/meta` 应为 live，且模型名称为 `deepseek-v4-flash`。迁移列表应为空。健康检查不能证明邮件实际投递或模型调用；需要使用受控测试邮箱单独完成验证码登录和账号删除的端到端验收，不记录邮箱、验证码或 Token。异常时先检查 staging Worker 版本、Secret 名称和 staging D1 迁移。回退只回滚 staging Worker 版本；追加式 D1 迁移通常保留，生产 Worker、D1、Secret 和域名不参与回退。

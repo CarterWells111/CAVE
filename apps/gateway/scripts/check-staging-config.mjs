@@ -45,7 +45,9 @@ assert.deepEqual(target.routes, [{
   zone_name: "neijiecave.com",
   custom_domain: true
 }]);
-assert.equal(target.vars?.MODEL_MODE, "mock");
+assert.equal(target.vars?.MODEL_MODE, "live");
+assert.equal(target.vars?.MODEL_BASE_URL, "https://api.deepseek.com");
+assert.equal(target.vars?.MODEL_NAME, "deepseek-v4-flash");
 assert.equal(target.vars?.PROMPT_VERSION, config.vars.PROMPT_VERSION);
 assert.equal(target.vars?.POLICY_VERSION, config.vars.POLICY_VERSION);
 for (const key of ["MODEL_API_KEY", "RESEND_API_KEY", "AUTH_EMAIL_LOOKUP_KEY_V1", "AUTH_OTP_KEY_V1"]) {
