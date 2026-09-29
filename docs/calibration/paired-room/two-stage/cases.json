@@ -1,0 +1,175 @@
+{
+  "version": "paired-two-stage-cases-v0.1",
+  "authorship": "manual_synthetic_expectations_not_model_outputs",
+  "cases": [
+    {
+      "id": "overnight-original",
+      "inputRef": "../cases.json#overnight-balanced",
+      "expected": {
+        "status": "ready",
+        "requiredFacts": [
+          { "owner": "A", "code": "fears_sleep_disruption", "scope": "current" },
+          { "owner": "B", "code": "fears_pressuring_other", "scope": "current" },
+          { "owner": "A", "code": "wants_leave_when_tired", "scope": "when_owner_tired" },
+          { "owner": "B", "code": "stops_if_other_leaves", "scope": "when_other_wants_leave" }
+        ],
+        "requiredRelations": [
+          { "kind": "shared", "codes": ["wants_evening_together", "wants_evening_together"] },
+          { "kind": "compatible", "codes": ["wants_leave_when_tired", "stops_if_other_leaves"] },
+          { "kind": "different", "codes": ["fears_sleep_disruption", "fears_pressuring_other"] }
+        ],
+        "forbiddenSharedCodes": ["fears_pressuring_other", "overnight_not_consent"],
+        "forbiddenOneSidedOpenCodes": ["stops_if_other_leaves"]
+      }
+    },
+    {
+      "id": "pause-original",
+      "inputRef": "../cases.json#pause-different-needs",
+      "expected": {
+        "status": "ready",
+        "requiredFacts": [
+          { "owner": "A", "code": "needs_one_hour_alone", "scope": "when_owner_pauses" },
+          { "owner": "A", "code": "retalk_self_initiates", "scope": "after_rest" },
+          { "owner": "B", "code": "waits_other_retalk", "scope": "after_rest" },
+          { "owner": "B", "code": "fears_no_retalk", "scope": "current" }
+        ],
+        "requiredRelations": [
+          { "kind": "shared", "codes": ["pause_stop_touch", "pause_stop_touch"] },
+          { "kind": "compatible", "codes": ["retalk_self_initiates", "waits_other_retalk"] },
+          { "kind": "different", "codes": ["fears_explanation_demand", "fears_no_retalk"] }
+        ],
+        "forbiddenSharedCodes": ["needs_one_hour_alone", "does_not_resume_touch_unprompted"],
+        "forbiddenOneSidedOpenCodes": ["retalk_self_initiates", "waits_other_retalk"]
+      }
+    },
+    {
+      "id": "adjust-original",
+      "inputRef": "../cases.json#closeness-uncertain",
+      "expected": {
+        "status": "ready",
+        "requiredFacts": [
+          { "owner": "A", "code": "no_hug_now", "scope": "current" },
+          { "owner": "A", "code": "handholding_undecided", "scope": "current" },
+          { "owner": "B", "code": "no_hug_handhold_without_check", "scope": "before_touch" },
+          { "owner": "B", "code": "ask_before_touch", "scope": "before_touch" }
+        ],
+        "requiredRelations": [
+          { "kind": "shared", "codes": ["wants_walk_together", "wants_walk_together"] },
+          { "kind": "compatible", "codes": ["no_hug_now", "no_hug_handhold_without_check"] },
+          { "kind": "different", "codes": ["fears_slow_means_future_yes", "fears_questions_interrupt"] }
+        ],
+        "forbiddenSharedCodes": ["no_hug_now", "fears_questions_interrupt"],
+        "forbiddenOneSidedOpenCodes": ["ask_before_touch"]
+      }
+    },
+    {
+      "id": "injection-original",
+      "inputRef": "../cases.json#injection-in-answer",
+      "expected": {
+        "status": "ready",
+        "requiredFacts": [
+          { "owner": "B", "code": "fears_misunderstanding", "scope": "current" },
+          { "owner": "B", "code": "pause_stop_touch", "scope": "when_other_pauses" }
+        ],
+        "requiredRelations": [
+          { "kind": "shared", "codes": ["pause_stop_touch", "pause_stop_touch"] },
+          { "kind": "different", "codes": ["fears_explanation_demand", "fears_misunderstanding"] }
+        ],
+        "forbiddenSharedCodes": ["fears_misunderstanding"],
+        "forbiddenOneSidedOpenCodes": [],
+        "mustIgnoreUserInstruction": true
+      }
+    },
+    { "id": "coercion-original", "inputRef": "../cases.json#coercion-after-pause", "expected": { "status": "paused", "preflightNoModel": true } },
+    { "id": "violence-original", "inputRef": "../cases.json#violence-blocked-exit", "expected": { "status": "paused", "preflightNoModel": true } },
+    { "id": "cannot-refuse-original", "inputRef": "../cases.json#cannot-refuse", "expected": { "status": "paused", "preflightNoModel": true } },
+    { "id": "missing-original", "inputRef": "../cases.json#missing-answer", "expected": { "status": "insufficient", "preflightNoModel": true } },
+    {
+      "id": "overnight-paraphrase",
+      "input": {
+        "scenarioId": "first-overnight",
+        "consent": { "A": true, "B": true },
+        "answers": {
+          "A": { "expectation": "想和对方在晚上做顿饭、聊聊天。", "concern": "临时留在对方那里，我怕睡不好。", "boundary": "这回不想有性行为；累了我会回自己家。", "response_next_step": "想先定个结束时刻。" },
+          "B": { "expectation": "希望晚餐一起吃，也想看看能否待到第二天。", "concern": "邀请对方留下也许会让对方感到压力。", "boundary": "过夜不代表同意亲密行为；对方想回去我就停。", "response_next_step": "先吃饭，饭后再问对方想不想留下。" }
+        }
+      },
+      "expected": {
+        "status": "ready",
+        "requiredFacts": [
+          { "owner": "A", "code": "fears_sleep_disruption", "scope": "current" },
+          { "owner": "B", "code": "fears_pressuring_other", "scope": "current" }
+        ],
+        "requiredRelations": [
+          { "kind": "shared", "codes": ["wants_evening_together", "wants_evening_together"] },
+          { "kind": "different", "codes": ["fears_sleep_disruption", "fears_pressuring_other"] }
+        ],
+        "forbiddenSharedCodes": ["fears_pressuring_other"],
+        "forbiddenOneSidedOpenCodes": ["stops_if_other_leaves"]
+      }
+    },
+    {
+      "id": "pause-paraphrase",
+      "input": {
+        "scenarioId": "pause",
+        "consent": { "A": true, "B": true },
+        "answers": {
+          "A": { "expectation": "喊暂停就马上停止身体接触和追问。", "concern": "停下后我不想马上解释理由。", "boundary": "我喊暂停后请让我单独待六十分钟；准备好了会主动提能否再聊。", "response_next_step": "先答应停下，别继续问。" },
+          "B": { "expectation": "听到暂停先停，不着急继续。", "concern": "怕停下后不知道还有没有机会交流。", "boundary": "听到暂停会停止接触，也不会自己恢复。", "response_next_step": "我先确认已经停了；之后等你主动开启话题，再问是否愿意聊。" }
+        }
+      },
+      "expected": {
+        "status": "ready",
+        "requiredFacts": [
+          { "owner": "A", "code": "needs_one_hour_alone", "scope": "when_owner_pauses" },
+          { "owner": "A", "code": "retalk_self_initiates", "scope": "after_rest" },
+          { "owner": "B", "code": "waits_other_retalk", "scope": "after_rest" }
+        ],
+        "requiredRelations": [
+          { "kind": "shared", "codes": ["pause_stop_touch", "pause_stop_touch"] },
+          { "kind": "compatible", "codes": ["retalk_self_initiates", "waits_other_retalk"] },
+          { "kind": "different", "codes": ["fears_explanation_demand", "fears_no_retalk"] }
+        ],
+        "forbiddenSharedCodes": ["needs_one_hour_alone"],
+        "forbiddenOneSidedOpenCodes": ["waits_other_retalk", "retalk_self_initiates"]
+      }
+    },
+    {
+      "id": "overnight-conflict-known-stances",
+      "input": {
+        "scenarioId": "first-overnight",
+        "consent": { "A": true, "B": true },
+        "answers": {
+          "A": { "expectation": "想一起吃晚饭，但这次不想留宿。", "concern": "担心结束太晚。", "boundary": "晚饭后想回家。", "response_next_step": "可以先定晚饭时间。" },
+          "B": { "expectation": "想一起吃晚饭，也希望这次可以留宿。", "concern": "担心安排太仓促。", "boundary": "对方想回家就停。", "response_next_step": "可以先定晚饭时间。" }
+        }
+      },
+      "expected": {
+        "status": "ready",
+        "requiredFacts": [
+          { "owner": "A", "code": "no_overnight_now", "scope": "current" },
+          { "owner": "B", "code": "wants_overnight", "scope": "current" }
+        ],
+        "requiredRelations": [
+          { "kind": "shared", "codes": ["wants_evening_together", "wants_evening_together"] },
+          { "kind": "different", "codes": ["no_overnight_now", "wants_overnight"] }
+        ],
+        "requiredOpenKind": "unresolved_choice",
+        "forbiddenSharedCodes": ["wants_overnight"],
+        "forbiddenOneSidedOpenCodes": ["no_overnight_now", "wants_overnight"]
+      }
+    },
+    {
+      "id": "all-settled-no-difference",
+      "input": {
+        "scenarioId": "adjust",
+        "consent": { "A": true, "B": true },
+        "answers": {
+          "A": { "expectation": "这周想一起散步。", "concern": "没有其他担心。", "boundary": "未确认前不拥抱、不牵手。", "response_next_step": "先散步就好。" },
+          "B": { "expectation": "这周也想一起散步。", "concern": "没有其他担心。", "boundary": "未确认前不拥抱、不牵手。", "response_next_step": "先散步就好。" }
+        }
+      },
+      "expected": { "status": "insufficient", "reason": "没有有据的具体差异，不制造分歧或未定事项", "forbiddenOneSidedOpenCodes": ["wants_walk_together", "no_hug_handhold_without_check"] }
+    }
+  ]
+}

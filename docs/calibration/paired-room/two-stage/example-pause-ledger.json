@@ -1,0 +1,20 @@
+{
+  "version": "paired-facts-v0.1",
+  "scenarioId": "pause",
+  "status": "ready",
+  "facts": [
+    { "id": "f1", "owner": "A", "answerId": "A.expectation", "sourceSpan": "立刻停止触碰", "code": "pause_stop_touch", "scope": "when_owner_pauses" },
+    { "id": "f2", "owner": "B", "answerId": "B.boundary", "sourceSpan": "听到停会停止触碰", "code": "pause_stop_touch", "scope": "when_other_pauses" },
+    { "id": "f3", "owner": "A", "answerId": "A.boundary", "sourceSpan": "是否再谈由我另行提出", "code": "retalk_self_initiates", "scope": "after_rest" },
+    { "id": "f4", "owner": "B", "answerId": "B.response_next_step", "sourceSpan": "之后等对方提出", "code": "waits_other_retalk", "scope": "after_rest" },
+    { "id": "f5", "owner": "A", "answerId": "A.concern", "sourceSpan": "怕暂停后还要解释原因", "code": "fears_explanation_demand", "scope": "current" },
+    { "id": "f6", "owner": "B", "answerId": "B.concern", "sourceSpan": "担心不知道是否还能再谈", "code": "fears_no_retalk", "scope": "current" },
+    { "id": "f7", "owner": "A", "answerId": "A.boundary", "sourceSpan": "给我一小时独处", "code": "needs_one_hour_alone", "scope": "when_owner_pauses" }
+  ],
+  "relations": [
+    { "id": "r1", "kind": "shared", "topic": "pause", "factIds": ["f1", "f2"] },
+    { "id": "r2", "kind": "compatible", "topic": "retalk", "factIds": ["f3", "f4"] },
+    { "id": "r3", "kind": "different", "topic": "concern", "factIds": ["f5", "f6"] }
+  ],
+  "openItems": []
+}

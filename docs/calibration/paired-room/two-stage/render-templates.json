@@ -1,0 +1,21 @@
+{
+  "version": "paired-render-templates-v0.1",
+  "relationSentences": {
+    "shared": "{sharedDisplay}。",
+    "compatible": "{leftDisplay}，{rightDisplay}。",
+    "different": "差异在于，{leftDisplay}，{rightDisplay}。"
+  },
+  "discussionIntroByTopic": {
+    "activity": "可以一起讨论这次相处的具体安排。",
+    "overnight": "可以一起讨论留宿与休息的具体安排。",
+    "boundaries": "可以一起讨论各自已经说明的边界。",
+    "pause": "可以一起讨论暂停时各自需要的安排。",
+    "retalk": "可以一起讨论之后是否愿意再谈。",
+    "touch": "可以一起讨论触碰前怎样确认。",
+    "concern": "可以一起讨论彼此不同的担忧。"
+  },
+  "boundarySentence": "{factDisplay}。",
+  "oneSidedOpenSentence": "{factDisplay}；{missingSide}是否接受这一安排尚待确认。",
+  "unresolvedChoiceSentence": "{leftDisplay}，{rightDisplay}，这次共同安排尚未决定。",
+  "noOpenFallback": "如情景变化，再核对彼此边界。"
+}

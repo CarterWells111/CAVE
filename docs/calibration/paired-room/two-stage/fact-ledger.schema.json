@@ -1,0 +1,100 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://neijiecave.com/schemas/paired-facts-v0.1.json",
+  "title": "Private paired fact ledger candidate",
+  "oneOf": [
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["version", "scenarioId", "status", "facts", "relations", "openItems"],
+      "properties": {
+        "version": { "const": "paired-facts-v0.1" },
+        "scenarioId": { "$ref": "#/$defs/scenarioId" },
+        "status": { "const": "ready" },
+        "facts": { "type": "array", "minItems": 2, "maxItems": 32, "items": { "$ref": "#/$defs/fact" } },
+        "relations": { "type": "array", "minItems": 1, "maxItems": 16, "items": { "$ref": "#/$defs/relation" } },
+        "openItems": { "type": "array", "maxItems": 8, "items": { "$ref": "#/$defs/openItem" } }
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["version", "scenarioId", "status", "privateReasonCode"],
+      "properties": {
+        "version": { "const": "paired-facts-v0.1" },
+        "scenarioId": { "$ref": "#/$defs/scenarioId" },
+        "status": { "const": "paused" },
+        "privateReasonCode": { "const": "possible_safety_risk" }
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["version", "scenarioId", "status", "privateReasonCode"],
+      "properties": {
+        "version": { "const": "paired-facts-v0.1" },
+        "scenarioId": { "$ref": "#/$defs/scenarioId" },
+        "status": { "const": "insufficient" },
+        "privateReasonCode": { "const": "insufficient_bilateral_facts" }
+      }
+    }
+  ],
+  "$defs": {
+    "scenarioId": { "enum": ["first-overnight", "pause", "adjust"] },
+    "answerId": { "type": "string", "pattern": "^[AB]\\.(expectation|concern|boundary|response_next_step)$" },
+    "factId": { "type": "string", "pattern": "^f[1-9][0-9]*$" },
+    "relationId": { "type": "string", "pattern": "^r[1-9][0-9]*$" },
+    "openId": { "type": "string", "pattern": "^u[1-9][0-9]*$" },
+    "fact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "owner", "answerId", "sourceSpan", "code", "scope"],
+      "properties": {
+        "id": { "$ref": "#/$defs/factId" },
+        "owner": { "enum": ["A", "B"] },
+        "answerId": { "$ref": "#/$defs/answerId" },
+        "sourceSpan": { "type": "string", "minLength": 2, "maxLength": 120 },
+        "code": { "type": "string", "minLength": 2, "maxLength": 64 },
+        "scope": { "enum": ["current", "when_owner_pauses", "when_other_pauses", "when_owner_tired", "when_other_wants_leave", "after_dinner", "after_rest", "before_touch"] }
+      }
+    },
+    "relation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "kind", "topic", "factIds"],
+      "properties": {
+        "id": { "$ref": "#/$defs/relationId" },
+        "kind": { "enum": ["shared", "compatible", "different"] },
+        "topic": { "enum": ["activity", "overnight", "boundaries", "pause", "retalk", "touch", "concern"] },
+        "factIds": { "type": "array", "minItems": 2, "maxItems": 2, "uniqueItems": true, "items": { "$ref": "#/$defs/factId" } }
+      }
+    },
+    "openItem": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["id", "kind", "topic", "factId", "missingSide"],
+          "properties": {
+            "id": { "$ref": "#/$defs/openId" },
+            "kind": { "const": "one_sided_proposal" },
+            "topic": { "enum": ["activity", "overnight", "boundaries", "pause", "retalk", "touch", "concern"] },
+            "factId": { "$ref": "#/$defs/factId" },
+            "missingSide": { "enum": ["A", "B"] }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["id", "kind", "topic", "factIds"],
+          "properties": {
+            "id": { "$ref": "#/$defs/openId" },
+            "kind": { "const": "unresolved_choice" },
+            "topic": { "enum": ["activity", "overnight", "boundaries", "pause", "retalk", "touch", "concern"] },
+            "factIds": { "type": "array", "minItems": 2, "maxItems": 2, "uniqueItems": true, "items": { "$ref": "#/$defs/factId" } }
+          }
+        }
+      ]
+    }
+  }
+}
