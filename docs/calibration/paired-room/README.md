@@ -20,4 +20,6 @@
 
 ## 本轮验证记录
 
-`cases.json` 全为人工合成，不含真实用户内容。当前环境无 `MODEL_API_KEY` / `DEEPSEEK_API_KEY` / `OPENAI_API_KEY`，也无 `apps/gateway/.dev.vars`。线上 Gateway 的模型 Secret 不在本机，现有端点要求账号登录，且没有双人报告路径；因此本轮没有可安全调用的既有真实模型，不产生模型输出，也不声称质量已校准。若主会话之后提供安全测试通道，应固定模型名、参数、提示词版本和每个样例的多次输出，只记录合成数据与失败类型，按量表逐项复核。
+`cases.json` 全为人工合成，不含真实用户内容。最初本机没有可用模型密钥；用户随后自行将密钥输入 Git 忽略的 `apps/gateway/.dev.vars`，并授权合成样例测试。密钥没有进入仓库、测试记录或终端输出。
+
+2026-09-29 使用 `scripts/run_paired_room_model_calibration.py` 直接调用 DeepSeek `/chat/completions`：请求模型为仓库当前配置的 `deepseek-v4-flash`，接口返回 `deepseek-flash`。默认推理的一次连通性测试将 2,000 个 token 全用于推理，最终内容为空，见 [失败记录](model-runs/2026-09-29-default-thinking-failure.json)。根据 [DeepSeek 推理模式说明](https://api-docs.deepseek.com/guides/thinking_mode/)显式关闭推理后，单例成功；随后 8 个合成样例各调用三次，24/24 返回可解析且符合 JSON Schema 的结果，证据 ID 均指向非空输入，状态与人工期望一致。完整输入和输出见 [第一轮审阅稿](review-round-1.md)，原始输出、模型返回名、参数和版本散列见 [运行记录](model-runs/2026-09-29-nonthinking-3x.json)。这些机器检查不代表事实表述、建议质量或安全性已通过人工评审；等待用户逐轮反馈，不将提示词标为定稿。
