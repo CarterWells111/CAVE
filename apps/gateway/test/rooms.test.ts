@@ -5,6 +5,9 @@ import { createRoomService } from "../src/rooms/service";
 import type { RoomRepository, RoomRow } from "../src/rooms/repository";
 import { digestOpaqueToken } from "../src/auth/crypto";
 import type { AuthRepository } from "../src/auth/repository";
+import sampleLedger from "../../../docs/calibration/paired-room/two-stage/example-pause-ledger.json";
+import samplePlan from "../../../docs/calibration/paired-room/two-stage/example-pause-plan.json";
+import sampleReport from "../../../docs/calibration/paired-room/two-stage/example-pause-report.json";
 
 const requestId = "6cc380dd-f5b0-4e39-bac4-54fa9b4abcc1";
 const answers = ["自己的界限", "希望慢一点", "可以暂停", "先确认感受"] as const;
@@ -81,9 +84,9 @@ async function harness(overrideProvider?: RoomReportProvider) {
         || (row.report_status !== "waiting" && !(row.report_status === "generating" && row.generation_lease_until! < now))) return false;
       row.report_status = "generating"; row.generation_claim = claim; row.generation_lease_until = lease; return true;
     },
-    async finish(id, claim, ciphertext, status, now) {
+    async finish(id, claim, ciphertext, status, now, deadlineMs) {
       const row = rows.get(id);
-      if (!row || row.generation_claim !== claim || row.expires_at <= now || !row.owner_completed_at || !row.invitee_completed_at) return false;
+      if (!row || row.generation_claim !== claim || row.expires_at <= now || !row.owner_completed_at || !row.invitee_completed_at || Date.now() >= deadlineMs) return false;
       row.report_status = status; row.report_ciphertext = ciphertext; row.generation_claim = null; return true;
     },
     async release(id, claim) { const row = rows.get(id); if (row?.generation_claim === claim) { row.report_status = "waiting"; row.generation_claim = null; } },
@@ -201,7 +204,7 @@ describe("two-person rooms", () => {
     expect(generate).not.toHaveBeenCalled();
   });
 
-  it("returns insufficient when either person supplies fewer than two answers", async () => {
+  it("returns insufficient when either person supplies no answer", async () => {
     const { service, tokens, generate } = await harness();
     const created = await service.create(tokens[0], { contractVersion: "1", requestId, scenario: "adjust", adultConfirmed: true });
     await service.join(tokens[1], { contractVersion: "1", requestId, invitationToken: created.invitationToken, adultConfirmed: true });
@@ -268,7 +271,7 @@ describe("two-person rooms", () => {
     expect(rows.has(created.room.id)).toBe(false);
   });
 
-  it("sends the calibrated input shape and fails when the model is unavailable", async () => {
+  it("builds the private input shape and fails when the model is unavailable", async () => {
     const input = createRoomReportInput("pause", ["希望停下", "担心误会", "", "明天再谈"],
       ["愿意暂停", "想确认时间", "会停下", ""]);
     expect(input).toEqual({
@@ -279,16 +282,6 @@ describe("two-person rooms", () => {
       },
     });
     await expect(createRoomReportProvider().generate(input, new AbortController().signal)).rejects.toMatchObject({ code: "MODEL_UNAVAILABLE" });
-    const complete = vi.fn(async (prompt: string, data: string) => {
-      expect(prompt).toContain("不代写任何一方的台词");
-      expect(prompt).toContain("B 写等对方提出，就不能再问谁先提出或 B 是否愿等");
-      expect(JSON.parse(data)).toEqual(input);
-      const report = readyReport("pause");
-      report.sections.nextSteps.evidence = ["A.response_next_step", "B.concern"] as ["A.response_next_step", "B.response_next_step"];
-      return report;
-    });
-    await createRoomReportProvider(complete).generate(input, new AbortController().signal);
-    expect(complete).toHaveBeenCalledTimes(1);
   });
 
   it("releases the generation claim and stores no invented report when the model is unavailable", async () => {
@@ -303,6 +296,58 @@ describe("two-person rooms", () => {
     expect(rows.get(created.room.id)?.report_ciphertext).toBeNull();
     expect(rows.get(created.room.id)?.report_status).toBe("waiting");
     await expect(service.readReport(tokens[1], created.room.id, requestId)).rejects.toMatchObject({ code: "ROOM_NOT_READY" });
+  });
+
+  it("does not persist a validated ledger or rejected second-stage plan", async () => {
+    let calls = 0;
+    const provider = createRoomReportProvider(async () => {
+      calls += 1;
+      return calls === 1 ? sampleLedger : { ...samplePlan, ledgerSha256: "0".repeat(64) };
+    });
+    const { service, rows, tokens } = await harness(provider);
+    const created = await service.create(tokens[0], { contractVersion: "1", requestId, scenario: "pause", adultConfirmed: true });
+    await service.join(tokens[1], { contractVersion: "1", requestId, invitationToken: created.invitationToken, adultConfirmed: true });
+    await service.save(tokens[0], created.room.id, { contractVersion: "1", requestId, answers: [
+      "暂停就是立刻停止触碰和追问。", "我怕暂停后还要解释原因。", "我说停就请先停，给我一小时独处；是否再谈由我另行提出。", "希望先听到好，我们停，不要问为什么。",
+    ] });
+    await service.save(tokens[1], created.room.id, { contractVersion: "1", requestId, answers: [
+      "暂停就是当下停止，之后不急着恢复。", "我担心不知道是否还能再谈。", "听到停会停止触碰；不会自行恢复。", "我可以先说好，之后等对方提出，再问是否愿意聊。",
+    ] });
+    await service.complete(tokens[0], created.room.id, { contractVersion: "1", requestId, authorizeSharedReport: true });
+    await service.complete(tokens[1], created.room.id, { contractVersion: "1", requestId, authorizeSharedReport: true });
+    await expect(service.report(tokens[0], created.room.id, requestId)).rejects.toMatchObject({ code: "INVALID_MODEL_OUTPUT", status: 502 });
+    expect(calls).toBe(2);
+    expect(rows.get(created.room.id)?.report_ciphertext).toBeNull();
+    expect(rows.get(created.room.id)?.report_status).toBe("waiting");
+    await expect(service.readReport(tokens[1], created.room.id, requestId)).rejects.toMatchObject({ code: "ROOM_NOT_READY" });
+  });
+
+  it("stores only the final encrypted report and reuses it on a repeated request", async () => {
+    let calls = 0;
+    const provider = createRoomReportProvider(async () => { calls += 1; return calls === 1 ? sampleLedger : samplePlan; });
+    const { service, rows, tokens } = await harness(provider);
+    const created = await service.create(tokens[0], { contractVersion: "1", requestId, scenario: "pause", adultConfirmed: true });
+    await service.join(tokens[1], { contractVersion: "1", requestId, invitationToken: created.invitationToken, adultConfirmed: true });
+    await service.save(tokens[0], created.room.id, { contractVersion: "1", requestId, answers: [
+      "暂停就是立刻停止触碰和追问。", "我怕暂停后还要解释原因。", "我说停就请先停，给我一小时独处；是否再谈由我另行提出。", "希望先听到好，我们停，不要问为什么。",
+    ] });
+    await service.save(tokens[1], created.room.id, { contractVersion: "1", requestId, answers: [
+      "暂停就是当下停止，之后不急着恢复。", "我担心不知道是否还能再谈。", "听到停会停止触碰；不会自行恢复。", "我可以先说好，之后等对方提出，再问是否愿意聊。",
+    ] });
+    await service.complete(tokens[0], created.room.id, { contractVersion: "1", requestId, authorizeSharedReport: true });
+    await service.complete(tokens[1], created.room.id, { contractVersion: "1", requestId, authorizeSharedReport: true });
+    const first = await service.report(tokens[0], created.room.id, requestId);
+    expect(first.report.status).toBe("ready");
+    if (first.report.status !== "ready") throw new Error("expected a ready report");
+    expect(first.report.sections.commonAndDifferences).toEqual({ text: sampleReport.sections.commonAndDifferences.text });
+    expect(JSON.stringify(first)).not.toMatch(/sourceSpan|ledgerSha256|evidence/u);
+    expect(await service.report(tokens[1], created.room.id, requestId)).toEqual(first);
+    expect(calls).toBe(2);
+    const sealed = rows.get(created.room.id)?.report_ciphertext;
+    expect(sealed).toBeTruthy();
+    const stored = await createRoomCipher(secret).decrypt(created.room.id, "report", sealed!);
+    expect(stored).toEqual(sampleReport);
+    expect(JSON.stringify(stored)).not.toMatch(/sourceSpan|ledgerSha256|report-plan/u);
   });
 
   it("rejects one-sided evidence and role scripts", () => {
@@ -403,23 +448,21 @@ describe("two-person rooms", () => {
   it.each([
     "沟通时不把过夜或回家与关系含义挂钩，只谈当晚的实际安排和双方愿意保留的选择。",
     "这次回家并不意味着拒绝关系或关系变淡，双方可以在愿意时再确认晚饭和留宿安排。",
-  ])("rejects an overnight report with unsupported relationship meaning: %s", async advice => {
+  ])("rejects an overnight report with unsupported relationship meaning: %s", advice => {
     const input = createRoomReportInput("first-overnight",
       ["想一起做饭聊天，晚上能各自休息。", "我睡眠浅，怕临时住下会睡不好。", "这次不想有性行为；疲惫时想回家。", "希望对方听到我想回家时说好。"],
       ["想一起吃晚饭，看看能否待到第二天。", "担心提议留宿会给对方压力。", "不把过夜当作亲密行为的承诺。", "可以先定晚饭，之后再问是否留宿。"]);
     const report = readyReport("first-overnight");
     report.sections.adviceForBoth.text = advice;
-    await expect(createRoomReportProvider(async () => report).generate(input, new AbortController().signal))
-      .rejects.toMatchObject({ code: "INVALID_MODEL_OUTPUT", status: 502 });
+    expect(() => validateRoomReport(report, input)).toThrow("ungrounded-relationship-meaning");
   });
 
-  it("rejects a closeness report that copies a quoted user phrase or scripts a line", async () => {
+  it("rejects a closeness report that copies a quoted user phrase or scripts a line", () => {
     const input = createRoomReportInput("adjust",
       ["想散步聊天，身体接触先少一点。", "担心慢一点被理解成迟早答应拥抱。", "现在不想拥抱，牵手也不确定。", "希望对方说可以不碰，这周先散步。"],
       ["想多一些陪伴，一起散步也好。", "担心问太多会打断相处。", "不会在未确认前拥抱或牵手。", "可以先说我们先散步，需要触碰时再问。"]);
     const report = readyReport("adjust");
     report.sections.adviceForBoth.text = "双方可以讨论散步与触碰前的确认；A 担心“慢一点”被误会，B 可说“我们先散步”。";
-    await expect(createRoomReportProvider(async () => report).generate(input, new AbortController().signal))
-      .rejects.toMatchObject({ code: "INVALID_MODEL_OUTPUT", status: 502 });
+    expect(() => validateRoomReport(report, input)).toThrow("unsafe-room-report");
   });
 });

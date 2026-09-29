@@ -3,7 +3,7 @@
   "scenarioId": "pause",
   "ledgerSha256": "3ac299625295dcef9b368e280fba7bccbb476954e6f25e42c30b161a0e8ae1f6",
   "catalogSha256": "8bc0780a6867bfae979b50a2df10d52251ce4ca0b57c782e030f15e1df5f45e9",
-  "templatesSha256": "7f8c7d97ef99bf451acc8bd8a286f018c1da8f7899026afda3d337d91ce94205",
+  "templatesSha256": "134270452dc46c83bc8c267a21f5fc74a48681e6b75fb186237d35e7a729f7f8",
   "sections": {
     "commonAndDifferences": {
       "sharedOrCompatibleRelationIds": ["r1", "r2"],

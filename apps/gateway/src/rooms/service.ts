@@ -139,6 +139,12 @@ export function createRoomService({ auth, preferences, rooms, cipher, reportProv
       if (!await rooms.claim(id, claim, new Date(now()).toISOString(), new Date(now() + 120_000).toISOString())) {
         throw new AuthServiceError("ROOM_CONFLICT", 409);
       }
+      const controller = new AbortController();
+      const deadline = Date.now() + 30_000;
+      const timeout = setTimeout(() => controller.abort(), 30_000);
+      const requireTime = () => {
+        if (controller.signal.aborted || Date.now() >= deadline) throw new AuthServiceError("MODEL_TIMEOUT", 504);
+      };
       try {
         // Re-read after the atomic claim. A concurrent termination makes the claim disappear.
         row = (await visible(id, account.id)).row;
@@ -147,18 +153,20 @@ export function createRoomService({ auth, preferences, rooms, cipher, reportProv
         const inviteeAnswers: RoomAnswers = RoomAnswersSchema.parse(await cipher.decrypt(id, "invitee-answers", row.invitee_answers_ciphertext));
         const reportInput = createRoomReportInput(row.scenario, ownerAnswers, inviteeAnswers);
         const pause = safetyPause(reportInput) ?? insufficientReport(reportInput);
-        const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 30_000);
-        let report;
-        try { report = validateRoomReport(pause ?? await reportProvider.generate(reportInput, controller.signal), reportInput); }
-        finally { clearTimeout(timeout); }
+        requireTime();
+        const report = validateRoomReport(pause ?? await reportProvider.generate(reportInput, controller.signal), reportInput);
+        requireTime();
         const encrypted = await cipher.encrypt(id, "report", report);
-        if (!await rooms.finish(id, claim, encrypted, report.status, new Date(now()).toISOString())) throw new AuthServiceError("ROOM_CONFLICT", 409);
+        requireTime();
+        if (!await rooms.finish(id, claim, encrypted, report.status, new Date(now()).toISOString(), deadline)) {
+          requireTime();
+          throw new AuthServiceError("ROOM_CONFLICT", 409);
+        }
         return { contractVersion: "1", requestId, roomId: id, report: publicRoomReport(report) };
       } catch (error) {
         await rooms.release(id, claim);
         throw error;
-      }
+      } finally { clearTimeout(timeout); }
     },
     async terminate(token: string, id: string): Promise<void> {
       const account = await accountFor(token, false);

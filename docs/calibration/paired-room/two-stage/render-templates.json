@@ -5,6 +5,8 @@
     "compatible": "{leftDisplay}，{rightDisplay}。",
     "different": "差异在于，{leftDisplay}，{rightDisplay}。"
   },
+  "noDifferenceSentence": "本次回答里没有足够依据指出具体差异。",
+  "noDifferenceAdviceIntro": "可以一起核对已说清的安排，并保留各自的选择。",
   "discussionIntroByTopic": {
     "activity": "可以一起讨论这次相处的具体安排。",
     "overnight": "可以一起讨论留宿与休息的具体安排。",

@@ -169,7 +169,7 @@
           "B": { "expectation": "这周也想一起散步。", "concern": "没有其他担心。", "boundary": "未确认前不拥抱、不牵手。", "response_next_step": "先散步就好。" }
         }
       },
-      "expected": { "status": "insufficient", "reason": "没有有据的具体差异，不制造分歧或未定事项", "forbiddenOneSidedOpenCodes": ["wants_walk_together", "no_hug_handhold_without_check"] }
+      "expected": { "status": "ready", "reason": "只有有据的共同点时明确说明没有具体差异，不制造分歧或未定事项", "forbiddenOneSidedOpenCodes": ["wants_walk_together", "no_hug_handhold_without_check"] }
     }
   ]
 }

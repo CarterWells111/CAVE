@@ -19,7 +19,7 @@ export interface RoomRepository {
   save(id: string, accountId: string, role: "owner" | "invitee", ciphertext: string, now: string): Promise<boolean>;
   complete(id: string, accountId: string, role: "owner" | "invitee", now: string): Promise<boolean>;
   claim(id: string, claim: string, now: string, leaseUntil: string): Promise<boolean>;
-  finish(id: string, claim: string, ciphertext: string, status: "ready" | "paused" | "insufficient", now: string): Promise<boolean>;
+  finish(id: string, claim: string, ciphertext: string, status: "ready" | "paused" | "insufficient", now: string, deadlineMs: number): Promise<boolean>;
   release(id: string, claim: string): Promise<void>;
   terminate(id: string, accountId: string): Promise<boolean>;
   cleanupExpired(now: string, limit: number): Promise<boolean>;
@@ -84,11 +84,12 @@ export class D1RoomRepository implements RoomRepository {
       .bind(claim, leaseUntil, id, now, now).run();
     return result.meta.changes === 1;
   }
-  async finish(id: string, claim: string, ciphertext: string, status: "ready" | "paused" | "insufficient", now: string): Promise<boolean> {
+  async finish(id: string, claim: string, ciphertext: string, status: "ready" | "paused" | "insufficient", now: string, deadlineMs: number): Promise<boolean> {
     const result = await this.db.prepare(`UPDATE rooms SET report_ciphertext = ?, report_status = ?, generation_claim = NULL, generation_lease_until = NULL
       WHERE id = ? AND generation_claim = ? AND report_status = 'generating' AND expires_at > ?
-        AND joined_at IS NOT NULL AND owner_completed_at IS NOT NULL AND invitee_completed_at IS NOT NULL`)
-      .bind(ciphertext, status, id, claim, now).run();
+        AND joined_at IS NOT NULL AND owner_completed_at IS NOT NULL AND invitee_completed_at IS NOT NULL
+        AND (julianday('now') - 2440587.5) * 86400000 < ?`)
+      .bind(ciphertext, status, id, claim, now, deadlineMs).run();
     return result.meta.changes === 1;
   }
   async release(id: string, claim: string): Promise<void> {
