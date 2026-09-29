@@ -281,6 +281,7 @@ describe("two-person rooms", () => {
     await expect(createRoomReportProvider().generate(input, new AbortController().signal)).rejects.toMatchObject({ code: "MODEL_UNAVAILABLE" });
     const complete = vi.fn(async (prompt: string, data: string) => {
       expect(prompt).toContain("不代写任何一方的台词");
+      expect(prompt).toContain("B 写等对方提出，就不能再问谁先提出或 B 是否愿等");
       expect(JSON.parse(data)).toEqual(input);
       const report = readyReport("pause");
       report.sections.nextSteps.evidence = ["A.response_next_step", "B.concern"] as ["A.response_next_step", "B.response_next_step"];
@@ -337,6 +338,26 @@ describe("two-person rooms", () => {
     expect(() => validateRoomReport(report, input)).toThrow("known-retalk-initiator-marked-unknown");
     report.sections.nextSteps.text = "双方可以先各自休息，由先提出暂停的一方发起再谈；届时是否继续交流仍由双方选择。";
     expect(validateRoomReport(report, input).status).toBe("ready");
+  });
+
+  it("rejects unknown acceptance of an agreed re-talk wait but preserves one-sided uncertainty", async () => {
+    const agreed = createRoomReportInput("pause",
+      ["希望说停就停", "担心解释太多", "是否再谈由我另行提出", "我会先独处一会儿"],
+      ["愿意先暂停", "担心没有机会再聊", "会停止触碰", "之后等对方提出，再问是否愿意聊"]);
+    const report = readyReport("pause");
+    report.sections.nextSteps.text = "双方可以先各自休息；再谈由A另行提出，B等A提出后再问是否愿意聊。仍需确认B是否接受等待A提出。";
+    expect(() => validateRoomReport(report, agreed)).toThrow("agreed-retalk-wait-marked-unknown");
+    await expect(createRoomReportProvider(async () => report).generate(agreed, new AbortController().signal))
+      .rejects.toMatchObject({ code: "INVALID_MODEL_OUTPUT", status: 502 });
+
+    report.sections.nextSteps.text = "双方可以先各自休息；再谈由A另行提出，B等A提出后再问是否愿意聊。具体何时再谈仍待确认。";
+    expect(validateRoomReport(report, agreed).status).toBe("ready");
+
+    const oneSided = createRoomReportInput("pause",
+      ["希望说停就停", "担心解释太多", "是否再谈由我另行提出", "我会先独处一会儿"],
+      ["愿意先暂停", "担心没有机会再聊", "会停止触碰", "之后再确认是否愿意聊"]);
+    report.sections.nextSteps.text = "双方可以先各自休息；A提出再谈的安排已说明，B是否接受等待A提出仍待确认。";
+    expect(validateRoomReport(report, oneSided).status).toBe("ready");
   });
 
   it.each([
