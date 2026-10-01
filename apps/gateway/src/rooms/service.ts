@@ -49,7 +49,7 @@ export function createRoomService({ auth, preferences, rooms, cipher, reportProv
   return {
     async create(token: string, input: CreateRoomRequest): Promise<CreateRoomResponse> {
       const account = await accountFor(token);
-      if (!creatorAccountIds.has(account.id)) throw new AuthServiceError("ROOM_BETA_RESTRICTED", 403);
+      if (!creatorAccountIds.has("*") && !creatorAccountIds.has(account.id)) throw new AuthServiceError("ROOM_BETA_RESTRICTED", 403);
       const id = newRoomId();
       const invitationToken = newInvitationToken();
       const nowMs = now();

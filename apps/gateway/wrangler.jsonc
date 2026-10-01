@@ -59,6 +59,8 @@
 			"workers_dev": false,
 			"vars": {
 				"MODEL_MODE": "live",
+				"ROOMS_ENABLED": "true",
+				"ROOMS_CREATOR_ACCOUNT_IDS": "*",
 				"MODEL_BASE_URL": "https://api.deepseek.com",
 				"MODEL_NAME": "deepseek-v4-flash",
 				"ASSISTANT_HOURLY_LIMIT": "5",

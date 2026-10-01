@@ -191,6 +191,14 @@ describe("two-person rooms", () => {
     expect((await service.join(tokens[1], { contractVersion: "1", requestId, invitationToken: created.invitationToken, adultConfirmed: true })).room.role).toBe("invitee");
   });
 
+  it("allows every authenticated adult to create when the creator policy is open", async () => {
+    const { service, tokens, creators, adult } = await harness();
+    creators.add("*");
+    expect((await service.create(tokens[1], { contractVersion: "1", requestId, scenario: "pause", adultConfirmed: true })).room.role).toBe("owner");
+    adult[2] = false;
+    await expect(service.create(tokens[2], { contractVersion: "1", requestId, scenario: "pause", adultConfirmed: true })).rejects.toMatchObject({ code: "ROOM_ADULT_REQUIRED" });
+  });
+
   it("pauses safely before calling the report provider", async () => {
     const { service, tokens, generate } = await harness();
     const created = await service.create(tokens[0], { contractVersion: "1", requestId, scenario: "pause", adultConfirmed: true });

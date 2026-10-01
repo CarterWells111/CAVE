@@ -46,11 +46,14 @@ assert.deepEqual(target.routes, [{
   custom_domain: true
 }]);
 assert.equal(target.vars?.MODEL_MODE, "live");
+assert.equal(target.vars?.ROOMS_ENABLED, "true");
+assert.equal(target.vars?.ROOMS_CREATOR_ACCOUNT_IDS, "*");
+assert.notEqual(config.vars?.ROOMS_CREATOR_ACCOUNT_IDS, "*");
 assert.equal(target.vars?.MODEL_BASE_URL, "https://api.deepseek.com");
 assert.equal(target.vars?.MODEL_NAME, "deepseek-v4-flash");
 assert.equal(target.vars?.PROMPT_VERSION, config.vars.PROMPT_VERSION);
 assert.equal(target.vars?.POLICY_VERSION, config.vars.POLICY_VERSION);
-for (const key of ["MODEL_API_KEY", "RESEND_API_KEY", "AUTH_EMAIL_LOOKUP_KEY_V1", "AUTH_OTP_KEY_V1"]) {
+for (const key of ["MODEL_API_KEY", "RESEND_API_KEY", "AUTH_EMAIL_LOOKUP_KEY_V1", "AUTH_OTP_KEY_V1", "ROOM_ENCRYPTION_KEY_V1"]) {
   assert.ok(!(key in config.vars), `${key} must not be a production plain variable`);
   assert.ok(!(key in target.vars), `${key} must not be a staging plain variable`);
 }

@@ -66,4 +66,11 @@
 - PR #54 的远端分支此前停在 `cea6dfd`。本地从最新 `origin/main` `6543306` 合入两个新增提交，解决 SDK 基线测试与 pnpm 配置/锁文件的三处冲突；合并仍未推送。
 - 依赖审计所需的 `undici` 与 `brace-expansion` 修复已由最新 main 的范围覆盖版本提供。合并后 `verify:internal` 的 15 项子检查中 14 项通过，包括类型检查、lint、移动端 176 套/1436 项测试、Gateway 与 web 构建、Expo Doctor、iOS 导出、Secret 扫描、acceptance 隔离及依赖审计。仓库配置测试中的 web lint 用例在并行负载下触发 5 秒超时；单独重跑 `test:ci-config` 为 14 套/126 项通过，未修改超时阈值。
 - staging `/health` 返回 HTTP 200。新 main 的房间功能仍缺少真实模型质量验收与部署所需的加密密钥、白名单和 D1 迁移；staging 的 `ROOMS_ENABLED` 保持关闭，不作为本次 development build 的可用功能。
-- Apple Developer 已创建 `com.neijie.cave` 的 Ad Hoc 描述文件 `7PVYD5LH88`，Expo 仍未完成 development 签名同步。用户在 Apple 的设备注册安全锁解除后自行完成设备登记并通知继续；在此之前不发起 EAS 云构建。提交构建前须再次确认 Expo 账号、Apple 团队、项目/profile、staging 地址和目标设备。
+- Expo 已确认 `@carter_wells/cave` 的 development Ad Hoc 凭据有效，Apple 团队为 `Zhiqi Liang / GS99UP3542`，已登记目标 iPhone（UDID 尾号 `401C`）。用户确认先更新 PR、等待 CI，再发起 development 云构建；构建前再次核对最终代码和目标。
+
+## 2026-10-01 staging 双人房间启用
+
+- 用户要求双人房间在 staging 开启，且允许所有已注册的 staging 账号创建。staging 的 `ROOMS_ENABLED=true`、`ROOMS_CREATOR_ACCOUNT_IDS=*`；服务端仍检查登录态与持久化成年声明。生产 Worker 配置与环境资源未部署或修改。
+- staging D1 `014af9e1-ebb2-4b46-aaf2-c9ce2b4de6e6` 已执行 `0004_rooms.sql`，后续查询显示无待处理迁移。32 字节随机加密密钥仅保存为 staging Worker 的 `ROOM_ENCRYPTION_KEY_V1` Secret；密钥值未写入仓库、日志或聊天。
+- staging Worker `neijie-cave-gateway-staging` 部署版本 `a081b5af-7ad0-47c5-8a79-8a1403739f52`。线上 `/health`、`/v1/meta` 均为 200，未认证的 `/v1/rooms` 为 401 `AUTH_UNAUTHORIZED`，证明房间路由已挂载并要求登录。
+- staging 配置检查、房间/应用/部署配置测试 41 项、Gateway 类型检查与 Worker dry-run 通过。真实双人账号完整流程及模型报告质量尚未做端到端验收，须在安装 development build 后实测；不能据此声称报告内容质量已合格。
