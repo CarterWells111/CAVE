@@ -1,0 +1,80 @@
+import { createRoomApiClient, RoomApiError } from "./room-api-client";
+
+jest.mock("expo-crypto", () => ({ getRandomBytes: (length: number) => new Uint8Array(length).fill(1) }));
+
+const id = "6cc380dd-f5b0-4e39-bac4-54fa9b4abcc1";
+const requestId = "01010101-0101-4101-8101-010101010101";
+const expiresAt = "2026-10-29T00:00:00.000Z";
+const room = (overrides: object = {}) => ({
+  id, scenario: "pause", role: "owner", partnerJoined: true,
+  ownCompleted: false, partnerCompleted: false, reportStatus: "waiting", expiresAt, ...overrides,
+});
+const wrapped = (data: object) => ({ contractVersion: "1", requestId, ...data });
+const ok = (data: object) => ({ ok: true, status: 200, json: async () => wrapped(data) });
+const readyReport = {
+  version: "paired-report-v0.2", scenarioId: "pause", status: "ready",
+  sections: {
+    commonAndDifferences: { text: "双方都希望暂停后先停下来，重新开始的时间还需要彼此确认。" },
+    adviceForBoth: { text: "可以讨论暂停时各自需要的空间，以及何时适合再次确认。" },
+    nextSteps: { text: "双方愿意时可先约定一个暂停信号，再确认是否需要进一步讨论。" },
+  },
+};
+
+test("list and read use the backend envelope; only own answers enter the app model", async () => {
+  const fetch = jest.fn().mockResolvedValueOnce(ok({ rooms: [{ room: room(), ownAnswers: ["mine", "", "", ""] }] }))
+    .mockResolvedValueOnce(ok({ room: room({ reportStatus: "ready", ownCompleted: true, partnerCompleted: true }), ownAnswers: ["mine", "", "", ""] }))
+    .mockResolvedValueOnce(ok({ roomId: id, report: readyReport })) as typeof globalThis.fetch;
+  const api = createRoomApiClient({ baseUrl: "https://api.example.test/", getAccessToken: async () => "access", fetch });
+  expect((await api.list())[0]).toMatchObject({ myAnswers: { expectation: "mine" }, status: "active" });
+  const detail = await api.get(id);
+  expect(detail.report).toMatchObject({ status: "ready", sections: { commonAndDifferences: readyReport.sections.commonAndDifferences.text } });
+  expect(JSON.stringify(detail)).not.toContain("partnerAnswers");
+  expect(JSON.stringify(detail)).not.toContain("evidence");
+  expect(fetch).toHaveBeenCalledWith(expect.stringMatching(/\/v1\/rooms\?requestId=/u), expect.objectContaining({
+    method: "GET", headers: expect.objectContaining({ Authorization: "Bearer access" }),
+  }));
+  expect(fetch).toHaveBeenCalledWith(expect.stringMatching(/\/v1\/rooms\/.*\/report\?requestId=/u), expect.anything());
+});
+
+test("saving one answer sends the complete own four-slot tuple", async () => {
+  const fetch = jest.fn().mockResolvedValueOnce(ok({ room: room(), ownAnswers: ["first", "", "", ""] }))
+    .mockResolvedValueOnce(ok({ room: room(), ownAnswers: ["first", "", "boundary", ""] })) as typeof globalThis.fetch;
+  const api = createRoomApiClient({ baseUrl: "https://api.example.test", getAccessToken: async () => "access", fetch });
+  expect((await api.saveAnswer(id, "boundary", "boundary")).myAnswers.boundary).toBe("boundary");
+  const options = (fetch as jest.Mock).mock.calls[1][1] as RequestInit;
+  expect(options.method).toBe("PUT");
+  expect(JSON.parse(String(options.body))).toMatchObject({ contractVersion: "1", answers: ["first", "", "boundary", ""] });
+});
+
+test("completion records explicit consent even when all optional answers were skipped", async () => {
+  const fetch = jest.fn().mockResolvedValueOnce(ok({ room: room(), ownAnswers: null }))
+    .mockResolvedValueOnce(ok({ room: room(), ownAnswers: ["", "", "", ""] }))
+    .mockResolvedValueOnce(ok({ room: room({ ownCompleted: true }), ownAnswers: ["", "", "", ""] })) as typeof globalThis.fetch;
+  const api = createRoomApiClient({ baseUrl: "https://api.example.test", getAccessToken: async () => "access", fetch });
+  await expect(api.complete(id, false)).rejects.toMatchObject({ code: "ROOM_CONSENT_REQUIRED" });
+  expect((await api.complete(id, true)).myCompleted).toBe(true);
+  expect(JSON.parse(String((fetch as jest.Mock).mock.calls[1][1].body))).toMatchObject({ answers: ["", "", "", ""] });
+  expect(JSON.parse(String((fetch as jest.Mock).mock.calls[2][1].body))).toMatchObject({ authorizeSharedReport: true });
+});
+
+test("server error code is preserved for an expired invite", async () => {
+  const fetch = jest.fn(async () => ({ ok: false, status: 400, json: async () => wrapped({ code: "ROOM_INVITATION_INVALID" }) })) as unknown as typeof globalThis.fetch;
+  const api = createRoomApiClient({ baseUrl: "https://api.example.test", getAccessToken: async () => "access", fetch });
+  await expect(api.join("cave_ri_" + "a".repeat(43))).rejects.toEqual(new RoomApiError("ROOM_INVITATION_INVALID", 400));
+});
+
+test("report generation can finish after the server's thirty-second deadline", async () => {
+  jest.useFakeTimers();
+  try {
+    const fetch = jest.fn().mockImplementationOnce((_url: string, options: RequestInit) => new Promise((resolve, reject) => {
+      const done = setTimeout(() => resolve(ok({ roomId: id, report: readyReport })), 35_000);
+      options.signal?.addEventListener("abort", () => { clearTimeout(done); reject(new Error("aborted")); });
+    })).mockResolvedValueOnce(ok({ room: room({ reportStatus: "ready", ownCompleted: true, partnerCompleted: true }), ownAnswers: ["", "", "", ""] })) as typeof globalThis.fetch;
+    const api = createRoomApiClient({ baseUrl: "https://api.example.test", getAccessToken: async () => "access", fetch });
+    const result = api.generateReport(id);
+    await jest.advanceTimersByTimeAsync(35_000);
+    await expect(result).resolves.toMatchObject({ report: { status: "ready" } });
+  } finally {
+    jest.useRealTimers();
+  }
+});

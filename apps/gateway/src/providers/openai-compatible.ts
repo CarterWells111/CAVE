@@ -275,11 +275,16 @@ export class OpenAICompatibleProvider implements ModelProvider, JsonRepairer {
     return this.#complete([{ role: "system", content: systemPrompt }, { role: "user", content: data }], signal, 2500);
   }
 
+  async generateRoomReport(systemPrompt: string, data: string, signal: AbortSignal): Promise<unknown> {
+    return this.#complete([{ role: "system", content: systemPrompt }, { role: "user", content: data }], signal, 2000, true, true);
+  }
+
   async #complete(
     messages: Array<{ role: "system" | "user" | "assistant"; content: string }>,
     externalSignal: AbortSignal,
     maxTokens?: number,
-    parseJson = true
+    parseJson = true,
+    roomReportMode = false
   ): Promise<unknown> {
     assertNotAborted(externalSignal);
     const controller = new AbortController();
@@ -306,7 +311,7 @@ export class OpenAICompatibleProvider implements ModelProvider, JsonRepairer {
             model: this.#modelName,
             messages,
             stream: false,
-            temperature: 0.3,
+            ...(roomReportMode ? { thinking: { type: "disabled" } } : { temperature: 0.3 }),
             ...(maxTokens === undefined ? {} : { max_tokens: maxTokens })
           }),
           signal: controller.signal

@@ -11,9 +11,13 @@ const targets = explicitTargets.length > 0
       resolve(workspaceRoot, "apps/mobile/app")
     ];
 const sourceExtensions = new Set([".js", ".jsx", ".mjs", ".ts", ".tsx"]);
-const imageSaveAdapter = "features/journey/infrastructure/expo-card-image-adapter.ts";
+const imageSaveAdapters = new Map([
+  ["features/journey/infrastructure/expo-card-image-adapter.ts", "saveCardImageToLibrary"],
+  ["features/rooms/infrastructure/save-room-report-image.ts", "saveRoomReportImage"]
+]);
 const authApiAdapter = "features/auth/infrastructure/auth-api-client.ts";
 const assistantApiAdapter = "features/assistant/assistant-client.ts";
+const roomApiAdapter = "features/rooms/infrastructure/room-api-client.ts";
 const permissionMethods = new Set([
   "requestCameraPermissionsAsync",
   "requestMediaLibraryPermissionsAsync",
@@ -274,7 +278,7 @@ function readinessFindings(sourceFile, file) {
   return [...lines].map((line) => ({ file, label: "readiness-score implementation", line }));
 }
 
-function isExplicitImageSavePhotoRequest(call, sourceFile) {
+function isExplicitImageSavePhotoRequest(call, sourceFile, exportName) {
   if (!ts.isPropertyAccessExpression(call.expression)) return false;
   if (call.expression.expression.getText(sourceFile) !== "MediaLibrary") return false;
   if (call.expression.name.text !== "requestPermissionsAsync") return false;
@@ -293,7 +297,7 @@ function isExplicitImageSavePhotoRequest(call, sourceFile) {
   return owner !== undefined
     && ts.isFunctionDeclaration(owner)
     && owner.parent === sourceFile
-    && owner.name?.text === "saveCardImageToLibrary"
+    && owner.name?.text === exportName
     && owner.modifiers?.some(({ kind }) => kind === ts.SyntaxKind.ExportKeyword) === true
     && owner.modifiers?.some(({ kind }) => kind === ts.SyntaxKind.AsyncKeyword) === true;
 }
@@ -306,7 +310,7 @@ function isPermissionReference(node) {
     && permissionMethods.has(accessedName(node));
 }
 
-function permissionFindings(sourceFile, file, isImageSaveAdapter) {
+function permissionFindings(sourceFile, file, imageSaveExportName) {
   const references = [];
   const visit = (node) => {
     if (isPermissionReference(node)) references.push(node);
@@ -314,11 +318,11 @@ function permissionFindings(sourceFile, file, isImageSaveAdapter) {
   };
   visit(sourceFile);
 
-  const hasSoleExplicitImageSaveRequest = isImageSaveAdapter
+  const hasSoleExplicitImageSaveRequest = imageSaveExportName !== null
     && references.length === 1
     && ts.isCallExpression(references[0].parent)
     && references[0].parent.expression === references[0]
-    && isExplicitImageSavePhotoRequest(references[0].parent, sourceFile);
+    && isExplicitImageSavePhotoRequest(references[0].parent, sourceFile, imageSaveExportName);
   if (hasSoleExplicitImageSaveRequest) return [];
 
   return references.map((reference) => ({
@@ -358,14 +362,16 @@ for (const file of files) {
   findings.push(...integrationFindings(
     sourceFile,
     reportPath,
-    normalizePath(file).endsWith(authApiAdapter) || normalizePath(file).endsWith(assistantApiAdapter)
+    normalizePath(file).endsWith(authApiAdapter)
+      || normalizePath(file).endsWith(assistantApiAdapter)
+      || normalizePath(file).endsWith(roomApiAdapter)
   ));
   findings.push(...recordingFindings(sourceFile, reportPath));
 
   findings.push(...permissionFindings(
     sourceFile,
     reportPath,
-    normalizePath(file).endsWith(imageSaveAdapter)
+    [...imageSaveAdapters].find(([path]) => normalizePath(file).endsWith(path))?.[1] ?? null
   ));
 
   findings.push(...sensitiveLogFindings(sourceFile, reportPath));

@@ -1,5 +1,5 @@
-import { useFocusEffect, useRouter } from "expo-router";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useRouter } from "expo-router";
+import { useState } from "react";
 import { useWindowDimensions } from "react-native";
 
 import { SecondaryButton } from "../../src/core/ui/secondary-button";
@@ -9,7 +9,6 @@ import { getResumePath } from "../../src/features/journey/application/journey-na
 import { type JourneyRuntimeContextValue, useOptionalJourneyRuntime } from "../../src/features/journey/runtime/JourneyRuntimeProvider";
 import { WelcomePage } from "../../src/features/journey/ui/pages/WelcomePage";
 import { resolveFirstRunLayout } from "../../src/features/journey/ui/first-run-layout";
-import { prepareFirstOvernight } from "../../src/features/shell/application/journey-entry";
 import { HomeScreen } from "../../src/features/shell/ui/HomeScreen";
 import { useJourneyMapAccess } from "../../src/features/shell/ui/use-journey-map-access";
 
@@ -66,38 +65,10 @@ function AuthorizedHomeRoute({ runtime }: { runtime: JourneyRuntimeContextValue 
   const router = useRouter();
   const accountProfile = useAccountProfile();
   const access = useJourneyMapAccess(runtime);
-  const [scenarioPending, setScenarioPending] = useState(false);
-  const [scenarioError, setScenarioError] = useState(false);
-  const inFlight = useRef(false);
-  const active = useRef(true);
-  const navigationEpoch = useRef(0);
-  useEffect(() => {
-    active.current = true;
-    return () => { active.current = false; navigationEpoch.current += 1; };
-  }, [runtime.service]);
-  useFocusEffect(useCallback(() => {
-    // Tabs stay mounted after navigation; invalidate an opening request on blur.
-    return () => { navigationEpoch.current += 1; };
-  }, []));
 
   if (access.status === "onboarding") return <FirstRunHomeRoute runtime={runtime} />;
 
-  const openScenario = async () => {
-    if (inFlight.current) return;
-    inFlight.current = true;
-    const epoch = ++navigationEpoch.current;
-    setScenarioPending(true);
-    setScenarioError(false);
-    try {
-      const destination = await prepareFirstOvernight(runtime);
-      if (active.current && navigationEpoch.current === epoch) router.push(destination);
-    } catch {
-      if (active.current && navigationEpoch.current === epoch) setScenarioError(true);
-    } finally {
-      inFlight.current = false;
-      if (active.current) setScenarioPending(false);
-    }
-  };
+  const openScenario = () => router.push({ pathname: "/rooms/choose", params: { scenario: "first-overnight" } });
 
   return (
     <Screen contentSafeAreaTop testID="journey-map-scroll">
@@ -108,19 +79,15 @@ function AuthorizedHomeRoute({ runtime }: { runtime: JourneyRuntimeContextValue 
           status: accountProfile.status,
           ...(accountProfile.profile?.displayName === undefined ? {} : { displayName: accountProfile.profile.displayName }),
           onOpen: () => {
-            navigationEpoch.current += 1;
             router.push(accountProfile.status === "signedOut" ? "/auth/email" : "/(tabs)/profile");
           },
         }}
         loadState={access.status}
         onRetry={access.retry}
         onOpenSample={(id) => {
-          navigationEpoch.current += 1;
           router.push({ pathname: "/explore/[journeyId]", params: { journeyId: id } });
         }}
         onOpenScenario={openScenario}
-        scenarioPending={scenarioPending}
-        scenarioError={scenarioError}
       />
       <SecondaryButton label="主题探索：身体感受" onPress={() => router.push("/reviews/topic/body")} />
       <SecondaryButton label="主题探索：边界与表达" onPress={() => router.push("/reviews/topic/boundaries")} />

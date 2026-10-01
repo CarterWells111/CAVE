@@ -1,0 +1,35 @@
+{
+  "version": "paired-report-v0.2",
+  "scenarioId": "pause",
+  "status": "ready",
+  "sections": {
+    "commonAndDifferences": {
+      "text": "双方都认为暂停时应停止触碰。A说明由自己另行提出是否再谈，B表示等A提出再谈。差异在于，A担心暂停后还要解释原因，B担心之后不知道是否还能再谈。",
+      "evidence": [
+        "A.expectation",
+        "B.boundary",
+        "A.boundary",
+        "B.response_next_step",
+        "A.concern",
+        "B.concern"
+      ]
+    },
+    "adviceForBoth": {
+      "text": "可以一起讨论彼此不同的担忧。说出暂停后先停下，不要求当场继续讨论。暂停后不要求对方立刻解释原因。",
+      "evidence": [
+        "A.concern",
+        "B.concern",
+        "A.expectation",
+        "B.boundary"
+      ]
+    },
+    "nextSteps": {
+      "text": "若双方愿意，听到暂停先停止触碰；之后是否继续，依当时的边界和意愿决定。A说出暂停后，需要一小时独处。如情景变化，再核对彼此边界。",
+      "evidence": [
+        "A.expectation",
+        "B.boundary",
+        "A.boundary"
+      ]
+    }
+  }
+}

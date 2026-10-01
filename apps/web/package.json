@@ -8,7 +8,7 @@
     "build": "astro build",
     "preview": "astro preview",
     "typecheck": "astro check",
-    "lint": "eslint \"src/**/*.{ts,astro}\" \"tests/**/*.{ts,astro}\" --max-warnings 0",
+    "lint": "eslint \"src/**/*.{ts,astro}\" \"tests/**/*.{ts,astro}\" \"public/join.js\" --max-warnings 0",
     "test": "astro build && vitest run"
   },
   "dependencies": {

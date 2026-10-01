@@ -4,6 +4,21 @@ import { darkTheme } from "../../../core/design/theme";
 import { ThemeProvider } from "../../../core/design/theme-provider";
 import { JournalEditorScreen } from "./JournalEditorScreen";
 
+test("prefills a room report in the main text field and keeps it as a separate local draft", async () => {
+  const saveDraft = jest.fn(async () => undefined);
+  const createRecord = jest.fn();
+  const service = {
+    loadDraft: async () => null, saveDraft, clearDraft: async () => undefined,
+    createRecord, listRecords: async () => [],
+  } as never;
+  render(<JournalEditorScreen initial={{ title: "此次沟通", body: "共同点与差异\n我们都想继续讨论。" }}
+    draftKeyOverride="new:room-report:room-1:abc" service={service} onSaved={jest.fn()} />);
+  await waitFor(() => expect(screen.getByLabelText("事件正文")).toHaveProp("editable", true));
+  expect(screen.getByLabelText("事件正文")).toHaveProp("value", "共同点与差异\n我们都想继续讨论。");
+  await waitFor(() => expect(saveDraft).toHaveBeenCalledWith("new:room-report:room-1:abc", expect.objectContaining({ body: "共同点与差异\n我们都想继续讨论。" })));
+  expect(createRecord).not.toHaveBeenCalled();
+});
+
 test("saves edits made after draft cleanup fails without creating a duplicate", async () => {
   const clearDraft = jest.fn().mockRejectedValueOnce(new Error("cleanup failed")).mockResolvedValue(undefined);
   const createRecord = jest.fn(async () => ({ id: "saved" }));

@@ -7,6 +7,8 @@ import { EmailAuthScreen } from "../../src/features/auth/ui/EmailAuthScreen";
 import { useAdultDeclaration } from "../../src/features/journey/runtime/JourneyRuntimeProvider";
 import { backOrHome, journalReturnDestination } from "../../src/features/shell/ui/safe-navigation";
 import { onboardingHref, resolveJourneyEntry } from "../../src/features/shell/application/journey-entry";
+import { roomReturnPath } from "../../src/features/rooms/application/room-return-path";
+import type { Href } from "expo-router";
 
 export default function EmailAuthRoute() {
   const router = useRouter();
@@ -18,6 +20,12 @@ export default function EmailAuthRoute() {
   const returned = useRef(false);
   useEffect(() => {
     if (returned.current || auth.status !== "signedIn") return;
+    const roomPath = roomReturnPath(returnTo);
+    if (roomPath) {
+      returned.current = true;
+      router.replace(roomPath as Href);
+      return;
+    }
     if (returnTo === "/(tabs)/profile" || returnTo === "/(tabs)/journal" || returnTo === "/(tabs)/ai") {
       returned.current = true;
       router.replace(returnTo);
@@ -41,7 +49,7 @@ export default function EmailAuthRoute() {
     onRequestEmail={auth.requestEmailChallenge}
     onVerifyCode={async (challengeId, code, email) => {
       await auth.verifyEmailChallenge(challengeId, code, email);
-      if (returned.current || returnTo === "/(tabs)/profile" || returnTo === "/(tabs)/journal" || returnTo === "/(tabs)/ai" || returnTo === "/journey/adult-gate" || returnTo === "/journey/preface") return;
+      if (returned.current || roomReturnPath(returnTo) || returnTo === "/(tabs)/profile" || returnTo === "/(tabs)/journal" || returnTo === "/(tabs)/ai" || returnTo === "/journey/adult-gate" || returnTo === "/journey/preface") return;
       const destination = journalReturnDestination(returnTo);
       returned.current = true;
       router.replace(destination ?? "/(tabs)/profile");

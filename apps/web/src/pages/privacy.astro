@@ -7,14 +7,14 @@ import BaseLayout from "../layouts/BaseLayout.astro";
 
 <BaseLayout
   title="隐私说明｜CAVE 内界"
-  description="了解 CAVE 如何在本机保留、编辑与删除数据，以及邮箱登录、系统剪贴板和设备备份的边界。"
+  description="了解 CAVE 本机数据、双人异步演练房间、邮箱登录、删除与设备服务的隐私边界。"
   path="/privacy/"
 >
   <section class="section page-section" aria-labelledby="privacy-title">
     <PageHero
       eyebrow="Privacy"
       title="隐私说明"
-      description="你的私密探索默认留在自己的设备上，也应当由你决定何时保留、编辑或删除。"
+      description="日常私密探索默认留在自己的设备上；双人房间每次保存的作答会加密存储到云端，完成时再单独确认共同报告共享。"
       headingId="privacy-title"
     />
 
@@ -32,13 +32,19 @@ import BaseLayout from "../layouts/BaseLayout.astro";
       </ContentCard>
       <ContentCard title="系统服务边界" eyebrow="设备与 Apple">
         <p>当前版本不会把沟通草稿写入系统相册，也不提供复制全文或系统分享入口。</p>
-        <p>预设练习里主动复制支持号码时，号码会进入系统剪贴板。设备备份与剪贴板由操作系统和你的设备设置控制，不属于 CAVE 自有服务器。</p>
+        <p>双人房间的共同报告如由你主动导出为本机图片，导出副本会受相册和设备备份设置控制；房间到期或提前终止不会自动删除这些副本。</p>
+        <p>预设练习里主动复制支持号码时，号码会进入系统剪贴板。相册、设备备份与剪贴板由操作系统和你的设备设置控制，不属于 CAVE 自有服务器。</p>
       </ContentCard>
       <ContentCard title="邮箱账户" eyebrow="可选登录">
         <p>验证码邮件用于登录和账户安全。访问令牌短时保存在内存，刷新令牌保存在设备安全存储中。</p>
         <p>成年确认与界面称呼会随账号保存，登录后可在其他设备恢复，并可在我的设置中调整。成年确认是自我声明，不收集生日或证件。</p>
         <p>删除全部本机数据会清除本机偏好及尚未同步的选择，不会删除账号上已保存的偏好；删除云端账户会同时删除这些偏好。</p>
         <p>从设备退出不会删除本机内容；删除云端账户需要再次验证邮箱，并明确选择保留锁定的本机手记，或先删除当前账号手记。其他本机内容仍需单独删除。</p>
+      </ContentCard>
+      <ContentCard title="双人异步演练" eyebrow="内测房间">
+        <p>受邀内测用户在双人房间内每次点击“保存”，本次作答就会上传并加密存储到云端，以便异步恢复；作答原文仅本人可见，对方无法查看。完成时，双方还须各自独立确认，才授权用这些答案生成并共享共同报告。个人作答不直接向对方开放。</p>
+        <p>房间数据 30 天后自动删除，也可在 App 内提前终止并删除。邀请凭证位于 <code>#invite=</code> 链接片段，官网页面不将其发送给站点服务端；只有你点击打开 App，浏览器才尝试将凭证交给内界 App。</p>
+        <a class="text-link" href="/join/">了解双人内测</a>
       </ContentCard>
     </div>
 

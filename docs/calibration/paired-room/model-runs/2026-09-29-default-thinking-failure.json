@@ -1,0 +1,43 @@
+{
+  "kind": "synthetic_model_calibration",
+  "createdAt": "2026-09-29T19:10:50.805936+00:00",
+  "modelRequested": "deepseek-v4-flash",
+  "endpoint": "https://api.deepseek.com/chat/completions",
+  "temperature": 0.3,
+  "maxTokens": 2000,
+  "promptVersion": "paired-report-v0.1",
+  "questionsVersion": "paired-questions-v0.1",
+  "casesVersion": "paired-cases-v0.1",
+  "rubricVersion": "paired-rubric-v0.1",
+  "results": [
+    {
+      "httpStatus": 200,
+      "modelReturned": "deepseek-flash",
+      "systemFingerprint": "aeb56401ca74e127821c4f9126dcb669",
+      "finishReason": "length",
+      "usage": {
+        "prompt_tokens": 1634,
+        "completion_tokens": 2000,
+        "total_tokens": 3634,
+        "prompt_tokens_details": {
+          "cached_tokens": 0
+        },
+        "completion_tokens_details": {
+          "reasoning_tokens": 2000
+        },
+        "prompt_cache_hit_tokens": 0,
+        "prompt_cache_miss_tokens": 1634
+      },
+      "rawOutput": "",
+      "checks": {
+        "json": false,
+        "schema": false,
+        "evidence": false,
+        "statusMatchesExpected": false
+      },
+      "caseId": "overnight-balanced",
+      "run": 1,
+      "expectedStatus": "ready"
+    }
+  ]
+}
