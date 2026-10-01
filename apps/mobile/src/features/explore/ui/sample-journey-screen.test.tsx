@@ -8,11 +8,16 @@ const first = SAMPLE_JOURNEYS[0]!;
 const second = SAMPLE_JOURNEYS[1]!;
 const next = () => fireEvent.press(screen.getByRole("button", { name: "下一页" }));
 
-it("starts with a framework preview and progresses through exactly three pages", () => {
+it("shows the confirmed body content across three pages and keeps the diagram optional", () => {
   const exit = jest.fn();
   render(<SampleJourneyScreen journey={first} onExit={exit} />);
   expect(screen.getByLabelText("第 1 页，共 3 页")).toBeTruthy();
   expect(screen.getByText(first.pages[0].body)).toHaveProp("selectable", true);
+  expect(screen.getByText("身体知识 · 待专业复核")).toBeTruthy();
+  expect(screen.queryByLabelText(/医学图审核稿：阴阜/u)).toBeNull();
+  fireEvent.press(screen.getByRole("button", { name: "查看外阴结构图" }));
+  expect(screen.getByLabelText(/医学图审核稿：阴阜/u)).toBeTruthy();
+  expect(screen.getByText("医学图审核稿")).toBeTruthy();
   expect(screen.queryByRole("button", { name: "返回上一页" })).toBeNull();
   next();
   expect(screen.getByLabelText("第 2 页，共 3 页")).toBeTruthy();
@@ -24,6 +29,12 @@ it("starts with a framework preview and progresses through exactly three pages",
   expect(exit).not.toHaveBeenCalled();
   fireEvent.press(screen.getByRole("button", { name: "返回地图" }));
   expect(exit).toHaveBeenCalledTimes(1);
+});
+
+it("keeps 02 as a framework preview without the body diagram", () => {
+  render(<SampleJourneyScreen journey={second} onExit={jest.fn()} />);
+  expect(screen.getByText("样板 · 框架预览")).toBeTruthy();
+  expect(screen.queryByRole("button", { name: "查看外阴结构图" })).toBeNull();
 });
 
 it("returns one page at a time without exiting or retaining a completion state", () => {
