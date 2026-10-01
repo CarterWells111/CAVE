@@ -59,6 +59,8 @@ node scripts/start-mobile.mjs dev-staging --print-env
 
 `development` 开发包使用 `com.neijie.cave.dev`，图标名称为“内界 CAVE Dev”，可与 `com.neijie.cave` 的 alpha/preview/production 包并排安装；它们的本机数据彼此独立。`acceptance`、`preview`、`production` 仍共用 `com.neijie.cave`，互相安装会覆盖，设备升级验收应继续使用同一 bundle ID。新的 development ID 需单独的 Apple App ID 与 Ad Hoc 签名。
 
+在 `apps/mobile` 为 development 配置 EAS iOS 凭据时，先在 PowerShell 设置 `$env:EAS_BUILD_PROFILE = "development"`，再运行 `pnpm dlx eas-cli@24.8.0 credentials:configure-build --platform ios --profile development`；确认输出的 Bundle Identifier 是 `com.neijie.cave.dev`，Apple Team 是 `GS99UP3542`。仅传 `--profile development` 给该凭据命令时，动态 `app.config.ts` 曾按默认 production 解析为旧 ID。
+
 本地 Gateway 的身份验证仍需下文所列 Secret；Expo Go 无法替代 SQLCipher、SecureStore、本地迁移或删除恢复的原生验证。开发包 staging 的 AI 模式及服务状态由 staging Worker 决定；密钥不可放入移动端。团队使用和构建环境见[AI 服务配置](../operations/ai-service.md)。
 
 ## 官方网站

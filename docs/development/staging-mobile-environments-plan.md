@@ -84,4 +84,6 @@
 ## development 与 alpha 同机安装
 
 - 历史 alpha 构建 `1e030993-6e85-45b7-8e59-f41730bcee0a` 和首次成功的 development 构建均使用 `com.neijie.cave`；读取后一构建的 IPA `Info.plist` 已确认图标名以“Dev”结尾，但同一 Bundle ID 使两包互相覆盖。
-- 仅将 `development` 的 iOS Bundle ID 改为 `com.neijie.cave.dev`，继续使用“内界 CAVE Dev”显示名与 staging 默认 Gateway。`acceptance`、`preview`、`production` 保留 `com.neijie.cave`，以维持现有升级验收路径。新 ID 对应的 Apple App ID、Ad Hoc 凭据与新云构建待确认和验收。
+- 仅将 `development` 的 iOS Bundle ID 改为 `com.neijie.cave.dev`，继续使用“内界 CAVE Dev”显示名与 staging 默认 Gateway。`acceptance`、`preview`、`production` 保留 `com.neijie.cave`，以维持现有升级验收路径。
+- PR #54 的代码提交 `d79cabf` 三项 CI 检查全部通过。配置凭据时显式设置 `EAS_BUILD_PROFILE=development`，在 Apple `Zhiqi Liang / GS99UP3542` 团队注册 `com.neijie.cave.dev`，Ad Hoc 描述文件 `B6FRR5R786` 包含两台已登记 iPhone。首次只传 EAS `--profile development` 的凭据命令误读旧 ID；重新配置后输出确认了新 ID 和团队。
+- [EAS iOS development 构建 `5705c7ca-059e-41df-9614-fbbf1c373938`](https://expo.dev/accounts/carter_wells/projects/cave/builds/5705c7ca-059e-41df-9614-fbbf1c373938) 使用提交 `d79cabf`、staging Gateway、内部 Ad Hoc 分发，状态 `FINISHED`。实际 IPA `Info.plist` 已核对 `CFBundleIdentifier=com.neijie.cave.dev`、`CFBundleDisplayName=内界 CAVE Dev`、`CFBundleName=CAVE`。真机同机安装及业务流程仍待设备端验收。
