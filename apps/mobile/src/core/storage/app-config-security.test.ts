@@ -24,7 +24,8 @@ test("local HTTP permission exists only in development and acceptance builds", (
         expect(infoPlist?.NSAppTransportSecurity).toEqual({ NSAllowsLocalNetworking: true });
         expect(infoPlist?.NSLocalNetworkUsageDescription).toContain("Gateway");
       } else {
-        expect(infoPlist).toBeUndefined();
+        expect(infoPlist?.NSAppTransportSecurity).toBeUndefined();
+        expect(infoPlist?.NSLocalNetworkUsageDescription).toBeUndefined();
       }
     }
   } finally {
