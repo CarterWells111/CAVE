@@ -21,7 +21,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
 
   return {
     ...config,
-    name: getDisplayName(environment),
+    name: "内界 CAVE",
     owner: "carter_wells",
     slug: "cave",
     version: "0.1.0",
@@ -72,10 +72,13 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     },
     ios: {
       ...(environment === "preview" ? { buildNumber: "3" } : environment === "acceptance" ? { buildNumber: "4" } : {}),
-      ...(environment === "development" || environment === "acceptance" ? {
+      ...(environment !== "production" ? {
         infoPlist: {
-          NSAppTransportSecurity: { NSAllowsLocalNetworking: true },
-          NSLocalNetworkUsageDescription: "允许开发包连接同一局域网内的本地 Gateway 进行调试。"
+          CFBundleDisplayName: getDisplayName(environment),
+          ...(environment === "development" || environment === "acceptance" ? {
+            NSAppTransportSecurity: { NSAllowsLocalNetworking: true },
+            NSLocalNetworkUsageDescription: "允许开发包连接同一局域网内的本地 Gateway 进行调试。"
+          } : {})
         }
       } : {}),
       icon: "./assets/app-icon.png",

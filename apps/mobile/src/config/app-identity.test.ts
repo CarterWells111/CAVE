@@ -73,8 +73,10 @@ describe("Expo app identity", () => {
     ["development", "内界 CAVE Dev"],
     ["preview", "内界 CAVE Preview"],
     ["production", "内界 CAVE"]
-  ])("uses the %s display name", (profile, expectedName) => {
-    expect(configFor(profile).name).toBe(expectedName);
+  ])("keeps one Xcode target while using the %s display name", (profile, expectedName) => {
+    const config = configFor(profile);
+    expect(config.name).toBe("内界 CAVE");
+    expect(config.ios?.infoPlist?.CFBundleDisplayName ?? config.name).toBe(expectedName);
   });
 
   test("uses the shared app identity", () => {

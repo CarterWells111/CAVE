@@ -74,3 +74,8 @@
 - staging D1 `014af9e1-ebb2-4b46-aaf2-c9ce2b4de6e6` 已执行 `0004_rooms.sql`，后续查询显示无待处理迁移。32 字节随机加密密钥仅保存为 staging Worker 的 `ROOM_ENCRYPTION_KEY_V1` Secret；密钥值未写入仓库、日志或聊天。
 - staging Worker `neijie-cave-gateway-staging` 部署版本 `a081b5af-7ad0-47c5-8a79-8a1403739f52`。线上 `/health`、`/v1/meta` 均为 200，未认证的 `/v1/rooms` 为 401 `AUTH_UNAUTHORIZED`，证明房间路由已挂载并要求登录。
 - staging 配置检查、房间/应用/部署配置测试 41 项、Gateway 类型检查与 Worker dry-run 通过。真实双人账号完整流程及模型报告质量尚未做端到端验收，须在安装 development build 后实测；不能据此声称报告内容质量已合格。
+
+## iOS development 构建恢复
+
+- PR #54 的提交 `0f868b0` 经三个 CI 检查通过。首次 EAS 构建 `d9c253cf-9224-451f-972e-e069e2211c76` 在 `Configure Xcode project` 失败：凭据指向 target `CAVE`，development 预构建却因动态应用名生成了 `CAVEDev`。
+- 修复为所有 profile 共用原生应用名 `内界 CAVE`，仅通过 iOS `CFBundleDisplayName` 设置开发/预览包的图标显示名。development Expo 配置解析为原生名 `内界 CAVE`、显示名 `内界 CAVE Dev`，当前 Expo iOS 名称规范化代码把原生名映射为 `CAVE`；15 项应用身份测试与移动端类型检查通过。Windows 不支持本地生成 iOS 工程，最终 target 与签名须由下一次 EAS 构建验证。
