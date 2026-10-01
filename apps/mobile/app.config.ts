@@ -82,7 +82,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
         }
       } : {}),
       icon: "./assets/app-icon.png",
-      bundleIdentifier: "com.neijie.cave",
+      bundleIdentifier: environment === "development" ? "com.neijie.cave.dev" : "com.neijie.cave",
       supportsTablet: false,
       config: {
         usesNonExemptEncryption: false

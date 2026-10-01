@@ -91,6 +91,13 @@ describe("Expo app identity", () => {
     expect(config.android).toBeUndefined();
   });
 
+  test("gives the development client a separate iOS identity from alpha and release builds", () => {
+    expect(configFor("development").ios?.bundleIdentifier).toBe("com.neijie.cave.dev");
+    for (const profile of ["preview", "acceptance", "production"]) {
+      expect(configFor(profile).ios?.bundleIdentifier).toBe("com.neijie.cave");
+    }
+  });
+
   test("declares iOS add-only photo saving without Android configuration", () => {
     expect(configFor("production").plugins).toContainEqual([
       "expo-media-library",

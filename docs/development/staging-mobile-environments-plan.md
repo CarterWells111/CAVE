@@ -80,3 +80,8 @@
 - PR #54 的提交 `0f868b0` 经三个 CI 检查通过。首次 EAS 构建 `d9c253cf-9224-451f-972e-e069e2211c76` 在 `Configure Xcode project` 失败：凭据指向 target `CAVE`，development 预构建却因动态应用名生成了 `CAVEDev`。
 - 修复为所有 profile 共用原生应用名 `内界 CAVE`，仅通过 iOS `CFBundleDisplayName` 设置开发/预览包的图标显示名。development Expo 配置解析为原生名 `内界 CAVE`、显示名 `内界 CAVE Dev`，当前 Expo iOS 名称规范化代码把原生名映射为 `CAVE`；身份与本地网络权限测试 20 项、移动端类型检查通过。Windows 不支持本地生成 iOS 工程，最终 target 与签名由下一次 EAS 构建验证。
 - 修正配置安全测试后，PR #54 的代码提交 `22b13fa` 三项 CI 检查全部通过。第二次 EAS iOS `development` / Ad Hoc 构建 `a87d70bd-15d7-4c6c-8cf4-ad1a5cdcc89d` 以该提交完成，`CONFIGURE_XCODE_PROJECT` 阶段成功为 `CAVE` target 指派 GS99 描述文件。[EAS 构建页面](https://expo.dev/accounts/carter_wells/projects/cave/builds/a87d70bd-15d7-4c6c-8cf4-ad1a5cdcc89d) 可获取安装包，IPA HEAD 返回 200（27,168,010 字节）。真机安装、staging 双人账号流程和真实模型报告质量仍待设备端验收。
+
+## development 与 alpha 同机安装
+
+- 历史 alpha 构建 `1e030993-6e85-45b7-8e59-f41730bcee0a` 和首次成功的 development 构建均使用 `com.neijie.cave`；读取后一构建的 IPA `Info.plist` 已确认图标名以“Dev”结尾，但同一 Bundle ID 使两包互相覆盖。
+- 仅将 `development` 的 iOS Bundle ID 改为 `com.neijie.cave.dev`，继续使用“内界 CAVE Dev”显示名与 staging 默认 Gateway。`acceptance`、`preview`、`production` 保留 `com.neijie.cave`，以维持现有升级验收路径。新 ID 对应的 Apple App ID、Ad Hoc 凭据与新云构建待确认和验收。

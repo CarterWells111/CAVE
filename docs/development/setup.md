@@ -57,7 +57,7 @@ node scripts/start-mobile.mjs dev-staging --print-env
 
 开发客户端必须由匹配当前 Expo 配置的原生构建启动。本次 development/acceptance 原生配置添加了仅限本地网络的 iOS 访问许可，旧开发包需重新构建安装后才能验收局域网 HTTP；preview/production 不带这项许可。Expo Go 结果不能替代原生安全能力验证。
 
-目前各 iOS profile 仍共用 `com.neijie.cave`。同一设备无法同时安装开发包与正式包；切换安装包前须留意本机数据。若将来需要并排安装，须为开发变体配置独立 bundle ID 和相应签名。
+`development` 开发包使用 `com.neijie.cave.dev`，图标名称为“内界 CAVE Dev”，可与 `com.neijie.cave` 的 alpha/preview/production 包并排安装；它们的本机数据彼此独立。`acceptance`、`preview`、`production` 仍共用 `com.neijie.cave`，互相安装会覆盖，设备升级验收应继续使用同一 bundle ID。新的 development ID 需单独的 Apple App ID 与 Ad Hoc 签名。
 
 本地 Gateway 的身份验证仍需下文所列 Secret；Expo Go 无法替代 SQLCipher、SecureStore、本地迁移或删除恢复的原生验证。开发包 staging 的 AI 模式及服务状态由 staging Worker 决定；密钥不可放入移动端。团队使用和构建环境见[AI 服务配置](../operations/ai-service.md)。
 
