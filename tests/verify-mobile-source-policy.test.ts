@@ -15,11 +15,17 @@ const mobileSourceRoots = [
 ];
 const productionExtensions = new Set([".js", ".jsx", ".mjs", ".ts", ".tsx"]);
 const imageSaveAdapterPath = "features/journey/infrastructure/expo-card-image-adapter.ts";
+const roomImageSaveAdapterPath = "features/rooms/infrastructure/save-room-report-image.ts";
+const roomApiAdapterPath = "features/rooms/infrastructure/room-api-client.ts";
 const actualImageSaveAdapter = readFileSync(
   new URL(
     "../apps/mobile/src/features/journey/infrastructure/expo-card-image-adapter.ts",
     import.meta.url
   ),
+  "utf8"
+);
+const actualRoomImageSaveAdapter = readFileSync(
+  new URL("../apps/mobile/src/features/rooms/infrastructure/save-room-report-image.ts", import.meta.url),
   "utf8"
 );
 const packageJson = JSON.parse(
@@ -90,6 +96,12 @@ describe("mobile Demo source policy", () => {
     const result = spawnSync(process.execPath, [scanner, allowed], { encoding: "utf8" });
 
     expect(result.status).toBe(0);
+  });
+  it("allows room requests only in the room API adapter", () => {
+    const allowed = scan({ [roomApiAdapterPath]: "export const request = () => fetch('/v1/rooms');" });
+    const forbidden = scan({ "features/rooms/ui/room-screen.tsx": "export const request = () => fetch('/v1/rooms');" });
+    expect(allowed.status).toBe(0);
+    expect(forbidden.status).toBe(1);
   });
   it("exposes the deterministic repository scan as a root script", () => {
     expect(packageJson.scripts?.["verify:mobile-policy"]).toBe(
@@ -405,6 +417,14 @@ describe("mobile Demo source policy", () => {
 
     expect(result.status).toBe(0);
     expect(result.stdout).toContain("mobile source policy passed (1 files)");
+  });
+  it("accepts photo permission only in the user-triggered room report export", () => {
+    const allowed = scan({ [roomImageSaveAdapterPath]: actualRoomImageSaveAdapter });
+    const forbidden = scan({
+      [roomImageSaveAdapterPath]: "export async function saveOtherImage() { await MediaLibrary.requestPermissionsAsync(true, ['photo']); }"
+    });
+    expect(allowed.status).toBe(0);
+    expect(forbidden.status).toBe(1);
   });
 
   it("accepts user-visible no-AI copy and unrelated local implementation terms", () => {

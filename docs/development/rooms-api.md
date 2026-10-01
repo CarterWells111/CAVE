@@ -21,4 +21,18 @@
 
 服务端先校验模型提议的 A/B 事实账本，再校验只含事实 ID 与模板代码的计划，最后用固定模板渲染正文。事实必须来自本人非空回答的精确片段，并通过语义、归属、否定和条件校验；共同或相容关系需有双方依据。中间账本与计划只在请求内存中处理，不存储或返回；最终报告和内部证据加密保存，公开响应不含证据。若有共同或相容事实却没有可证实的差异，固定句如实说明暂无具体差异。双方各少于一项非空回答时直接返回 `insufficient`；安全风险优先触发 `paused`。模型不可用或候选不合规则不生成占位报告。两阶段目录和来源规则仍需真实模型复测与人工校准。
 
-只有房间双方能读房间状态和共同报告，任何一方都不能通过接口读取对方原始答案。任一方可 `DELETE`，立即删除双方密文和共同报告。账号删除通过外键级联删除其发起或已加入的房间。每日计划任务分批删除超过 30 天的房间。需要在 Worker Secrets 配置 32 字节密钥的 64 位十六进制值 `ROOM_ENCRYPTION_KEY_V1`，再应用 `0004_rooms.sql` 迁移。房间路由默认关闭，只有设置 `ROOMS_ENABLED=true` 才挂载；`ROOMS_CREATOR_ACCOUNT_IDS` 是以逗号分隔的明确内测账号 UUID 白名单，未列入者不能创建，但持有效邀请的成年账号可加入。开启时还必须有 D1 和加密密钥，否则路由不挂载；白名单缺失则无人可创建。不要把密钥写入配置文件。当前报告生成接口采用可替换 provider；若真实模型不可用，会生成失败而不会返回一份泛化的假报告。AI 报告提示词仍需校准；此分支未部署。
+只有房间双方能读房间状态和共同报告，任何一方都不能通过接口读取对方原始答案。任一方可 `DELETE`，立即删除双方密文和共同报告。账号删除通过外键级联删除其发起或已加入的房间。每日计划任务分批删除超过 30 天的房间。当前报告生成接口采用可替换 provider；若真实模型不可用，会生成失败而不会返回一份泛化的假报告。两阶段 AI 报告仍需真实模型复测与人工校准。
+
+## 开关与内测环境
+
+- 后端开关在 `apps/gateway/wrangler.jsonc` 的 `vars.ROOMS_ENABLED`，本分支已设为 `"true"`。`apps/gateway/src/app.ts` 仅在该值为 `"true"` 时尝试挂载房间路由。此配置只随下一次 Worker 部署生效；合并 PR 不会部署。
+- 移动端 `apps/mobile/eas.json` 中的 development、preview、production 构建当前都连接 `https://api.neijiecave.com`。用 production profile 提交的 TestFlight 包也使用该地址；因此当前后端开关作用于同一 Gateway，不按安装包类型区分。后续建立 staging Gateway 和专用构建时，再分别设置各 profile 的 `EXPO_PUBLIC_GATEWAY_URL`，并在对应 Worker 配置开关与密钥。
+- 仅将开关设为 `true` 并不足以开放接口。对应 Worker 必须绑定 D1 且配置 `ROOM_ENCRYPTION_KEY_V1`，否则路由仍不挂载，App 可能显示内测未开启。`ROOMS_CREATOR_ACCOUNT_IDS` 是逗号分隔的内测发起账号 UUID 白名单；缺失时无人可创建，但已签发邀请的其他成年账号可加入。不要把密钥或白名单写进仓库或 `EXPO_PUBLIC_` 变量。
+
+后续在选定环境启用时，按顺序执行：
+
+1. 核对目标 Worker、D1 和内测账号；先应用包含 `0004_rooms.sql` 的 D1 migration。远端命令为 `corepack pnpm --filter @cave/gateway exec wrangler d1 migrations apply neijie-cave-auth --remote`；本地开发用 `--local`。
+2. 为该 Worker 设置 32 字节随机密钥的 64 位十六进制值 `ROOM_ENCRYPTION_KEY_V1`，以及 `ROOMS_CREATOR_ACCOUNT_IDS` 白名单，使用 Worker Secrets 管理，不能提交实际值。
+3. 确认对应 Worker 的 `ROOMS_ENABLED=true` 后部署，再用两个不同的成年测试账号验证创建、加入、本人答案隔离、报告授权和终止删除。当前 PR 不执行迁移、配置 Secret、部署或构建安装包。
+
+报告在真实模型复测与人工语义验收完成前不应对内测用户开放；不要因为路由开关已设置就跳过这项验收。

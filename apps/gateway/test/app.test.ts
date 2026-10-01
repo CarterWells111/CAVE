@@ -27,6 +27,13 @@ describe("composed gateway app", () => {
     const response = await app().request("/v1/rooms?requestId=7cbbc0f9-9d12-4b08-9741-75bbb399e7c6");
     expect(response.status).toBe(404);
   });
+  it("keeps room routes unavailable when enabled without a D1 binding and encryption key", async () => {
+    const gateway = createApp({ ...mockEnv, ROOMS_ENABLED: "true" }, {
+      rateLimitStore: new InMemoryRateLimitStore(),
+    });
+    const response = await gateway.request("/v1/rooms?requestId=7cbbc0f9-9d12-4b08-9741-75bbb399e7c6");
+    expect(response.status).toBe(404);
+  });
   it("mounts room routes only when explicitly enabled", async () => {
     const gateway = createApp({ ...mockEnv, ROOMS_ENABLED: "true" }, {
       rateLimitStore: new InMemoryRateLimitStore(),
