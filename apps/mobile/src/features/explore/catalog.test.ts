@@ -11,14 +11,27 @@ describe("explore catalog", () => {
     expect(new Set(SAMPLE_JOURNEYS.map(({ id }) => id)).size).toBe(6);
   });
 
-  it("gives every sample its own icon and an explicit three-page framework preview", () => {
-    for (const journey of SAMPLE_JOURNEYS) {
+  it("publishes the agreed body content in 01 while leaving 02–06 as framework previews", () => {
+    const body = SAMPLE_JOURNEYS[0]!;
+    expect(body.preview).toBe(false);
+    expect(body.pages.map(({ kind }) => kind)).toEqual(["introduction", "content", "end"]);
+    expect(body.pages.map(({ title }) => title)).toEqual([
+      "外阴、阴道在哪里？",
+      "每个人的样子都不同",
+      "身体反应与我的选择",
+    ]);
+    expect(body.pages[0].showVulvaDiagram).toBe(true);
+    expect(body.pages[2].body).toContain("这些只是你身体的反应，而你心里可能是舒服、好奇、犹豫或不适");
+
+    for (const journey of SAMPLE_JOURNEYS.slice(1)) {
+      expect(journey.preview).toBe(true);
       expect(journey.icon).toEqual(expect.any(String));
       expect(journey.pages.map(({ kind }) => kind)).toEqual(["introduction", "content", "end"]);
       expect(journey.pages[0].body).toContain("框架预览");
       expect(journey.pages[1].body).toContain("不包含正式内容");
       expect(journey.pages[2].body).toContain("不会生成回顾记录");
     }
+    expect(new Set(SAMPLE_JOURNEYS.map(({ icon }) => icon)).size).toBe(6);
   });
 
   it("looks up each known sample without conflating it with the optional scenario", () => {

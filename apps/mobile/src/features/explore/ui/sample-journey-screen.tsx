@@ -1,12 +1,17 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useCallback, useEffect, useState } from "react";
-import { BackHandler, Text, View } from "react-native";
+import { BackHandler, Image, Text, View } from "react-native";
 
 import { useTheme } from "../../../core/design/theme-provider";
 import { Button } from "../../../core/ui/Button";
 import { ProgressHeader } from "../../../core/ui/ProgressHeader";
 import { Screen } from "../../../core/ui/Screen";
+import { SecondaryButton } from "../../../core/ui/secondary-button";
 import type { SampleJourney } from "../catalog";
+
+// This is the same optional, expert-review-pending image used by the existing body-knowledge page.
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const vulvaDiagram = require("../../../../../../assets/medical/vulva-anatomy-review-current.png");
 
 type SampleJourneyScreenProps = {
   journey: SampleJourney;
@@ -16,6 +21,7 @@ type SampleJourneyScreenProps = {
 function SampleJourneyPages({ journey, onExit }: SampleJourneyScreenProps) {
   const theme = useTheme();
   const [pageIndex, setPageIndex] = useState(0);
+  const [diagramOpen, setDiagramOpen] = useState(false);
   const page = journey.pages[pageIndex]!;
   const isLastPage = pageIndex === journey.pages.length - 1;
   const goBack = useCallback(() => {
@@ -51,7 +57,7 @@ function SampleJourneyPages({ journey, onExit }: SampleJourneyScreenProps) {
             {journey.title}
           </Text>
           <Text selectable style={{ ...theme.typography.label, color: theme.color.primary }}>
-            样板 · 框架预览
+            {journey.preview ? "样板 · 框架预览" : "身体知识 · 待专业复核"}
           </Text>
         </View>
         <View
@@ -73,6 +79,32 @@ function SampleJourneyPages({ journey, onExit }: SampleJourneyScreenProps) {
           <Text selectable style={{ ...theme.typography.body, color: theme.color.text, flexShrink: 1 }}>
             {page.body}
           </Text>
+          {page.showVulvaDiagram ? (
+            <View style={{ gap: theme.space.sm }}>
+              <SecondaryButton
+                label={diagramOpen ? "收起外阴结构图" : "查看外阴结构图"}
+                onPress={() => setDiagramOpen((current) => !current)}
+              />
+              {diagramOpen ? (
+                <View style={{ gap: theme.space.sm }}>
+                  <Image
+                    accessibilityLabel="医学图审核稿：阴阜、大阴唇、阴蒂、小阴唇、尿道口、阴道口、肛门"
+                    accessibilityRole="image"
+                    resizeMode="contain"
+                    source={vulvaDiagram}
+                    style={{ aspectRatio: 16 / 9, width: "100%" }}
+                  />
+                  <Text selectable style={{ ...theme.typography.caption, color: theme.color.textSecondary }}>
+                    医学图审核稿
+                  </Text>
+                </View>
+              ) : (
+                <Text selectable style={{ ...theme.typography.caption, color: theme.color.textSecondary }}>
+                  可选，不查看也可以继续
+                </Text>
+              )}
+            </View>
+          ) : null}
         </View>
         <View style={{ flexGrow: 1 }} />
         <Button

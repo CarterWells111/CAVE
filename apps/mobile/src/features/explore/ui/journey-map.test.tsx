@@ -17,13 +17,13 @@ afterEach(() => {
   act(() => Dimensions.set({ window: originalWindow }));
 });
 
-it("provides six available circular sample buttons and the independent optional scenario", () => {
+it("provides 01 body content, five sample buttons, and the independent optional scenario", () => {
   const actions = callbacks();
   render(<JourneyMap {...actions} />);
 
   expect(screen.getAllByRole("button")).toHaveLength(7);
   for (const journey of SAMPLE_JOURNEYS) {
-    const button = screen.getByRole("button", { name: `打开${journey.title}，样板` });
+    const button = screen.getByRole("button", { name: journey.preview ? `打开${journey.title}，样板` : `打开${journey.title}，认识身体` });
     expect(button).toBeEnabled();
     const style = StyleSheet.flatten(button.props.style);
     expect(style.width).toBe(style.height);
@@ -71,7 +71,7 @@ it.each([lightTheme, darkTheme])("uses readable $name theme tokens for nodes and
       <JourneyMap {...callbacks()} />
     </ThemeProvider>,
   );
-  const sample = await screen.findByRole("button", { name: "打开旅程 01，样板" });
+  const sample = await screen.findByRole("button", { name: "打开旅程 01，认识身体" });
   expect(sample).toHaveStyle({ backgroundColor: theme.color.surfaceAccent, borderColor: theme.color.primary });
   expect(screen.getByText("旅程 01")).toHaveStyle({ color: theme.color.text });
   expect(screen.getByText("第一次过夜")).toHaveStyle({ color: theme.color.text });
@@ -104,7 +104,7 @@ it("hides the decorative trail from accessibility and gives controls a focus rin
     expect(trail).toHaveProp("importantForAccessibility", "no-hide-descendants");
     expect(trail).toHaveProp("pointerEvents", "none");
   }
-  const button = screen.getByRole("button", { name: "打开旅程 01，样板" });
+  const button = screen.getByRole("button", { name: "打开旅程 01，认识身体" });
   fireEvent(button, "focus");
   expect(button).toHaveStyle({ outlineWidth: 2 });
   fireEvent(button, "blur");

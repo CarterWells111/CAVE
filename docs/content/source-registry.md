@@ -1,6 +1,6 @@
 # CAVE 医学及教育内容来源台账
 
-> 访问日期：2026-08-27；SRC-014 访问于 2026-08-28
+> 访问日期：2026-08-27；SRC-014 访问于 2026-08-28；SRC-015 和 SRC-016 访问于 2026-10-01
 > 说明：“来源已核验”只表示链接、机构和适用内容已核对，不代表 CAVE 中文改写已通过临床或性教育专家复核。
 
 ## 状态定义
@@ -28,6 +28,8 @@
 | SRC-012 | SAFE | 权益科工作职能 | 深圳市盐田区妇女联合会 | https://www.yantian.gov.cn/ytfl/gkmlpt/content/12/12597/post_12597195.html | 12338 提供妇女咨询、调解与维权公益服务；证明地方服务内容与时间存在差异 | 2026-01-12 | 2026-08-27 | source_verified; expert_review_pending |
 | SRC-013 | MED | 小阴唇肥大是什么原因 | 中国医药信息查询平台；主讲专家来自北京大学第一医院妇产科 | https://m.dayi.org.cn/qa/42340.html | 先天差异及长期摩擦可能与小阴唇一侧增生、左右不对称有关；作为 SRC-004 的中国大陆辅助来源 | 2026-03-07 | 2026-08-27 | source_verified; expert_review_pending |
 | SRC-014 | MED | You and Your Sexuality | American College of Obstetricians and Gynecologists | https://www.acog.org/womens-health/faqs/you-and-your-sexuality | 性行为不限于阴道性交；触摸、口腔、阴道和肛门等不同性活动方式 | 页面未列明 | 2026-08-28 | source_verified; expert_review_pending |
+| SRC-015 | MED | Vaginal discharge | NHS | https://www.nhs.uk/symptoms/vaginal-discharge/ | 日常阴道分泌物属于常见现象，量与湿润程度可能变化；新变化或持续不适的求医提示 | 2024-02-15 复核 | 2026-10-01 | source_verified; expert_review_pending |
+| SRC-016 | MED | Understanding arousal | Sex Therapy London, NHS | https://www.sextherapylondon.nhs.uk/sexual-difficulties/our-self-help-booklets/vulval-pain-during-sex/part-2-understanding-arousal | 性唤起可能伴随阴蒂与阴唇敏感、阴道润滑等身体变化，变化也可能没有出现 | 页面未列明 | 2026-10-01 | source_verified; expert_review_pending |
 
 ## 医学图资产登记
 
