@@ -28,20 +28,44 @@ function useOperation() {
   const run = async (action: () => Promise<void>) => {
     if (inFlight.current) return;
     inFlight.current = true; setBusy(true); setError(null);
-    try { await action(); } catch { setError("操作失败，请检查网络后重试。"); }
+    try { await action(); }
+    catch (error) {
+      setError(error instanceof RoomApiError && error.code === "HTTP_404"
+        ? "双人房间内测尚未开启，请稍后再试。"
+        : "操作失败，请检查网络后重试。");
+    }
     finally { inFlight.current = false; setBusy(false); }
   };
   return { busy, error, run, setError };
 }
 
-export function RoomListPage({ api }: { api: RoomApi | null }) {
+export function RoomListPage() {
+  const router = useRouter();
+  const theme = useTheme();
+  return <Screen contentSafeAreaTop>
+    <View style={{ gap: theme.space.md }}>
+      <Text accessibilityRole="header" selectable style={{ ...theme.typography.title, color: theme.color.text }}>房间</Text>
+      <Text selectable style={{ ...theme.typography.body, color: theme.color.textSecondary }}>从一个情景开始。双人模式中，你们分别作答；原文只给本人查看，共同报告在两人完成并同意后才可生成。</Text>
+      <View testID="room-primary-actions" style={{ flexDirection: "row", gap: theme.space.sm }}>
+        <View style={{ flex: 1, minWidth: 0 }}><SecondaryButton label="加入房间" onPress={() => router.push("/join")} /></View>
+        <View style={{ flex: 1, minWidth: 0 }}><SecondaryButton label="我的房间" onPress={() => router.push("/rooms/mine")} /></View>
+      </View>
+      {ROOM_SCENARIOS.map((scenario) => <View key={scenario.id} style={{ gap: theme.space.xs, padding: theme.space.md, borderWidth: 1, borderColor: theme.color.border, borderRadius: theme.radius.feature }}>
+        <Text selectable style={{ ...theme.typography.cardTitle, color: theme.color.text }}>{scenario.title}</Text>
+        <Text selectable style={{ ...theme.typography.body, color: theme.color.textSecondary }}>{scenario.introduction}</Text>
+        <SecondaryButton label={`选择${scenario.title}`} onPress={() => router.push({ pathname: "/rooms/choose", params: { scenario: scenario.id } })} />
+      </View>)}
+    </View>
+  </Screen>;
+}
+
+export function MyRoomsPage({ api }: { api: RoomApi }) {
   const router = useRouter();
   const theme = useTheme();
   const [rooms, setRooms] = useState<readonly Room[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const load = useCallback(async () => {
-    if (!api) { setRooms([]); return; }
     setLoading(true); setError(null);
     try { setRooms(await api.list()); }
     catch (error) {
@@ -54,19 +78,35 @@ export function RoomListPage({ api }: { api: RoomApi | null }) {
   useFocusEffect(useCallback(() => { void load(); }, [load]));
   return <Screen contentSafeAreaTop>
     <View style={{ gap: theme.space.md }}>
-      <Text accessibilityRole="header" selectable style={{ ...theme.typography.title, color: theme.color.text }}>房间</Text>
-      <Text selectable style={{ ...theme.typography.body, color: theme.color.textSecondary }}>从一个情景开始。双人模式中，你们分别作答；原文只给本人查看，共同报告在两人完成并同意后才可生成。</Text>
+      <BackToRooms />
+      <Text accessibilityRole="header" selectable style={{ ...theme.typography.title, color: theme.color.text }}>我的房间</Text>
+      <Button label="新建房间" onPress={() => router.push("/rooms/new")} />
+      <SecondaryButton label="刷新房间状态" loading={loading} onPress={() => { void load(); }} />
+      <Feedback message={error} />
+      {!loading && !error && rooms.length === 0 ? <Text selectable style={{ ...theme.typography.body, color: theme.color.textSecondary }}>还没有房间。可以新建一个，先独立作答，再邀请伴侣加入。</Text> : null}
+      {rooms.map((room) => <SecondaryButton key={room.id} label={`${ROOM_SCENARIOS.find((scenario) => scenario.id === room.scenarioId)?.title ?? "房间"} · ${room.status === "reported" ? "查看报告" : room.status === "ready" ? "待生成报告" : room.participantCount < 2 ? "待加入" : room.myCompleted ? "等待对方完成" : "继续作答"}`} onPress={() => router.push({ pathname: "/rooms/[roomId]", params: { roomId: room.id } })} />)}
+    </View>
+  </Screen>;
+}
+
+export function RoomNewPage({ api }: { api: RoomApi }) {
+  const router = useRouter();
+  const theme = useTheme();
+  const operation = useOperation();
+  return <Screen contentSafeAreaTop>
+    <View style={{ gap: theme.space.md }}>
+      <BackToRooms />
+      <Text accessibilityRole="header" selectable style={{ ...theme.typography.title, color: theme.color.text }}>新建房间</Text>
+      <Text selectable style={{ ...theme.typography.body, color: theme.color.textSecondary }}>选择一个情景创建双人房间。创建后可先独立作答，再邀请伴侣。你的回答会逐题加密保存到云端，原文仅你能查看；双方完成并分别同意后，才能生成共同报告。不要填写不希望上传的内容。</Text>
       {ROOM_SCENARIOS.map((scenario) => <View key={scenario.id} style={{ gap: theme.space.xs, padding: theme.space.md, borderWidth: 1, borderColor: theme.color.border, borderRadius: theme.radius.feature }}>
         <Text selectable style={{ ...theme.typography.cardTitle, color: theme.color.text }}>{scenario.title}</Text>
         <Text selectable style={{ ...theme.typography.body, color: theme.color.textSecondary }}>{scenario.introduction}</Text>
-        <SecondaryButton label={`选择${scenario.title}`} onPress={() => router.push({ pathname: "/rooms/choose", params: { scenario: scenario.id } })} />
+        <SecondaryButton disabled={operation.busy} label={`同意云端保存，新建${scenario.title}房间`} onPress={() => { void operation.run(async () => {
+          const room = await api.create(scenario.id);
+          router.replace({ pathname: "/rooms/[roomId]", params: { roomId: room.id } });
+        }); }} />
       </View>)}
-      <SecondaryButton label="输入邀请，加入房间" onPress={() => router.push("/join")} />
-      <Text accessibilityRole="header" selectable style={{ ...theme.typography.cardTitle, color: theme.color.text }}>我的房间</Text>
-      {api ? <SecondaryButton label="刷新房间状态" loading={loading} onPress={() => { void load(); }} /> : <Text selectable style={{ ...theme.typography.body, color: theme.color.textSecondary }}>登录后可查看自己的房间状态。</Text>}
-      <Feedback message={error} />
-      {api && !loading && !error && rooms.length === 0 ? <Text selectable style={{ ...theme.typography.body, color: theme.color.textSecondary }}>还没有房间。</Text> : null}
-      {rooms.map((room) => <SecondaryButton key={room.id} label={`${ROOM_SCENARIOS.find((scenario) => scenario.id === room.scenarioId)?.title ?? "房间"} · ${room.status === "reported" ? "查看报告" : room.status === "ready" ? "待生成报告" : room.participantCount < 2 ? "待加入" : room.myCompleted ? "等待对方完成" : "继续作答"}`} onPress={() => router.push({ pathname: "/rooms/[roomId]", params: { roomId: room.id } })} />)}
+      <Feedback message={operation.error} />
     </View>
   </Screen>;
 }
