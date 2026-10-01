@@ -13,9 +13,10 @@ const topicOptions: Array<{ value: JournalTopic; label: string }> = [
   { value: "intimate-relationship", label: "亲密关系" }, { value: "self-boundaries", label: "自我边界" }, { value: "sexual-health", label: "健康性生活" }
 ];
 
-export function JournalEditorScreen({ service, onSaved, initial, onBack, renderAssistant }: Readonly<{
+export function JournalEditorScreen({ service, onSaved, initial, onBack, renderAssistant, draftKeyOverride }: Readonly<{
   service: JournalService; onSaved(id: string): void; onBack?(): void;
   renderAssistant?(context: { records: Array<{ id: string; text: string }>; onAdopt(text: string): void }): ReactNode;
+  draftKeyOverride?: string;
   initial?: Readonly<{ id?: string; title?: string; occurredAt?: string; highlight?: JournalHighlight; body?: string; topics?: readonly JournalTopic[]; source?: JournalSource; cardSnapshot?: JournalRecord["cardSnapshot"] }>;
 }>) {
   const theme = useTheme();
@@ -27,7 +28,7 @@ export function JournalEditorScreen({ service, onSaved, initial, onBack, renderA
   const [showCustomTopicInput, setShowCustomTopicInput] = useState(false);
   const [customTopicError, setCustomTopicError] = useState("");
   const [error, setError] = useState<string | null>(null); const [saving, setSaving] = useState(false);
-  const draftKey = initial?.id ? `record:${initial.id}` : `new:${initial?.source?.kind === "journey" ? `${initial.source.journeyId}:${initial.source.cardId ?? ""}:${initial.source.reviewId ?? ""}` : "freeform"}`;
+  const draftKey = draftKeyOverride ?? (initial?.id ? `record:${initial.id}` : `new:${initial?.source?.kind === "journey" ? `${initial.source.journeyId}:${initial.source.cardId ?? ""}:${initial.source.reviewId ?? ""}` : "freeform"}`);
   const [ready, setReady] = useState(false);
   const [draftStatus, setDraftStatus] = useState("");
   const [guided, setGuided] = useState(false);

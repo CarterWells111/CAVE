@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://neijiecave.com/schemas/paired-report-plan-v0.1.json",
+  "title": "Private template selection plan for a three-section report",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "scenarioId", "ledgerSha256", "catalogSha256", "templatesSha256", "sections"],
+  "properties": {
+    "version": { "const": "paired-report-plan-v0.1" },
+    "scenarioId": { "enum": ["first-overnight", "pause", "adjust"] },
+    "ledgerSha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "catalogSha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "templatesSha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "sections": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["commonAndDifferences", "adviceForBoth", "nextSteps"],
+      "properties": {
+        "commonAndDifferences": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["sharedOrCompatibleRelationIds", "differentRelationIds"],
+          "properties": {
+            "sharedOrCompatibleRelationIds": { "$ref": "#/$defs/relationIds" },
+            "differentRelationIds": { "type": "array", "maxItems": 2, "uniqueItems": true, "items": { "type": "string", "pattern": "^r[1-9][0-9]*$" } }
+          }
+        },
+        "adviceForBoth": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["discussionRelationIds", "cautionCodes"],
+          "properties": {
+            "discussionRelationIds": { "$ref": "#/$defs/relationIds" },
+            "cautionCodes": { "type": "array", "minItems": 1, "maxItems": 2, "uniqueItems": true, "items": { "enum": ["respect_stop", "do_not_infer_consent", "do_not_infer_touch_consent", "do_not_pressure", "do_not_require_explanation"] } }
+          }
+        },
+        "nextSteps": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["actionCodes", "boundaryFactIds", "openItemIds"],
+          "properties": {
+            "actionCodes": { "type": "array", "minItems": 1, "maxItems": 2, "uniqueItems": true, "items": { "enum": ["confirm_evening_plan", "pause_then_check", "walk_first", "ask_before_touch"] } },
+            "boundaryFactIds": { "type": "array", "maxItems": 2, "uniqueItems": true, "items": { "type": "string", "pattern": "^f[1-9][0-9]*$" } },
+            "openItemIds": { "type": "array", "maxItems": 2, "uniqueItems": true, "items": { "type": "string", "pattern": "^u[1-9][0-9]*$" } }
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "relationIds": { "type": "array", "minItems": 1, "maxItems": 2, "uniqueItems": true, "items": { "type": "string", "pattern": "^r[1-9][0-9]*$" } }
+  }
+}

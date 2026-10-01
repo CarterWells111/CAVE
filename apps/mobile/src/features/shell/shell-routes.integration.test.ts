@@ -7,10 +7,10 @@ function source(path: string) {
   return readFileSync(resolve(__dirname, "../../../app", path), "utf8");
 }
 
-test("registers all five tab routes while the main tab bar selects its visible destinations", () => {
+test("registers the room tab alongside the existing routes", () => {
   const layout = source("(tabs)/_layout.tsx");
-  expect(layout.match(/<Tabs\.Screen/gu)).toHaveLength(7);
-  for (const label of ["旅程", "内界手记", "AI", "我的"]) expect(layout).toContain(`title: "${label}"`);
+  expect(layout.match(/<Tabs\.Screen/gu)).toHaveLength(8);
+  for (const label of ["旅程", "房间", "内界手记", "AI", "我的"]) expect(layout).toContain(`title: "${label}"`);
   expect(layout).not.toContain("ShellRouteGate");
   expect(layout).toContain("LongTermTabBar");
   expect(layout).toContain('type: "tabPress"');
@@ -59,7 +59,7 @@ test("keeps the long-term navigation available during later full reviews", () =>
   const nav = source("../src/features/shell/ui/LongTermBottomNav.tsx");
   const destinations = source("../src/features/shell/ui/long-term-navigation.ts");
   expect(nav).toContain("destinations.map");
-  for (const label of ["旅程", "内界手记", "AI", "我的"]) expect(destinations).toContain(`label: "${label}"`);
+  for (const label of ["旅程", "房间", "内界手记", "AI", "我的"]) expect(destinations).toContain(`label: "${label}"`);
   expect(nav).toContain('accessibilityRole="tab"');
 });
 
@@ -67,7 +67,8 @@ test("classifies and resumes the unfinished initial journey without replacing it
   for (const route of ["(tabs)/journey.tsx", "(tabs)/reviews.tsx"]) {
     expect(source(route)).not.toContain("replaceActiveReview");
   }
-  expect(source("(tabs)/journey.tsx")).toContain("prepareFirstOvernight");
+  expect(source("(tabs)/journey.tsx")).toContain('pathname: "/rooms/choose"');
+  expect(source("rooms/choose.tsx")).toContain("prepareFirstOvernight");
   expect(source("(tabs)/reviews.tsx")).toContain('<Redirect href="/(tabs)/journal"');
 });
 

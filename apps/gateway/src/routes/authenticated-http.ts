@@ -70,9 +70,9 @@ export function parse<Schema extends z.ZodType>(schema: Schema, value: unknown):
   return parsed.data;
 }
 
-export function statusOf(error: AuthServiceError): 400 | 401 | 409 | 413 | 429 | 500 | 503 {
-  return [400, 401, 409, 413, 429, 500, 503].includes(error.status)
-    ? error.status as 400 | 401 | 409 | 413 | 429 | 500 | 503
+export function statusOf(error: AuthServiceError): 400 | 401 | 403 | 404 | 409 | 413 | 429 | 500 | 502 | 503 | 504 {
+  return [400, 401, 403, 404, 409, 413, 429, 500, 502, 503, 504].includes(error.status)
+    ? error.status as 400 | 401 | 403 | 404 | 409 | 413 | 429 | 500 | 502 | 503 | 504
     : 500;
 }
 

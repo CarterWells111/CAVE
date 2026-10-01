@@ -4,6 +4,7 @@ import { LongTermTabBar } from "./LongTermTabBar";
 
 const routes = [
   { key: "home-key", name: "index" },
+  { key: "rooms-key", name: "rooms" },
   { key: "reviews-key", name: "ai" },
   { key: "practice-key", name: "practice" },
   { key: "journal-key", name: "journal" },
@@ -18,7 +19,7 @@ test("renders the shared navigation with the Expo tab selection and navigation b
     <LongTermTabBar
       emitTabPress={emitTabPress}
       navigate={navigate}
-      state={{ index: 1, routes }}
+      state={{ index: 2, routes }}
     />,
   );
 
@@ -27,6 +28,7 @@ test("renders the shared navigation with the Expo tab selection and navigation b
   );
   expect(screen.getAllByRole("tab").map((tab) => tab.props.accessibilityLabel)).toEqual([
     "旅程",
+    "房间",
     "内界手记",
     "AI",
     "我的",
@@ -54,7 +56,7 @@ test("emits current and prevented tab presses without navigating", () => {
     <LongTermTabBar
       emitTabPress={emitTabPress}
       navigate={navigate}
-      state={{ index: 1, routes }}
+      state={{ index: 2, routes }}
     />,
   );
 

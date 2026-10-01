@@ -14,6 +14,7 @@ describe("Expo SDK baseline", () => {
     expect(packageJson.dependencies.expo).toBe("~57.0.26");
     expect(packageJson.dependencies.react).toBe("19.2.3");
     expect(packageJson.dependencies["react-native"]).toBe("0.86.3");
+    expect(packageJson.dependencies["expo-constants"]).toBe("~57.0.20");
     expect(packageJson.dependencies["expo-router"]).toBe("~57.0.24");
     expect(packageJson.dependencies["expo-dev-client"]).toBe("~57.0.19");
     expect(

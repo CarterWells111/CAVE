@@ -1,0 +1,60 @@
+{
+  "version": "paired-fact-catalog-v0.1",
+  "factCodes": [
+    { "code": "wants_evening_together", "topic": "activity", "allowedScopes": ["current"], "display": "{side}想一起度过晚间的一段时间", "sharedDisplay": "双方都想一起度过晚间的一段时间", "validatorId": "positive_shared_evening" },
+    { "code": "wants_walk_together", "topic": "activity", "allowedScopes": ["current"], "display": "{side}想一起散步", "sharedDisplay": "双方都想一起散步", "validatorId": "positive_walk" },
+    { "code": "wants_rest_separately", "topic": "overnight", "allowedScopes": ["current"], "display": "{side}希望晚上各自休息", "validatorId": "positive_separate_rest" },
+    { "code": "wants_overnight", "topic": "overnight", "allowedScopes": ["current"], "display": "{side}希望这次可以留宿", "validatorId": "positive_overnight" },
+    { "code": "no_overnight_now", "topic": "overnight", "allowedScopes": ["current"], "display": "{side}这次不想留宿", "validatorId": "negative_overnight_now" },
+    { "code": "no_sex_now", "topic": "boundaries", "allowedScopes": ["current"], "display": "{side}明确这次不想有性行为", "validatorId": "negative_sex_now" },
+    { "code": "overnight_not_consent", "topic": "boundaries", "allowedScopes": ["current"], "display": "{side}不把过夜当作亲密行为的承诺", "validatorId": "overnight_not_consent" },
+    { "code": "wants_leave_when_tired", "topic": "boundaries", "allowedScopes": ["when_owner_tired"], "display": "{side}疲惫时希望可以回家", "validatorId": "leave_when_tired" },
+    { "code": "stops_if_other_leaves", "topic": "boundaries", "allowedScopes": ["when_other_wants_leave"], "display": "{side}表示{other}想回家时会停下", "validatorId": "stop_on_other_leave" },
+    { "code": "wants_end_time", "topic": "overnight", "allowedScopes": ["current"], "display": "{side}想先约好结束时间", "validatorId": "positive_end_time" },
+    { "code": "asks_overnight_after_dinner", "topic": "overnight", "allowedScopes": ["after_dinner"], "display": "{side}提出晚饭后再问一次是否留宿", "validatorId": "ask_overnight_after_dinner" },
+    { "code": "fears_sleep_disruption", "topic": "concern", "allowedScopes": ["current"], "display": "{side}担心临时留宿影响睡眠", "validatorId": "sleep_concern" },
+    { "code": "fears_pressuring_other", "topic": "concern", "allowedScopes": ["current"], "display": "{side}担心留宿提议给对方压力", "validatorId": "pressure_concern" },
+    { "code": "pause_stop_touch", "topic": "pause", "allowedScopes": ["when_owner_pauses", "when_other_pauses"], "display": "{side}认为暂停时应停止触碰", "sharedDisplay": "双方都认为暂停时应停止触碰", "validatorId": "stop_touch_on_pause" },
+    { "code": "pause_stop_questions", "topic": "pause", "allowedScopes": ["when_owner_pauses", "when_other_pauses"], "display": "{side}希望暂停时停止追问", "sharedDisplay": "双方都希望暂停时停止追问", "validatorId": "stop_questions_on_pause" },
+    { "code": "needs_one_hour_alone", "topic": "pause", "allowedScopes": ["when_owner_pauses"], "display": "{side}说出暂停后，需要一小时独处", "validatorId": "one_hour_when_self_pauses" },
+    { "code": "retalk_self_initiates", "topic": "retalk", "allowedScopes": ["after_rest"], "display": "{side}说明由自己另行提出是否再谈", "validatorId": "self_initiates_retalk" },
+    { "code": "waits_other_retalk", "topic": "retalk", "allowedScopes": ["after_rest"], "display": "{side}表示等{other}提出再谈", "validatorId": "waits_other_retalk" },
+    { "code": "does_not_resume_touch_unprompted", "topic": "pause", "allowedScopes": ["after_rest"], "display": "{side}不会自行恢复触碰", "validatorId": "no_unprompted_resume" },
+    { "code": "fears_explanation_demand", "topic": "concern", "allowedScopes": ["current"], "display": "{side}担心暂停后还要解释原因", "validatorId": "explanation_concern" },
+    { "code": "fears_no_retalk", "topic": "concern", "allowedScopes": ["current"], "display": "{side}担心之后不知道是否还能再谈", "validatorId": "retalk_concern" },
+    { "code": "wants_less_touch", "topic": "touch", "allowedScopes": ["current"], "display": "{side}希望身体接触先少一点", "validatorId": "less_touch" },
+    { "code": "no_hug_now", "topic": "touch", "allowedScopes": ["current"], "display": "{side}现在不想拥抱", "validatorId": "no_hug_now" },
+    { "code": "handholding_undecided", "topic": "touch", "allowedScopes": ["current"], "display": "{side}对牵手暂不确定", "validatorId": "handholding_undecided" },
+    { "code": "no_hug_handhold_without_check", "topic": "touch", "allowedScopes": ["before_touch"], "display": "{side}表示未确认前不会拥抱或牵手", "validatorId": "no_touch_without_check" },
+    { "code": "ask_before_touch", "topic": "touch", "allowedScopes": ["before_touch"], "display": "{side}提出需要触碰时先问", "validatorId": "ask_before_touch" },
+    { "code": "fears_slow_means_future_yes", "topic": "concern", "allowedScopes": ["current"], "display": "{side}担心慢一点被理解成以后一定会答应拥抱", "validatorId": "slow_future_concern" },
+    { "code": "fears_questions_interrupt", "topic": "concern", "allowedScopes": ["current"], "display": "{side}担心问太多会打断相处", "validatorId": "question_interrupt_concern" },
+    { "code": "wants_no_touch_response", "topic": "touch", "allowedScopes": ["current"], "display": "{side}希望听到可以不碰的回应", "validatorId": "no_touch_response" },
+    { "code": "fears_misunderstanding", "topic": "concern", "allowedScopes": ["current"], "display": "{side}担心被误会", "validatorId": "misunderstanding_concern" },
+    { "code": "other", "topic": "other", "allowedScopes": ["current"], "display": null, "validatorId": "no_render" }
+  ],
+  "compatiblePairs": [
+    ["wants_leave_when_tired", "stops_if_other_leaves"],
+    ["retalk_self_initiates", "waits_other_retalk"],
+    ["no_hug_now", "no_hug_handhold_without_check"],
+    ["handholding_undecided", "no_hug_handhold_without_check"]
+  ],
+  "sharedScopePairs": [
+    { "code": "pause_stop_touch", "scopes": ["when_owner_pauses", "when_other_pauses"] },
+    { "code": "pause_stop_questions", "scopes": ["when_owner_pauses", "when_other_pauses"] }
+  ],
+  "boundaryCodeAllowlist": ["no_sex_now", "wants_leave_when_tired", "stops_if_other_leaves", "pause_stop_touch", "pause_stop_questions", "needs_one_hour_alone", "does_not_resume_touch_unprompted", "no_hug_now", "handholding_undecided", "no_hug_handhold_without_check", "ask_before_touch"],
+  "actionTemplates": [
+    { "code": "confirm_evening_plan", "allowedScenarios": ["first-overnight"], "requiredTopic": "activity", "text": "若双方愿意，可以先确定这次见面的时间安排；任一方想结束时都可以停下。" },
+    { "code": "pause_then_check", "allowedScenarios": ["pause"], "requiredSharedCode": "pause_stop_touch", "text": "若双方愿意，听到暂停先停止触碰；之后是否继续，依当时的边界和意愿决定。" },
+    { "code": "walk_first", "allowedScenarios": ["adjust"], "requiredSharedCode": "wants_walk_together", "text": "若双方愿意，可以先一起散步；任一方想停时就停。" },
+    { "code": "ask_before_touch", "allowedScenarios": ["adjust"], "requiredTopic": "touch", "text": "若双方愿意，需要触碰时先确认；没有明确答应就不触碰。" }
+  ],
+  "cautionTemplates": [
+    { "code": "respect_stop", "allowedScenarios": ["pause"], "text": "说出暂停后先停下，不要求当场继续讨论。" },
+    { "code": "do_not_infer_consent", "allowedScenarios": ["first-overnight"], "text": "不把过夜理解为任何亲密行为的同意。" },
+    { "code": "do_not_infer_touch_consent", "allowedScenarios": ["adjust"], "text": "不把暂不确定理解为同意触碰。" },
+    { "code": "do_not_pressure", "allowedScenarios": ["first-overnight", "pause", "adjust"], "text": "讨论时留出拒绝和改变决定的空间。" },
+    { "code": "do_not_require_explanation", "allowedScenarios": ["pause"], "text": "暂停后不要求对方立刻解释原因。" }
+  ]
+}

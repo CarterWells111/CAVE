@@ -22,6 +22,11 @@ import { createMetaRoutes } from "./routes/meta";
 import { createPracticeRoutes } from "./routes/practice";
 import { createAuthRoutes } from "./routes/auth";
 import { createAccountPreferencesRoutes } from "./routes/account-preferences";
+import { createRoomRoutes } from "./routes/rooms";
+import { createRoomService, type RoomService } from "./rooms/service";
+import { D1RoomRepository } from "./rooms/repository";
+import { createRoomCipher } from "./rooms/crypto";
+import { createRoomReportProvider, type RoomReportProvider } from "./rooms/report-provider";
 import { createOutputGuard } from "./security/output-guard";
 import {
   createRateLimiter,
@@ -56,6 +61,9 @@ export type WorkerBindings = Omit<
   AUTH_EMAIL_LOOKUP_KEY_V2?: string;
   AUTH_OTP_KEY_V1?: string;
   AUTH_OTP_KEY_V2?: string;
+  ROOM_ENCRYPTION_KEY_V1?: string;
+  ROOMS_ENABLED?: string;
+  ROOMS_CREATOR_ACCOUNT_IDS?: string;
 };
 
 export type GatewayAppOptions = {
@@ -65,6 +73,8 @@ export type GatewayAppOptions = {
   fetch?: typeof fetch | undefined;
   logger?: ((line: string) => void) | undefined;
   authService?: AuthService | undefined;
+  roomService?: RoomService | undefined;
+  roomReportProvider?: RoomReportProvider | undefined;
 };
 
 function unavailableAuthService(): AuthService {
@@ -307,6 +317,24 @@ export function createApp(
   app.route("/", createMetaRoutes(env));
   app.route("/", createAuthRoutes({ service: authService, logger }));
   app.route("/", createAccountPreferencesRoutes({ service: createBoundAccountPreferencesService(rawEnv), logger }));
+  const roomBindings = rawEnv as Partial<WorkerBindings>;
+  const roomService = roomBindings.ROOMS_ENABLED === "true" ? options.roomService ?? (
+    roomBindings.AUTH_DB && roomBindings.ROOM_ENCRYPTION_KEY_V1
+      ? createRoomService({
+        auth: new D1AuthRepository(roomBindings.AUTH_DB),
+        preferences: new D1AccountPreferencesRepository(roomBindings.AUTH_DB),
+        rooms: new D1RoomRepository(roomBindings.AUTH_DB),
+        cipher: createRoomCipher(roomBindings.ROOM_ENCRYPTION_KEY_V1),
+        reportProvider: options.roomReportProvider ?? createRoomReportProvider(
+          env.MODEL_MODE === "live" && assistantProvider
+            ? (prompt, data, signal) => assistantProvider.generateRoomReport(prompt, data, signal)
+            : undefined,
+        ),
+        creatorAccountIds: new Set((roomBindings.ROOMS_CREATOR_ACCOUNT_IDS ?? "").split(",").map(id => id.trim()).filter(id => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu.test(id))),
+      })
+      : undefined
+  ) : undefined;
+  if (roomService) app.route("/", createRoomRoutes({ service: roomService, logger }));
   app.route(
     "/",
     createPracticeRoutes({ turnService, debriefService })

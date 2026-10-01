@@ -1,0 +1,161 @@
+{
+  "kind": "synthetic_model_calibration",
+  "createdAt": "2026-09-29T19:11:53.760370+00:00",
+  "modelRequested": "deepseek-v4-flash",
+  "endpoint": "https://api.deepseek.com/chat/completions",
+  "thinking": "disabled",
+  "maxTokens": 2000,
+  "promptVersion": "paired-report-v0.1",
+  "questionsVersion": "paired-questions-v0.1",
+  "casesVersion": "paired-cases-v0.1",
+  "rubricVersion": "paired-rubric-v0.1",
+  "results": [
+    {
+      "httpStatus": 200,
+      "modelReturned": "deepseek-flash",
+      "systemFingerprint": "aeb56401ca74e127821c4f9126dcb669",
+      "finishReason": "stop",
+      "usage": {
+        "prompt_tokens": 1609,
+        "completion_tokens": 604,
+        "total_tokens": 2213,
+        "prompt_tokens_details": {
+          "cached_tokens": 0
+        },
+        "prompt_cache_hit_tokens": 0,
+        "prompt_cache_miss_tokens": 1609
+      },
+      "rawOutput": "{\"version\":\"paired-report-v0.1\",\"scenarioId\":\"first-overnight\",\"status\":\"ready\",\"commonGround\":[{\"text\":\"双方都期待共进晚饭、聊天，并倾向于让是否留宿自然发展。\",\"evidence\":[\"A.expectation\",\"B.expectation\"]},{\"text\":\"双方都把尊重对方随时离开放在优先位置：A想随时回家，B说对方想回家就停。\",\"evidence\":[\"A.boundary\",\"B.boundary\"]},{\"text\":\"双方都希望关于是否留宿能更直接地知晓对方意愿。\",\"evidence\":[\"A.response_next_step\",\"B.response_next_step\"]}],\"differences\":[{\"text\":\"A已将这次不想有性行为说明为明确边界；B强调不把过夜当作亲密行为的承诺，但未提及自己的具体性意愿。\",\"evidence\":[\"A.boundary\",\"B.boundary\"]},{\"text\":\"A已提出先约好结束时间；B更想先确定晚饭、之后再次询问是否留宿。\",\"evidence\":[\"A.response_next_step\",\"B.response_next_step\"]}],\"advice\":{\"A\":[{\"say\":\"我想先说：今晚不发生性行为；我若累了会回家。\",\"do\":\"先约定结束时间，临近时确认是否留宿。\",\"evidence\":[\"A.boundary\",\"A.response_next_step\"]},{\"say\":\"你问我是否留宿时，我会直接回答，不需替我决定。\",\"do\":\"用明确语句回应询问，不用含糊回避。\",\"evidence\":[\"B.concern\",\"B.response_next_step\"]}],\"B\":[{\"say\":\"我提议留宿不是默认要有亲密行为，你不方便可以直接说不。\",\"do\":\"先聊晚饭，等自然时机再问是否留宿。\",\"evidence\":[\"B.boundary\",\"B.response_next_step\"]},{\"say\":\"我问你是否想留宿，是为了不替你决定，你可以直接回答。\",\"do\":\"听到对方想回家时，直接回应“好”。\",\"evidence\":[\"A.response_next_step\",\"B.concern\"]}]},\"togetherNextSteps\":[{\"text\":\"先在晚饭前互相确认：今晚是否可能留宿、各自最晚想何时决定。\",\"evidence\":[\"A.response_next_step\",\"B.response_next_step\"]},{\"text\":\"留宿若发生，只安排在双方仍同意的范围内；任何一方说想回家即结束。\",\"evidence\":[\"A.boundary\",\"B.boundary\"]}],\"uncertainties\":[{\"text\":\"双方未说明各自的睡眠安排偏好，尚未确认留宿时怎样休息。\",\"evidence\":[\"A.concern\",\"A.expectation\"]},{\"text\":\"B未说明自己对性行为的具体意愿，只说明过夜不是承诺。\",\"evidence\":[\"B.boundary\"]},{\"text\":\"双方尚未约定由谁、在什么时机再提是否留宿。\",\"evidence\":[\"A.response_next_step\",\"B.response_next_step\"]}]}",
+      "candidate": {
+        "version": "paired-report-v0.1",
+        "scenarioId": "first-overnight",
+        "status": "ready",
+        "commonGround": [
+          {
+            "text": "双方都期待共进晚饭、聊天，并倾向于让是否留宿自然发展。",
+            "evidence": [
+              "A.expectation",
+              "B.expectation"
+            ]
+          },
+          {
+            "text": "双方都把尊重对方随时离开放在优先位置：A想随时回家，B说对方想回家就停。",
+            "evidence": [
+              "A.boundary",
+              "B.boundary"
+            ]
+          },
+          {
+            "text": "双方都希望关于是否留宿能更直接地知晓对方意愿。",
+            "evidence": [
+              "A.response_next_step",
+              "B.response_next_step"
+            ]
+          }
+        ],
+        "differences": [
+          {
+            "text": "A已将这次不想有性行为说明为明确边界；B强调不把过夜当作亲密行为的承诺，但未提及自己的具体性意愿。",
+            "evidence": [
+              "A.boundary",
+              "B.boundary"
+            ]
+          },
+          {
+            "text": "A已提出先约好结束时间；B更想先确定晚饭、之后再次询问是否留宿。",
+            "evidence": [
+              "A.response_next_step",
+              "B.response_next_step"
+            ]
+          }
+        ],
+        "advice": {
+          "A": [
+            {
+              "say": "我想先说：今晚不发生性行为；我若累了会回家。",
+              "do": "先约定结束时间，临近时确认是否留宿。",
+              "evidence": [
+                "A.boundary",
+                "A.response_next_step"
+              ]
+            },
+            {
+              "say": "你问我是否留宿时，我会直接回答，不需替我决定。",
+              "do": "用明确语句回应询问，不用含糊回避。",
+              "evidence": [
+                "B.concern",
+                "B.response_next_step"
+              ]
+            }
+          ],
+          "B": [
+            {
+              "say": "我提议留宿不是默认要有亲密行为，你不方便可以直接说不。",
+              "do": "先聊晚饭，等自然时机再问是否留宿。",
+              "evidence": [
+                "B.boundary",
+                "B.response_next_step"
+              ]
+            },
+            {
+              "say": "我问你是否想留宿，是为了不替你决定，你可以直接回答。",
+              "do": "听到对方想回家时，直接回应“好”。",
+              "evidence": [
+                "A.response_next_step",
+                "B.concern"
+              ]
+            }
+          ]
+        },
+        "togetherNextSteps": [
+          {
+            "text": "先在晚饭前互相确认：今晚是否可能留宿、各自最晚想何时决定。",
+            "evidence": [
+              "A.response_next_step",
+              "B.response_next_step"
+            ]
+          },
+          {
+            "text": "留宿若发生，只安排在双方仍同意的范围内；任何一方说想回家即结束。",
+            "evidence": [
+              "A.boundary",
+              "B.boundary"
+            ]
+          }
+        ],
+        "uncertainties": [
+          {
+            "text": "双方未说明各自的睡眠安排偏好，尚未确认留宿时怎样休息。",
+            "evidence": [
+              "A.concern",
+              "A.expectation"
+            ]
+          },
+          {
+            "text": "B未说明自己对性行为的具体意愿，只说明过夜不是承诺。",
+            "evidence": [
+              "B.boundary"
+            ]
+          },
+          {
+            "text": "双方尚未约定由谁、在什么时机再提是否留宿。",
+            "evidence": [
+              "A.response_next_step",
+              "B.response_next_step"
+            ]
+          }
+        ]
+      },
+      "checks": {
+        "json": true,
+        "schema": true,
+        "schemaErrorCount": 0,
+        "evidence": true,
+        "statusMatchesExpected": true
+      },
+      "caseId": "overnight-balanced",
+      "run": 1,
+      "expectedStatus": "ready"
+    }
+  ]
+}

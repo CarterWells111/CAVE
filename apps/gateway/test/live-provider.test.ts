@@ -30,6 +30,23 @@ function completion(content: unknown, status = 200, headers?: HeadersInit): Resp
 }
 
 describe("OpenAICompatibleProvider", () => {
+  it("uses the calibrated non-thinking request for paired room reports only", async () => {
+    const sent: Array<Record<string, unknown>> = [];
+    const provider = new OpenAICompatibleProvider({
+      baseUrl: "https://models.example.test", apiKey: "test", modelName: "deepseek-v4-flash",
+      fetch: async (_url, init) => {
+        sent.push(JSON.parse(String(init?.body)) as Record<string, unknown>);
+        return completion({ status: "ready" });
+      },
+    });
+    await provider.generateRoomReport("ROOM PROMPT", "{}", new AbortController().signal);
+    await provider.generateAssistant("OTHER PROMPT", "{}", new AbortController().signal);
+    expect(sent[0]).toMatchObject({ model: "deepseek-v4-flash", max_tokens: 2000, thinking: { type: "disabled" } });
+    expect(sent[0]).not.toHaveProperty("temperature");
+    expect(sent[1]).toMatchObject({ max_tokens: 2500 });
+    expect(sent[1]).not.toHaveProperty("thinking");
+  });
+
   it("preserves the global fetch receiver required by Workers", async () => {
     vi.stubGlobal("fetch", function (this: unknown) {
       if (this !== globalThis) throw new TypeError("Illegal invocation");

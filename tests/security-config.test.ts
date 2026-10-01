@@ -16,6 +16,15 @@ function expectAuditedAllowBuilds(workspace: string) {
 }
 
 describe("repository security configuration", () => {
+  it("enables room routes in Worker config without committing room secrets or tester IDs", () => {
+    const worker = JSON.parse(readFileSync(new URL("../apps/gateway/wrangler.jsonc", import.meta.url), "utf8")) as {
+      vars?: Record<string, string>;
+    };
+    expect(worker.vars?.ROOMS_ENABLED).toBe("true");
+    expect(worker.vars).not.toHaveProperty("ROOM_ENCRYPTION_KEY_V1");
+    expect(worker.vars).not.toHaveProperty("ROOMS_CREATOR_ACCOUNT_IDS");
+  });
+
   it("defines the fixed security scripts", () => {
     expect(packageJson.scripts["test:safety"]).toBe(
       "pnpm --filter @cave/gateway test:safety"

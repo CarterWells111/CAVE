@@ -2,6 +2,7 @@ import { ApiErrorResponseSchema } from "@cave/contracts";
 import { describe, expect, it, vi } from "vitest";
 
 import { createApp } from "../src/app";
+import type { RoomService } from "../src/rooms/service";
 import { InMemoryAuthRepository } from "../src/auth/in-memory-auth-repository";
 import { createAuthService } from "../src/auth/service";
 import type { ModelProvider } from "../src/providers/types";
@@ -22,6 +23,27 @@ function app(options: Parameters<typeof createApp>[1] = {}) {
 }
 
 describe("composed gateway app", () => {
+  it("keeps room routes closed by default", async () => {
+    const response = await app().request("/v1/rooms?requestId=7cbbc0f9-9d12-4b08-9741-75bbb399e7c6");
+    expect(response.status).toBe(404);
+  });
+  it("keeps room routes unavailable when enabled without a D1 binding and encryption key", async () => {
+    const gateway = createApp({ ...mockEnv, ROOMS_ENABLED: "true" }, {
+      rateLimitStore: new InMemoryRateLimitStore(),
+    });
+    const response = await gateway.request("/v1/rooms?requestId=7cbbc0f9-9d12-4b08-9741-75bbb399e7c6");
+    expect(response.status).toBe(404);
+  });
+  it("mounts room routes only when explicitly enabled", async () => {
+    const gateway = createApp({ ...mockEnv, ROOMS_ENABLED: "true" }, {
+      rateLimitStore: new InMemoryRateLimitStore(),
+      roomService: { list: async (_token: string, requestId: string) => ({ contractVersion: "1" as const, requestId, rooms: [] }) } as RoomService,
+    });
+    const response = await gateway.request("/v1/rooms?requestId=7cbbc0f9-9d12-4b08-9741-75bbb399e7c6", {
+      headers: { Authorization: `Bearer cave_at_${"a".repeat(43)}` },
+    });
+    expect(response.status).toBe(200);
+  });
   it("mounts the versioned authentication contract in the production composition", async () => {
     const authService = createAuthService({
       repository: new InMemoryAuthRepository(),

@@ -56,6 +56,11 @@ a:focus-visible {
   outline-offset: 4px;
 }
 
+button:focus-visible {
+  outline: 3px solid var(--color-glow);
+  outline-offset: 4px;
+}
+
 h1,
 h2,
 h3 {
@@ -256,6 +261,43 @@ main {
   gap: clamp(2rem, 5vw, 5rem);
   width: 100%;
   min-width: 0;
+}
+
+.join-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+  gap: clamp(1.5rem, 4vw, 4rem);
+}
+
+.join-action {
+  height: auto;
+}
+
+.action-button {
+  min-height: var(--target-min);
+  padding: 0.7rem 1.2rem;
+  border: 1px solid var(--color-accent);
+  border-radius: 0.5rem;
+  background: var(--color-accent);
+  color: var(--color-ink);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.action-button:hover:not(:disabled) {
+  background: var(--color-glow);
+}
+
+.action-button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.join-status {
+  margin-block: 1rem 0;
+  color: var(--color-text-muted);
 }
 
 .demo-media {
@@ -518,6 +560,7 @@ main {
 
   .grid,
   .hero-grid,
+  .join-grid,
   .card-grid--two,
   .journey-grid,
   .source-grid {

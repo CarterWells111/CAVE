@@ -1,0 +1,62 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://neijiecave.com/schemas/paired-report-v0.2.json",
+  "title": "Paired scenario report calibration draft",
+  "oneOf": [
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["version", "scenarioId", "status", "sections"],
+      "properties": {
+        "version": { "const": "paired-report-v0.2" },
+        "scenarioId": { "$ref": "#/$defs/scenarioId" },
+        "status": { "const": "ready" },
+        "sections": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["commonAndDifferences", "adviceForBoth", "nextSteps"],
+          "properties": {
+            "commonAndDifferences": { "$ref": "#/$defs/section" },
+            "adviceForBoth": { "$ref": "#/$defs/section" },
+            "nextSteps": { "$ref": "#/$defs/section" }
+          }
+        }
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["version", "scenarioId", "status", "message"],
+      "properties": {
+        "version": { "const": "paired-report-v0.2" },
+        "scenarioId": { "$ref": "#/$defs/scenarioId" },
+        "status": { "const": "paused" },
+        "message": { "const": "这次暂不生成共同报告。请先在各自安全、自在的条件下决定是否继续使用；不需要为了完成报告而继续讨论。" }
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["version", "scenarioId", "status", "message"],
+      "properties": {
+        "version": { "const": "paired-report-v0.2" },
+        "scenarioId": { "$ref": "#/$defs/scenarioId" },
+        "status": { "const": "insufficient" },
+        "message": { "const": "目前没有足够的双方信息生成有依据的共同报告。可以各自补充、跳过，或结束本次填写。" }
+      }
+    }
+  ],
+  "$defs": {
+    "scenarioId": { "enum": ["first-overnight", "pause", "adjust"] },
+    "answerId": { "type": "string", "pattern": "^[AB]\\.(expectation|concern|boundary|response_next_step)$" },
+    "section": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["text", "evidence"],
+      "properties": {
+        "text": { "type": "string", "minLength": 20, "maxLength": 220 },
+        "evidence": { "type": "array", "minItems": 1, "maxItems": 8, "uniqueItems": true, "items": { "$ref": "#/$defs/answerId" } }
+      }
+    }
+  }
+}

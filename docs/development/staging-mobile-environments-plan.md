@@ -60,3 +60,10 @@
 - 集成分支类型检查与 lint 通过；测试通过：移动端 168 套/1412 项、Gateway 29 套/279 项、仓库配置 14 套/123 项，以及启动脚本 4 项。staging Wrangler dry-run、移动端源码策略检查、production iOS JS 导出、Secret 扫描（45 个文件）和 acceptance 工具隔离检查均通过。
 - 全仓 `verify` 在 `validate:content` 退出：既有 `internal_test_approved` 内容条目尚未满足 production 内容发布门槛；本分支没有修改 `packages/content`。其后的 Gateway 构建以 staging dry-run 单独完成。
 - Apple Developer 团队已确认，用户暂时无法登录；因此尚未注册设备、取得 Ad-hoc 签名或创建可安装的 iOS development build。Resend 登录和真实邮件验收同样等用户通知。
+
+## 2026-10-01 恢复记录
+
+- PR #54 的远端分支此前停在 `cea6dfd`。本地从最新 `origin/main` `6543306` 合入两个新增提交，解决 SDK 基线测试与 pnpm 配置/锁文件的三处冲突；合并仍未推送。
+- 依赖审计所需的 `undici` 与 `brace-expansion` 修复已由最新 main 的范围覆盖版本提供。合并后 `verify:internal` 的 15 项子检查中 14 项通过，包括类型检查、lint、移动端 176 套/1436 项测试、Gateway 与 web 构建、Expo Doctor、iOS 导出、Secret 扫描、acceptance 隔离及依赖审计。仓库配置测试中的 web lint 用例在并行负载下触发 5 秒超时；单独重跑 `test:ci-config` 为 14 套/126 项通过，未修改超时阈值。
+- staging `/health` 返回 HTTP 200。新 main 的房间功能仍缺少真实模型质量验收与部署所需的加密密钥、白名单和 D1 迁移；staging 的 `ROOMS_ENABLED` 保持关闭，不作为本次 development build 的可用功能。
+- Apple Developer 已创建 `com.neijie.cave` 的 Ad Hoc 描述文件 `7PVYD5LH88`，Expo 仍未完成 development 签名同步。用户在 Apple 的设备注册安全锁解除后自行完成设备登记并通知继续；在此之前不发起 EAS 云构建。提交构建前须再次确认 Expo 账号、Apple 团队、项目/profile、staging 地址和目标设备。

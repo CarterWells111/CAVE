@@ -5,13 +5,13 @@ import { darkTheme } from "../../../core/design/theme";
 import { LongTermBottomNav } from "./LongTermBottomNav";
 import { MAIN_TAB_DESTINATIONS } from "./long-term-navigation";
 
-test("renders four compact vector destinations with color and icon size as the only selected emphasis", () => {
+test("renders five compact vector destinations with color and icon size as the only selected emphasis", () => {
   const navigate = jest.fn();
   render(<LongTermBottomNav activeTab="ai" navigate={navigate} />);
 
   const tabs = screen.getAllByRole("tab");
-  expect(tabs).toHaveLength(4);
-  expect(tabs.map((tab) => tab.props.accessibilityLabel)).toEqual(["旅程", "内界手记", "AI", "我的"]);
+  expect(tabs).toHaveLength(5);
+  expect(tabs.map((tab) => tab.props.accessibilityLabel)).toEqual(["旅程", "房间", "内界手记", "AI", "我的"]);
 
   const selectedTab = screen.getByRole("tab", { name: "AI" });
   const inactiveTab = screen.getByRole("tab", { name: "内界手记" });
@@ -50,7 +50,7 @@ test("keeps every destination touchable at 44 by 44 and supports no active tab",
     expect(StyleSheet.flatten(tab.props.style)).toEqual(expect.objectContaining({ minHeight: 44, minWidth: 44 }));
     expect(tab.props.accessibilityState).toEqual({ disabled: false, selected: false });
   }
-  for (const tab of ["journey", "journal", "ai", "profile"]) {
+  for (const tab of ["journey", "rooms", "journal", "ai", "profile"]) {
     expect(StyleSheet.flatten(screen.getByTestId(`long-term-tab-content-${tab}`).props.style)).toEqual(
       expect.objectContaining({ transform: [{ translateY: 2 }] }),
     );
@@ -63,6 +63,7 @@ test("renders only the supplied main tab destinations", () => {
 
   expect(screen.getAllByRole("tab").map((tab) => tab.props.accessibilityLabel)).toEqual([
     "旅程",
+    "房间",
     "内界手记",
     "AI",
     "我的",

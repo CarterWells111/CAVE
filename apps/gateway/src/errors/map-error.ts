@@ -38,6 +38,12 @@ const MESSAGE_KEYS: Record<ApiErrorCode, string> = {
   AUTH_DELIVERY_UNAVAILABLE: "auth.delivery_unavailable",
   AUTH_CHALLENGE_INVALID: "auth.challenge_invalid",
   ACCOUNT_PREFERENCES_CONFLICT: "gateway.account_preferences_conflict",
+  ROOM_NOT_FOUND: "gateway.room_not_found",
+  ROOM_INVITATION_INVALID: "gateway.room_invitation_invalid",
+  ROOM_CONFLICT: "gateway.room_conflict",
+  ROOM_NOT_READY: "gateway.room_not_ready",
+  ROOM_ADULT_REQUIRED: "gateway.room_adult_required",
+  ROOM_BETA_RESTRICTED: "gateway.room_beta_restricted",
   INTERNAL_ERROR: "gateway.internal_error"
 };
 

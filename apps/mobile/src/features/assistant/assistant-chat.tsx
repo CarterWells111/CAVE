@@ -14,12 +14,12 @@ import { useOptionalAuth } from "../auth/runtime/AuthProvider";
 import { AssistantClientError, createAssistantClient, previewAssistant, type AssistantRequester } from "./assistant-client";
 
 type Turn = { question: string; response: AssistantResponse };
-export function AssistantChat({ journeyId, authorized, request }: { journeyId: string; authorized: boolean; request?: AssistantRequester }) {
+export function AssistantChat({ journeyId, authorized, request, initialDraft = "" }: { journeyId: string; authorized: boolean; request?: AssistantRequester; initialDraft?: string }) {
   const theme = useTheme();
   const router = useRouter();
   const auth = useOptionalAuth();
   const insets = useContext(SafeAreaInsetsContext);
-  const [draft, setDraft] = useState("");
+  const [draft, setDraft] = useState(initialDraft);
   const [pending, setPending] = useState<AssistantRequest | null>(null);
   const [sending, setSending] = useState<string | null>(null);
   const [turns, setTurns] = useState<Turn[]>([]);

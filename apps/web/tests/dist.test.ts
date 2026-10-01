@@ -42,6 +42,7 @@ describe("built home page", () => {
     const destinations = [
       ["/", "了解 CAVE"],
       ["/demo/", "App 演示"],
+      ["/join/", "双人内测"],
       ["/privacy/", "隐私"],
       ["/support/", "支持"],
       ["/safety/", "安全"],
@@ -49,7 +50,7 @@ describe("built home page", () => {
     ] as const;
 
     expect(primaryNavigation).not.toBe("");
-    expect([...primaryNavigation.matchAll(/<a\b/gu)]).toHaveLength(6);
+    expect([...primaryNavigation.matchAll(/<a\b/gu)]).toHaveLength(7);
 
     for (const [href, label] of destinations) {
       expect(primaryNavigation).toMatch(
