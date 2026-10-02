@@ -5,8 +5,8 @@ import { ScrollView, Text, TextInput, View } from "react-native";
 import { useTheme } from "../../../core/design/theme-provider";
 import { Button } from "../../../core/ui/Button";
 import { Card } from "../../../core/ui/Card";
-import { IconTextAction } from "../../../core/ui/icon-text-action";
-import { SecondaryButton } from "../../../core/ui/secondary-button";
+import { HelpText, PageHeader } from "../../../core/ui/page-header";
+import { TextAction } from "../../../core/ui/text-action";
 import { getAuthErrorMessage } from "./auth-error-message";
 
 type Props = {
@@ -68,13 +68,7 @@ export function EmailAuthScreen(props: Props) {
       keyboardDismissMode="interactive"
       keyboardShouldPersistTaps="handled"
     >
-      <IconTextAction icon="arrow-back" label="返回" onPress={props.onBack} />
-      <Text accessibilityRole="header" selectable style={{ ...theme.typography.title, color: theme.color.text }}>邮箱账户</Text>
-      <Card accessible={false}>
-        <Text selectable style={{ ...theme.typography.body, color: theme.color.textSecondary }}>
-          邮箱用于登录和账户安全。成年确认与界面称呼会保存到账号；日记、沟通卡、回顾或亲密内容仍只在本机。
-        </Text>
-      </Card>
+      <PageHeader title="邮箱账户" onBack={props.onBack} help={<HelpText>邮箱用于登录和账户安全。成年确认与界面称呼会保存到账号；日记、沟通卡、回顾或亲密内容仍只在本机。</HelpText>} />
 
       {props.status === "signedIn" || props.status === "offline" ? (
         <Card accessible={false}>
@@ -83,7 +77,7 @@ export function EmailAuthScreen(props: Props) {
           </Text>
           <Text selectable style={{ ...theme.typography.body, color: theme.color.textSecondary }}>退出只清除这台设备的会话，不删除本机内容。</Text>
           <Button label="从这台设备退出登录" loading={pending} onPress={() => { void run(props.onLogout); }} />
-          <SecondaryButton label="删除云端账户" onPress={props.onDeleteAccount} />
+          <TextAction label="删除云端账户" onPress={props.onDeleteAccount} />
         </Card>
       ) : (
         <Card accessible={false}>
@@ -101,6 +95,7 @@ export function EmailAuthScreen(props: Props) {
                 style={inputStyle}
                 value={email}
               />
+              <Text selectable style={{ ...theme.typography.caption, color: theme.color.textSecondary }}>邮箱仅用于登录和账户安全，不会上传日记、沟通卡、回顾或亲密内容。</Text>
               <Button
                 disabled={!email.includes("@")}
                 label="发送验证码"
@@ -141,7 +136,7 @@ export function EmailAuthScreen(props: Props) {
                   ));
                 }}
               />
-              <SecondaryButton label="更换邮箱" onPress={() => { setChallenge(null); setCode(""); setError(null); }} />
+              <TextAction label="更换邮箱" onPress={() => { setChallenge(null); setCode(""); setError(null); }} />
               <Text selectable style={{ ...theme.typography.caption, color: theme.color.textSecondary }}>
                 {challenge.accepted.resendAfterSeconds} 秒后可重新发送。
               </Text>

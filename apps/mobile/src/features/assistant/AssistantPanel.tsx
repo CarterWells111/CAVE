@@ -6,7 +6,8 @@ import { Text, TextInput, View } from "react-native";
 import { useTheme } from "../../core/design/theme-provider";
 import { Card } from "../../core/ui/Card";
 import { Button } from "../../core/ui/Button";
-import { SecondaryButton } from "../../core/ui/secondary-button";
+import { TextAction } from "../../core/ui/text-action";
+import { HelpText, PageHelp } from "../../core/ui/page-header";
 import { useOptionalAuth } from "../auth/runtime/AuthProvider";
 import { AssistantClientError, createAssistantClient, previewAssistant, type AssistantRequester } from "./assistant-client";
 
@@ -110,22 +111,24 @@ function AssistantSession({ records, modes = ["guide", "summarize"], journeyId, 
     }
   };
   const shownResult = resultInput === inputKey ? result : null;
-  return <Card variant="muted">
-    <Text accessibilityRole="header" style={{ ...theme.typography.heading, color: theme.color.text }}>可选的 AI 辅助</Text>
-    <Text style={{ ...theme.typography.caption, color: theme.color.textSecondary }}>
-      {preview ? "本机模拟模式 · 不调用 DeepSeek，不发送内容。" : "每次先预览并同意，才把选定内容发送至当前内界服务端；服务端可能调用 DeepSeek，结果会标明是否为模拟。不会读取其他手记，也不是云备份。"}
-    </Text>
+  return <Card accessible={false} variant="muted">
+    <View style={{ flexDirection: "row", alignItems: "center", gap: theme.space.sm }}>
+      <Text accessibilityRole="header" style={{ ...theme.typography.heading, color: theme.color.text, flex: 1 }}>可选的 AI 辅助</Text>
+      <PageHelp title="可选的 AI 辅助"><HelpText>每次先预览并同意，才把选定内容发送至当前内界服务端；服务端可能调用 DeepSeek，结果会标明是否为模拟。不会读取其他手记，也不是云备份。AI 提议由你决定是否采用。</HelpText></PageHelp>
+    </View>
+    {preview ? <Text style={{ ...theme.typography.caption, color: theme.color.textSecondary }}>本机模拟模式 · 不调用 DeepSeek，不发送内容。</Text> : null}
     {modes.includes("journey") ? <TextInput accessibilityLabel="想问的旅程问题" placeholder="例如：做到一半想暂停，可以吗？" placeholderTextColor={theme.color.textMuted}
       value={question} onChangeText={setQuestion} maxLength={1000} multiline style={{ color: theme.color.text, borderColor: theme.color.border, borderWidth: 1, borderRadius: theme.radius.md, padding: theme.space.md, minHeight: 80 }} /> : null}
-    {!pending && <View style={{ gap: theme.space.sm }}>{modes.map(mode => <SecondaryButton key={mode} label={labels[mode]} disabled={busy} onPress={() => begin(mode)} />)}</View>}
+    {!pending && <View style={{ gap: theme.space.sm }}>{modes.map(mode => <TextAction key={mode} label={labels[mode]} disabled={busy} onPress={() => begin(mode)} />)}</View>}
     {pending && <View style={{ gap: theme.space.sm }}>
       <Text accessibilityRole="header" style={{ ...theme.typography.label, color: theme.color.text }}>{preview ? "本次模拟使用的内容" : "本次将发送的内容"}</Text>
       <Text style={{ ...theme.typography.caption, color: theme.color.textSecondary }}>用途：{labels[pending.mode]}。包含下列文字{pending.mode === "journey" ? "及当前旅程标识" : "及用于关联出处的记录标识"}，不包含其他历史、账号邮箱或隐藏卡片。</Text>
+      {!preview ? <Text style={{ ...theme.typography.caption, color: theme.color.textSecondary }}>接收方：当前内界服务端；服务端可能调用 DeepSeek，仅用于本次回复，不是云备份。</Text> : null}
       {pending.records.map(record => <Text selectable key={record.id} style={{ ...theme.typography.body, color: theme.color.text }}>{record.text}</Text>)}
       {pending.question ? <Text selectable style={{ color: theme.color.text }}>{pending.question}</Text> : null}
       {pending.records.length === 0 && !pending.question ? <Text style={{ color: theme.color.text }}>未填写内容，仅请求一个开始记录的问题。</Text> : null}
       <Button label={busy ? "正在等待…" : preview ? "确认运行本机模拟" : "同意本次发送并继续"} disabled={busy} onPress={() => { void send(); }} />
-      <SecondaryButton label={busy ? "取消等待" : "暂不使用"} onPress={cancel} />
+      <TextAction label={busy ? "取消等待" : "暂不使用"} onPress={cancel} />
       {busy && !preview ? <Text style={{ ...theme.typography.caption, color: theme.color.textSecondary }}>取消会停止等待，无法撤回已经发送的内容。</Text> : null}
     </View>}
     {error && <Text accessibilityRole="alert" style={{ color: theme.color.danger }}>{error}</Text>}
@@ -137,14 +140,14 @@ function AssistantSession({ records, modes = ["guide", "summarize"], journeyId, 
         {shownResult.summary && <Text selectable style={{ ...theme.typography.body, color: theme.color.text }}>{shownResult.summary}</Text>}
         {shownResult.observations.map((observation, index) => <View key={index} style={{ gap: theme.space.xs }}>
           <Text selectable style={{ ...theme.typography.body, color: theme.color.text }}>{observation.text}</Text>
-          {onOpenRecord && observation.sourceRecordIds.map(id => <SecondaryButton key={id} label={`查看原记录：${records.find(record => record.id === id)?.text.split("\n")[0]?.slice(0, 32) ?? "记录"}`} onPress={() => onOpenRecord(id)} />)}
+          {onOpenRecord && observation.sourceRecordIds.map(id => <TextAction key={id} label={`查看原记录：${records.find(record => record.id === id)?.text.split("\n")[0]?.slice(0, 32) ?? "记录"}`} onPress={() => onOpenRecord(id)} />)}
         </View>)}
         {shownResult.sources.map(source => <Text selectable key={source.id} style={{ ...theme.typography.caption, color: theme.color.textSecondary }}>依据：{source.title}{source.url ? `\n${source.url}` : ""}</Text>)}
         {shownResult.summary && onAdopt && <Button label={adopted ? "已放入编辑区，可继续修改" : "符合，放入编辑区"} disabled={adopted} onPress={() => {
           if (shownResult.summary) { onAdopt(shownResult.summary); setAdopted(true); }
         }} />}
       </>}
-      <SecondaryButton label="不太对，收起结果" onPress={cancel} />
+      <TextAction label="不太对，收起结果" onPress={cancel} />
     </View>}
   </Card>;
 }

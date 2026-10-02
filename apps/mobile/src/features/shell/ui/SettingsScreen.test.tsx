@@ -5,18 +5,6 @@ import { darkTheme, lightTheme, type AppTheme } from "../../../core/design/theme
 import { ThemeProvider } from "../../../core/design/theme-provider";
 import { SettingsScreen } from "./SettingsScreen";
 
-function luminance(hex: string): number {
-  const channels = hex.slice(1).match(/.{2}/gu)!.map((value) => Number.parseInt(value, 16) / 255)
-    .map((value) => value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4);
-  return 0.2126 * channels[0]! + 0.7152 * channels[1]! + 0.0722 * channels[2]!;
-}
-
-function contrast(first: string, second: string): number {
-  const lighter = Math.max(luminance(first), luminance(second));
-  const darker = Math.min(luminance(first), luminance(second));
-  return (lighter + 0.05) / (darker + 0.05);
-}
-
 function deferred() {
   let resolve!: () => void;
   let reject!: (error: unknown) => void;
@@ -88,10 +76,8 @@ test("shows one signed-out email login action without claiming cloud sync", () =
   expect(screen.getByRole("header", { name: "设置" })).toBeTruthy();
   expect(screen.getByRole("header", { name: "账户与保存" })).toBeTruthy();
   expect(screen.getByLabelText("默认头像")).toBeTruthy();
-  expect(screen.getByText("本机保存（当前）")).toBeTruthy();
-  expect(screen.getByText("邮箱登录（不含同步）")).toBeTruthy();
-  expect(screen.getByText(/使用内界手记必须登录/u)).toBeTruthy();
-  expect(screen.getByText(/登录只会把本机手记与账号关联/u)).toBeTruthy();
+  expect(screen.getByText("本机保存（当前） · 邮箱登录不含同步")).toBeTruthy();
+  expect(screen.queryByText(/使用内界手记必须登录/u)).toBeNull();
   expect(screen.getByText("隐私与本机数据")).toBeTruthy();
   expect(screen.getByText(/能解锁这台设备的人仍可能看到/u)).toBeTruthy();
   expect(screen.queryByRole("button", { name: "更改称呼" })).toBeNull();
@@ -100,6 +86,11 @@ test("shows one signed-out email login action without claiming cloud sync", () =
   fireEvent.press(screen.getByRole("button", { name: "邮箱登录" }));
   expect(props.account!.onSignIn).toHaveBeenCalledTimes(1);
   expect(screen.queryByRole("button", { name: "管理邮箱账号" })).toBeNull();
+
+  fireEvent.press(screen.getByRole("button", { name: "设置，帮助" }));
+  expect(screen.getByText(/使用内界手记必须登录/u)).toBeTruthy();
+  expect(screen.getByText(/登录只会把本机手记与账号关联/u)).toBeTruthy();
+  fireEvent.press(screen.getByRole("button", { name: "关闭设置 · 帮助" }));
 
   const scroll = screen.getByTestId("settings-scroll");
   expect(scroll.props.contentInsetAdjustmentBehavior).toBe("automatic");
@@ -118,7 +109,9 @@ test("keeps local-content boundaries explicit for a signed-in account", () => {
   });
   expect(screen.getByText("阿岚")).toBeTruthy();
   expect(screen.getByText("person@example.com")).toBeTruthy();
+  fireEvent.press(screen.getByRole("button", { name: "设置，帮助" }));
   expect(screen.getByText(/登录不会上传日记、沟通卡、回顾或亲密内容/u)).toBeTruthy();
+  fireEvent.press(screen.getByRole("button", { name: "关闭设置 · 帮助" }));
   expect(screen.queryByRole("button", { name: "邮箱登录" })).toBeNull();
   fireEvent.press(screen.getByRole("button", { name: "管理邮箱账号" }));
   expect(onManageAccount).toHaveBeenCalledTimes(1);
@@ -198,7 +191,7 @@ test("keeps the nickname editor open with a neutral error when saving fails", as
 test("offers accessible system, light and dark appearance choices and a back action", () => {
   const props = renderScreen();
 
-  expect(screen.getByText("外观")).toBeTruthy();
+  fireEvent.press(screen.getByRole("button", { name: "外观，跟随系统" }));
   expect(screen.getByText("当前：深色")).toBeTruthy();
   expect(screen.getByRole("radio", { name: /跟随系统/u }).props.accessibilityState)
     .toEqual(expect.objectContaining({ checked: true }));
@@ -222,6 +215,24 @@ test("does not render a deletion action when no real deletion capability is supp
   expect(screen.queryByRole("button", { name: "删除全部本机数据" })).toBeNull();
 });
 
+test("closing appearance choices preserves the saved preference", () => {
+  const props = renderScreen();
+  fireEvent.press(screen.getByRole("button", { name: "外观，跟随系统" }));
+  expect(screen.getByRole("radio", { name: /跟随系统/u, checked: true })).toBeTruthy();
+  fireEvent.press(screen.getByRole("button", { name: "关闭外观" }));
+  expect(props.onAppearancePreferenceChange).not.toHaveBeenCalled();
+  expect(screen.getByRole("button", { name: "外观，跟随系统" })).toBeTruthy();
+});
+
+test("appearance choices cannot open during a preference save", () => {
+  const props = renderScreen({ appearanceSaving: true });
+  const trigger = screen.getByRole("button", { name: "外观，跟随系统" });
+  expect(trigger).toBeDisabled();
+  fireEvent.press(trigger);
+  expect(screen.queryByRole("radio")).toBeNull();
+  expect(props.onAppearancePreferenceChange).not.toHaveBeenCalled();
+});
+
 test("does not expose a private journal preference without an authorized runtime", () => {
   renderScreen({ privacy: undefined });
 
@@ -229,13 +240,12 @@ test("does not expose a private journal preference without an authorized runtime
   expect(screen.queryByRole("switch", { name: "保存私人记录前显示本机提示" })).toBeNull();
 });
 
-test.each([darkTheme, lightTheme])("keeps unchecked radio boundaries at 3:1 in the $name theme", async (theme) => {
+test.each([darkTheme, lightTheme])("keeps appearance selection readable in the $name theme", async (theme) => {
   await renderThemedScreen(theme);
-
-  const unchecked = screen.getByRole("radio", { name: "亮色" });
-  const borderColor = StyleSheet.flatten(unchecked.props.style).borderColor as string;
-  expect(borderColor).toBe(theme.color.interactiveBorder);
-  expect(contrast(borderColor, theme.color.surface)).toBeGreaterThanOrEqual(3);
+  const field = screen.getByRole("button", { name: "外观，跟随系统" });
+  expect(field).toHaveStyle({ backgroundColor: theme.color.surface });
+  fireEvent.press(field);
+  expect(screen.getByRole("radio", { name: "亮色" })).toHaveStyle({ backgroundColor: theme.color.surface });
 });
 
 test.each([darkTheme, lightTheme])("uses the $name theme on the settings page background", async (theme) => {
@@ -252,7 +262,7 @@ test("shows a safe retryable message when an appearance choice cannot be saved",
       throw new Error("private storage path");
     }),
   });
-
+  fireEvent.press(screen.getByRole("button", { name: "外观，跟随系统" }));
   fireEvent.press(screen.getByRole("radio", { name: "亮色" }));
 
   expect(await screen.findByRole("alert")).toHaveTextContent("外观设置未保存，请重试。");

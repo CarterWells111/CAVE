@@ -91,12 +91,14 @@ test("public settings keeps appearance and back controls without exposing privat
   render(<SettingsRoute />);
 
   expect(screen.getByRole("header", { name: "设置" })).toBeTruthy();
-  expect(screen.getAllByRole("radio")).toHaveLength(3);
+  expect(screen.getByRole("button", { name: "外观，跟随系统" })).toBeTruthy();
   expect(screen.queryByRole("button", { name: "删除全部本机数据" })).toBeNull();
   expect(screen.queryByRole("switch", { name: "保存私人记录前显示本机提示" })).toBeNull();
   expect(mockRedirect).not.toHaveBeenCalled();
   expect(mockDeleteAllData).not.toHaveBeenCalled();
 
+  fireEvent.press(screen.getByRole("button", { name: "外观，跟随系统" }));
+  expect(screen.getAllByRole("radio")).toHaveLength(3);
   fireEvent.press(screen.getByRole("radio", { name: "亮色" }));
   fireEvent.press(screen.getByRole("button", { name: "返回" }));
 

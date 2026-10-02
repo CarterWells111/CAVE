@@ -1,5 +1,4 @@
-import { Ionicons } from "@expo/vector-icons";
-import { type ComponentProps, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { Alert, Modal, Pressable, ScrollView, Switch, Text, TextInput, View } from "react-native";
 
 import { useTheme } from "../../../core/design/theme-provider";
@@ -7,8 +6,10 @@ import type { ResolvedTheme, ThemePreference } from "../../../core/design/theme"
 import { Button } from "../../../core/ui/Button";
 import { Card } from "../../../core/ui/Card";
 import { InfoCard } from "../../../core/ui/info-card";
-import { IconTextAction } from "../../../core/ui/icon-text-action";
-import { SecondaryButton } from "../../../core/ui/secondary-button";
+import { HelpText, PageHeader } from "../../../core/ui/page-header";
+import { SelectionField } from "../../../core/ui/selection-field";
+import { ActionRow } from "../../../core/ui/action-row";
+import { TextAction } from "../../../core/ui/text-action";
 import { AccountProfileCard } from "../../account/ui/AccountProfileCard";
 import { AccountPreferenceSettings } from "../../account/ui/AccountPreferenceSettings";
 
@@ -50,65 +51,6 @@ export type SettingsScreenProps = {
 };
 
 type DeleteState = "idle" | "confirming" | "deleting" | "error" | "success";
-
-function AppearanceChoice({
-  checked,
-  detail,
-  disabled,
-  icon,
-  label,
-  onPress,
-}: {
-  checked: boolean;
-  detail?: string;
-  disabled: boolean;
-  icon: ComponentProps<typeof Ionicons>["name"];
-  label: string;
-  onPress(): void;
-}) {
-  const theme = useTheme();
-  const [focused, setFocused] = useState(false);
-  const accessibilityLabel = detail ? `${label}，${detail}` : label;
-  return (
-    <Pressable
-      accessibilityLabel={accessibilityLabel}
-      accessibilityRole="radio"
-      accessibilityState={{ checked, disabled }}
-      disabled={disabled}
-      onBlur={() => setFocused(false)}
-      onFocus={() => setFocused(true)}
-      onPress={onPress}
-      style={({ pressed }) => ({
-        alignItems: "center",
-        backgroundColor: checked
-          ? theme.color.surfaceAccent
-          : pressed ? theme.color.surfacePressed : theme.color.surface,
-        borderColor: checked ? theme.color.primary : theme.color.interactiveBorder,
-        borderCurve: "continuous",
-        borderRadius: theme.radius.control,
-        borderWidth: checked ? theme.border.selectedWidth : theme.border.width,
-        flexDirection: "row",
-        gap: theme.space.md,
-        minHeight: theme.size.primaryActionHeight,
-        minWidth: theme.size.minimumTouchTarget,
-        opacity: disabled ? 0.65 : 1,
-        outlineColor: theme.color.focus,
-        outlineOffset: theme.border.focusOffset,
-        outlineWidth: focused ? theme.border.focusWidth : 0,
-        paddingHorizontal: theme.space.md,
-        paddingVertical: theme.space.compact,
-        width: "100%",
-      })}
-    >
-      <Ionicons accessible={false} color={checked ? theme.color.primary : theme.color.textSecondary} name={icon} size={theme.size.iconLarge} />
-      <View style={{ flex: 1, gap: theme.space.xs }}>
-        <Text style={{ ...theme.typography.button, color: theme.color.text }}>{label}</Text>
-        {detail ? <Text style={{ ...theme.typography.caption, color: theme.color.textSecondary }}>{detail}</Text> : null}
-      </View>
-      {checked ? <Ionicons accessible={false} color={theme.color.primary} name="checkmark-circle" size={theme.size.iconLarge} /> : null}
-    </Pressable>
-  );
-}
 
 function DestructiveButton({
   label,
@@ -276,16 +218,12 @@ export function SettingsScreen({
       style={{ backgroundColor: theme.color.background, flex: 1 }}
       testID="settings-scroll"
     >
-      <IconTextAction icon="arrow-back" label="返回" onPress={onBack} />
-      <View style={{ gap: theme.space.sm }}>
-        <Text accessibilityRole="header" selectable style={{ ...theme.typography.title, color: theme.color.text }}>
-          设置
-        </Text>
-        <Text selectable style={{ ...theme.typography.body, color: theme.color.textSecondary }}>
-          管理账户、保存方式、外观与这台设备上的内容。
-        </Text>
-      </View>
-
+      <PageHeader title="设置" onBack={onBack} help={<>
+        <HelpText>管理账户、保存方式、外观与这台设备上的内容。</HelpText>
+        <HelpText>旅程、练习、沟通卡和普通回顾无需账户；使用内界手记必须登录。已登录账号离线时仍可使用自己的本机手记。</HelpText>
+        <HelpText>本机保存（当前）：手记、卡片、回顾和设置只保存在这台设备上；登录只会把本机手记与账号关联，不会同步私密正文。</HelpText>
+        <HelpText>邮箱登录（不含同步）：登录不会上传日记、沟通卡、回顾或亲密内容。使用 AI 时，会先预览并由你确认发送内容；「帮我批准」仅适用于本次会话的普通公开聊天，可能私密的内容仍需确认。</HelpText>
+      </>} />
       <AccountPreferenceSettings onRevoke={onAdultRevoked ?? (() => undefined)} />
 
       {account ? (
@@ -372,7 +310,7 @@ export function SettingsScreen({
               </Text>
             ) : null}
             <Button label="保存昵称" loading={nicknameSaving} onPress={() => { void saveNickname(); }} />
-            <SecondaryButton
+            <TextAction
               disabled={nicknameSaving}
               label="取消"
               onPress={() => setNicknameEditorOpen(false)}
@@ -385,61 +323,20 @@ export function SettingsScreen({
         <Text accessibilityRole="header" selectable style={{ ...theme.typography.heading, color: theme.color.text }}>
           账户与保存
         </Text>
-        <View style={{ gap: theme.space.compact }}>
-          <Text selectable style={{ ...theme.typography.caption, color: theme.color.textSecondary }}>
-            旅程、练习、沟通卡和普通回顾无需账户；使用内界手记必须登录。已登录账号离线时仍可使用自己的本机手记。
-          </Text>
-          <View style={{ gap: theme.space.xs }}>
-            <Text selectable style={{ ...theme.typography.cardTitle, color: theme.color.primary }}>本机保存（当前）</Text>
-            <Text selectable style={{ ...theme.typography.caption, color: theme.color.textSecondary }}>
-              手记、卡片、回顾和设置只保存在这台设备上；登录只会把本机手记与账号关联，不会同步私密正文。
-            </Text>
-          </View>
-          <View style={{ gap: theme.space.xs }}>
-            <Text selectable style={{ ...theme.typography.cardTitle, color: theme.color.textSecondary }}>
-              邮箱登录（不含同步）
-            </Text>
-            <Text selectable style={{ ...theme.typography.caption, color: theme.color.textSecondary }}>
-              登录不会上传日记、沟通卡、回顾或亲密内容。使用 AI 时，每次会先预览并由你确认发送的内容；没有一次授权后自动发送的设置。
-            </Text>
-          </View>
-          {account?.status === "ready" && account.onManageAccount ? (
-            <Button
-              label="管理邮箱账号"
-              onPress={account.onManageAccount}
-            />
-          ) : null}
-        </View>
+        <Text selectable style={{ ...theme.typography.caption, color: theme.color.textSecondary }}>本机保存（当前） · 邮箱登录不含同步</Text>
+        {account?.status === "ready" && account.onManageAccount ? <ActionRow title="管理邮箱账号" onPress={account.onManageAccount} /> : null}
       </Card>
 
       <Card accessible={false}>
         <Text accessibilityRole="header" selectable style={{ ...theme.typography.heading, color: theme.color.text }}>
           外观
         </Text>
-        <View accessibilityRole="radiogroup" style={{ gap: theme.space.compact }}>
-          <AppearanceChoice
-            checked={appearancePreference === "system"}
-            detail={`当前：${resolvedTheme === "dark" ? "深色" : "亮色"}`}
-            disabled={appearanceSaving}
-            icon="phone-portrait-outline"
-            label="跟随系统"
-            onPress={() => { void changeAppearance("system"); }}
-          />
-          <AppearanceChoice
-            checked={appearancePreference === "light"}
-            disabled={appearanceSaving}
-            icon="sunny-outline"
-            label="亮色"
-            onPress={() => { void changeAppearance("light"); }}
-          />
-          <AppearanceChoice
-            checked={appearancePreference === "dark"}
-            disabled={appearanceSaving}
-            icon="moon-outline"
-            label="深色"
-            onPress={() => { void changeAppearance("dark"); }}
-          />
-        </View>
+        <SelectionField<ThemePreference> label="外观" value={appearancePreference} disabled={appearanceSaving}
+          options={[
+            { value: "system", label: "跟随系统", detail: `当前：${resolvedTheme === "dark" ? "深色" : "亮色"}` },
+            { value: "light", label: "亮色" },
+            { value: "dark", label: "深色" },
+          ]} onChange={(value) => { void changeAppearance(value); }} />
         {appearanceSaving ? (
           <Text accessibilityLiveRegion="polite" selectable style={{ ...theme.typography.caption, color: theme.color.textSecondary }}>
             正在保存外观设置…
@@ -485,7 +382,7 @@ export function SettingsScreen({
                 <Text accessibilityRole="alert" selectable style={{ ...theme.typography.caption, color: theme.color.error }}>
                   暂时无法读取本机隐私设置；保存提示会保持开启。
                 </Text>
-                <SecondaryButton label="重试读取隐私设置" onPress={privacy.retry} />
+                <TextAction label="重试读取隐私设置" onPress={privacy.retry} />
               </View>
             ) : null}
             {privacySaveState === "error" ? (
@@ -515,7 +412,7 @@ export function SettingsScreen({
               请再次确认：全部本机数据会被删除，并且无法恢复。
             </Text>
             <DestructiveButton label="确认删除全部本机数据" onPress={() => { void deleteAll(); }} />
-            <SecondaryButton label="取消删除" onPress={() => setDeleteState("idle")} />
+            <TextAction label="取消删除" onPress={() => setDeleteState("idle")} />
           </View>
         ) : null}
 
@@ -534,7 +431,7 @@ export function SettingsScreen({
               删除尚未完成；部分本机清理步骤可能已经完成。当前画面会保留，请安全重试直到显示完成。
             </Text>
             <DestructiveButton label="重试删除" onPress={() => { void deleteAll(); }} />
-            <SecondaryButton label="取消删除" onPress={() => setDeleteState("idle")} />
+            <TextAction label="取消删除" onPress={() => setDeleteState("idle")} />
           </View>
         ) : null}
 

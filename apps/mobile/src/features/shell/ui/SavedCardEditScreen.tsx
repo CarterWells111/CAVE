@@ -3,7 +3,8 @@ import { ScrollView, Text, View } from "react-native";
 
 import { useTheme } from "../../../core/design/theme-provider";
 import { Button } from "../../../core/ui/Button";
-import { SecondaryButton } from "../../../core/ui/secondary-button";
+import { HelpText, PageHeader } from "../../../core/ui/page-header";
+import { TextAction } from "../../../core/ui/text-action";
 import { StatusBanner } from "../../../core/ui/StatusBanner";
 import type { CommunicationSectionId, SharingVisibility } from "../../journey/domain/types";
 import {
@@ -140,14 +141,12 @@ export function SavedCardEditScreen({
       testID="saved-card-edit-scroll"
     >
       <View style={{ gap: theme.space.sm }}>
-        <Text accessibilityRole="header" selectable style={{ ...theme.typography.title, color: theme.color.text }}>
-          {`编辑${metadata.title}`}
-        </Text>
+        <PageHeader title={`编辑${metadata.title}`} help={<HelpText>修改内容后保存更改。七段内容会一直保留在本机记录中；灰色段落可以随时编辑并恢复。</HelpText>} />
         <Text selectable style={{ ...theme.typography.caption, color: theme.color.textSecondary }}>
           {`${metadata.dateLabel} · ${metadata.statusLabel}`}
         </Text>
         <Text selectable style={{ ...theme.typography.body, color: theme.color.textSecondary }}>
-          七段内容会一直保留在本机记录中。灰色段落不会出现在草稿卡纸里，但可以随时编辑并恢复。
+          灰色段落不会出现在草稿卡纸里，但仍保留在本机记录中。
         </Text>
       </View>
 
@@ -179,7 +178,7 @@ export function SavedCardEditScreen({
             onPress={() => { void save(); }}
           />
         )}
-        {saveState !== "success" ? <SecondaryButton disabled={saving} label="取消编辑" onPress={onCancel} /> : null}
+        {saveState !== "success" ? <TextAction disabled={saving} label="取消编辑" onPress={onCancel} /> : null}
       </View>
     </ScrollView>
   );

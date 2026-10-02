@@ -5,6 +5,7 @@ import { useTheme } from "../../../core/design/theme-provider";
 import { Card } from "../../../core/ui/Card";
 import { ChoiceChip } from "../../../core/ui/ChoiceChip";
 import { Button } from "../../../core/ui/Button";
+import { TextAction } from "../../../core/ui/text-action";
 import { useOptionalAccountPreferences } from "../runtime/AccountPreferencesProvider";
 import { PreferenceSyncNotice } from "./PreferenceSyncNotice";
 
@@ -31,10 +32,12 @@ export function AccountPreferenceSettings({ onRevoke }: { onRevoke(): void }) {
     </Text>
     {preferences.ready ? <>
       <Text style={{ ...theme.typography.body, color: theme.color.text }}>成年确认：{preferences.preferences.ageConfirmed ? "已确认年满 18 岁" : "尚未确认"}</Text>
-      <Button label={preferences.preferences.ageConfirmed ? "撤销成年确认" : "我已年满 18 岁，确认"} disabled={saving} onPress={() => { void change({ ageConfirmed: !preferences.preferences.ageConfirmed }); }} />
+      {preferences.preferences.ageConfirmed
+        ? <TextAction label="撤销成年确认" disabled={saving} onPress={() => { void change({ ageConfirmed: false }); }} />
+        : <Button label="我已年满 18 岁，确认" disabled={saving} onPress={() => { void change({ ageConfirmed: true }); }} />}
       <Text style={{ ...theme.typography.caption, color: theme.color.textSecondary }}>撤销后需重新确认才能继续旅程，已有内容会保留。</Text>
       <Text accessibilityRole="header" style={{ ...theme.typography.heading, color: theme.color.text }}>界面称呼</Text>
-      <View style={{ gap: theme.space.sm }}>
+      <View accessibilityRole="radiogroup" style={{ flexDirection: "row", flexWrap: "wrap", gap: theme.space.sm }}>
         {(["你", "妳"] as const).map((value) => <ChoiceChip key={value} label={value} selected={preferences.preferences.addressPreference === value} disabled={saving} semantics="radio" onPress={() => { void change({ addressPreference: value }); }} />)}
       </View>
     </> : <Text style={{ ...theme.typography.caption, color: theme.color.textSecondary }}>正在读取设置…</Text>}

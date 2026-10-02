@@ -9,7 +9,8 @@ import { Keyboard, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView,
 import { SafeAreaInsetsContext } from "react-native-safe-area-context";
 import { useTheme } from "../../core/design/theme-provider";
 import { Button } from "../../core/ui/Button";
-import { SecondaryButton } from "../../core/ui/secondary-button";
+import { TextAction } from "../../core/ui/text-action";
+import { HelpText, PageHelp } from "../../core/ui/page-header";
 import { useOptionalAuth } from "../auth/runtime/AuthProvider";
 import { AssistantClientError, createAssistantClient, previewAssistant, type AssistantRequester } from "./assistant-client";
 
@@ -81,18 +82,24 @@ export function AssistantChat({ journeyId, authorized, request, initialDraft = "
   return <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={{ flex: 1, backgroundColor: theme.color.background, paddingTop: insets?.top ?? 0 }}>
     <View style={{ flex: 1, width: "100%", maxWidth: 760, alignSelf: "center" }}>
       <View style={{ paddingHorizontal: 24, paddingVertical: 16, flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
-        <Text accessibilityRole="header" style={{ ...theme.typography.heading, color: theme.color.text }}>内界 AI</Text>
-        <Text style={caption}>{preview ? "本机模拟" : "由你决定分享什么"}</Text>
+        <Text accessibilityRole="header" style={{ ...theme.typography.heading, color: theme.color.text, flex: 1, flexShrink: 1 }}>内界 AI</Text>
+        <View style={{ flexDirection: "row", alignItems: "center", flexShrink: 0, gap: theme.space.sm }}>
+          {preview ? <Text style={caption}>本机模拟</Text> : null}
+          <PageHelp title="内界 AI">
+            <HelpText>一句感受、一段记录，或旅程中的一个疑问，不必想好怎么说。</HelpText>
+            <HelpText>点选建议后会填入输入框，修改好再发送。额度仪表在输入框旁，可以查看重置时间。</HelpText>
+            <HelpText>发送前会确认本条消息、最近对话与旅程标识；你可以选择仅发送本条消息。不会读取私人手记、照片或隐藏卡片。</HelpText>
+            <HelpText>「帮我批准」仅在本次会话生效；可能私密或不确定的内容仍需你亲自确认。可随时在输入框旁关闭。</HelpText>
+          </PageHelp>
+        </View>
       </View>
       <ScrollView ref={scroll} keyboardShouldPersistTaps="handled" onContentSizeChange={() => { if (turns.length || sending) scroll.current?.scrollToEnd({ animated: true }); }} contentContainerStyle={{ flexGrow: 1, padding: 24, gap: 24 }}>
         {turns.length === 0 && sending === null ? <View style={{ flex: 1, justifyContent: "center", gap: 20, paddingVertical: 24 }}>
           <Text style={{ color: theme.color.primary, fontSize: 14, letterSpacing: 3 }}>CAVE · 留一点时间给自己</Text>
           <Text accessibilityRole="header" style={{ ...theme.typography.display, color: theme.color.text }}>今天，想从哪里聊起？</Text>
-          <Text style={caption}>一句感受，一段记录，或旅程中的一个疑问。{"\n"}不必想好怎么说，我们慢慢来。</Text>
           <View style={{ gap: 10, marginTop: 8 }}>{suggestions.map(suggestion => <Pressable key={suggestion.label} accessibilityRole="button" accessibilityLabel={suggestion.label} onPress={() => { setDraft(suggestion.text); setError(null); input.current?.focus(); }} style={({ pressed }) => ({ minHeight: 52, padding: 16, borderRadius: 18, backgroundColor: pressed ? theme.color.surfacePressed : theme.color.surface, flexDirection: "row", justifyContent: "space-between", gap: 12 })}>
             <Text style={{ ...textStyle, flex: 1 }}>{suggestion.label}</Text><Text style={{ color: theme.color.primary, fontSize: 20 }}>↗</Text>
           </Pressable>)}</View>
-          <Text style={caption}>点选后填入输入框，修改好再发送。</Text>
         </View> : null}
         {turns.map((turn, index) => <View key={index} style={{ gap: 20 }}>
           <View style={{ alignSelf: "flex-end", maxWidth: "90%", padding: 16, borderRadius: 20, backgroundColor: theme.color.surfaceAccent }}><Text selectable style={textStyle}>{turn.question}</Text></View>
@@ -101,11 +108,11 @@ export function AssistantChat({ journeyId, authorized, request, initialDraft = "
             {turn.response.sources.map(source => <Text key={source.id} selectable style={caption}>依据：{source.title}{source.url ? `\n${source.url}` : ""}</Text>)}
           </View>
         </View>)}
-        {sending !== null ? <View style={{ gap: 16 }}><View style={{ alignSelf: "flex-end", padding: 16, borderRadius: 20, backgroundColor: theme.color.surfaceAccent }}><Text selectable style={textStyle}>{sending}</Text></View><Text accessibilityLiveRegion="polite" style={caption}>内界 AI · 正在思考…</Text><SecondaryButton label="停止等待" onPress={stop} /></View> : null}
+        {sending !== null ? <View style={{ gap: 16 }}><View style={{ alignSelf: "flex-end", padding: 16, borderRadius: 20, backgroundColor: theme.color.surfaceAccent }}><Text selectable style={textStyle}>{sending}</Text></View><Text accessibilityLiveRegion="polite" style={caption}>内界 AI · 正在思考…</Text><TextAction label="停止等待" onPress={stop} /></View> : null}
       </ScrollView>
       <View style={{ paddingHorizontal: 20, paddingTop: 12, paddingBottom: 12, gap: 10 }}>
         {error ? <Text accessibilityRole="alert" selectable style={{ ...caption, color: theme.color.danger }}>{error}</Text> : null}
-        {!authorized ? <SecondaryButton label="成年声明后开始聊天" onPress={() => router.push({ pathname: "/journey/adult-gate", params: { entry: "ai" } })} /> : !preview && !auth?.accountId ? <SecondaryButton label="登录以使用在线 AI" onPress={() => router.push({ pathname: "/auth/email", params: { returnTo: "/(tabs)/ai" } })} /> : null}
+        {!authorized ? <TextAction label="成年声明后开始聊天" onPress={() => router.push({ pathname: "/journey/adult-gate", params: { entry: "ai" } })} /> : !preview && !auth?.accountId ? <TextAction label="登录以使用在线 AI" onPress={() => router.push({ pathname: "/auth/email", params: { returnTo: "/(tabs)/ai" } })} /> : null}
         <View style={{ backgroundColor: theme.color.surface, borderColor: theme.color.border, borderWidth: 1, borderRadius: 24, padding: 14, gap: 12 }}>
           <TextInput ref={input} accessibilityLabel="聊天消息" value={draft} onChangeText={value => { setDraft(value); setPending(null); setError(null); }} editable={sending === null} multiline maxLength={1000} placeholder="说说你想聊的事…" placeholderTextColor={theme.color.textSecondary} style={{ ...textStyle, minHeight: 56, maxHeight: 160, textAlignVertical: "top", padding: 4 }} />
           <View style={{ flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: 8 }}>
@@ -126,15 +133,15 @@ export function AssistantChat({ journeyId, authorized, request, initialDraft = "
           <ScrollView contentContainerStyle={{ gap: 12 }}>
             <Text style={caption}>{preview ? "以下内容仅用于本机模拟。" : "接收方：当前内界服务端；服务端可能调用 DeepSeek。用途：生成本次回复，结果会标明是否为模拟。"}</Text>
             <Text style={textStyle}>资源：本条消息</Text><Text selectable style={{ ...textStyle, backgroundColor: theme.color.surfaceAccent, padding: 12, borderRadius: 12 }}>{pending?.question}</Text>
-            {pending?.history?.length ? <View style={{ gap: 8 }}><Text style={textStyle}>最近对话：{pending.history.length} 条</Text>{pending.history.map((item, index) => <Text selectable key={index} style={caption}>{item.role === "user" ? "你" : "内界 AI"}：{item.content}</Text>)}<SecondaryButton label="这次仅发送本条消息" onPress={() => setPending(current => current ? { ...current, history: [] } : null)} /></View> : null}
+            {pending?.history?.length ? <View style={{ gap: 8 }}><Text style={textStyle}>最近对话：{pending.history.length} 条</Text>{pending.history.map((item, index) => <Text selectable key={index} style={caption}>{item.role === "user" ? "你" : "内界 AI"}：{item.content}</Text>)}<TextAction label="这次仅发送本条消息" onPress={() => setPending(current => current ? { ...current, history: [] } : null)} /></View> : null}
             <Text style={caption}>用途：{"日常聊天、记录与旅程问答"}</Text>
             {pending?.journeyId ? <Text selectable style={caption}>旅程资源：{title}（标识：{pending.journeyId}）。服务端会依据已审核的旅程知识回答。</Text> : null}
             <Text style={caption}>仅发送上方列出的消息，不读取私人手记、照片或隐藏卡片。本次授权仅对这些内容有效。</Text>
           </ScrollView>
           <Button label={preview ? "确认运行本机模拟" : "允许并发送"} onPress={() => { void send(); }} />
           {pending && needsPrivateConfirmation(pending) ? <Text style={caption}>这次内容可能涉及个人信息，需要你亲自确认后再发送。</Text> : null}
-          {!autoApprove && !preview ? <><SecondaryButton label="帮我批准" onPress={() => { setAutoApprove(true); if (pending && !needsPrivateConfirmation(pending)) { void send(pending); } }} /><Text style={caption}>仅本次会话：普通公开聊天自动批准；可能私密或不确定的内容仍会先问你。可随时关闭。</Text></> : null}
-          <SecondaryButton label="取消，继续编辑" onPress={() => setPending(null)} />
+          {!autoApprove && !preview ? <><TextAction label="帮我批准" onPress={() => { setAutoApprove(true); if (pending && !needsPrivateConfirmation(pending)) { void send(pending); } }} /><Text style={caption}>仅本次会话：普通公开聊天自动批准；可能私密或不确定的内容仍会先问你。可随时关闭。</Text></> : null}
+          <TextAction label="取消，继续编辑" onPress={() => setPending(null)} />
         </View>
       </View>
     </Modal>
