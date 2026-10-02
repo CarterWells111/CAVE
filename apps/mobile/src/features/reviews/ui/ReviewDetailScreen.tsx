@@ -5,7 +5,8 @@ import { useTheme } from "../../../core/design/theme-provider";
 import { Button } from "../../../core/ui/Button";
 import { Card } from "../../../core/ui/Card";
 import { InfoCard } from "../../../core/ui/info-card";
-import { SecondaryButton } from "../../../core/ui/secondary-button";
+import { HelpText, PageHeader } from "../../../core/ui/page-header";
+import { TextAction } from "../../../core/ui/text-action";
 import { StatusBanner } from "../../../core/ui/StatusBanner";
 
 export type ReviewDetailMetadata = Readonly<{
@@ -135,9 +136,8 @@ export function ReviewDetailScreen(_props: ReviewDetailScreenProps) {
         ) : (
           <>
             <View style={{ gap: theme.space.sm }}>
-              <Text accessibilityRole="header" selectable style={{ ...theme.typography.title, color: theme.color.text }}>
-                {metadata.title}
-              </Text>
+              <PageHeader title={metadata.title} onBack={onBack} backLabel="返回我的回顾" backDisabled={deleting || branchState === "branching"}
+                help={<HelpText>查看这条回顾的完整内容。你可以从它开始一个新分支。{onSaveToJournal ? "也可以保存到内界手记。" : ""}删除前会再次确认，删除后无法恢复。</HelpText>} />
               <Text selectable style={{ ...theme.typography.caption, color: theme.color.textSecondary }}>
                 {`${metadata.dateLabel} · ${metadata.statusLabel}`}
               </Text>
@@ -169,14 +169,10 @@ export function ReviewDetailScreen(_props: ReviewDetailScreenProps) {
                 label={branchState === "branching" ? "正在创建新分支…" : branchState === "error" ? "重试创建新分支" : "从这条回顾开始新分支"}
                 onPress={() => { void branchReview(); }}
               />
-              <SecondaryButton disabled={deleting || branchState === "branching"} label="返回我的回顾" onPress={onBack} />
-              {onSaveToJournal ? <SecondaryButton disabled={deleting || branchState === "branching"} label="保存到内界手记" onPress={onSaveToJournal} /> : null}
+              {onSaveToJournal ? <TextAction disabled={deleting || branchState === "branching"} label="保存到内界手记" onPress={onSaveToJournal} /> : null}
             </View>
 
-            <Card accessible={false} style={{ borderColor: theme.color.danger }}>
-              <Text accessibilityRole="header" selectable style={{ ...theme.typography.heading, color: theme.color.text }}>
-                删除这条回顾
-              </Text>
+            <View style={{ gap: theme.space.md }}>
               {deleteState === "idle" ? <DeleteButton label="删除这条回顾" loading={branchState === "branching"} onPress={() => setDeleteState("confirming")} /> : null}
               {deleteState === "confirming" ? (
                 <View style={{ gap: theme.space.md }}>
@@ -184,7 +180,7 @@ export function ReviewDetailScreen(_props: ReviewDetailScreenProps) {
                     请再次确认：这条回顾会从本机删除，并且无法恢复。
                   </Text>
                   <DeleteButton label="确认删除这条回顾" loading={branchState === "branching"} onPress={() => { void deleteReview(); }} />
-                  <SecondaryButton disabled={branchState === "branching"} label="取消删除" onPress={() => setDeleteState("idle")} />
+                  <TextAction disabled={branchState === "branching"} label="取消删除" onPress={() => setDeleteState("idle")} />
                 </View>
               ) : null}
               {deleteState === "deleting" ? (
@@ -199,10 +195,10 @@ export function ReviewDetailScreen(_props: ReviewDetailScreenProps) {
                 <View style={{ gap: theme.space.md }}>
                   <StatusBanner message="删除失败，请重试。回顾内容仍保留在当前画面。" variant="error" />
                   <DeleteButton label="重试删除" loading={branchState === "branching"} onPress={() => { void deleteReview(); }} />
-                  <SecondaryButton disabled={branchState === "branching"} label="取消删除" onPress={() => setDeleteState("idle")} />
+                  <TextAction disabled={branchState === "branching"} label="取消删除" onPress={() => setDeleteState("idle")} />
                 </View>
               ) : null}
-            </Card>
+            </View>
           </>
         )}
       </View>

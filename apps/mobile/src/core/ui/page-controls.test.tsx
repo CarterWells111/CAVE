@@ -46,3 +46,13 @@ test("navigation row is one named target and disables navigation when unavailabl
   fireEvent.press(screen.getByRole("button", { name: "记录标题，昨天" }));
   expect(navigate).toHaveBeenCalledTimes(1);
 });
+
+test("page header blocks returning during a pending operation", () => {
+  const back = jest.fn();
+  const { rerender } = render(<PageHeader title="保存中" onBack={back} backDisabled />);
+  fireEvent.press(screen.getByRole("button", { name: "返回" }));
+  expect(back).not.toHaveBeenCalled();
+  rerender(<PageHeader title="已保存" onBack={back} />);
+  fireEvent.press(screen.getByRole("button", { name: "返回" }));
+  expect(back).toHaveBeenCalledTimes(1);
+});

@@ -27,12 +27,13 @@ export type PageHeaderProps = {
   actions?: ReactNode;
   onBack?: () => void;
   backLabel?: string;
+  backDisabled?: boolean;
 };
 
-export function PageHeader({ title, help, actions, onBack, backLabel = "返回" }: PageHeaderProps) {
+export function PageHeader({ title, help, actions, onBack, backLabel = "返回", backDisabled = false }: PageHeaderProps) {
   const theme = useTheme();
   return <View style={{ alignItems: "center", flexDirection: "row", gap: theme.space.sm, minWidth: 0, width: "100%" }}>
-    {onBack ? <IconTextAction icon="chevron-back" iconOnly label={backLabel} onPress={onBack} /> : null}
+    {onBack ? <IconTextAction icon="chevron-back" iconOnly label={backLabel} disabled={backDisabled} onPress={onBack} /> : null}
     <Text accessibilityRole="header" selectable style={{ ...theme.typography.title, color: theme.color.text, flex: 1, flexShrink: 1 }}>{title}</Text>
     <View style={{ alignItems: "center", flexDirection: "row", flexShrink: 0, gap: theme.space.xs }}>
       {actions}

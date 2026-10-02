@@ -23,6 +23,7 @@
 - Four feature sessions dispatched from e82192a and actively implementing.
 - Navigation now grows naturally with text size; 3 suites / 10 navigation tests passed.
 - Full baseline: 177 suites / 1440 tests passed in 152.38 s. Command exit 1 only because outputs/ did not yet exist when Jest wrote JSON; no baseline JSON artifact. Create output directory before final run.
+- Integration additionally owns review-history/detail components: compact navigation, on-demand help, header back with pending-operation disabling, lighter secondary actions. 4 suites / 16 tests, direct Node22 typecheck and Expo lint passed.
 - Runtime screenshots and native device verification pending.
 
 ## Implementation sessions
@@ -36,7 +37,7 @@
 No connected mobile device or react-native-web/react-dom preview dependencies are available. Native layout, keyboard and VoiceOver checks remain unverified until device acceptance; automated checks do not substitute for screenshots.
 
 ## Shared UI contracts
-- `core/ui/page-header.tsx`: `PageHeader({ title, help?: ReactNode, actions?: ReactNode, onBack?, backLabel? })`; `PageHelp({ title, children })` for existing headers; `HelpText` for readable help copy. Help label is `${title}，帮助`; close label is `关闭${title} · 帮助`.
+- `core/ui/page-header.tsx`: `PageHeader({ title, help?: ReactNode, actions?: ReactNode, onBack?, backLabel?, backDisabled? })`; `PageHelp({ title, children })` for existing headers; `HelpText` for readable help copy. Help label is `${title}，帮助`; close label is `关闭${title} · 帮助`. `backDisabled` defaults to false.
 - `core/ui/action-row.tsx`: `ActionRow({ title, subtitle?, accessibilityLabel?, children?, onPress, disabled?, testID? })`; one navigation target, no nested controls. Keep body summaries short; accessible label must include relevant child content if needed.
 - `core/ui/selection-field.tsx`: `SelectionField<T>({ label, value, options: { value, label, detail? }[], onChange, disabled? })`; selection sheet closes after choosing and cancel preserves value.
 - `IconTextAction` now accepts `iconOnly?: boolean`; accessible label and touch/focus behavior are unchanged.
