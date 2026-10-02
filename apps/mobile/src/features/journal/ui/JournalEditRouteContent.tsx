@@ -4,7 +4,7 @@ import type { JournalService } from "../application/journal-service";
 import type { JournalEntry, JournalRecord } from "../domain/journal-record";
 import { ErrorState } from "../../../core/ui/ErrorState";
 import { Screen } from "../../../core/ui/Screen";
-import { SecondaryButton } from "../../../core/ui/secondary-button";
+import { PageHeader } from "../../../core/ui/page-header";
 import { JournalEditorScreen } from "./JournalEditorScreen";
 import { JournalEntryEditorScreen } from "./JournalEntryEditorScreen";
 import { JournalLoadingScreen } from "./JournalLoadingScreen";
@@ -45,8 +45,8 @@ function LoadedEditor({ id, entryId, mode, service, onBack, onSaved, renderAssis
   }, [id, entryId, mode, service, attempt]);
 
   if (failed) return <Screen>
+    <PageHeader title="内界手记" onBack={onBack} backLabel="返回手记列表" />
     <ErrorState title="无法打开这条手记" message="它可能已经被删除，或本机存储暂时不可用。" actionLabel="重试" onAction={() => setAttempt((n) => n + 1)} />
-    <SecondaryButton label="返回手记列表" onPress={onBack} />
   </Screen>;
   if (!state || state.service !== service) return <JournalLoadingScreen message="正在读取本机手记…" />;
   return <View style={{ flex: 1 }}>
