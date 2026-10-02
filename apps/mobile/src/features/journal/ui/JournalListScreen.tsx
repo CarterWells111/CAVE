@@ -7,6 +7,9 @@ import { EmptyState } from "../../../core/ui/EmptyState";
 import { ErrorState } from "../../../core/ui/ErrorState";
 import { Screen } from "../../../core/ui/Screen";
 import { SecondaryButton } from "../../../core/ui/secondary-button";
+import { ActionRow } from "../../../core/ui/action-row";
+import { HelpText, PageHeader } from "../../../core/ui/page-header";
+import { TextAction } from "../../../core/ui/text-action";
 import type { JournalService } from "../application/journal-service";
 import { JOURNAL_TOPICS, journalTopicLabel, type JournalTopic } from "../domain/journal-record";
 import { formatJournalDate } from "../domain/journal-date";
@@ -33,37 +36,37 @@ export function JournalListScreen({ service, focusRevision = 0, onCreate, onOpen
     && (topic === null || record.topics.includes(topic))), [query, records, topic]);
   const customTopics = useMemo(() => [...new Set(records.flatMap((record) => record.topics).filter((item) => item.startsWith("custom:")))], [records]);
   return <Screen testID="journal-list-screen">
-    <Text accessibilityRole="header" style={{ ...theme.typography.title, color: theme.color.text }}>内界手记</Text>
-    <Text style={{ ...theme.typography.body, color: theme.color.textMuted }}>记下一句话和后来发生的变化。内容默认只在本机；主动使用 AI 并确认后，才发送所选内容。</Text>
-    {hasDraft ? <Button label="继续上次的草稿" onPress={onCreate} /> : null}
-    <Button label="记下一件事" onPress={onCreate} />
-    <SecondaryButton label="回顾一段时间" onPress={onReview} />
+    <PageHeader title="内界手记" help={<HelpText>记下一句话和后来发生的变化。内容默认只在本机；主动使用 AI 并确认后，才发送所选内容。这不是云备份。</HelpText>} />
+    <View style={{ flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: theme.space.sm }}>
+      <View style={{ flex: 1, minWidth: 140 }}><Button label="记下一件事" onPress={onCreate} /></View>
+      <TextAction label="回顾一段时间" onPress={onReview} />
+    </View>
+    {hasDraft ? <ActionRow title="继续上次的草稿" subtitle="本机草稿" onPress={onCreate} /> : null}
     <TextInput accessibilityLabel="搜索事件标题" onChangeText={setQuery} placeholder="搜索事件标题" value={query}
       placeholderTextColor={theme.color.textMuted} selectionColor={theme.color.primary}
       style={{ backgroundColor: theme.color.surface, borderColor: theme.color.border, borderRadius: theme.radius.md, borderWidth: 1, color: theme.color.text, padding: theme.space.md }} />
     <ScrollView horizontal nestedScrollEnabled showsHorizontalScrollIndicator={false} testID="journal-topic-filters" style={{ flexGrow: 0, height: theme.size.secondaryActionHeight, width: "100%" }} contentContainerStyle={{ alignItems: "center", gap: theme.space.sm, paddingRight: theme.space.sm }}>
-      {customTopics.map((key) => <SecondaryButton accent inline key={key} label={journalTopicLabel(key)} onPress={() => setTopic(key)} />)}
+      {customTopics.map((key) => <SecondaryButton inline key={key} label={journalTopicLabel(key)} onPress={() => setTopic(key)} />)}
       <SecondaryButton inline label="全部" onPress={() => setTopic(null)} />
       {JOURNAL_TOPICS.map((key) => <SecondaryButton inline key={key} label={journalTopicLabel(key)} onPress={() => setTopic(key)} />)}
     </ScrollView>
     {state === "error" ? <ErrorState title="手记读取失败" message="本机内容没有因此被删除。" actionLabel="重试" onAction={load} /> : null}
     {state === "ready" && visible.length === 0 ? <EmptyState title="还没有符合条件的记录" message="可以从一件对你重要的事开始。" /> : null}
-    {visible.map((record) => <Card key={record.id} testID={`journal-record-${record.id}`}>
-      <Text style={{ ...theme.typography.heading, color: theme.color.text }}>{record.title}</Text>
-      <Text style={{ ...theme.typography.body, color: theme.color.textMuted }}>{formatJournalDate(record.occurredAt)}</Text>
-      <Text style={{ ...theme.typography.body, color: theme.color.text }}>{record.highlight.text}</Text>
+    {visible.map((record) => <ActionRow key={record.id} testID={`journal-record-${record.id}`}
+      title={record.title} subtitle={formatJournalDate(record.occurredAt)} onPress={() => onOpen(record.id)}
+      accessibilityLabel={`打开${record.title}，${formatJournalDate(record.occurredAt)}，${record.highlight.text}，${record.topics.map(journalTopicLabel).join(" · ")}`}>
+      <Text numberOfLines={2} style={{ ...theme.typography.body, color: theme.color.text }}>{record.highlight.text}</Text>
       {record.topics.length ? <Text style={{ ...theme.typography.caption, color: theme.color.textMuted }}>{record.topics.map(journalTopicLabel).join(" · ")}</Text> : null}
-      <SecondaryButton label={`打开${record.title}`} onPress={() => onOpen(record.id)} />
-    </Card>)}
+    </ActionRow>)}
     {reviews.length ? <View style={{ gap: theme.space.md }}>
       <Text accessibilityRole="header" style={{ ...theme.typography.heading, color: theme.color.text }}>阶段回顾</Text>
-      {reviews.map((review) => <Card key={review.id} variant="muted">
+      {reviews.map((review) => <Card accessible={false} key={review.id} variant="muted">
         <Text style={{ ...theme.typography.heading, color: theme.color.text }}>{review.title}</Text>
         <Text style={{ ...theme.typography.caption, color: theme.color.textMuted }}>{review.periodStart.slice(0, 10)} — {review.periodEnd.slice(0, 10)}</Text>
         <Text style={{ ...theme.typography.body, color: theme.color.text }}>{review.body}</Text>
         {review.sourceRecordIds.map((id) => {
           const source = records.find((record) => record.id === id);
-          return source ? <SecondaryButton key={id} label={`回到原记录，写一个后来：${source.title}`} onPress={() => onOpen(id)} /> : <Text key={id} style={{ color: theme.color.textMuted }}>原记录已删除</Text>;
+          return source ? <ActionRow key={id} title={source.title} subtitle="回到原记录，写一个后来" accessibilityLabel={`回到原记录，写一个后来：${source.title}`} onPress={() => onOpen(id)} /> : <Text key={id} style={{ color: theme.color.textMuted }}>原记录已删除</Text>;
         })}
       </Card>)}
     </View> : null}

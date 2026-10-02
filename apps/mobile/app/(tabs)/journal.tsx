@@ -1,11 +1,12 @@
 import { useRouter } from "expo-router";
 import { Screen } from "../../src/core/ui/Screen";
 import { Button } from "../../src/core/ui/Button";
-import { SecondaryButton } from "../../src/core/ui/secondary-button";
+import { HelpText, PageHeader } from "../../src/core/ui/page-header";
+import { TextAction } from "../../src/core/ui/text-action";
 import { useAdultDeclaration } from "../../src/features/journey/runtime/JourneyRuntimeProvider";
 import { useJournalAccess } from "../../src/features/journal/runtime/JournalAccessProvider";
 import { JournalRouteGate } from "../../src/features/journal/ui/JournalRouteGate";
-import { ShellFrame, SupportingText } from "../../src/features/shell/ui/shell-ui-components";
+import { SupportingText } from "../../src/features/shell/ui/shell-ui-components";
 
 
 export default function JournalHomeRoute() {
@@ -18,13 +19,13 @@ export default function JournalHomeRoute() {
   const start = () => adult.status === "authorized"
     ? router.push({ pathname: "/auth/email", params: { returnTo: "/(tabs)/journal" } })
     : router.push({ pathname: "/journey/adult-gate", params: { entry: "journal" } });
-  return <Screen contentSafeAreaTop><ShellFrame title="内界手记">
+  return <Screen contentSafeAreaTop>
+    <PageHeader title="内界手记" help={<HelpText>感受、发现，或还没想清楚的事，都可以慢慢记下来。以后再回来看见自己的变化。</HelpText>} />
     <SupportingText>留一点时间，写下今天的自己。</SupportingText>
-    <SupportingText>感受、发现，或还没想清楚的事，都可以慢慢记下来。以后再回来看见自己的变化。</SupportingText>
     <Button label="开始写手记" onPress={start} />
     <SupportingText>仅供年满 18 岁的成年人使用。登录后，手记与当前账号关联；正文保存在本机，不会自动上传。</SupportingText>
-    <SecondaryButton label="设置" onPress={() => router.push("/settings")} />
-  </ShellFrame></Screen>;
+    <TextAction label="设置" onPress={() => router.push("/settings")} />
+  </Screen>;
 }
 
 import { useFocusEffect } from "expo-router";

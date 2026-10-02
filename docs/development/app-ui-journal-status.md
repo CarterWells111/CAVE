@@ -1,0 +1,12 @@
+# Journal UI clarity
+
+- Goal: implement the accepted mobile journal clarity plan from foundation `e82192a`, preserving journal data, routes, account isolation and consent.
+- Branch: `codex/ui-journal`; parent integrates the final commit. No merge, push or publishing in this session.
+- Completed: list help and compact actions; whole record/source navigation rows; draft resume row; editor field groups and secondary actions; later-entry type selection with inline prompts; detail help and grouped secondary operations; period selection and accessible record checkboxes; short headers/back actions.
+- Kept: topics/custom topics, search, drafts, room-report imports, date handling, save guards, revision history, deletion confirmation/cleanup, locked-update error, AI render/consent integration, local-save/privacy route gates.
+- Validation: frozen dependency install succeeded without dependency/lockfile changes. Node 22.23.2 ran all 16 journal/home suites (95 cases across the full run and targeted reruns after fixes); all current cases passed. Real router navigation integration passed its existing 18 cases, plus the new cold period-review return case. Mobile route generation, `tsc --noEmit -p apps/mobile/tsconfig.json`, Expo lint and diff whitespace checks passed.
+- Test coverage added: help open/close with inline prompts and quotation consent; single row targets; draft resume; all five later-entry kinds, cancellation and locked edits; period changes, custom dates, selected source rows, AI input selection and save/back guards. Existing custom topic persistence and room-report draft tests still pass.
+- Device verification: no connected operable phone; no runtime screenshots, native keyboard/safe-area, large type or light/dark device verification. Do not add web dependencies to work around this.
+- Shared changes: none; `core/ui` and design tokens untouched. Editor header composes existing controls locally to preserve the save-time disabled back state.
+- Scope review: journal UI/routes, related router test and this status only. All domain/service/repository, account/auth, AI consent components and journey geometry remain unchanged. Review cards retain their complete text and use source navigation rows because no standalone saved-review detail route exists.
+- Delivery: implementation ready for parent integration; no merge, push or publish performed. Full mobile suite and native device verification remain integration-stage work.

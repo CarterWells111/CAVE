@@ -5,7 +5,7 @@ import { Alert, Text } from "react-native";
 import { useTheme } from "../../../core/design/theme-provider";
 import { Button } from "../../../core/ui/Button";
 import { Screen } from "../../../core/ui/Screen";
-import { SecondaryButton } from "../../../core/ui/secondary-button";
+import { TextAction } from "../../../core/ui/text-action";
 import { useJournalAccess } from "../runtime/JournalAccessProvider";
 import { backOrHome } from "../../shell/ui/safe-navigation";
 
@@ -87,7 +87,7 @@ export function JournalRouteGate({ children }: PropsWithChildren) {
           登录后可打开与当前账号绑定的本机手记。
         </Text>
         <Button label="去登录" onPress={goToLogin} />
-        <SecondaryButton label="返回上一页" onPress={() => backOrHome(router)} />
+        <TextAction label="返回上一页" onPress={() => backOrHome(router)} />
       </Screen>
     );
   }
