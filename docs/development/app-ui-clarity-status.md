@@ -20,11 +20,15 @@
 - Original checkout changes preserved.
 - Locked dependency installation completed without lockfile changes.
 - Shared components implemented; 4 suites / 13 tests passed, mobile typecheck and lint passed.
-- Four feature sessions dispatched from e82192a and actively implementing.
+- Four feature sessions completed and merged locally: journey f432c3a, rooms 3988f98, journal 94e19c1, AI/account 207bf45.
 - Navigation now grows naturally with text size; 3 suites / 10 navigation tests passed.
 - Full baseline: 177 suites / 1440 tests passed in 152.38 s. Command exit 1 only because outputs/ did not yet exist when Jest wrote JSON; no baseline JSON artifact. Create output directory before final run.
 - Integration additionally owns review-history/detail components: compact navigation, on-demand help, header back with pending-operation disabling, lighter secondary actions. 4 suites / 16 tests, direct Node22 typecheck and Expo lint passed.
-- Runtime screenshots and native device verification pending.
+- Final integrated mobile run: 178 suites / 1470 tests passed in 94.012 s; report at outputs/ui-clarity-tests.json. Updated the public-runtime appearance test to open the new selection sheet before choosing a theme; private-storage assertions remain intact.
+- Final mobile typecheck, Expo lint, iOS JS export, source policy (239 files), bundle secret scan (45 files) and git diff --check passed.
+- Journey map source, backend/contracts/content, app.config.ts and pnpm-lock.yaml have no changes against origin/main. Original checkout changes remain preserved.
+- Metro running locally on port 8084 from this integration worktree, using scripts/start-mobile.mjs dev-staging --lan --port 8084 with host 192.168.192.62. Manifest environment development; manifest and iOS bundle HTTP 200. Gateway staging, assistant live, acceptance tools disabled.
+- Keep all work local: no push, PR, OTA publication or native rebuild. Runtime screenshots and native device verification pending user development-build acceptance.
 
 ## Implementation sessions
 | Area | Thread | Worktree | Branch |

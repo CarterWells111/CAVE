@@ -2,7 +2,8 @@
 
 ## 自动化证据
 - 基线：177 个测试套件、1440 项测试全部通过（152.38 秒）；JSON 报告写入因输出目录尚未创建而失败，命令退出码为 1。无需重复已通过的基线测试，整合后会建立目录并生成完整报告。
-- 整合后：`outputs/ui-clarity-tests.json`；另运行移动端 typecheck、lint、iOS JS 导出和差异检查。
+- 整合后：178 个测试套件、1470 项测试全部通过（94.012 秒），报告 `outputs/ui-clarity-tests.json`。移动端 typecheck、lint、iOS JS 导出、源码策略检查、bundle 密钥扫描和差异检查均通过。
+- 本地 development client 预览：`http://192.168.192.62:8084`，手机与电脑连接同一局域网；manifest 与 iOS bundle 均 HTTP 200，指向本次整合工作区。网关为 staging，AI 为 live；未推送、发布或重新构建原生版本。
 - 原生设备、读屏与截图验收须单独记录，不能由 Jest 或 JS 导出代替。
 
 ## 人工检查（使用合成数据）

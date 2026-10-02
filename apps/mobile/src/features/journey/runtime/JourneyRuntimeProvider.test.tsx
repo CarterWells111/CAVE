@@ -537,6 +537,7 @@ test("keeps every public tab and settings usable without initializing private st
   expect(screen.getByText("还没有历史回顾")).toBeTruthy();
   fireEvent.press(screen.getByRole("button", { name: "成年声明后开始聊天" }));
   expect(mockRouter.push).toHaveBeenCalledWith({ pathname: "/journey/adult-gate", params: { entry: "ai" } });
+  fireEvent.press(screen.getByRole("button", { name: "外观，跟随系统" }));
   fireEvent.press(screen.getByRole("radio", { name: "亮色" }));
   await act(async () => undefined);
   expect(harness.adapters.secrets.getDatabaseKey).not.toHaveBeenCalled();

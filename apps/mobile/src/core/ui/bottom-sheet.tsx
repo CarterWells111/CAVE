@@ -13,6 +13,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useTheme } from "../design/theme-provider";
 import { useReducedMotion } from "../design/motion-preferences";
 import { TextAction } from "./text-action";
+import { IconTextAction } from "./icon-text-action";
 
 export type BottomSheetProps = PropsWithChildren<{
   visible: boolean;
@@ -107,7 +108,10 @@ export function BottomSheet({
                 <Text ref={titleRef} accessibilityRole="header" style={{ ...theme.typography.heading, color: theme.color.text, flex: 1, flexShrink: 1 }}>
                   {title}
                 </Text>
-                {dismissible ? <TextAction ref={closeRef} label={closeLabel} onPress={handleRequestClose} /> : null}
+                {dismissible ? closeLabel === `关闭${title}`
+                  ? <IconTextAction ref={closeRef} icon="close-outline" iconOnly label={closeLabel} onPress={handleRequestClose} />
+                  : <TextAction ref={closeRef} label={closeLabel} onPress={handleRequestClose} />
+                  : null}
               </View>
             ) : null}
             <ScrollView

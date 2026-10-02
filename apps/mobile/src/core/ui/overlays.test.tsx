@@ -20,6 +20,16 @@ test("BottomSheet exposes modal semantics, explicit close, back close, and scrol
   expect(onClose).toHaveBeenCalledTimes(2);
 });
 
+test("long sheet titles keep an icon close target and custom action labels stay visible", () => {
+  const title = "此刻，你更接近哪一种需要？";
+  const { rerender } = render(<BottomSheet onClose={jest.fn()} title={title} visible><Text>选项</Text></BottomSheet>);
+  expect(screen.getByRole("button", { name: `关闭${title}` })).toBeTruthy();
+  expect(screen.queryByText(`关闭${title}`)).toBeNull();
+  expect(screen.getByText("close-outline")).toBeTruthy();
+  rerender(<BottomSheet closeLabel="我知道了" onClose={jest.fn()} title={title} visible><Text>选项</Text></BottomSheet>);
+  expect(screen.getByText("我知道了")).toBeTruthy();
+});
+
 test("BottomSheet exposes verifiable initial-focus and focus-restore callbacks", () => {
   const onInitialFocus = jest.fn();
   const onRestoreFocus = jest.fn();
