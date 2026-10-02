@@ -115,7 +115,7 @@ test("composes the shared 06A screen, card, progress and status primitives", () 
 
   expect(source).toContain('from "./guided-scroll-screen"');
   expect(source).toContain("<JourneyGuidedScrollScreen");
-  expect(source).toContain('from "../../../core/ui/Card"');
+  expect(source).toContain('from "../../../core/ui/page-header"');
   expect(source).toContain('from "../../../core/ui/ProgressHeader"');
   expect(source).toContain('from "../../../core/ui/StatusBanner"');
   expect(source).toContain('from "../../../core/design/theme-provider"');
@@ -202,14 +202,17 @@ test("blocks every header navigation action while page persistence is locked", (
   expect(onLockedExit).not.toHaveBeenCalled();
 });
 
-test("renders the page title in a shared surface card", () => {
-  render(<JourneyScreenShell pageId="reflection" onBack={jest.fn()} onExit={onExit} />);
-
-  const titleCardStyle = StyleSheet.flatten(screen.getByTestId("journey-title-card").props.style);
-  expect(titleCardStyle).toEqual(expect.objectContaining({
-    backgroundColor: theme.color.surface,
-    borderColor: theme.color.border
-  }));
+test("keeps the page instructions in help and closes it without changing progress", () => {
+  const onBack = jest.fn();
+  render(<JourneyScreenShell pageId="final-preparation" onBack={onBack} onExit={onExit} />);
+  expect(screen.queryByText(/七段内容排成一列/u)).toBeNull();
+  fireEvent.press(screen.getByRole("button", { name: "我的沟通草稿，帮助" }));
+  expect(screen.getByText(/七段内容排成一列.*确认前随时可以恢复/u)).toBeTruthy();
+  fireEvent.press(screen.getByRole("button", { name: "关闭我的沟通草稿 · 帮助" }));
+  expect(screen.queryByText(/七段内容排成一列/u)).toBeNull();
+  expect(screen.getByText("5 / 5")).toBeTruthy();
+  expect(onBack).not.toHaveBeenCalled();
+  expect(onExit).not.toHaveBeenCalled();
 });
 
 test("keeps a runtime-injected notice as one accessible status with its custom label", () => {

@@ -1,8 +1,9 @@
 import { useRouter } from "expo-router";
 import { useState } from "react";
-import { useWindowDimensions } from "react-native";
+import { Text, useWindowDimensions, View } from "react-native";
 
-import { SecondaryButton } from "../../src/core/ui/secondary-button";
+import { useTheme } from "../../src/core/design/theme-provider";
+import { TextAction } from "../../src/core/ui/text-action";
 import { Screen } from "../../src/core/ui/Screen";
 import { useAccountProfile } from "../../src/features/account/runtime/AccountProfileProvider";
 import { getResumePath } from "../../src/features/journey/application/journey-navigation";
@@ -62,6 +63,7 @@ function FirstRunHomeRoute({ runtime }: { runtime: JourneyRuntimeContextValue | 
 
 
 function AuthorizedHomeRoute({ runtime }: { runtime: JourneyRuntimeContextValue }) {
+  const theme = useTheme();
   const router = useRouter();
   const accountProfile = useAccountProfile();
   const access = useJourneyMapAccess(runtime);
@@ -72,8 +74,6 @@ function AuthorizedHomeRoute({ runtime }: { runtime: JourneyRuntimeContextValue 
 
   return (
     <Screen contentSafeAreaTop testID="journey-map-scroll">
-      <SecondaryButton label="沟通练习" onPress={() => router.push("/(tabs)/practice")} />
-      <SecondaryButton label="问问 AI：第一次过夜" onPress={() => router.push({ pathname: "/(tabs)/ai", params: { journeyId: "first-overnight" } })} />
       <HomeScreen
         account={{
           status: accountProfile.status,
@@ -89,8 +89,15 @@ function AuthorizedHomeRoute({ runtime }: { runtime: JourneyRuntimeContextValue 
         }}
         onOpenScenario={openScenario}
       />
-      <SecondaryButton label="主题探索：身体感受" onPress={() => router.push("/reviews/topic/body")} />
-      <SecondaryButton label="主题探索：边界与表达" onPress={() => router.push("/reviews/topic/boundaries")} />
+      <View style={{ gap: theme.space.sm }} testID="journey-map-tools">
+        <Text accessibilityRole="header" style={{ ...theme.typography.heading, color: theme.color.text }}>旅程工具</Text>
+        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: theme.space.sm }}>
+          <TextAction label="沟通练习" onPress={() => router.push("/(tabs)/practice")} />
+          <TextAction label="问问 AI：第一次过夜" onPress={() => router.push({ pathname: "/(tabs)/ai", params: { journeyId: "first-overnight" } })} />
+          <TextAction label="主题探索：身体感受" onPress={() => router.push("/reviews/topic/body")} />
+          <TextAction label="主题探索：边界与表达" onPress={() => router.push("/reviews/topic/boundaries")} />
+        </View>
+      </View>
     </Screen>
   );
 }

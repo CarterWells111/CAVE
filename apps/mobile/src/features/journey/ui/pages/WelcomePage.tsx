@@ -1,9 +1,8 @@
-import { useRef, useState } from "react";
 import { Text, View } from "react-native";
 
 import { useTheme } from "../../../../core/design/theme-provider";
 import type { AppTheme } from "../../../../core/design/theme";
-import { BottomSheet } from "../../../../core/ui/bottom-sheet";
+import { HelpText, PageHelp } from "../../../../core/ui/page-header";
 import { Button } from "../../../../core/ui/Button";
 import { Card } from "../../../../core/ui/Card";
 import { EchoBackground } from "../../../../core/ui/echo-background";
@@ -33,8 +32,6 @@ export function WelcomePage({
 }: WelcomePageProps) {
   const theme = useTheme();
   const styles = createStyles(theme);
-  const [helpOpen, setHelpOpen] = useState(false);
-  const helpReturnFocusRef = useRef<View>(null);
   const primaryAction = resumeAvailable && onResume ? onResume : onStart;
 
   return (
@@ -44,7 +41,14 @@ export function WelcomePage({
         {onOpenSettings ? (
           <IconTextAction icon="settings-outline" label="设置" onPress={() => { void onOpenSettings(); }} />
         ) : null}
-        <IconTextAction ref={helpReturnFocusRef} icon="help-circle-outline" label="帮助" onPress={() => setHelpOpen(true)} />
+        <PageHelp title="关于内界 CAVE">
+          <HelpText>内界 CAVE 帮助你探索亲密关系中的身体、安全、边界与沟通。</HelpText>
+          <HelpText>点击“开启旅程”后，会先请你在本机作出年满 18 岁的自我声明。声明后，会先看到“开始前，想告诉你”，再自由选择旅程。旅程 01 提供身体知识参考内容，02—06 仍是框架预览，也可以单独体验“第一次过夜”。</HelpText>
+          <HelpText>这项声明不是身份核验，也不是真实年龄核验；我们不收集生日、证件或邮箱。</HelpText>
+          <HelpText>它是自我探索与沟通练习工具，不提供医疗诊断，也不能替代专业医疗或紧急支持。</HelpText>
+          <HelpText>部分页面内容由 AI 辅助生成，并经团队编辑审核。AI 辅助、团队编辑审核和免责声明都不能代替医疗、安全及紧急支持内容所需的专业审核。</HelpText>
+          <HelpText>旅程记录以本机保存为先，不同步到云端。删除 App 或清除本机数据后，内容可能无法恢复。</HelpText>
+        </PageHelp>
       </View>
       <View
         style={[styles.brand, brandPaddingTop === undefined ? null : { paddingTop: brandPaddingTop }]}
@@ -70,21 +74,6 @@ export function WelcomePage({
           onPress={() => { void primaryAction(); }}
         />
       </View>
-
-      <BottomSheet
-        onClose={() => setHelpOpen(false)}
-        reducedMotion={reducedMotion}
-        returnFocusRef={helpReturnFocusRef}
-        title="关于内界 CAVE"
-        visible={helpOpen}
-      >
-        <Text selectable style={styles.body}>内界 CAVE 帮助你探索亲密关系中的身体、安全、边界与沟通。</Text>
-        <Text selectable style={styles.body}>点击“开启旅程”后，会先请你在本机作出年满 18 岁的自我声明。声明后，会先看到“开始前，想告诉你”，再自由选择旅程。旅程 01 提供身体知识参考内容，02—06 仍是框架预览，也可以单独体验“第一次过夜”。</Text>
-        <Text selectable style={styles.body}>这项声明不是身份核验，也不是真实年龄核验；我们不收集生日、证件或邮箱。</Text>
-        <Text selectable style={styles.body}>它是自我探索与沟通练习工具，不提供医疗诊断，也不能替代专业医疗或紧急支持。</Text>
-        <Text selectable style={styles.body}>部分页面内容由 AI 辅助生成，并经团队编辑审核。AI 辅助、团队编辑审核和免责声明都不能代替医疗、安全及紧急支持内容所需的专业审核。</Text>
-        <Text selectable style={styles.body}>旅程记录以本机保存为先，不同步到云端。删除 App 或清除本机数据后，内容可能无法恢复。</Text>
-      </BottomSheet>
     </View>
   );
 }

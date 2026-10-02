@@ -120,3 +120,20 @@ it("uses the scrolling core page shell with a visible progress header at large f
     act(() => Dimensions.set({ window: original }));
   }
 });
+
+
+it("preview help preserves the selected page and keeps educational content visible", () => {
+  const exit = jest.fn();
+  render(<SampleJourneyScreen journey={second} onExit={exit} />);
+  next();
+  const page = second.pages[1]!;
+  expect(screen.queryByText(/这是三页框架预览/u)).toBeNull();
+  fireEvent.press(screen.getByRole("button", { name: `${page.title}，帮助` }));
+  expect(screen.getByText(/这是三页框架预览，不会保存答案/u)).toBeTruthy();
+  fireEvent.press(screen.getByRole("button", { name: `关闭${page.title} · 帮助` }));
+  expect(screen.getByLabelText("第 2 页，共 3 页")).toBeTruthy();
+  expect(screen.getByText(page.body)).toBeTruthy();
+  expect(exit).not.toHaveBeenCalled();
+  fireEvent.press(screen.getByRole("button", { name: "返回上一页" }));
+  expect(screen.getByLabelText("第 1 页，共 3 页")).toBeTruthy();
+});

@@ -16,6 +16,7 @@ import { useTheme } from "../../../../core/design/theme-provider";
 import { useReducedMotion } from "../../../../core/design/motion-preferences";
 import { BottomSheet } from "../../../../core/ui/bottom-sheet";
 import { InfoCard } from "../../../../core/ui/info-card";
+import { HelpText, PageHeader } from "../../../../core/ui/page-header";
 import { TextAction } from "../../../../core/ui/text-action";
 import type { JournalSaveChoice } from "../../domain/types";
 import { loadJourneyContentCatalog } from "../../infrastructure/journey-content-catalog";
@@ -517,6 +518,7 @@ export function ReflectionPage({
                         <SupportingCopy>{slowDownPhrase}</SupportingCopy>
                         {onUsePracticePhrase ? (
                           <JourneyAction
+                            compact
                             label="把这句慢下来带到练习里"
                             loadingLabel="正在加入…"
                             onAction={() => onUsePracticePhrase(slowDownPhrase)}
@@ -555,7 +557,7 @@ export function ReflectionPage({
                       <JourneyAction label="看看什么能让我更安心" loadingLabel="正在打开…" onAction={onOpenComfort} />
                     ) : null}
                     {onOpenJournal ? (
-                      <JourneyAction label="先回到我的记录里" loadingLabel="正在打开…" onAction={onOpenJournal} />
+                      <JourneyAction compact label="先回到我的记录里" loadingLabel="正在打开…" onAction={onOpenJournal} />
                     ) : null}
                   </InfoCard>
                 ) : null}
@@ -585,12 +587,14 @@ export function ReflectionPage({
                     <SupportingCopy>{`说不出口，不代表你的暂停不重要。可以先从一句很短的话开始：${stopPhrase}`}</SupportingCopy>
                     {onUsePracticePhrase ? (
                       <JourneyAction
+                        compact
                         label="把这句话带到练习里"
                         loadingLabel="正在加入…"
                         onAction={() => onUsePracticePhrase(stopPhrase)}
                       />
                     ) : null}
                     <JourneyAction
+                      compact
                       label="先不选择"
                       loadingLabel="正在收起…"
                       onAction={() => setDraftValue((current) => ({ ...current, expressionDifficulty: null }))}
@@ -712,8 +716,7 @@ export function ReflectionPage({
   return (
     <View style={styles.page} testID="page-4-content">
       <View style={styles.intro}>
-        <Text accessibilityRole="header" selectable style={styles.introTitle}>你准备了多少，不代表你做得好不好。</Text>
-        <SupportingCopy>答案可以随时改变；这里不会生成分数或准备度结论。</SupportingCopy>
+        <PageHeader title="你准备了多少，不代表你做得好不好。" help={<HelpText>答案可以随时改变；这里不会生成分数或准备度结论。点击卡牌记录或修改，也可以暂不记录。</HelpText>} />
       </View>
       <View style={styles.grid} testID="reflection-card-grid">
         {cards.map((card) => {

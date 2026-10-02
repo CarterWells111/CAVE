@@ -3,6 +3,7 @@ import { useState } from "react";
 
 import { useTheme } from "../../../core/design/theme-provider";
 import { ErrorState } from "../../../core/ui/ErrorState";
+import { HelpText, PageHeader } from "../../../core/ui/page-header";
 import { JourneyMap } from "../../explore/ui/journey-map";
 import { ShellLoading, type ShellLoadState } from "./shell-ui-components";
 
@@ -59,8 +60,10 @@ export function HomeScreen({
       </View>
       <View style={{ gap: theme.space.sm }}>
         <Text selectable style={{ ...theme.typography.numericLabel, color: theme.color.brandSoft, letterSpacing: 2 }}>跟随自己的节奏</Text>
-        <Text accessibilityRole="header" selectable style={{ ...theme.typography.title, color: theme.color.text }}>选择一段旅程</Text>
-        <Text selectable style={{ ...theme.typography.body, color: theme.color.textSecondary }}>没有固定顺序，从此刻想探索的地方开始。</Text>
+        <PageHeader title="选择一段旅程" help={<>
+          <HelpText>没有固定顺序，从此刻想探索的地方开始。</HelpText>
+          <HelpText>旅程 01 提供身体知识参考内容，02—06 是框架预览，不会保存答案。第一次过夜是可选的独立情景体验。</HelpText>
+        </>} />
       </View>
       {loadState === "loading" ? <ShellLoading /> : null}
       {loadState === "error" ? (

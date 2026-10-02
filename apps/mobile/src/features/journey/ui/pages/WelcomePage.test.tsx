@@ -9,7 +9,7 @@ test("shows one journey action and a top-right help action without age or login 
   render(<WelcomePage onStart={onStart} resumeAvailable={false} />);
 
   expect(screen.getByRole("button", { name: "开启旅程" })).toBeTruthy();
-  expect(screen.getByRole("button", { name: "帮助" })).toBeTruthy();
+  expect(screen.getByRole("button", { name: "关于内界 CAVE，帮助" })).toBeTruthy();
   expect(screen.queryByRole("button", { name: "设置" })).toBeNull();
   expect(screen.queryByText(/18|成年|登录|邮箱|验证码/u)).toBeNull();
   fireEvent.press(screen.getByRole("button", { name: "开启旅程" }));
@@ -26,9 +26,9 @@ test("opens settings whenever its public or authorized route supplies the action
 
 test("help explains product scope, 18+ gate, non-diagnosis and local-first privacy", () => {
   render(<WelcomePage onStart={jest.fn()} resumeAvailable={false} />);
-  fireEvent.press(screen.getByRole("button", { name: "帮助" }));
+  fireEvent.press(screen.getByRole("button", { name: "关于内界 CAVE，帮助" }));
 
-  expect(screen.getByRole("header", { name: "关于内界 CAVE" })).toBeTruthy();
+  expect(screen.getByRole("header", { name: "关于内界 CAVE · 帮助" })).toBeTruthy();
   expect(screen.getByText(/亲密关系中的身体、安全、边界与沟通/u)).toBeTruthy();
   expect(screen.getByText(/点击“开启旅程”后.*本机.*年满 18 岁的自我声明/u)).toBeTruthy();
   expect(screen.getByText(/声明后.*“开始前，想告诉你”.*选择旅程/u)).toBeTruthy();
@@ -45,7 +45,7 @@ test("shows the AI assistance disclosure only inside help", () => {
 
   expect(screen.queryByText(/部分页面内容由 AI 辅助生成/u)).toBeNull();
 
-  fireEvent.press(screen.getByRole("button", { name: "帮助" }));
+  fireEvent.press(screen.getByRole("button", { name: "关于内界 CAVE，帮助" }));
 
   expect(screen.getByText(/部分页面内容由 AI 辅助生成，并经团队编辑审核/u)).toBeTruthy();
   expect(screen.getByText(/AI 辅助、团队编辑审核和免责声明都不能代替医疗、安全及紧急支持内容所需的专业审核/u)).toBeTruthy();
