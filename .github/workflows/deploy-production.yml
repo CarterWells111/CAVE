@@ -1,0 +1,126 @@
+name: Deploy production Gateway
+
+on:
+  workflow_dispatch:
+    inputs:
+      staging_run_id:
+        description: Successful main CI run ID whose staging deployment you accepted
+        required: true
+        type: string
+      acceptance_notes:
+        description: Staging acceptance notes (login, email, AI and changed features; no personal data)
+        required: true
+        type: string
+      apply_migrations:
+        description: Apply pending production migrations (confirm backward compatibility first)
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: gateway-production
+  cancel-in-progress: false
+
+jobs:
+  validate-release:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    outputs:
+      sha: ${{ steps.candidate.outputs.sha }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Resolve the accepted staging deployment
+        id: candidate
+        uses: actions/github-script@v8
+        env:
+          STAGING_RUN_ID: ${{ inputs.staging_run_id }}
+          ACCEPTANCE_NOTES: ${{ inputs.acceptance_notes }}
+        with:
+          script: |
+            const assert = require('node:assert/strict');
+            assert.match(process.env.STAGING_RUN_ID, /^[1-9][0-9]{0,15}$/);
+            assert.ok(Number.isSafeInteger(Number(process.env.STAGING_RUN_ID)), 'Invalid run ID');
+            assert.ok(process.env.ACCEPTANCE_NOTES.trim().length >= 10, 'Describe the staging acceptance');
+            const { validateStagingRun } = await import(`${process.env.GITHUB_WORKSPACE}/scripts/gateway-release.mjs`);
+            const params = { ...context.repo, run_id: Number(process.env.STAGING_RUN_ID) };
+            const { data: run } = await github.rest.actions.getWorkflowRun(params);
+            const jobs = await github.paginate(github.rest.actions.listJobsForWorkflowRun, { ...params, filter: 'latest', per_page: 100 });
+            const sha = validateStagingRun(run, jobs, `${context.repo.owner}/${context.repo.repo}`);
+            core.setOutput('sha', sha);
+            await core.summary.addHeading('Production candidate').addTable([
+              [{data:'Commit',header:true},sha],
+              [{data:'Staging run',header:true},String(run.id)],
+              [{data:'Production migrations',header:true},String(context.payload.inputs.apply_migrations)]
+            ]).addRaw('\nAcceptance notes: ').addCodeBlock(process.env.ACCEPTANCE_NOTES).write();
+      - uses: actions/download-artifact@v4
+        with:
+          name: staging-release-${{ steps.candidate.outputs.sha }}
+          path: outputs/accepted-staging
+          run-id: ${{ inputs.staging_run_id }}
+          github-token: ${{ github.token }}
+      - name: Verify the staging evidence
+        env:
+          RELEASE_SHA: ${{ steps.candidate.outputs.sha }}
+          STAGING_RUN_ID: ${{ inputs.staging_run_id }}
+        run: |
+          node --input-type=module -e 'import {readFileSync} from "node:fs"; import {validateStagingEvidence} from "./scripts/gateway-release.mjs"; validateStagingEvidence(JSON.parse(readFileSync("outputs/accepted-staging/release.json", "utf8")), process.env.RELEASE_SHA, process.env.STAGING_RUN_ID, process.env.GITHUB_REPOSITORY);'
+      - name: Check out the accepted source commit
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ steps.candidate.outputs.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Require the commit to belong to main
+        env:
+          RELEASE_SHA: ${{ steps.candidate.outputs.sha }}
+        run: git merge-base --is-ancestor "$RELEASE_SHA" origin/main
+      - uses: pnpm/action-setup@v6
+        with:
+          version: "10.34.5"
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: ".nvmrc"
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Run the production release gate
+        run: pnpm verify:release
+
+  deploy-production:
+    needs: validate-release
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment:
+      name: production
+      url: https://api.neijiecave.com
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.validate-release.outputs.sha }}
+          persist-credentials: false
+      - uses: pnpm/action-setup@v6
+        with:
+          version: "10.34.5"
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: ".nvmrc"
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Publish the approved commit
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          RELEASE_SHA: ${{ needs.validate-release.outputs.sha }}
+          APPLY_MIGRATIONS: ${{ inputs.apply_migrations }}
+        run: node scripts/gateway-release.mjs deploy production
+      - name: Preserve deployment and recovery evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: production-release-${{ needs.validate-release.outputs.sha }}
+          path: outputs/gateway-release/*.json
+          retention-days: 90
