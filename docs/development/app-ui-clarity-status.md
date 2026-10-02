@@ -27,7 +27,8 @@
 - Final integrated mobile run: 178 suites / 1470 tests passed in 94.012 s; report at outputs/ui-clarity-tests.json. Updated the public-runtime appearance test to open the new selection sheet before choosing a theme; private-storage assertions remain intact.
 - Final mobile typecheck, Expo lint, iOS JS export, source policy (239 files), bundle secret scan (45 files) and git diff --check passed.
 - Journey map source, backend/contracts/content, app.config.ts and pnpm-lock.yaml have no changes against origin/main. Original checkout changes remain preserved.
-- Metro running locally on port 8084 from this integration worktree, using scripts/start-mobile.mjs dev-staging --lan --port 8084 with host 192.168.192.62. Manifest environment development; manifest and iOS bundle HTTP 200. Gateway staging, assistant live, acceptance tools disabled.
+- Metro running locally on port 8084 from this integration worktree, using scripts/start-mobile.mjs dev-staging --lan --port 8084 with hotspot host 172.20.10.4. Manifest environment development; status running, manifest and iOS bundle HTTP 200; launchAsset points to 172.20.10.4:8084. Gateway staging, assistant live, acceptance tools disabled.
+- Device reported ATS rejection for previous HTTP address 192.168.192.62. Automatic approval rejected an Expo HTTPS tunnel because it would expose the development bundle through third-party infrastructure. User explicitly chose pure local iPhone hotspot; computer connected and server restarted with updated host. No tunnel started; final phone loading remains pending user confirmation.
 - Keep all work local: no push, PR, OTA publication or native rebuild. Runtime screenshots and native device verification pending user development-build acceptance.
 
 ## Implementation sessions
