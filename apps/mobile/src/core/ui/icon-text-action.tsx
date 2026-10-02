@@ -11,6 +11,7 @@ export type IconTextActionProps = {
   disabled?: boolean;
   loading?: boolean;
   testID?: string;
+  iconOnly?: boolean;
 };
 
 export const IconTextAction = forwardRef<View, IconTextActionProps>(function IconTextAction({
@@ -20,6 +21,7 @@ export const IconTextAction = forwardRef<View, IconTextActionProps>(function Ico
   loading = false,
   onPress,
   testID,
+  iconOnly = false,
 }: IconTextActionProps, ref) {
   const theme = useTheme();
   const [focused, setFocused] = useState(false);
@@ -54,9 +56,9 @@ export const IconTextAction = forwardRef<View, IconTextActionProps>(function Ico
       testID={testID}
     >
       <Ionicons accessible={false} color={unavailable ? theme.color.disabledText : theme.color.textSecondary} name={icon} size={theme.size.icon} />
-      <Text style={{ ...theme.typography.button, color: unavailable ? theme.color.disabledText : theme.color.textSecondary }}>
+      {!iconOnly ? <Text style={{ ...theme.typography.button, color: unavailable ? theme.color.disabledText : theme.color.textSecondary }}>
         {label}
-      </Text>
+      </Text> : null}
     </Pressable>
   );
 });
