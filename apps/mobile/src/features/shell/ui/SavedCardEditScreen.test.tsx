@@ -159,7 +159,9 @@ test("names every draft action with its section title and wires the editor trigg
   for (const label of expectedActions) expect(screen.getByRole("button", { name: label })).toBeTruthy();
 
   fireEvent.press(screen.getByRole("button", { name: "编辑：对这次相处的期待" }));
-  expect(screen.UNSAFE_getByType(BottomSheet).props.returnFocusRef).toBeTruthy();
+  const editor = screen.UNSAFE_getAllByType(BottomSheet).find((sheet) => sheet.props.visible);
+  expect(editor?.props.title).toContain("对这次相处的期待");
+  expect(editor?.props.returnFocusRef).toBeTruthy();
 });
 
 test("keeps keyboard-safe scrolling, theme background, Dynamic Type and 44 point controls", () => {

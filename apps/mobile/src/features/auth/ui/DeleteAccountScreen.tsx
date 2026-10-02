@@ -5,8 +5,8 @@ import { ScrollView, Text, TextInput, View } from "react-native";
 import { useTheme } from "../../../core/design/theme-provider";
 import { Button } from "../../../core/ui/Button";
 import { Card } from "../../../core/ui/Card";
-import { IconTextAction } from "../../../core/ui/icon-text-action";
-import { SecondaryButton } from "../../../core/ui/secondary-button";
+import { HelpText, PageHeader } from "../../../core/ui/page-header";
+import { TextAction } from "../../../core/ui/text-action";
 import { JournalDeletionCleanupRequiredError } from "../../journal/infrastructure/journal-repository";
 import type { JournalPersistence } from "../../journey/runtime/journey-runtime";
 import {
@@ -169,8 +169,7 @@ export function DeleteAccountScreen(props: Props) {
   };
   return (
     <ScrollView contentContainerStyle={{ alignSelf: "center", gap: theme.space.xl, maxWidth: theme.size.readableContentMax, padding: theme.space.lg, width: "100%" }} contentInsetAdjustmentBehavior="automatic" keyboardShouldPersistTaps="handled">
-      <IconTextAction icon="arrow-back" label="返回" onPress={props.onBack} />
-      <Text accessibilityRole="header" selectable style={{ ...theme.typography.title, color: theme.color.text }}>删除云端账户</Text>
+      <PageHeader title="删除云端账户" onBack={props.onBack} help={<HelpText>使用账户邮箱完成验证码验证，再选择本机手记的处理方式。验证和选择完成后，才会执行删除。</HelpText>} />
       <Card accessible={false} style={{ borderColor: theme.color.danger }}>
         <Text selectable style={{ ...theme.typography.body, color: theme.color.error }}>
           此操作会删除邮箱账户与服务端会话。完成验证后，你需要明确选择是否同时删除当前账户在这台设备上的手记。
@@ -184,7 +183,7 @@ export function DeleteAccountScreen(props: Props) {
         </Text> : null}
         {cleanupCheckStatus === "checking" ? <Text accessibilityLiveRegion="polite" selectable style={{ ...theme.typography.body, color: theme.color.textMuted }}>
           正在检查本机手记删除状态…
-        </Text> : cleanupCheckStatus === "error" ? <SecondaryButton
+        </Text> : cleanupCheckStatus === "error" ? <TextAction
           label={localCleanupPending ? "重试本机安全清理" : "重试本机删除状态检查"}
           onPress={() => setCleanupCheckAttempt((value) => value + 1)}
         /> : challenge === null ? <View style={{ gap: theme.space.md }}>
@@ -193,7 +192,7 @@ export function DeleteAccountScreen(props: Props) {
         </View> : grant === null ? <View style={{ gap: theme.space.md }}>
           <TextInput accessibilityLabel="6 位删除验证码" inputMode="numeric" maxLength={6} onChangeText={(value) => setCode(value.replace(/\D/gu, ""))} style={{ ...inputStyle, fontVariant: ["tabular-nums"] }} value={code} />
           <Button disabled={!/^\d{6}$/u.test(code)} label="验证并继续" loading={pending} onPress={() => { void run(async () => setGrant(await props.onVerifyChallenge(challenge.challengeId, code))); }} />
-          <SecondaryButton label="重新获取验证码" onPress={() => { setChallenge(null); setCode(""); setError(null); }} />
+          <TextAction label="重新获取验证码" onPress={() => { setChallenge(null); setCode(""); setError(null); }} />
         </View> : <View style={{ gap: theme.space.md }}>
           <Text accessibilityRole="header" selectable style={{ ...theme.typography.heading, color: theme.color.text }}>
             {localJournalDeleted ? "本机手记已删除" : "请选择本机手记的处理方式"}
@@ -210,8 +209,8 @@ export function DeleteAccountScreen(props: Props) {
               ? "本机处理已不可更改；请先完成安全清理，再删除云端账户。"
               : "本机处理已不可更改；现在只能继续删除云端账户。"}
           </Text> : <>
-            <SecondaryButton label="保留本机手记" onPress={() => { setJournalChoice("keep"); setError(null); }} />
-            <SecondaryButton label="永久删除本机手记" onPress={() => { setJournalChoice("delete"); setError(null); }} />
+            <TextAction label="保留本机手记" onPress={() => { setJournalChoice("keep"); setError(null); }} />
+            <TextAction label="永久删除本机手记" onPress={() => { setJournalChoice("delete"); setError(null); }} />
           </>}
           {!localJournalDeleted && journalChoice === "keep" ? <Text selectable style={{ ...theme.typography.body, color: theme.color.textMuted }}>
             {props.journalPersistence === "plaintext-sqlite"
@@ -234,7 +233,7 @@ export function DeleteAccountScreen(props: Props) {
             loading={pending}
             onPress={() => { void deleteAccount(); }}
           /> : null}
-          <SecondaryButton label="取消" onPress={props.onBack} />
+          <TextAction label="取消" onPress={props.onBack} />
         </View>}
         {error?.kind === "auth" ? <Text accessibilityRole="alert" selectable style={{ ...theme.typography.body, color: theme.color.error }}>{error.message}</Text> : null}
         {error?.kind === "local" ? <Text accessibilityRole="alert" selectable style={{ ...theme.typography.body, color: theme.color.error }}>本机手记未能删除，云端账户保持不变。请重试。</Text> : null}

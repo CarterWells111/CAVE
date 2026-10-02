@@ -16,7 +16,7 @@ test("supports continuing, topic entry, and journey selection without history or
     topics={[{ id: "boundaries", label: "边界与表达" }]}
   />);
 
-  fireEvent.press(screen.getByRole("button", { name: "继续本次回顾" }));
+  fireEvent.press(screen.getByRole("button", { name: "继续本次回顾，本次回顾，今天，进行中" }));
   fireEvent.press(screen.getByRole("button", { name: "按主题回顾：边界与表达" }));
   fireEvent.press(screen.getByRole("button", { name: "选择旅程" }));
   expect(onSelectJourney).toHaveBeenCalledTimes(1);
@@ -40,7 +40,7 @@ test("continues the initial journey while also allowing map selection", () => {
     />,
   );
 
-  fireEvent.press(screen.getByRole("button", { name: "继续首次旅程" }));
+  fireEvent.press(screen.getByRole("button", { name: "继续首次旅程，首次旅程，今天，进行中" }));
   expect(onContinueJourney).toHaveBeenCalledWith("initial");
   fireEvent.press(screen.getByRole("button", { name: "选择旅程" }));
   expect(screen.getByRole("button", { name: "按主题回顾：边界与表达" })).toBeTruthy();
