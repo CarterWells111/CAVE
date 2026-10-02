@@ -54,6 +54,10 @@ describe("repository security configuration", () => {
       new URL("../patches/image-size@1.2.1.patch", import.meta.url),
       "utf8"
     );
+    const nodeForgePatch = readFileSync(
+      new URL("../patches/node-forge@1.4.0.patch", import.meta.url),
+      "utf8"
+    );
 
     expect(parsed.overrides).toMatchObject({
       "decode-uri-component": "0.5.0",
@@ -61,13 +65,16 @@ describe("repository security configuration", () => {
       uuid: "11.1.1",
     });
     expect(workspace).toContain('image-size@1.2.1: "patches/image-size@1.2.1.patch"');
+    expect(workspace).toContain('node-forge@1.4.0: "patches/node-forge@1.4.0.patch"');
     expect(parsed.auditConfig?.ignoreGhsas).toEqual([
       "GHSA-w3rx-r6r6-pgpr",
       "GHSA-5p2g-fcmc-qvqq",
+      "GHSA-86w9-cpqp-85rv",
     ]);
     expect(workspace).not.toContain("ignoreUnfixable");
     expect(imageSizePatch).toContain("box.size <= 0");
     expect(imageSizePatch).toContain("imageHeader[1] <= 0");
+    expect(nodeForgePatch).toContain("obj.value[0].value.length");
   });
 
   it("allows only the three audited native postinstall packages with exact booleans", () => {

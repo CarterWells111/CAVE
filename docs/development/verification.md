@@ -47,9 +47,11 @@ corepack pnpm security:audit
 
 该命令通过 `scripts/security-audit.mjs` 调用 `tools/security-audit` 中单独锁定的 pnpm 11.25.0，只执行 `audit --prod --audit-level high`。默认连接官方 npm bulk advisory 接口，传输锁文件中的第三方包名和版本；不传输源码、私密正文或密钥。网络不可用、服务响应无效或锁文件缺失时返回非零，不得把审计未完成解释为无漏洞。
 
-安装和其他生命周期命令仍使用根目录锁定的 pnpm 10.34.5 / `.nvmrc` 中的 Node 22.23.2；不要为审计运行 pnpm 11 install 或全局替换 pnpm。独立工具 workspace 避免其可执行文件覆盖根目录 pnpm。审计启动器的 `--pm-on-fail=ignore` **仅禁止自动切换回根目录的 pnpm 10**，不是忽略漏洞；`high` 阈值和 `pnpm-workspace.yaml` 中原有的两个 GHSA 豁免保持不变。首次检出先执行 `pnpm install --frozen-lockfile`，不要使用仅生产依赖安装来运行开发门禁。
+安装和其他生命周期命令仍使用根目录锁定的 pnpm 10.34.5 / `.nvmrc` 中的 Node 22.23.2；不要为审计运行 pnpm 11 install 或全局替换 pnpm。独立工具 workspace 避免其可执行文件覆盖根目录 pnpm。审计启动器的 `--pm-on-fail=ignore` **仅禁止自动切换回根目录的 pnpm 10**，不是忽略漏洞；`high` 阈值仍生效，精确 GHSA 豁免逐项记录在 `pnpm-workspace.yaml`。首次检出先执行 `pnpm install --frozen-lockfile`，不要使用仅生产依赖安装来运行开发门禁。
 
-两个精确豁免 `GHSA-w3rx-r6r6-pgpr` 与 `GHSA-5p2g-fcmc-qvqq` 都来自 `react-native -> Metro -> image-size@1.2.1` 的资源构建链，不进入移动端 JavaScript 运行时。上游截至 2026-09-05 仍无修复版本；仓库通过 `patches/image-size@1.2.1.patch` 阻断 ICNS 的零长度条目以及 JXL/HEIF 共用 box 解析器中的零尺寸循环，并由 `tests/image-size-security.test.ts` 在隔离子进程及一秒超时内验证 ICNS 与 JXL 恶意样本终止及合法 JXL 尾框行为。豁免只能与该补丁和测试同时存在；上游发布修复版后应优先升级并同时删除补丁及两个豁免，不能向列表加入未修复 advisory。
+两个精确豁免 `GHSA-w3rx-r6r6-pgpr` 与 `GHSA-5p2g-fcmc-qvqq` 都来自 `react-native -> Metro -> image-size@1.2.1` 的资源构建链，不进入移动端 JavaScript 运行时。上游截至 2026-09-05 仍无修复版本；仓库通过 `patches/image-size@1.2.1.patch` 阻断 ICNS 的零长度条目以及 JXL/HEIF 共用 box 解析器中的零尺寸循环，并由 `tests/image-size-security.test.ts` 在隔离子进程及一秒超时内验证 ICNS 与 JXL 恶意样本终止及合法 JXL 尾框行为。豁免只能与该补丁和测试同时存在；上游发布修复版后应优先升级并同时删除补丁及两个豁免。
+
+`GHSA-86w9-cpqp-85rv` 涉及 Expo CLI 的签名证书工具链中 `node-forge@1.4.0` 的 RSA PKCS#1 v1.5 签名验证。上游截至 2026-10-02 [尚无已发布修复版](https://github.com/advisories/GHSA-86w9-cpqp-85rv)，其[修复 PR](https://github.com/digitalbazaar/forge/pull/1152)仍待合并。仓库采用同一处内层 `DigestAlgorithm` 字段数量校验，保存在 `patches/node-forge@1.4.0.patch`；`tests/node-forge-security.test.ts` 验证合法签名仍可通过、带额外内层元素的签名被拒绝。审计仅对这个精确 GHSA ID 豁免，因为 npm 公告无法识别本地补丁；补丁、锁文件和回归测试必须同时保留。上游发布修复版后应升级并移除补丁与豁免。
 
 `decode-uri-component@0.5.0` 与 `uuid@11.1.1` 通过精确 override 消除 `GHSA-vcc3-ghjq-m6fr` 和 `GHSA-w5hq-g745-h8pq`。前者经 Expo Router 进入查询串运行路径；由于安全版改为 ESM 默认导出，而 Expo Router 当前依赖的 `query-string@7.1.3` 和 Jest 29 仍按 CommonJS 加载它，`patches/decode-uri-component@0.5.0.patch` 保持修复算法不变，仅恢复 CommonJS 包装。后者仅经 Expo config-plugins 的 `xcode` 进入 iOS 配置构建链。`tests/dependency-advisory-compatibility.test.ts` 同时验证畸形 URL 有界返回以及 `xcode` 所需的 CommonJS `uuid.v4()` API。
 

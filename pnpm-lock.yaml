@@ -25,6 +25,9 @@ patchedDependencies:
   image-size@1.2.1:
     hash: e74ffd52075b1cc272cd8a0725dd39772e160522e494058898d9f15bbbdb4d94
     path: patches/image-size@1.2.1.patch
+  node-forge@1.4.0:
+    hash: 253a500efa4bc51129259aac429fe264c023757939d6b813d41b95565c419aab
+    path: patches/node-forge@1.4.0.patch
   pnpm@11.25.0:
     hash: 245cdea41884c3e3af39a00f68e29dba50659b01d47c9ca1a25bf33b695cecc7
     path: patches/pnpm@11.25.0.patch
@@ -7937,7 +7940,7 @@ snapshots:
       glob: 13.0.6
       lan-network: 0.2.1
       multitars: 1.0.2
-      node-forge: 1.4.0
+      node-forge: 1.4.0(patch_hash=253a500efa4bc51129259aac429fe264c023757939d6b813d41b95565c419aab)
       npm-package-arg: 11.0.3
       ora: 3.4.0
       picomatch: 4.0.7
@@ -7974,7 +7977,7 @@ snapshots:
 
   '@expo/code-signing-certificates@0.0.6':
     dependencies:
-      node-forge: 1.4.0
+      node-forge: 1.4.0(patch_hash=253a500efa4bc51129259aac429fe264c023757939d6b813d41b95565c419aab)
 
   '@expo/config-plugins@57.0.9(typescript@5.9.3)':
     dependencies:
@@ -12918,7 +12921,7 @@ snapshots:
 
   node-fetch-native@1.6.7: {}
 
-  node-forge@1.4.0: {}
+  node-forge@1.4.0(patch_hash=253a500efa4bc51129259aac429fe264c023757939d6b813d41b95565c419aab): {}
 
   node-int64@0.4.0: {}
 

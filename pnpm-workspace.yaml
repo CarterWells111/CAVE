@@ -28,9 +28,11 @@ allowBuilds:
 patchedDependencies:
   decode-uri-component@0.5.0: "patches/decode-uri-component@0.5.0.patch"
   image-size@1.2.1: "patches/image-size@1.2.1.patch"
+  node-forge@1.4.0: "patches/node-forge@1.4.0.patch"
   pnpm@11.25.0: "patches/pnpm@11.25.0.patch"
 
 auditConfig:
   ignoreGhsas:
     - GHSA-w3rx-r6r6-pgpr
     - GHSA-5p2g-fcmc-qvqq
+    - GHSA-86w9-cpqp-85rv
