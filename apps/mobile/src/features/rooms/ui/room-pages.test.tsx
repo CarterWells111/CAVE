@@ -13,20 +13,23 @@ jest.mock("expo-router", () => ({
 
 beforeEach(() => { mockPush.mockClear(); mockReplace.mockClear(); });
 
-test("room home keeps title and introduction above two side-by-side actions", () => {
+test("room home uses one target per scenario and puts general guidance in help", () => {
   render(<RoomListPage />);
-  const tree = JSON.stringify(screen.toJSON());
-  expect(tree.indexOf('"房间"')).toBeLessThan(tree.indexOf("从一个情景开始"));
-  expect(tree.indexOf("从一个情景开始")).toBeLessThan(tree.indexOf("加入房间"));
-  expect(screen.getByTestId("room-primary-actions").props.style).toEqual(expect.objectContaining({ flexDirection: "row" }));
+  expect(screen.queryByText(/从一个情景开始/u)).toBeNull();
+  expect(screen.queryByRole("button", { name: "选择说出暂停" })).toBeNull();
+  expect(screen.getByText("房间工具")).toBeTruthy();
   fireEvent.press(screen.getByRole("button", { name: "加入房间" }));
   fireEvent.press(screen.getByRole("button", { name: "我的房间" }));
-  fireEvent.press(screen.getByRole("button", { name: "选择说出暂停" }));
+  fireEvent.press(screen.getByRole("button", { name: "说出暂停，练习在需要时停下来，并听见彼此的回应。" }));
   expect(mockPush.mock.calls).toEqual([
     ["/join"],
     ["/rooms/mine"],
     [{ pathname: "/rooms/choose", params: { scenario: "pause" } }],
   ]);
+  fireEvent.press(screen.getByRole("button", { name: "房间，帮助" }));
+  expect(screen.getByText(/从一个情景开始/u)).toBeTruthy();
+  fireEvent.press(screen.getByRole("button", { name: "关闭房间 · 帮助" }));
+  expect(screen.queryByText(/从一个情景开始/u)).toBeNull();
 });
 
 test("room list explains when the remote beta route is not enabled", async () => {
@@ -40,7 +43,7 @@ test("my rooms lists existing rooms and opens the new room screen", async () => 
   const api = createFakeRoomServer().forAccount("alice");
   const room = await api.create("pause");
   render(<MyRoomsPage api={api} />);
-  const roomButton = await screen.findByRole("button", { name: "说出暂停 · 待加入" });
+  const roomButton = await screen.findByRole("button", { name: "说出暂停，待加入" });
   fireEvent.press(roomButton);
   fireEvent.press(screen.getByRole("button", { name: "新建房间" }));
   expect(mockPush.mock.calls).toEqual([
@@ -53,7 +56,12 @@ test("new room creates the selected scenario and goes directly to questions", as
   const api = createFakeRoomServer().forAccount("alice");
   render(<RoomNewPage api={api} />);
   expect(screen.queryByRole("button", { name: "一个人探索" })).toBeNull();
-  fireEvent.press(screen.getByRole("button", { name: "同意云端保存，新建说出暂停房间" }));
+  expect(screen.getByText(/你的回答会逐题加密保存到云端/u)).toBeTruthy();
+  fireEvent.press(screen.getByRole("button", { name: "情景，第一次过夜" }));
+  fireEvent.press(screen.getByRole("radio", { name: /说出暂停/u }));
+  expect(await api.list()).toHaveLength(0);
+  expect(mockReplace).not.toHaveBeenCalled();
+  fireEvent.press(screen.getByRole("button", { name: "同意云端保存，创建房间" }));
   await waitFor(() => expect(mockReplace).toHaveBeenCalledWith({ pathname: "/rooms/[roomId]", params: { roomId: "1" } }));
   expect((await api.get("1")).scenarioId).toBe("pause");
 });
@@ -86,16 +94,29 @@ test("shared report shows three sections and offers explicit export, AI and jour
   await bob.generateReport(room.id);
   const onDiscuss = jest.fn();
   const onRecord = jest.fn();
-  render(<RoomDetailPage api={bob} roomId={room.id} onDiscuss={onDiscuss} onRecord={onRecord} onExport={async () => undefined} />);
+  const onExport = jest.fn(async () => undefined);
+  render(<RoomDetailPage api={bob} roomId={room.id} onDiscuss={onDiscuss} onRecord={onRecord} onExport={onExport} />);
   expect(await screen.findByText("共同点与差异")).toBeTruthy();
   expect(screen.getByText("A 是房间发起人，B 是受邀者。")).toBeTruthy();
   expect(screen.getByText("给你们的建议")).toBeTruthy();
   expect(screen.getByText("接下来的建议")).toBeTruthy();
   expect(screen.queryByText(/可以说：/u)).toBeNull();
+  expect(screen.queryByRole("button", { name: "导出报告（图片）" })).toBeNull();
+  expect(onDiscuss).not.toHaveBeenCalled();
+  expect(onRecord).not.toHaveBeenCalled();
+  expect(onExport).not.toHaveBeenCalled();
+  fireEvent.press(screen.getByRole("button", { name: "报告工具" }));
+  expect(screen.getByText(/导出图片仅保存到本机相册/u)).toBeTruthy();
+  expect(screen.getByText(/只有你点击保存才成为记录/u)).toBeTruthy();
   expect(screen.getByRole("button", { name: "导出报告（图片）" })).toBeTruthy();
   fireEvent.press(screen.getByRole("button", { name: "和内界AI详细聊聊" }));
   expect(onDiscuss).toHaveBeenCalledWith(expect.stringContaining("仍不确定的地方"), "adjust");
+  fireEvent.press(screen.getByRole("button", { name: "报告工具" }));
   fireEvent.press(screen.getByRole("button", { name: "记录此次沟通" }));
   expect(onRecord).toHaveBeenCalledWith(expect.stringContaining("共同点与差异"), room.id);
   expect(screen.queryByText("我的节奏")).toBeNull();
+  fireEvent.press(screen.getByRole("button", { name: "查看我的回答" }));
+  expect(screen.getByLabelText("期待的回答").props.value).toBe("希望慢一点");
+  expect(screen.getByLabelText("期待的回答").props.editable).toBe(false);
+  expect(screen.queryByRole("button", { name: "保存这题到云端" })).toBeNull();
 });

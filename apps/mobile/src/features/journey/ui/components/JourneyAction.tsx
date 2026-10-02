@@ -3,6 +3,7 @@ import type { AccessibilityRole, AccessibilityState } from "react-native";
 import { Text, View } from "react-native";
 
 import { useTheme } from "../../../../core/design/theme-provider";
+import { TextAction } from "../../../../core/ui/text-action";
 import { Button } from "../../../../core/ui/Button";
 import type {
   JourneyAction as JourneyActionCallback,
@@ -12,6 +13,7 @@ import { JourneyStatusBanner } from "./JourneyStatusBanner";
 
 export type JourneyActionProps = {
   label: string;
+  compact?: boolean;
   loadingLabel: string;
   onAction?: JourneyActionCallback | undefined;
   disabled?: boolean | undefined;
@@ -28,6 +30,7 @@ const GENERIC_ACTION_ERROR = "操作失败，请重试。";
 
 export const JourneyAction = forwardRef<View, JourneyActionProps>(function JourneyAction({
   label,
+  compact = false,
   loadingLabel,
   onAction,
   disabled = false,
@@ -104,7 +107,15 @@ export const JourneyAction = forwardRef<View, JourneyActionProps>(function Journ
 
   return (
     <View style={{ gap: theme.space.sm }}>
-      <Button
+      {compact ? <TextAction
+        ref={ref}
+        {...(accessibilityLabel ? { accessibilityLabel } : {})}
+        disabled={disabled || !onAction}
+        label={visibleLabel}
+        loading={loading}
+        onPress={handlePress}
+        {...(testID ? { testID } : {})}
+      /> : <Button
         ref={ref}
         accessibilityLabel={accessibilityLabel}
         disabled={disabled || !onAction}
@@ -115,7 +126,7 @@ export const JourneyAction = forwardRef<View, JourneyActionProps>(function Journ
         selected={selected}
         state={state}
         testID={testID}
-      />
+      />}
       {selected ? (
         <View
           accessibilityElementsHidden

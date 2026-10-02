@@ -2,12 +2,16 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Text, TextInput, View } from "react-native";
 import { useTheme } from "../../../core/design/theme-provider";
 import { Button } from "../../../core/ui/Button";
+import { Card } from "../../../core/ui/Card";
 import { Screen } from "../../../core/ui/Screen";
 import { SecondaryButton } from "../../../core/ui/secondary-button";
+import { HelpText } from "../../../core/ui/page-header";
+import { TextAction } from "../../../core/ui/text-action";
 import type { JournalService } from "../application/journal-service";
 import { customJournalTopic, journalTopicLabel, MAX_CUSTOM_JOURNAL_TOPIC_LENGTH, type JournalHighlight, type JournalRecord, type JournalSource, type JournalTopic } from "../domain/journal-record";
 import { localJournalToday, normalizeJournalDate } from "../domain/journal-date";
 import { JournalDateField } from "./JournalDateField";
+import { JournalEditorHeader } from "./JournalEditorHeader";
 
 const topicOptions: Array<{ value: JournalTopic; label: string }> = [
   { value: "intimate-relationship", label: "亲密关系" }, { value: "self-boundaries", label: "自我边界" }, { value: "sexual-health", label: "健康性生活" }
@@ -103,33 +107,40 @@ export function JournalEditorScreen({ service, onSaved, initial, onBack, renderA
     catch { setError("未能完成保存。请确认有一句内容和有效日期，再重试；草稿仍保留在本机。"); savingRef.current = false; setSaving(false); }
   };
   return <Screen testID="journal-editor-screen">
-    {onBack ? <SecondaryButton disabled={saving} label="返回手记列表" onPress={onBack} /> : null}
-    <Text accessibilityRole="header" style={{ ...theme.typography.title, color: theme.color.text }}>{initial?.id ? "修改这条记录" : "记下一件事"}</Text>
-    <Text style={{ ...theme.typography.body, color: theme.color.textMuted }}>一句话也可以，不需要先想好标题或重点。</Text>
-    <SecondaryButton label={guided ? "自由写" : "试试引导写作（可跳过）"} onPress={() => setGuided(!guided)} />
-    {guided ? <View style={{ gap: theme.space.sm }}>
-      <Text style={{ ...theme.typography.body, color: theme.color.text }}>{prompts[question]}</Text>
-      <SecondaryButton label={question < prompts.length - 1 ? "下一题 / 跳过这题" : "结束引导"} onPress={() => question < prompts.length - 1 ? setQuestion(question + 1) : setGuided(false)} />
-    </View> : null}
-    <TextInput editable={ready && !saving} accessibilityLabel="事件正文" multiline placeholder="此刻想记下什么？" placeholderTextColor={theme.color.textMuted} selectionColor={theme.color.primary} value={body} onChangeText={setBody} style={[field, { minHeight: 180, textAlignVertical: "top" }]} />
-    <Text accessibilityLiveRegion="polite" style={{ ...theme.typography.caption, color: theme.color.textMuted }}>{draftStatus || "正在读取本机草稿…"}</Text>
-    <JournalDateField label="事件日期" onChange={setOccurredAt} value={occurredAt} />
-    <TextInput editable={ready && !saving} accessibilityLabel="关键事件标题" placeholder="标题（选填）" placeholderTextColor={theme.color.textMuted} selectionColor={theme.color.primary} value={title} onChangeText={setTitle} style={field} />
-    <TextInput editable={ready && !saving} accessibilityLabel="重点提要" placeholder="想单独保留的重点（选填）" placeholderTextColor={theme.color.textMuted} selectionColor={theme.color.primary} value={highlight} onChangeText={setHighlight} style={field} />
-    {renderAssistant?.({ records: [{ id: initial?.id ?? "current-draft", text: [title, occurredAt, highlight, body].filter(Boolean).join("\n") }], onAdopt: (text) => setBody((current) => current ? `${current}\n\n${text}` : text) })}
-    <Text style={{ ...theme.typography.heading, color: theme.color.text }}>专题（选填，由你决定）</Text>
+    <JournalEditorHeader title={initial?.id ? "修改这条记录" : "记下一件事"} onBack={onBack} saving={saving}
+      help={<><HelpText>一句话也可以，不需要先想好标题或重点。引导写作可以随时跳过，专题由你决定。</HelpText><HelpText>在允许修改的时间内，旧版本会保留在修改历史中。也可以增加一个“后来”，记录变化或更正，原记录不会被覆盖。内容默认保存在本机。</HelpText></>} />
     <View style={{ gap: theme.space.sm }}>
-      <Button label="自定义专题" onPress={() => setShowCustomTopicInput((shown) => !shown)} />
-      {showCustomTopicInput ? <View style={{ gap: theme.space.sm }}>
-        <TextInput editable={ready && !saving} accessibilityLabel="自定义专题名称" placeholder="输入专题名称" placeholderTextColor={theme.color.textMuted} selectionColor={theme.color.primary} value={customTopicInput} onChangeText={(value) => { setCustomTopicInput(value); setCustomTopicError(""); }} onSubmitEditing={addCustomTopic} style={field} />
-        <SecondaryButton disabled={!ready || saving} label="添加专题" onPress={addCustomTopic} />
-        {customTopicError ? <Text accessibilityRole="alert" style={{ color: theme.color.danger }}>{customTopicError}</Text> : null}
+      <TextAction label={guided ? "自由写" : "试试引导写作（可跳过）"} onPress={() => setGuided(!guided)} />
+      {guided ? <View style={{ gap: theme.space.sm }}>
+        <Text style={{ ...theme.typography.body, color: theme.color.text }}>{prompts[question]}</Text>
+        <TextAction label={question < prompts.length - 1 ? "下一题 / 跳过这题" : "结束引导"} onPress={() => question < prompts.length - 1 ? setQuestion(question + 1) : setGuided(false)} />
       </View> : null}
-      {topicOptions.map((option) => <SecondaryButton key={option.value} label={`${topics.includes(option.value) ? "✓ " : ""}${option.label}`} onPress={() => setTopics((items) => items.includes(option.value) ? items.filter((item) => item !== option.value) : [...items, option.value])} />)}
-      {[...new Set([...availableCustomTopics, ...topics.filter((item) => item.startsWith("custom:"))])].map((value) => <SecondaryButton key={value} label={`${topics.includes(value) ? "✓ " : ""}${journalTopicLabel(value)}`} onPress={() => setTopics((items) => items.includes(value) ? items.filter((item) => item !== value) : [...items, value])} />)}
+      <TextInput editable={ready && !saving} accessibilityLabel="事件正文" multiline placeholder="此刻想记下什么？" placeholderTextColor={theme.color.textMuted} selectionColor={theme.color.primary} value={body} onChangeText={setBody} style={[field, { minHeight: 180, textAlignVertical: "top" }]} />
+      <Text accessibilityLiveRegion="polite" style={{ ...theme.typography.caption, color: theme.color.textMuted }}>{draftStatus || "正在读取本机草稿…"}</Text>
     </View>
+    <Card accessible={false}>
+      <Text accessibilityRole="header" style={{ ...theme.typography.heading, color: theme.color.text }}>日期与摘要</Text>
+      <JournalDateField label="事件日期" onChange={setOccurredAt} value={occurredAt} />
+      <TextInput editable={ready && !saving} accessibilityLabel="关键事件标题" placeholder="标题（选填）" placeholderTextColor={theme.color.textMuted} selectionColor={theme.color.primary} value={title} onChangeText={setTitle} style={field} />
+      <TextInput editable={ready && !saving} accessibilityLabel="重点提要" placeholder="想单独保留的重点（选填）" placeholderTextColor={theme.color.textMuted} selectionColor={theme.color.primary} value={highlight} onChangeText={setHighlight} style={field} />
+    </Card>
+    {renderAssistant?.({ records: [{ id: initial?.id ?? "current-draft", text: [title, occurredAt, highlight, body].filter(Boolean).join("\n") }], onAdopt: (text) => setBody((current) => current ? `${current}\n\n${text}` : text) })}
+    <Card accessible={false}>
+      <Text accessibilityRole="header" style={{ ...theme.typography.heading, color: theme.color.text }}>专题（选填，由你决定）</Text>
+      <View style={{ gap: theme.space.sm }}>
+        <TextAction label="自定义专题" onPress={() => setShowCustomTopicInput((shown) => !shown)} />
+        {showCustomTopicInput ? <View style={{ gap: theme.space.sm }}>
+          <TextInput editable={ready && !saving} accessibilityLabel="自定义专题名称" placeholder="输入专题名称" placeholderTextColor={theme.color.textMuted} selectionColor={theme.color.primary} value={customTopicInput} onChangeText={(value) => { setCustomTopicInput(value); setCustomTopicError(""); }} onSubmitEditing={addCustomTopic} style={field} />
+          <TextAction disabled={!ready || saving} label="添加专题" onPress={addCustomTopic} />
+          {customTopicError ? <Text accessibilityRole="alert" style={{ color: theme.color.danger }}>{customTopicError}</Text> : null}
+        </View> : null}
+        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: theme.space.sm }}>
+          {topicOptions.map((option) => <SecondaryButton inline key={option.value} label={`${topics.includes(option.value) ? "✓ " : ""}${option.label}`} onPress={() => setTopics((items) => items.includes(option.value) ? items.filter((item) => item !== option.value) : [...items, option.value])} />)}
+          {[...new Set([...availableCustomTopics, ...topics.filter((item) => item.startsWith("custom:"))])].map((value) => <SecondaryButton key={value} label={`${topics.includes(value) ? "✓ " : ""}${journalTopicLabel(value)}`} onPress={() => setTopics((items) => items.includes(value) ? items.filter((item) => item !== value) : [...items, value])} />)}
+        </View>
+      </View>
+    </Card>
     {error ? <Text accessibilityRole="alert" style={{ color: theme.color.danger }}>{error}</Text> : null}
-    <Text style={{ ...theme.typography.caption, color: theme.color.textMuted }}>随时可以修改，旧版本会保留在修改历史中。也可以为这件事增加一个“后来”。</Text>
     <Button disabled={saving || !ready} label={saving ? "正在保存…" : "保存到本机"} onPress={() => { void save(); }} />
   </Screen>;
 }

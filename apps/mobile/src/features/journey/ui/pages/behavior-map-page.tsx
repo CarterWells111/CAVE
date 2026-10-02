@@ -458,7 +458,7 @@ export function BehaviorMapPage({
                 <Text accessibilityRole="header" ref={questionRef} selectable style={styles.question}>是否查看更多具体行为？</Text>
                 <Text selectable style={styles.supporting}>这里会使用直接、明确的健康教育用语。是否查看、是否回答都由你决定，不影响后续流程或积分。</Text>
                 <JourneyAction label="了解内容后再决定" loadingLabel="正在打开说明…" onAction={() => setSensitiveStage("learned")} />
-                <JourneyAction errorMessage="暂时无法记录，请重试。" label="这次不查看" loadingLabel="正在记录…" onAction={() => persistSensitiveConsent(false)} />
+                <JourneyAction compact errorMessage="暂时无法记录，请重试。" label="这次不查看" loadingLabel="正在记录…" onAction={() => persistSensitiveConsent(false)} />
               </>
             ) : sensitiveStage === "learned" ? (
               <>
@@ -483,14 +483,14 @@ export function BehaviorMapPage({
                     onAction={() => persistSensitiveConsent(true)}
                   />
                 </JourneyScrollTarget>
-                <JourneyAction errorMessage="暂时无法记录，请重试。" label="这次不查看" loadingLabel="正在记录…" onAction={() => persistSensitiveConsent(false)} />
+                <JourneyAction compact errorMessage="暂时无法记录，请重试。" label="这次不查看" loadingLabel="正在记录…" onAction={() => persistSensitiveConsent(false)} />
               </>
             ) : (
               <>
                 <Text accessibilityRole="header" ref={questionRef} selectable style={styles.question}>更多具体行为已经显示在卡牌中</Text>
                 <Text selectable style={styles.supporting}>你可以分别选择或修改这两张卡，也可以改为这次不查看。</Text>
                 <JourneyAction label="继续显示具体行为" loadingLabel="正在返回…" onAction={returnToGallery} />
-                <JourneyAction errorMessage="暂时无法记录，请重试。" label="这次不查看" loadingLabel="正在记录…" onAction={() => persistSensitiveConsent(false)} />
+                <JourneyAction compact errorMessage="暂时无法记录，请重试。" label="这次不查看" loadingLabel="正在记录…" onAction={() => persistSensitiveConsent(false)} />
               </>
             )}
           </View>

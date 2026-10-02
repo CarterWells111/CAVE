@@ -6,7 +6,8 @@ import { useTheme } from "../../../core/design/theme-provider";
 import { Button } from "../../../core/ui/Button";
 import { ProgressHeader } from "../../../core/ui/ProgressHeader";
 import { Screen } from "../../../core/ui/Screen";
-import { SecondaryButton } from "../../../core/ui/secondary-button";
+import { TextAction } from "../../../core/ui/text-action";
+import { HelpText, PageHeader } from "../../../core/ui/page-header";
 import type { SampleJourney } from "../catalog";
 
 // This is the same optional, expert-review-pending image used by the existing body-knowledge page.
@@ -73,15 +74,15 @@ function SampleJourneyPages({ journey, onExit }: SampleJourneyScreenProps) {
           <Ionicons accessible={false} color={theme.color.primary} name={journey.icon} size={36} />
         </View>
         <View style={{ gap: theme.space.md }}>
-          <Text accessibilityRole="header" selectable style={{ ...theme.typography.title, color: theme.color.text, flexShrink: 1 }}>
-            {page.title}
-          </Text>
+          <PageHeader title={page.title} help={<HelpText>{journey.preview
+            ? "这是三页框架预览，不会保存答案。可用上一页或退出返回地图。"
+            : "按自己的节奏阅读身体知识。结构图可选，不查看也可以继续。内容与医学图仍待专业复核。"}</HelpText>} />
           <Text selectable style={{ ...theme.typography.body, color: theme.color.text, flexShrink: 1 }}>
             {page.body}
           </Text>
           {page.showVulvaDiagram ? (
             <View style={{ gap: theme.space.sm }}>
-              <SecondaryButton
+              <TextAction
                 label={diagramOpen ? "收起外阴结构图" : "查看外阴结构图"}
                 onPress={() => setDiagramOpen((current) => !current)}
               />

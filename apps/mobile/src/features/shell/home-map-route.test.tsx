@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen } from "@testing-library/react-native";
+import { act, fireEvent, render, screen, within } from "@testing-library/react-native";
 import { useEffect as mockUseEffect } from "react";
 import HomeRoute from "../../../app/(tabs)/journey";
 import { createJourneyDraft, type JourneyDraft } from "../journey/domain/types";
@@ -79,12 +79,15 @@ test("journey offers retained practice and a contextual AI question entry", asyn
  mockRuntime = runtime(onboarded());
  render(<HomeRoute />);
  await screen.findByText("旅程 01");
- fireEvent.press(screen.getByRole("button", { name: "沟通练习" }));
+ const tools = within(screen.getByTestId("journey-map-tools"));
+ expect(tools.getByRole("header", { name: "旅程工具" })).toBeTruthy();
+ expect(tools.getAllByRole("button")).toHaveLength(4);
+ fireEvent.press(tools.getByRole("button", { name: "沟通练习" }));
  expect(mockRouter.push).toHaveBeenCalledWith("/(tabs)/practice");
- fireEvent.press(screen.getByRole("button", { name: "问问 AI：第一次过夜" }));
+ fireEvent.press(tools.getByRole("button", { name: "问问 AI：第一次过夜" }));
  expect(mockRouter.push).toHaveBeenCalledWith({ pathname: "/(tabs)/ai", params: { journeyId: "first-overnight" } });
- fireEvent.press(screen.getByRole("button", { name: "主题探索：身体感受" }));
+ fireEvent.press(tools.getByRole("button", { name: "主题探索：身体感受" }));
  expect(mockRouter.push).toHaveBeenCalledWith("/reviews/topic/body");
- fireEvent.press(screen.getByRole("button", { name: "主题探索：边界与表达" }));
+ fireEvent.press(tools.getByRole("button", { name: "主题探索：边界与表达" }));
  expect(mockRouter.push).toHaveBeenCalledWith("/reviews/topic/boundaries");
 });

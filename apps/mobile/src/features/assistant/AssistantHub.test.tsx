@@ -40,6 +40,7 @@ test("starter fills editable draft, cancellation preserves it, only explicit con
   expect(request).toHaveBeenCalledTimes(1);
   expect(request).toHaveBeenCalledWith({ mode: "chat", consent: true, records: [], question: "今天去散步了", history: [], journeyId: "first-overnight" }, expect.anything());
   expect(screen.getByLabelText("聊天消息").props.value).toBe("");
+  expect(screen.queryByRole("button", { name: "带我写一次日记" })).toBeNull();
   fireEvent.changeText(screen.getByLabelText("聊天消息"), "第二条消息");
   expect(screen.getByText(response.message)).toBeTruthy();
   fireEvent.press(screen.getByRole("button", { name: "发送消息" }));
@@ -169,4 +170,17 @@ test("enabling automatic approval never sends the current private draft", async 
   fireEvent.press(screen.getByRole("button", { name: "帮我批准" }));
   expect(request).not.toHaveBeenCalled();
   expect(screen.getByRole("button", { name: "允许并发送" })).toBeTruthy();
+});
+
+test("help explains suggestions and privacy without changing the editable draft", () => {
+  const request = jest.fn<Promise<AssistantResponse>, [AssistantRequest, AbortSignal]>(async () => response);
+  render(<AssistantChat authorized journeyId="first-overnight" initialDraft="留下这句话" request={request} />);
+  expect(screen.queryByText(/点选建议后会填入输入框/)).toBeNull();
+  fireEvent.press(screen.getByRole("button", { name: "内界 AI，帮助" }));
+  expect(screen.getByText(/点选建议后会填入输入框/)).toBeTruthy();
+  expect(screen.getByText(/不会读取私人手记、照片或隐藏卡片/)).toBeTruthy();
+  fireEvent.press(screen.getByRole("button", { name: "关闭内界 AI · 帮助" }));
+  expect(screen.getByLabelText("聊天消息")).toHaveProp("value", "留下这句话");
+  expect(screen.getByRole("switch", { name: "帮我批准", checked: false })).toBeTruthy();
+  expect(request).not.toHaveBeenCalled();
 });

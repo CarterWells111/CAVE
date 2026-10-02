@@ -31,6 +31,7 @@ test("requires a chosen form of address before saving it", async () => {
   render(<PrefacePage onContinue={onContinue} />);
 
   expect(screen.getByRole("header", { name: "开始前，想告诉你" })).toBeTruthy();
+  expect(screen.getByRole("header", { name: "希望界面怎样称呼你？" })).toBeTruthy();
   expect(screen.getByRole("button", { name: "这样称呼我" })).toHaveProp(
     "accessibilityState", expect.objectContaining({ disabled: true }),
   );
@@ -41,7 +42,11 @@ test("requires a chosen form of address before saving it", async () => {
 
 test("explains account persistence and hides the login link when it is not available", () => {
   render(<PrefacePage onContinue={jest.fn()} />);
+  expect(screen.queryByText(/登录后会保存到账号/u)).toBeNull();
+  fireEvent.press(screen.getByRole("button", { name: "开始前，想告诉你，帮助" }));
   expect(screen.getByText(/登录后会保存到账号/u)).toBeTruthy();
+  fireEvent.press(screen.getByRole("button", { name: "关闭开始前，想告诉你 · 帮助" }));
+  expect(screen.getByRole("button", { name: "这样称呼我" })).toBeDisabled();
   expect(screen.queryByRole("link", { name: "登录后保存现有选择" })).toBeNull();
 });
 

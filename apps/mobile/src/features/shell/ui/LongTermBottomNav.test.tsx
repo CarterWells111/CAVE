@@ -44,7 +44,7 @@ test("keeps every destination touchable at 44 by 44 and supports no active tab",
     expect.objectContaining({ bottom: "additive" }),
   );
   expect(StyleSheet.flatten(screen.getByTestId("long-term-bottom-nav-content").props.style)).toEqual(
-    expect.objectContaining({ height: 48, paddingVertical: 0 }),
+    expect.objectContaining({ minHeight: 48, paddingVertical: 0 }),
   );
   for (const tab of screen.getAllByRole("tab")) {
     expect(StyleSheet.flatten(tab.props.style)).toEqual(expect.objectContaining({ minHeight: 44, minWidth: 44 }));
@@ -52,7 +52,7 @@ test("keeps every destination touchable at 44 by 44 and supports no active tab",
   }
   for (const tab of ["journey", "rooms", "journal", "ai", "profile"]) {
     expect(StyleSheet.flatten(screen.getByTestId(`long-term-tab-content-${tab}`).props.style)).toEqual(
-      expect.objectContaining({ transform: [{ translateY: 2 }] }),
+      expect.objectContaining({ width: "100%", paddingVertical: 4 }),
     );
   }
   expect(screen.queryByText("当前")).toBeNull();

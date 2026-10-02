@@ -250,3 +250,18 @@ test("guards duplicate presses until an asynchronous action settles", async () =
   await act(async () => pending.resolve());
   expect(screen.getByRole("button", { name: "保存" }).props.accessibilityState.busy).toBe(false);
 });
+
+
+test("compact secondary actions retain the async lock and visible retry error", async () => {
+  const pending = deferred<void>();
+  const onAction = jest.fn(() => pending.promise);
+  render(<JourneyAction compact label="暂不查看" loadingLabel="正在记录…" errorMessage="记录失败，请重试。" onAction={onAction} />);
+  fireEvent.press(screen.getByRole("button", { name: "暂不查看" }));
+  const busy = screen.getByRole("button", { name: "正在记录…" });
+  expect(busy).toBeDisabled();
+  fireEvent.press(busy);
+  expect(onAction).toHaveBeenCalledTimes(1);
+  await act(async () => pending.reject(new Error("private failure")));
+  expect(screen.getByText("记录失败，请重试。")).toBeTruthy();
+  expect(screen.getByRole("button", { name: "暂不查看" })).toBeEnabled();
+});

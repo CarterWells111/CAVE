@@ -1,9 +1,11 @@
-import { Text, View } from "react-native";
+import { View } from "react-native";
 
 import { useTheme } from "../../../core/design/theme-provider";
 import { EmptyState } from "../../../core/ui/EmptyState";
 import { ErrorState } from "../../../core/ui/ErrorState";
 import { IconTextAction } from "../../../core/ui/icon-text-action";
+import { ActionRow } from "../../../core/ui/action-row";
+import { HelpText, PageHeader } from "../../../core/ui/page-header";
 import { AccountProfileCard } from "../../account/ui/AccountProfileCard";
 import {
   MetadataCard,
@@ -49,12 +51,8 @@ export function ProfileScreen({
   const theme = useTheme();
   return (
     <View style={{ flexGrow: 1, gap: theme.space.xl, minWidth: 0, width: "100%" }}>
-      <View style={{ alignItems: "center", flexDirection: "row", justifyContent: "space-between" }}>
-        <Text accessibilityRole="header" selectable style={{ ...theme.typography.title, color: theme.color.text }}>
-          我的
-        </Text>
-        <IconTextAction icon="settings-outline" label="设置" onPress={onOpenSettings} />
-      </View>
+      <PageHeader title="我的" actions={<IconTextAction icon="settings-outline" iconOnly label="设置" onPress={onOpenSettings} />}
+        help={<HelpText>在这里查看账户资料、沟通卡和历史回顾。卡片与回顾按日期显示，保存在这台设备上；账户与隐私选项可在设置中调整。</HelpText>} />
 
       {account ? (
         <AccountProfileCard
@@ -71,7 +69,7 @@ export function ProfileScreen({
       {onOpenJournal ? (
         <View style={{ gap: theme.space.md }}>
           <SectionHeading>内界手记</SectionHeading>
-          <IconTextAction icon="book-outline" label="打开关键事件与阶段回顾" onPress={onOpenJournal} />
+          <ActionRow title="关键事件与阶段回顾" accessibilityLabel="打开关键事件与阶段回顾" onPress={onOpenJournal} />
         </View>
       ) : null}
 

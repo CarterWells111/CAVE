@@ -1,9 +1,9 @@
-import { ScrollView, Text, View } from "react-native";
+import { ScrollView, View } from "react-native";
 
 import { useTheme } from "../../../core/design/theme-provider";
-import { Card } from "../../../core/ui/Card";
+import { ActionRow } from "../../../core/ui/action-row";
 import { EmptyState } from "../../../core/ui/EmptyState";
-import { SecondaryButton } from "../../../core/ui/secondary-button";
+import { HelpText, PageHeader } from "../../../core/ui/page-header";
 import { StatusBanner } from "../../../core/ui/StatusBanner";
 
 export type ReviewHistoryItem = Readonly<{
@@ -37,14 +37,7 @@ export function ReviewHistoryScreen(_props: ReviewHistoryScreenProps) {
       testID="review-history-scroll"
     >
       <View style={{ gap: theme.space.xl, maxWidth: theme.size.readableContentMax, minWidth: 0, width: "100%" }}>
-        <View style={{ gap: theme.space.sm }}>
-          <Text accessibilityRole="header" selectable style={{ ...theme.typography.title, color: theme.color.text }}>
-            回顾历史
-          </Text>
-          <Text selectable style={{ ...theme.typography.body, color: theme.color.textSecondary }}>
-            列表只显示标题、日期和状态。打开一条记录后再查看完整内容。
-          </Text>
-        </View>
+        <PageHeader title="回顾历史" help={<HelpText>列表只显示标题、日期和状态。打开一条记录后再查看完整内容。</HelpText>} />
 
         {loadState === "loading" ? <StatusBanner message="正在读取本机回顾历史…" variant="info" /> : null}
         {loadState === "error" ? (
@@ -60,15 +53,8 @@ export function ReviewHistoryScreen(_props: ReviewHistoryScreenProps) {
         {loadState === "ready" && reviews.length > 0 ? (
           <View style={{ gap: theme.space.md, width: "100%" }}>
             {reviews.map((review) => (
-              <Card accessible={false} key={review.id}>
-                <Text accessibilityRole="header" selectable style={{ ...theme.typography.cardTitle, color: theme.color.text }}>
-                  {review.title}
-                </Text>
-                <Text selectable style={{ ...theme.typography.caption, color: theme.color.textSecondary }}>
-                  {`${review.dateLabel} · ${review.statusLabel}`}
-                </Text>
-                <SecondaryButton label={`打开回顾：${review.title}`} onPress={() => onOpenReview(review.id)} />
-              </Card>
+              <ActionRow key={review.id} title={review.title} subtitle={`${review.dateLabel} · ${review.statusLabel}`}
+                accessibilityLabel={`打开回顾：${review.title}，${review.dateLabel}，${review.statusLabel}`} onPress={() => onOpenReview(review.id)} />
             ))}
           </View>
         ) : null}

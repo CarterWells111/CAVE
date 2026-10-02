@@ -126,6 +126,16 @@ test("a cold new-journal deep link can return without creating a record", async 
   expect(mockLoadRecord).not.toHaveBeenCalled();
 });
 
+test("a cold period-review deep link offers a safe header return", async () => {
+  mockAuthorized = true;
+  mockJournalStatus = "ready";
+  const result = open("/journal/review");
+  await screen.findByRole("button", { name: "回顾范围，最近一个月" });
+  fireEvent.press(screen.getByRole("button", { name: "返回手记列表" }));
+  expect(result.getPathname()).toBe("/");
+  expect(mockLoadRecord).not.toHaveBeenCalled();
+});
+
 test("a cold standalone practice deep link can return to the public home", async () => {
   const result = open("/practice/session");
   fireEvent.press(await screen.findByRole("button", { name: "返回练习入口" }));

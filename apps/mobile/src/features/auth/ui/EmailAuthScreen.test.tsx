@@ -46,7 +46,10 @@ test("explains the local-only boundary and completes an email code flow", async 
     onVerifyCode={verifyCode}
     status="signedOut"
   />);
+  expect(screen.getByText(/不会上传日记、沟通卡、回顾或亲密内容/u)).toBeTruthy();
+  fireEvent.press(screen.getByRole("button", { name: "邮箱账户，帮助" }));
   expect(screen.getByText(/日记、沟通卡、回顾或亲密内容仍只在本机/u)).toBeTruthy();
+  fireEvent.press(screen.getByRole("button", { name: "关闭邮箱账户 · 帮助" }));
   fireEvent.changeText(screen.getByLabelText("邮箱地址"), " Person@Example.com ");
   fireEvent.press(screen.getByRole("button", { name: "发送验证码" }));
   await screen.findByLabelText("6 位验证码");

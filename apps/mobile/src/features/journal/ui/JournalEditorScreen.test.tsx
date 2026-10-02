@@ -108,7 +108,7 @@ test("adds a custom topic to the saved record", async () => {
   for (const preset of ["亲密关系", "自我边界", "健康性生活"]) {
     expect(buttons.indexOf("自定义专题")).toBeLessThan(buttons.indexOf(preset));
   }
-  expect(screen.getByRole("button", { name: "自定义专题" })).toHaveStyle({ backgroundColor: darkTheme.color.primary });
+  expect(screen.getByRole("button", { name: "自定义专题" })).not.toHaveStyle({ backgroundColor: darkTheme.color.primary });
   fireEvent.changeText(screen.getByLabelText("事件正文"), "一起散步");
   fireEvent.press(screen.getByRole("button", { name: "自定义专题" }));
   fireEvent.changeText(screen.getByLabelText("自定义专题名称"), "  友情  ");
@@ -117,4 +117,16 @@ test("adds a custom topic to the saved record", async () => {
   fireEvent.press(screen.getByRole("button", { name: "保存到本机" }));
   await waitFor(() => expect(onSaved).toHaveBeenCalledWith("saved"));
   expect(createRecord).toHaveBeenCalledWith(expect.objectContaining({ topics: ["custom:友情"] }));
+});
+
+test("keeps writing guidance in help while leaving the active prompt and draft status inline", async () => {
+  render(<JournalEditorScreen service={{ loadDraft: async () => null, saveDraft: async () => undefined, listRecords: async () => [] } as never} onSaved={jest.fn()} />);
+  await screen.findByText("草稿已保存在本机");
+  expect(screen.queryByText(/一句话也可以，不需要先想好标题/u)).toBeNull();
+  fireEvent.press(screen.getByRole("button", { name: "记下一件事，帮助" }));
+  expect(screen.getByText(/一句话也可以，不需要先想好标题/u)).toBeTruthy();
+  fireEvent.press(screen.getByRole("button", { name: "关闭记下一件事 · 帮助" }));
+  expect(screen.queryByText(/一句话也可以，不需要先想好标题/u)).toBeNull();
+  fireEvent.press(screen.getByRole("button", { name: "试试引导写作（可跳过）" }));
+  expect(screen.getByText("今天有什么想记下的？")).toBeTruthy();
 });

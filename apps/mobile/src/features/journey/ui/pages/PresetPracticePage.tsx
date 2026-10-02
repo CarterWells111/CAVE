@@ -7,7 +7,8 @@ import { Button } from "../../../../core/ui/Button";
 import { Card } from "../../../../core/ui/Card";
 import { ChoiceChip } from "../../../../core/ui/ChoiceChip";
 import { InfoCard } from "../../../../core/ui/info-card";
-import { SecondaryButton } from "../../../../core/ui/secondary-button";
+import { HelpText, PageHeader } from "../../../../core/ui/page-header";
+import { SelectionField } from "../../../../core/ui/selection-field";
 import { TextAction } from "../../../../core/ui/text-action";
 import type { PracticeIntent } from "../../domain/practice-types";
 import {
@@ -33,6 +34,7 @@ import { useJourneyStepBack } from "../journey-step-back";
 
 type Props = {
   context?: "journey" | "standalone";
+  onExit?: () => void;
   initialIntent?: PracticeIntent;
   initialPhrase?: string;
   catalog: JourneyPracticeCatalog;
@@ -96,6 +98,7 @@ export function PresetPracticePage({
   onOpenSources,
   onPracticeAgain,
   context = "journey",
+  onExit,
   initialIntent,
   initialPhrase,
 }: Props) {
@@ -233,6 +236,10 @@ export function PresetPracticePage({
 
   return (
     <View style={{ gap: theme.space.lg, width: "100%" }} testID="page-5-content">
+      <PageHeader title="沟通练习" {...(onExit ? { onBack: onExit, backLabel: "返回练习入口" } : {})} help={<>
+        <HelpText>练习不是为了表现得正确，而是帮助你慢慢发现、听见和讲述自己的需要。</HelpText>
+        <HelpText>这里使用本机预设分支，不使用 AI，也不会录音。镜前练习和不太理想的回应都可以跳过。</HelpText>
+      </>} />
       <View style={{ alignItems: "center", flexDirection: "row", flexWrap: "wrap", gap: theme.space.sm, justifyContent: "space-between" }}>
         <Text style={{ ...theme.typography.caption, color: theme.color.info }}>预设对话，不使用 AI</Text>
         {context === "standalone" ? <Text style={{ ...theme.typography.caption, color: theme.color.textMuted }}>独立练习</Text> : null}
@@ -248,40 +255,35 @@ export function PresetPracticePage({
             <Heading>暂停不需要道歉。</Heading>
             <Body>一开始愿意，不代表之后必须继续。你可以放慢、暂停、换一种方式，或者结束正在发生的事。</Body>
           </Card>
-          <Card>
-            <Heading>练习前灵感</Heading>
-            <Body>练习不是为了表现得正确，而是帮助你慢慢发现、听见和讲述自己的需要。</Body>
-            <Button label="开始情境练习" onPress={startPractice} />
-          </Card>
+          <Button label="开始情境练习" onPress={startPractice} />
         </>
       ) : null}
 
       {mirrorVisible ? (
-        <Card accessibilityLabel="镜前练习，不录音">
+        <Card accessible={false} accessibilityLabel="镜前练习，不录音">
           <Heading>先对着镜子说一遍</Heading>
           <Body>这次练习不会录音、不会请求麦克风权限，也不会识别你说了什么。</Body>
           {state.phrase ? <Body>{state.phrase}</Body> : null}
           <Button label="我说过一遍了" onPress={() => { setState(completeMirror(state)); setMirrorVisible(false); }} />
-          <SecondaryButton label="我想再看看这句话" onPress={() => setMirrorVisible(false)} />
+          <TextAction label="我想再看看这句话" onPress={() => setMirrorVisible(false)} />
           <TextAction label="暂时跳过" onPress={() => { setState(skipMirror(state)); setMirrorVisible(false); }} />
         </Card>
       ) : null}
 
       {state.stage === "need" ? (
-        <Card>
+        <Card accessible={false}>
           <Heading>感受可以在过程中改变</Heading>
           <Body>你和对方正在按照已经商量好的方式亲近。开始时，这是你愿意的。</Body>
           <Body>过了一会儿，你发现自己的感受有了变化。</Body>
           <Body>感受发生变化，不需要一个足够充分的理由。</Body>
           <Heading>此刻，你更接近哪一种需要？</Heading>
-          {NEEDS.map((need) => (
-            <ChoiceChip key={need.intent} label={need.label} onPress={() => chooseNeed(need.intent)} selected={false} semantics="radio" />
-          ))}
+          <SelectionField<PracticeIntent | ""> label="此刻的需要" value=""
+            options={NEEDS.map(need => ({ value: need.intent, label: need.label }))} onChange={intent => { if (intent) chooseNeed(intent); }} />
         </Card>
       ) : null}
 
       {!mirrorVisible && state.stage === "editable-phrase" ? (
-        <Card>
+        <Card accessible={false}>
           <Heading>把需要说出来</Heading>
           {editing ? (
             <TextInput
@@ -293,13 +295,13 @@ export function PresetPracticePage({
             />
           ) : <Body>{state.phrase ?? ""}</Body>}
           <Button label="就用这句话" onPress={usePhrase} />
-          <SecondaryButton label="改成我的说法" onPress={() => setEditing(true)} />
+          <TextAction label="改成我的说法" onPress={() => setEditing(true)} />
           <TextAction label="先对着镜子说一遍" onPress={() => setMirrorVisible(true)} />
         </Card>
       ) : null}
 
       {state.stage === "respectful-response" ? (
-        <Card>
+        <Card accessible={false}>
           <Heading>一种尊重边界的回应</Heading>
           <Body>{state.partnerResponse ?? ""}</Body>
           <Button label="继续" onPress={() => advanceTo(continueToAftercare(state))} />
@@ -307,16 +309,16 @@ export function PresetPracticePage({
       ) : null}
 
       {state.stage === "aftercare" ? (
-        <Card>
+        <Card accessible={false}>
           <Heading>停下来以后，此刻的你更想怎样？</Heading>
-          {AFTERCARE.map((option) => (
-            <ChoiceChip key={option.id} label={option.label} onPress={() => advanceTo(chooseAftercare(state, option.id))} selected={false} semantics="radio" />
-          ))}
+          <SelectionField label="停下后的需要" value=""
+            options={AFTERCARE.map(option => ({ value: option.id, label: option.label }))}
+            onChange={id => advanceTo(chooseAftercare(state, id))} />
         </Card>
       ) : null}
 
       {state.stage === "optional-branch" ? (
-        <Card>
+        <Card accessible={false}>
           {state.aftercareId === "hug-if-asked" ? (
             <InfoCard variant="education">
               <Body>现在可以抱你吗？</Body>
@@ -326,7 +328,7 @@ export function PresetPracticePage({
           <Heading>可选练习</Heading>
           <Body>接下来的情境可能让人不舒服。你可以跳过，不影响流程或积分。</Body>
           <Button label="跳过不太理想的回应" onPress={() => advanceTo(chooseOptionalBranch(state, catalog, "skip"))} />
-          <SecondaryButton
+          <TextAction
             label="也练习一次不太理想的回应"
             onPress={() => advanceTo(chooseOptionalBranch(state, catalog, "disappointed-but-stops"))}
           />
@@ -334,7 +336,7 @@ export function PresetPracticePage({
       ) : null}
 
       {state.stage === "optional-response" && state.optionalBranch ? (
-        <Card>
+        <Card accessible={false}>
           <Heading>预设回应练习</Heading>
           {state.optionalPartnerText ? <Body>{state.optionalPartnerText}</Body> : null}
           {state.optionalUserTexts?.map((text) => (
@@ -358,7 +360,7 @@ export function PresetPracticePage({
               value={optionalResponseDraft}
             />
           ) : null}
-          <SecondaryButton
+          <TextAction
             label="改成我的说法"
             onPress={() => {
               setOptionalResponseDraft(state.optionalUserResponse ?? state.optionalUserTexts?.[0] ?? "");
@@ -383,7 +385,7 @@ export function PresetPracticePage({
                 label="完成这个分支"
                 onPress={() => advanceTo(completePractice(state))}
               />
-              <SecondaryButton
+              <TextAction
                 disabled={!state.optionalUserResponse}
                 label="继续练习对方施压"
                 onPress={() => advanceTo(chooseOptionalBranch(state, catalog, "continues-pressure"))}
@@ -397,7 +399,7 @@ export function PresetPracticePage({
                 label="对方停止，完成练习"
                 onPress={() => advanceTo(completePractice(state))}
               />
-              <SecondaryButton
+              <TextAction
                 disabled={!state.optionalUserResponse}
                 label="对方仍在说服、继续触碰或阻止离开"
                 onPress={() => advanceTo(chooseOptionalBranch(state, catalog, "ignores-or-blocks-exit"))}
@@ -408,7 +410,7 @@ export function PresetPracticePage({
       ) : null}
 
       {state.stage === "safety-resources" ? (
-        <Card style={{ borderColor: theme.color.danger }}>
+        <Card accessible={false} style={{ borderColor: theme.color.danger }}>
           <Heading>这不是因为你没有说清楚</Heading>
           <Body>{state.optionalGuidance ?? "优先选择对自己安全、可行的行动。"}</Body>
           {catalog.supportResources.map((resource) => (
@@ -418,7 +420,7 @@ export function PresetPracticePage({
               <TextAction label={`复制 ${resource.number}`} onPress={() => { void onCopySupportNumber?.(resource.number); }} />
             </View>
           ))}
-          <SecondaryButton
+          <TextAction
             accessibilityLabel="打开内界官网信息来源"
             label="查看完整信息来源"
             onPress={() => { void onOpenSources?.(); }}
@@ -429,7 +431,7 @@ export function PresetPracticePage({
 
       {state.stage === "completed" ? (
         completionStep === "review" ? (
-          <Card>
+          <Card accessible={false}>
             <Heading>这次练习先到这里</Heading>
             <Body>你刚刚练习了发现感受的变化、表达此刻的需要，以及辨认什么样的回应是在尊重边界。</Body>
             <Body>真正发生时，你可以说得更短，也可以随时换一种表达。</Body>
@@ -456,10 +458,11 @@ export function PresetPracticePage({
             <Button label="继续" onPress={() => setCompletionStep("actions")} />
           </Card>
         ) : (
-          <Card>
+          <Card accessible={false}>
             <Heading>接下来，你可以</Heading>
             {onAddToPreparation ? (
               <JourneyAction
+                compact
                 errorMessage="加入准备清单失败，请重试。"
                 label="把这句话加入准备清单"
                 loadingLabel="正在加入准备清单…"
@@ -467,7 +470,7 @@ export function PresetPracticePage({
               />
             ) : null}
             {onPracticeAgain ? (
-              <SecondaryButton label="再练习一个情境" onPress={() => { void onPracticeAgain(); }} />
+              <TextAction label="再练习一个情境" onPress={() => { void onPracticeAgain(); }} />
             ) : null}
             <JourneyAction
               disabled={submitted}

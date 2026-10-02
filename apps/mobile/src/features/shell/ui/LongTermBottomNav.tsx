@@ -41,7 +41,7 @@ export function LongTermBottomNav({
           borderTopWidth: theme.border.width,
           flexDirection: "row",
           gap: theme.space.xs,
-          height: theme.size.navigationHeight,
+          minHeight: theme.size.navigationHeight,
           paddingHorizontal: theme.space.sm,
           paddingVertical: theme.space.none
         }}
@@ -72,7 +72,7 @@ export function LongTermBottomNav({
               }}
             >
               <View
-                style={{ alignItems: "center", transform: [{ translateY: 2 }] }}
+                style={{ alignItems: "center", paddingVertical: theme.space.xs, width: "100%" }}
                 testID={`long-term-tab-content-${tab}`}
               >
                 <Ionicons
@@ -81,7 +81,7 @@ export function LongTermBottomNav({
                   name={icon}
                   size={selected ? theme.size.iconLarge : theme.size.icon}
                 />
-                <Text style={{ ...theme.typography.label, color: selected ? theme.color.primary : theme.color.textSecondary, textAlign: "center" }}>
+                <Text style={{ ...theme.typography.label, color: selected ? theme.color.primary : theme.color.textSecondary, flexShrink: 1, textAlign: "center", width: "100%" }}>
                   {label}
                 </Text>
               </View>

@@ -32,8 +32,19 @@ test("lists only title, date, and status metadata and opens the selected review"
   expect(screen.getByText("边界与表达")).toBeTruthy();
   expect(screen.getByText("8月26日 · 已完成")).toBeTruthy();
   expect(screen.queryByText(/正文|私密|删除内容/)).toBeNull();
-  fireEvent.press(screen.getByRole("button", { name: "打开回顾：边界与表达" }));
+  fireEvent.press(screen.getByRole("button", { name: "打开回顾：边界与表达，8月26日，已完成" }));
   expect(onOpenReview).toHaveBeenCalledWith("review-1");
+});
+
+test("history instructions are on demand and do not navigate", () => {
+  const onOpenReview = jest.fn();
+  render(<ReviewHistoryScreen loadState="ready" onOpenReview={onOpenReview} reviews={reviews} />);
+  expect(screen.queryByText("列表只显示标题、日期和状态。打开一条记录后再查看完整内容。")).toBeNull();
+  fireEvent.press(screen.getByRole("button", { name: "回顾历史，帮助" }));
+  expect(screen.getByText("列表只显示标题、日期和状态。打开一条记录后再查看完整内容。")).toBeTruthy();
+  fireEvent.press(screen.getByRole("button", { name: "关闭回顾历史 · 帮助" }));
+  expect(onOpenReview).not.toHaveBeenCalled();
+  expect(screen.getByRole("button", { name: "打开回顾：身体感受，8月20日，草稿" })).toBeTruthy();
 });
 
 test("keeps history scrollable at large text sizes with 44-point actions", () => {

@@ -4,7 +4,8 @@ import { ScrollView, Text, View } from "react-native";
 import { paperTheme } from "../../../core/design/theme";
 import { useTheme } from "../../../core/design/theme-provider";
 import { Button } from "../../../core/ui/Button";
-import { SecondaryButton } from "../../../core/ui/secondary-button";
+import { HelpText, PageHeader } from "../../../core/ui/page-header";
+import { TextAction } from "../../../core/ui/text-action";
 import { StatusBanner } from "../../../core/ui/StatusBanner";
 
 export type CommunicationDraftSection = Readonly<{
@@ -77,9 +78,7 @@ export function CardDetailScreen({
         testID="card-detail-content"
       >
         <View style={{ gap: theme.space.sm }}>
-          <Text accessibilityRole="header" selectable style={{ ...theme.typography.title, color: theme.color.text }}>
-            {metadata.title}
-          </Text>
+          <PageHeader title={metadata.title} help={<HelpText>查看已保存的沟通草稿。可以编辑内容、保存到手记，或切换全屏展示；是否展示和分享由你决定。</HelpText>} />
           <Text selectable style={{ ...theme.typography.caption, color: theme.color.textSecondary }}>
             {`${metadata.dateLabel} · ${metadata.statusLabel}`}
           </Text>
@@ -137,13 +136,13 @@ export function CardDetailScreen({
             loading={actionState === "editing"}
             onPress={() => { void openEdit(); }}
           />
-          {onSaveToJournal ? <SecondaryButton disabled={busy} label="保存到内界手记" onPress={onSaveToJournal} /> : null}
-          {onFullscreen ? <SecondaryButton
+          {onSaveToJournal ? <TextAction disabled={busy} label="保存到内界手记" onPress={onSaveToJournal} /> : null}
+          {onFullscreen ? <TextAction
             disabled={busy}
             label={mode === "fullscreen" ? "退出全屏展示" : "全屏展示"}
             onPress={onFullscreen}
           /> : null}
-          <SecondaryButton disabled={busy} label="返回我的卡片" onPress={onBack} />
+          <TextAction disabled={busy} label="返回我的卡片" onPress={onBack} />
         </View>
       </View>
     </ScrollView>

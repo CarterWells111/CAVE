@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Alert, Text } from "react-native";
+import { Alert, Text, View } from "react-native";
 import { useTheme } from "../../../core/design/theme-provider";
 import { Button } from "../../../core/ui/Button";
 import { Card } from "../../../core/ui/Card";
 import { ErrorState } from "../../../core/ui/ErrorState";
-import { IconTextAction } from "../../../core/ui/icon-text-action";
+import { HelpText, PageHeader } from "../../../core/ui/page-header";
+import { TextAction } from "../../../core/ui/text-action";
 import { Screen } from "../../../core/ui/Screen";
-import { SecondaryButton } from "../../../core/ui/secondary-button";
 import type { JournalService } from "../application/journal-service";
 import type { JournalEntry, JournalRecord } from "../domain/journal-record";
 import { formatJournalDate } from "../domain/journal-date";
@@ -70,7 +70,7 @@ export function JournalDetailScreen({ id, service, onAdd, onBack, onDeleted, onE
       onAction={retryDeletionCleanup}
     /></Screen>;
   }
-  if (failed) return <Screen><ErrorState title="无法打开这条手记" message="它可能已经被删除，或本机存储暂时不可用。" actionLabel="重试" onAction={load} /><SecondaryButton label="返回手记列表" onPress={onBack} /></Screen>;
+  if (failed) return <Screen><PageHeader title="内界手记" onBack={onBack} backLabel="返回手记列表" /><ErrorState title="无法打开这条手记" message="它可能已经被删除，或本机存储暂时不可用。" actionLabel="重试" onAction={load} /></Screen>;
   if (value === null || value.record.id !== id || value.service !== service) return <Screen><Text accessibilityLiveRegion="polite" style={{ ...theme.typography.body, color: theme.color.text }}>正在读取本机手记…</Text></Screen>;
   const { record, entries, revisions } = value;
   const deleteRecord = () => Alert.alert("永久删除这条记录？", "删除后无法恢复。", [
@@ -90,8 +90,8 @@ export function JournalDetailScreen({ id, service, onAdd, onBack, onDeleted, onE
     } }
   ]);
   return <Screen testID="journal-detail-screen">
-    <IconTextAction icon="arrow-back" label="返回手记列表" onPress={onBack} />
-    <Text accessibilityRole="header" style={{ ...theme.typography.title, color: theme.color.text }}>{record.title}</Text>
+    <PageHeader title={record.title} onBack={onBack} backLabel="返回手记列表"
+      help={<HelpText>可以增加一个“后来”，记录事情的变化。在允许修改的时间内，修改前的版本会保存在历史中；时间结束后，请增加更正或补充。内容默认只在本机。</HelpText>} />
     <Text style={{ ...theme.typography.caption, color: theme.color.textMuted }}>发生于 {formatJournalDate(record.occurredAt)}</Text>
     <Text style={{ ...theme.typography.heading, color: theme.color.text }}>{record.highlight.kind === "feeling" ? "最大的感受" : "最深刻的印象"}</Text>
     <Text style={{ ...theme.typography.body, color: theme.color.text }}>{record.highlight.text}</Text>
@@ -101,22 +101,26 @@ export function JournalDetailScreen({ id, service, onAdd, onBack, onDeleted, onE
       {record.cardSnapshot.sections.map((section) => <Text key={section.id} style={{ ...theme.typography.body, color: theme.color.text }}>{section.text}</Text>)}
     </Card> : null}
     <Text style={{ ...theme.typography.heading, color: theme.color.text }}>后来</Text>
-    {entries.length === 0 ? <Text style={{ ...theme.typography.body, color: theme.color.textMuted }}>还没有后续补充。</Text> : entries.map((entry) => <Card key={entry.id} variant="muted">
+    {entries.length === 0 ? <Text style={{ ...theme.typography.body, color: theme.color.textMuted }}>还没有后续补充。</Text> : entries.map((entry) => <Card accessible={false} key={entry.id} variant="muted">
       <Text style={{ ...theme.typography.caption, color: theme.color.textMuted }}>{formatJournalDate(entry.occurredAt)}</Text>
       {entry.highlight ? <Text style={{ ...theme.typography.body, color: theme.color.text }}>{entry.highlight.text}</Text> : null}
       {entry.body ? <Text style={{ ...theme.typography.body, color: theme.color.text }}>{entry.body}</Text> : null}
-      {onEditEntry ? <SecondaryButton label="修改这条后来" onPress={() => onEditEntry(entry.id)} /> : null}
-      <SecondaryButton label="删除这条后来" onPress={() => deleteEntry(entry.id)} />
+      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: theme.space.sm }}>
+        {onEditEntry ? <TextAction label="修改这条后来" onPress={() => onEditEntry(entry.id)} /> : null}
+        <TextAction label="删除这条后来" onPress={() => deleteEntry(entry.id)} />
+      </View>
     </Card>)}
     <Button label="为这件事增加一个后来" onPress={onAdd} />
-    {onEdit ? <SecondaryButton label="修改初始记录" onPress={onEdit} /> : null}
-    <SecondaryButton label={showHistory ? "收起修改历史" : "查看修改历史"} onPress={() => setShowHistory(!showHistory)} />
+    <View style={{ flexDirection: "row", flexWrap: "wrap", gap: theme.space.sm }}>
+      {onEdit ? <TextAction label="修改初始记录" onPress={onEdit} /> : null}
+      <TextAction label={showHistory ? "收起修改历史" : "查看修改历史"} onPress={() => setShowHistory(!showHistory)} />
+    </View>
     {showHistory ? revisions.length ? revisions.map((revision) => <Card key={revision.id} variant="muted">
       <Text style={{ color: theme.color.textMuted }}>{revision.savedAt} · {revision.itemKind === "record" ? "记录旧版本" : "后来旧版本"}</Text>
       {"title" in revision.snapshot ? <Text style={{ color: theme.color.text }}>{revision.snapshot.title}</Text> : null}
       <Text style={{ color: theme.color.text }}>{revision.snapshot.highlight?.text}</Text>
       <Text style={{ color: theme.color.text }}>{revision.snapshot.body}</Text>
     </Card>) : <Text style={{ color: theme.color.textMuted }}>还没有修改历史。</Text> : null}
-    <SecondaryButton label="永久删除这条记录" onPress={deleteRecord} />
+    <TextAction label="永久删除这条记录" onPress={deleteRecord} />
   </Screen>;
 }

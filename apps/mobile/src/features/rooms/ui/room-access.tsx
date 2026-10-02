@@ -5,6 +5,7 @@ import { Text, View } from "react-native";
 import { useTheme } from "../../../core/design/theme-provider";
 import { Button } from "../../../core/ui/Button";
 import { Screen } from "../../../core/ui/Screen";
+import { HelpText, PageHeader } from "../../../core/ui/page-header";
 import { useAuth } from "../../auth/runtime/AuthProvider";
 import { getGatewayUrl } from "../../../config/gateway";
 import { useAdultDeclaration } from "../../journey/runtime/JourneyRuntimeProvider";
@@ -29,7 +30,7 @@ export function RoomAccess({ children, returnTo }: PropsWithChildren<{ returnTo:
   if (adult.status === "authorized" && auth.status === "signedIn") return children;
   return <Screen contentSafeAreaTop>
     <View style={{ gap: theme.space.md }}>
-      <Text accessibilityRole="header" selectable style={{ ...theme.typography.title, color: theme.color.text }}>双人房间</Text>
+      <PageHeader title="双人房间" help={<HelpText>双人房间需要每位参与者自行声明成年，并使用自己的账号登录。完成后会回到当前房间入口。</HelpText>} />
       {adult.status !== "authorized" ? <>
         <Text selectable style={{ ...theme.typography.body, color: theme.color.textSecondary }}>每位参与者都需自行声明已满 18 岁。这里仅记录声明，不核验身份或年龄。</Text>
         <Button label="我已年满 18 岁" loading={pending} onPress={() => {
