@@ -39,10 +39,13 @@ describe("Expo SDK baseline", () => {
       ]
     ).toBe("~24.13.3");
     expect(packageJson.devDependencies["jest-expo"]).toBe("~57.0.5");
-    expect(packageJson.scripts.start).toBe("expo start --go");
+    expect(packageJson.scripts.start).toBe("node ../../scripts/start-mobile.mjs go-local");
+    expect(packageJson.scripts["start:journal-preview"]).toBe("node ../../scripts/start-mobile.mjs go-local-preview");
     expect(packageJson.scripts["start:dev-client"]).toBe(
-      "expo start --dev-client"
+      "node ../../scripts/start-mobile.mjs dev-staging"
     );
+    expect(packageJson.scripts["start:dev-client:local"]).toBe("node ../../scripts/start-mobile.mjs dev-local");
+    expect(packageJson.scripts["start:acceptance"]).toBe("node ../../scripts/start-mobile.mjs acceptance-staging");
     expect(tsconfig.compilerOptions.types).toContain("node");
   });
 

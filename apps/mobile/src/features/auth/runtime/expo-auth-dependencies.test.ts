@@ -13,13 +13,13 @@ afterEach(() => {
   else process.env.EXPO_PUBLIC_GATEWAY_URL = originalGatewayUrl;
 });
 
-test("uses the deployed HTTPS Gateway when no development override is configured", () => {
+test("uses staging when no development override is configured", () => {
   delete process.env.EXPO_PUBLIC_GATEWAY_URL;
 
   createExpoAuthDependencies();
 
   expect(createAuthApiClient).toHaveBeenCalledWith({
-    baseUrl: "https://api.neijiecave.com",
+    baseUrl: "https://staging-api.neijiecave.com",
   });
 });
 
@@ -29,32 +29,32 @@ test("treats a blank Gateway environment value as missing configuration", () => 
   createExpoAuthDependencies();
 
   expect(createAuthApiClient).toHaveBeenCalledWith({
-    baseUrl: "https://api.neijiecave.com",
+    baseUrl: "https://staging-api.neijiecave.com",
   });
 });
 
 test("allows an explicit local Gateway override during development", () => {
-  process.env.EXPO_PUBLIC_GATEWAY_URL = "http://localhost:8787";
+  process.env.EXPO_PUBLIC_GATEWAY_URL = "http://192.168.1.23:8787";
 
   createExpoAuthDependencies({ isDevelopment: true } as Parameters<
     typeof createExpoAuthDependencies
   >[0] & { isDevelopment: boolean });
 
   expect(createAuthApiClient).toHaveBeenCalledWith({
-    baseUrl: "http://localhost:8787",
+    baseUrl: "http://192.168.1.23:8787",
   });
 });
 
-test("rejects a plaintext Gateway override outside development", () => {
+test("ignores a plaintext Gateway override outside development", () => {
   process.env.EXPO_PUBLIC_GATEWAY_URL = "http://gateway.example.com";
 
-  expect(() => createExpoAuthDependencies({ isDevelopment: false } as Parameters<
+  createExpoAuthDependencies({ isDevelopment: false } as Parameters<
     typeof createExpoAuthDependencies
-  >[0] & { isDevelopment: boolean })).toThrow("auth-api-https-required");
-  expect(createAuthApiClient).not.toHaveBeenCalled();
+  >[0] & { isDevelopment: boolean });
+  expect(createAuthApiClient).toHaveBeenCalledWith({ baseUrl: "https://api.neijiecave.com" });
 });
 
-test("allows an explicit HTTPS Gateway override outside development", () => {
+test("ignores a staging HTTPS override outside development", () => {
   process.env.EXPO_PUBLIC_GATEWAY_URL = "https://staging-api.neijiecave.com";
 
   createExpoAuthDependencies({ isDevelopment: false } as Parameters<
@@ -62,7 +62,7 @@ test("allows an explicit HTTPS Gateway override outside development", () => {
   >[0] & { isDevelopment: boolean });
 
   expect(createAuthApiClient).toHaveBeenCalledWith({
-    baseUrl: "https://staging-api.neijiecave.com",
+    baseUrl: "https://api.neijiecave.com",
   });
 });
 

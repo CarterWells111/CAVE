@@ -14,6 +14,26 @@ test("configures iOS SQLCipher and SecureStore without plaintext fallback", () =
   expect(config.android).toBeUndefined();
 });
 
+test("local HTTP permission exists only in development and acceptance builds", () => {
+  const originalProfile = process.env.EAS_BUILD_PROFILE;
+  try {
+    for (const profile of ["development", "acceptance", "preview", "production"]) {
+      process.env.EAS_BUILD_PROFILE = profile;
+      const infoPlist = getConfig({ config: {} } as ConfigContext).ios?.infoPlist;
+      if (profile === "development" || profile === "acceptance") {
+        expect(infoPlist?.NSAppTransportSecurity).toEqual({ NSAllowsLocalNetworking: true });
+        expect(infoPlist?.NSLocalNetworkUsageDescription).toContain("Gateway");
+      } else {
+        expect(infoPlist?.NSAppTransportSecurity).toBeUndefined();
+        expect(infoPlist?.NSLocalNetworkUsageDescription).toBeUndefined();
+      }
+    }
+  } finally {
+    if (originalProfile === undefined) delete process.env.EAS_BUILD_PROFILE;
+    else process.env.EAS_BUILD_PROFILE = originalProfile;
+  }
+});
+
 test("allows native light and dark appearance changes on both platforms", () => {
   const config = getConfig({ config: {} } as ConfigContext);
 

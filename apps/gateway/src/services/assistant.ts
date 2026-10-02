@@ -38,7 +38,7 @@ export function createAssistantService(options: { providerMode: "mock" | "live";
   return async (input: AssistantRequest): Promise<AssistantResponse> => {
     const base = { observations: [], sources: [], providerMode: options.providerMode } as const;
     if (input.mode === "chat") {
-      if (options.providerMode === "mock") return assistantFallback("mock", "这是本机模拟。想聊点什么？");
+      if (options.providerMode === "mock") return assistantFallback("mock", "这是模拟回复。想聊点什么？");
       if (!options.chat) return assistantFallback("live");
       const controller = new AbortController();
       let timer: ReturnType<typeof setTimeout> | undefined;

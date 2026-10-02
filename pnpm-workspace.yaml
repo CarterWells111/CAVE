@@ -13,6 +13,7 @@ overrides:
   "undici@>=8 <9": "8.10.2"
   "brace-expansion@<2": "1.1.20"
   "brace-expansion@>=5 <6": "5.0.11"
+  "devalue@<5.9.3": "5.9.3"
 
 packageExtensions:
   "@react-native-community/datetimepicker@9.1.0":
@@ -27,9 +28,11 @@ allowBuilds:
 patchedDependencies:
   decode-uri-component@0.5.0: "patches/decode-uri-component@0.5.0.patch"
   image-size@1.2.1: "patches/image-size@1.2.1.patch"
+  node-forge@1.4.0: "patches/node-forge@1.4.0.patch"
   pnpm@11.25.0: "patches/pnpm@11.25.0.patch"
 
 auditConfig:
   ignoreGhsas:
     - GHSA-w3rx-r6r6-pgpr
     - GHSA-5p2g-fcmc-qvqq
+    - GHSA-86w9-cpqp-85rv

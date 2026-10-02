@@ -19,6 +19,11 @@ afterEach(() => {
 });
 
 describe("Expo app identity", () => {
+  test("an export without an explicit profile defaults to production", () => {
+    delete process.env.EAS_BUILD_PROFILE;
+    expect(getConfig({ config: {} } as ConfigContext).extra?.environment).toBe("production");
+  });
+
   test("internal packages have distinct reproducible build numbers", () => {
     expect(configFor("preview").ios?.buildNumber).toBe("3");
     expect(configFor("acceptance").ios?.buildNumber).toBe("4");
@@ -68,8 +73,10 @@ describe("Expo app identity", () => {
     ["development", "内界 CAVE Dev"],
     ["preview", "内界 CAVE Preview"],
     ["production", "内界 CAVE"]
-  ])("uses the %s display name", (profile, expectedName) => {
-    expect(configFor(profile).name).toBe(expectedName);
+  ])("keeps one Xcode target while using the %s display name", (profile, expectedName) => {
+    const config = configFor(profile);
+    expect(config.name).toBe("内界 CAVE");
+    expect(config.ios?.infoPlist?.CFBundleDisplayName ?? config.name).toBe(expectedName);
   });
 
   test("uses the shared app identity", () => {
@@ -82,6 +89,13 @@ describe("Expo app identity", () => {
     expect(config.ios?.bundleIdentifier).toBe("com.neijie.cave");
     expect(config.ios?.supportsTablet).toBe(false);
     expect(config.android).toBeUndefined();
+  });
+
+  test("gives the development client a separate iOS identity from alpha and release builds", () => {
+    expect(configFor("development").ios?.bundleIdentifier).toBe("com.neijie.cave.dev");
+    for (const profile of ["preview", "acceptance", "production"]) {
+      expect(configFor(profile).ios?.bundleIdentifier).toBe("com.neijie.cave");
+    }
   });
 
   test("declares iOS add-only photo saving without Android configuration", () => {

@@ -28,7 +28,7 @@ export function createExpoAuthDependencies(
   } = {},
 ): AuthDependencies {
   const randomBytes = options.randomBytes ?? ExpoCrypto.getRandomBytes;
-  const gatewayUrl = getGatewayUrl();
+  const gatewayUrl = getGatewayUrl({ isDevelopment: options.isDevelopment });
   if (!(options.isDevelopment ?? __DEV__) && !/^https:\/\//iu.test(gatewayUrl)) {
     throw new Error("auth-api-https-required");
   }

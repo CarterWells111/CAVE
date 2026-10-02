@@ -2,7 +2,7 @@
 
 ## 调用位置与账号
 
-移动端（Expo Go、开发客户端、preview / production 安装包）→ `https://api.neijiecave.com/v1/assistant` → Cloudflare Worker → `https://api.deepseek.com/chat/completions`。
+移动端 AI 与身份接口共用 Gateway：Expo Go 本地 Metro 连本地 Gateway，开发包默认连 `https://staging-api.neijiecave.com`，preview / production 安装包连 `https://api.neijiecave.com`。线上 live Worker 再调用 `https://api.deepseek.com/chat/completions`。
 
 - 已由用户确认的 Cloudflare 账号：`carterwellsdeveloper@gmail.com`，Account ID `3d3f8c9a0cd1392d912a00414155f7de`。
 - Worker：`neijie-cave-gateway`，线上模式 `live`，模型 `deepseek-v4-flash`。
@@ -10,20 +10,22 @@
 - DeepSeek 平台的登录邮箱不能从 Worker Secret 推断；本次仅确认 Cloudflare 账号及 Secret 存在。
 - 登录与 AI 共用 `apps/mobile/src/config/gateway.ts` 的公开地址配置；AI HTTP 客户端在 `apps/mobile/src/features/assistant/assistant-client.ts`，服务端路由在 `apps/gateway/src/routes/assistant.ts`，模型适配器在 `apps/gateway/src/providers/openai-compatible.ts`。
 
-## 拉取后在本地使用真实 AI
+## 拉取后启动移动端
 
 ```bash
 corepack pnpm install --frozen-lockfile
-corepack pnpm dev:mobile
+corepack pnpm --filter @cave/mobile start:dev-client
 ```
 
-不需要复制 `.env`、启动本地 Gateway 或配置 DeepSeek key。安装匹配项目 SDK 的 Expo Go / 开发客户端，完成成年声明，使用自己的邮箱登录，再发送消息并确认本次云端资源。账号有效、网络可达及服务端余额/配额正常是必要条件。
+上面是已安装开发包的 staging Metro 命令。Expo Go 与本地 Gateway 的启动命令见[开发环境](../development/setup.md)。完成成年声明后可用自己的邮箱检查登录和 AI；staging 的邮件、模型模式及服务端凭据以 staging Worker 实际配置为准。手机上的 `localhost` 指向手机本身，不能当作电脑 Gateway。
 
-已有开发目录请检查 `apps/mobile/.env*` 和终端环境：删除旧的 localhost / staging 网关覆盖；真实体验不要设置 `EXPO_PUBLIC_ASSISTANT_MODE=mock`。修改环境后重启 Metro（必要时使用 `--clear`）。`start:journal-preview` 明确强制本机模拟，不能用它验收真实 DeepSeek。
+`start`、`start:dev-client`、`start:dev-client:local` 和 `start:acceptance` 会显式设置 Gateway 与 live 模式，并关闭 `.env` 自动加载。切换目标后重启 Metro（必要时加 `--clear`）。`start:journal-preview` 使用同一个本地 Gateway 地址、强制本机 AI 模拟，不能用它验收真实模型。
 
 ## 构建版
 
-`apps/mobile/eas.json` 的 development、preview、production 显式设置相同 HTTPS Gateway 和 `EXPO_PUBLIC_ASSISTANT_MODE=live`；acceptance 继承 development。模型密钥不进入 EAS 或客户端包。
+`apps/mobile/eas.json` 的 development 指向 staging；acceptance 继承 development 并保留工具隔离；preview、production 指向生产。三者显式使用 `EXPO_PUBLIC_ASSISTANT_MODE=live`。JS 运行时也将 preview、production 固定到生产 Gateway，阻止 `.env` 或更新包误用 staging/HTTP。模型密钥不进入 EAS 或客户端包。
+
+这里的客户端 `live` 表示向所选 Gateway 发请求，不保证 Gateway 已启用真实模型。若 staging Worker 仍为 `MODEL_MODE=mock`，服务端返回 `providerMode=mock`，手记和聊天结果会显示“模拟”；真实模型验收要等 staging 使用独立凭据切到 live。
 
 按项目现有签名与构建流程使用相应 profile 即可。环境变量在打包时确定；已经安装的旧包不会因为拉取代码自动更新，需要重新构建安装或按项目更新流程发布 JS 更新。本次没有触发 EAS 构建或发布。
 
@@ -33,7 +35,7 @@ corepack pnpm dev:mobile
 
 - `corepack pnpm dev:gateway` 显式以 mock 模式运行。
 - 调试真实模型时，在忽略的 `apps/gateway/.dev.vars` 中配置 `MODEL_API_KEY` 与身份/邮件所需 Secrets，再运行 `corepack pnpm --filter @cave/gateway dev:live`。
-- 本地 Gateway 的 AI 客户端要求 HTTPS，使用经核对的 HTTPS 开发地址并让登录与 AI 指向同一 Gateway。生产安装包也必须 HTTPS。不要把手机的 localhost 当作电脑地址。
+- 开发 JS 可使用电脑局域网 IP 的 HTTP Gateway 或 HTTPS 安全隧道；登录与 AI 始终指向同一 Gateway。非开发 JS 不接受本地 HTTP；preview 和 production 固定生产 HTTPS 地址。
 - 生产部署配置已经将上述公开 live 参数写入 `wrangler.jsonc`，普通部署不会再被仓库默认值切回 mock。部署账号固定为用户确认账号；执行者仍需要相应 Cloudflare 权限。
 - 仅管理员管理 Secrets。Cloudflare Secrets 与本地 `.dev.vars` 分离，参考 [Cloudflare 官方说明](https://developers.cloudflare.com/workers/configuration/secrets/)。不要把密钥放进 Git、EXPO_PUBLIC 变量或聊天。
 

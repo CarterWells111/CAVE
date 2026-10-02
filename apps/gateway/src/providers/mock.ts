@@ -46,7 +46,7 @@ export class MockProvider implements ModelProvider {
     const turnCount = input.recentTurns.filter(turn => turn.role === "user").length;
     return {
       requestId: input.requestId,
-      roleMessage: `这是${input.scenario.title}的本机模拟练习（${STAGE_LABELS[input.scenarioStage]}，第${turnCount + 1}轮）。你可以继续表达自己的想法。`,
+      roleMessage: `这是${input.scenario.title}的模拟练习（${STAGE_LABELS[input.scenarioStage]}，第${turnCount + 1}轮）。你可以继续表达自己的想法。`,
       candidateStage: NEXT_STAGE[input.scenarioStage]
     };
   }

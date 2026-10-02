@@ -28,9 +28,9 @@ describe("EAS build profiles", () => {
   });
 });
 
-test.each(["development", "preview", "production"] as const)("%s explicitly uses the shared live gateway", profile => {
+test.each(["development", "preview", "production"] as const)("%s explicitly selects its live gateway", profile => {
   expect(easConfig.build[profile].env).toEqual({
-    EXPO_PUBLIC_GATEWAY_URL: "https://api.neijiecave.com",
+    EXPO_PUBLIC_GATEWAY_URL: profile === "development" ? "https://staging-api.neijiecave.com" : "https://api.neijiecave.com",
     EXPO_PUBLIC_ASSISTANT_MODE: "live",
   });
 });

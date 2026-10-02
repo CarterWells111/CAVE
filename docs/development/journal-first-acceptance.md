@@ -19,11 +19,12 @@
 
 重新启动：在仓库根目录使用符合项目要求的 Node 22/24，执行：
 
-```sh
+```powershell
+$env:CAVE_LOCAL_GATEWAY_URL = "http://192.168.1.23:8787"
 corepack pnpm --filter @cave/mobile start:journal-preview --lan --port 8083
 ```
 
-此命令仅启动 Metro / Expo Go 开发服务，设置本机模拟模式；不产生原生安装包，不调用 DeepSeek。邮箱登录沿用现有 Gateway，必须使用测试账号。请只输入合成测试文字，Expo Go 手记库未使用 SQLCipher 加密。
+示例 IP 须替换为电脑当前局域网地址，本地 Gateway 须监听该网卡。此命令仅启动 Metro / Expo Go 开发服务，设置本机模拟模式；不产生原生安装包，不调用 DeepSeek。邮箱登录进入所选本地 Gateway，必须使用测试账号。请只输入合成测试文字，Expo Go 手记库未使用 SQLCipher 加密。
 
 ## 手机验收清单
 

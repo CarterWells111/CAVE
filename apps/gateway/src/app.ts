@@ -330,7 +330,7 @@ export function createApp(
             ? (prompt, data, signal) => assistantProvider.generateRoomReport(prompt, data, signal)
             : undefined,
         ),
-        creatorAccountIds: new Set((roomBindings.ROOMS_CREATOR_ACCOUNT_IDS ?? "").split(",").map(id => id.trim()).filter(id => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu.test(id))),
+        creatorAccountIds: new Set((roomBindings.ROOMS_CREATOR_ACCOUNT_IDS ?? "").split(",").map(id => id.trim()).filter(id => id === "*" || /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu.test(id))),
       })
       : undefined
   ) : undefined;

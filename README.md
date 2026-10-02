@@ -99,15 +99,15 @@ corepack enable
 corepack pnpm install --frozen-lockfile
 ```
 
-分别启动移动端、官网或 Gateway：
+分别启动移动端、官网或 Gateway。Expo Go 启动前先将 `CAVE_LOCAL_GATEWAY_URL` 设为电脑可从手机访问的局域网 Gateway 地址（例如 `http://192.168.1.23:8787`），本地 Worker 需监听 `0.0.0.0`：
 
 ```bash
 corepack pnpm dev:mobile
 corepack pnpm dev:web
-corepack pnpm dev:gateway
+corepack pnpm --filter @cave/gateway exec wrangler dev --ip 0.0.0.0 --port 8787 --var MODEL_MODE:mock
 ```
 
-移动端核心旅程不依赖 Gateway。邮箱验证码需要额外的本地 Worker、D1 和邮件配置，详见[开发环境](docs/development/setup.md)与[邮箱身份运维](docs/operations/email-authentication.md)。
+移动端核心旅程不依赖 Gateway。开发包默认连 staging，preview/production 安装包连生产。邮箱验证码需要额外的本地 Worker、D1 和邮件配置，详见[开发环境](docs/development/setup.md)与[邮箱身份运维](docs/operations/email-authentication.md)。
 
 ## 验证
 

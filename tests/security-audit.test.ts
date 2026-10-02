@@ -97,13 +97,15 @@ function advisory(severity: string, ghsa = "GHSA-aaaa-bbbb-cccc", id = 12345) {
 }
 
 describe("dedicated bulk audit CLI", () => {
-  it("keeps the install toolchain and existing exemptions unchanged", () => {
+  it("keeps the install toolchain and exact patched exemptions", () => {
     const root = JSON.parse(readFileSync(join(repo, "package.json"), "utf8"));
     const workspace = parse(readFileSync(join(repo, "pnpm-workspace.yaml"), "utf8"));
     expect(root.packageManager).toBe("pnpm@10.34.5");
     expect(root.scripts["security:audit"]).toBe("node scripts/security-audit.mjs");
     expect(root.devDependencies.pnpm).toBeUndefined();
-    expect(workspace.auditConfig.ignoreGhsas).toEqual([exemptGhsa, "GHSA-5p2g-fcmc-qvqq"]);
+    expect(workspace.auditConfig.ignoreGhsas).toEqual([
+      exemptGhsa, "GHSA-5p2g-fcmc-qvqq", "GHSA-86w9-cpqp-85rv",
+    ]);
     const manifest = join(repo, "tools/security-audit/package.json");
     expect(existsSync(manifest)).toBe(true);
     expect(JSON.parse(readFileSync(manifest, "utf8")).devDependencies.pnpm).toBe("11.25.0");

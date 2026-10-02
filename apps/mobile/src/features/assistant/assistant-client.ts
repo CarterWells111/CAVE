@@ -1,4 +1,5 @@
 import { AssistantRequestSchema, AssistantResponseSchema, AssistantUsageSchema, type AssistantUsage, type AssistantRequest, type AssistantResponse } from "@cave/contracts";
+import { isAllowedGatewayUrl } from "../../config/gateway";
 import { isChineseProse } from "./assistant-language";
 
 export type AssistantRequester = (input: AssistantRequest, signal: AbortSignal) => Promise<AssistantResponse>;
@@ -16,8 +17,7 @@ export function createAssistantClient(options: {
   return async (input, signal) => {
     const parsed = AssistantRequestSchema.safeParse(input);
     if (!parsed.success) throw new AssistantClientError("invalid-input");
-    const url = new URL(options.baseUrl);
-    if (url.protocol !== "https:" || url.username || url.password || url.search || url.hash) throw new AssistantClientError("configuration");
+    if (!isAllowedGatewayUrl(options.baseUrl, __DEV__)) throw new AssistantClientError("configuration");
     const controller = new AbortController();
     const abort = () => controller.abort();
     signal.addEventListener("abort", abort, { once: true });
@@ -79,8 +79,7 @@ export const previewAssistant: AssistantRequester = async (input, signal) => {
 };
 
 export async function fetchAssistantUsage(options: { baseUrl: string; getAccessToken(): Promise<string>; signal: AbortSignal; fetch?: typeof globalThis.fetch }): Promise<AssistantUsage> {
-  const url = new URL(options.baseUrl);
-  if (url.protocol !== "https:" || url.username || url.password || url.search || url.hash) throw new AssistantClientError("configuration");
+  if (!isAllowedGatewayUrl(options.baseUrl, __DEV__)) throw new AssistantClientError("configuration");
   const token = await options.getAccessToken();
   if (options.signal.aborted) throw new AssistantClientError("cancelled");
   const response = await (options.fetch ?? globalThis.fetch)(`${options.baseUrl.replace(/\/+$/u, "")}/v1/assistant/usage`, {

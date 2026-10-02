@@ -52,5 +52,52 @@
 				"period": 60
 			}
 		}
-	]
+	],
+	"env": {
+		"staging": {
+			"name": "neijie-cave-gateway-staging",
+			"workers_dev": false,
+			"vars": {
+				"MODEL_MODE": "live",
+				"ROOMS_ENABLED": "true",
+				"ROOMS_CREATOR_ACCOUNT_IDS": "*",
+				"MODEL_BASE_URL": "https://api.deepseek.com",
+				"MODEL_NAME": "deepseek-v4-flash",
+				"ASSISTANT_HOURLY_LIMIT": "5",
+				"ASSISTANT_DAILY_LIMIT": "25",
+				"PROMPT_VERSION": "2026-09-24.1",
+				"POLICY_VERSION": "2026-08-26.1"
+			},
+			"routes": [
+				{
+					"pattern": "staging-api.neijiecave.com",
+					"zone_name": "neijiecave.com",
+					"custom_domain": true
+				}
+			],
+			"d1_databases": [
+				{
+					"binding": "AUTH_DB",
+					"database_name": "neijie-cave-auth-staging",
+					"database_id": "014af9e1-ebb2-4b46-aaf2-c9ce2b4de6e6",
+					"migrations_dir": "migrations"
+				}
+			],
+			"triggers": {
+				"crons": ["17 3 * * *"]
+			},
+			"ratelimits": [
+				{
+					"name": "TURN_RATE_LIMITER",
+					"namespace_id": "1101",
+					"simple": { "limit": 10, "period": 60 }
+				},
+				{
+					"name": "DEBRIEF_RATE_LIMITER",
+					"namespace_id": "1102",
+					"simple": { "limit": 5, "period": 60 }
+				}
+			]
+		}
+	}
 }
