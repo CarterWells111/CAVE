@@ -63,6 +63,17 @@ node scripts/start-mobile.mjs dev-staging --print-env
 
 本地 Gateway 的身份验证仍需下文所列 Secret；Expo Go 无法替代 SQLCipher、SecureStore、本地迁移或删除恢复的原生验证。开发包 staging 的 AI 模式及服务状态由 staging Worker 决定；密钥不可放入移动端。团队使用和构建环境见[AI 服务配置](../operations/ai-service.md)。
 
+### iPhone 热点连接 Development Build
+
+后续真机开发统一由 iPhone 开启个人热点、电脑连接该热点，再从仓库根目录用电脑在热点中的 IPv4 地址启动 Metro。2026-10-02 验收时电脑的 WLAN 地址为 `172.20.10.4`，但重连后可能变化；先用 `Get-NetIPConfiguration` 核对当前地址，不要固定复用示例值。
+
+```powershell
+$env:REACT_NATIVE_PACKAGER_HOSTNAME = "<电脑当前热点 IPv4>"
+node scripts/start-mobile.mjs dev-staging --host lan --port 8084
+```
+
+在 iPhone 的“内界 CAVE Dev”首页选择手动输入 URL，填 `http://<电脑当前热点 IPv4>:8084`；自动发现列表为空时也可手动连接。先用 iPhone Safari 打开同一地址的 `/status`，应显示 `packager-status:running`。此启动方式的 Gateway 仍是 staging。当前开发包加载 Tailscale `100.x` 的 HTTP Metro 地址会被 iOS App Transport Security 拒绝；此前的 Tailscale TCP 转发已关闭。热点地址变化后，停止 Metro，更新上述环境变量并重新启动。
+
 ## 官方网站
 
 ```bash

@@ -43,8 +43,8 @@
 - [x] 远端 main 已拉取并创建独立工作区/分支。
 - [x] A：staging Gateway 已部署。
 - [x] B：移动端环境选择已合入。
-- [x] 集成代码与环境验收（iOS 原生包待签名）。
-- [x] iOS development build 已生成 Ad Hoc IPA；真机安装与房间端到端体验待验收。
+- [x] 集成代码与环境验收；iOS 原生包已签名构建。
+- [x] iOS development build 已生成 Ad Hoc IPA，并在真机通过热点 Metro 打开；房间端到端体验待验收。
 
 ## 2026-09-29 阶段记录
 
@@ -87,3 +87,9 @@
 - 仅将 `development` 的 iOS Bundle ID 改为 `com.neijie.cave.dev`，继续使用“内界 CAVE Dev”显示名与 staging 默认 Gateway。`acceptance`、`preview`、`production` 保留 `com.neijie.cave`，以维持现有升级验收路径。
 - PR #54 的代码提交 `d79cabf` 三项 CI 检查全部通过。配置凭据时显式设置 `EAS_BUILD_PROFILE=development`，在 Apple `Zhiqi Liang / GS99UP3542` 团队注册 `com.neijie.cave.dev`，Ad Hoc 描述文件 `B6FRR5R786` 包含两台已登记 iPhone。首次只传 EAS `--profile development` 的凭据命令误读旧 ID；重新配置后输出确认了新 ID 和团队。
 - [EAS iOS development 构建 `5705c7ca-059e-41df-9614-fbbf1c373938`](https://expo.dev/accounts/carter_wells/projects/cave/builds/5705c7ca-059e-41df-9614-fbbf1c373938) 使用提交 `d79cabf`、staging Gateway、内部 Ad Hoc 分发，状态 `FINISHED`。实际 IPA `Info.plist` 已核对 `CFBundleIdentifier=com.neijie.cave.dev`、`CFBundleDisplayName=内界 CAVE Dev`、`CFBundleName=CAVE`。真机同机安装及业务流程仍待设备端验收。
+
+## 2026-10-02 Development Build 热点连接
+
+- 用户选择后续真机调试优先由 iPhone 开个人热点、电脑加入热点，再使用电脑的热点 IPv4 和 Metro 端口 `8084`。本次电脑地址为 `172.20.10.4`；地址随网络重连可能变化，不作为固定配置。
+- Tailscale `100.80.218.41:8084` 的 HTTP manifest 在电脑侧可访问，但 iPhone Development Build 报 App Transport Security 要求安全连接。Tailscale HTTPS Serve 尚未在 tailnet 启用；已关闭此前的 TCP 转发，改用热点局域网连接，无需新原生构建。
+- iPhone Safari 访问 `http://172.20.10.4:8084/status` 显示 `packager-status:running`；Metro manifest 和 iOS JS 包均返回 HTTP 200，且 manifest 指向该热点地址。用户手动输入 `http://172.20.10.4:8084` 后确认 Development Build 已打开应用。Gateway 仍为 staging；双人房间完整流程及真实模型报告质量尚待真机验收。
