@@ -59,6 +59,7 @@ export function AdultGatePage({ onConfirmAdult, onUnderage, onSignIn }: AdultGat
         onAction={() => runDecision("adult", onConfirmAdult)}
       />
       <JourneyAction
+        compact
         disabled={pendingDecision !== null}
         errorMessage="暂时无法继续，请重试。"
         label="我未满 18 岁"

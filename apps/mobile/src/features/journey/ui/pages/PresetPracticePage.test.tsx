@@ -17,6 +17,7 @@ test("keeps each replacement stage card visible with the nearest correction", as
 
   fireEvent.press(screen.getByText("开始情境练习"));
   await waitFor(() => expect(reveal).toHaveBeenLastCalledWith("practice-stage-need", { mode: "nearest" }));
+  fireEvent.press(screen.getByRole("button", { name: "此刻的需要，请选择" }));
   fireEvent.press(screen.getByText("整体推进得有点快"));
   await waitFor(() => expect(reveal).toHaveBeenLastCalledWith("practice-stage-editable-phrase", { mode: "nearest" }));
   fireEvent.press(screen.getByText("先对着镜子说一遍"));
@@ -44,9 +45,11 @@ function reachCompleted(
 ) {
   render(<PresetPracticePage catalog={catalog} onComplete={onComplete} {...callbacks} />);
   fireEvent.press(screen.getByText("开始情境练习"));
+  fireEvent.press(screen.getByRole("button", { name: "此刻的需要，请选择" }));
   fireEvent.press(screen.getByText("整体推进得有点快"));
   fireEvent.press(screen.getByText("就用这句话"));
   fireEvent.press(screen.getByText("继续"));
+  fireEvent.press(screen.getByRole("button", { name: "停下后的需要，请选择" }));
   fireEvent.press(screen.getByText("安静待一会儿"));
   fireEvent.press(screen.getByText("跳过不太理想的回应"));
 }
@@ -57,13 +60,14 @@ test("always identifies the experience as preset and never implies AI or recordi
   expect(screen.getByText("预设对话，不使用 AI")).toBeTruthy();
   expect(screen.getByText("改变主意，也属于过程")).toBeTruthy();
   expect(screen.getByText("暂停不需要道歉。")).toBeTruthy();
-  expect(screen.getByText("练习前灵感")).toBeTruthy();
+  expect(screen.queryByText(/练习不是为了表现得正确/u)).toBeNull();
   expect(screen.queryByText(/正在生成|输入中|麦克风/u)).toBeNull();
-  expect(screen.getAllByRole("button")).toHaveLength(1);
+  expect(screen.getAllByRole("button")).toHaveLength(2);
   fireEvent.press(screen.getByText("开始情境练习"));
   expect(screen.queryByText("改变主意，也属于过程")).toBeNull();
   expect(screen.queryByText("这次想用哪一种靠近来练习？")).toBeNull();
   expect(screen.getByText("你和对方正在按照已经商量好的方式亲近。开始时，这是你愿意的。")).toBeTruthy();
+  fireEvent.press(screen.getByRole("button", { name: "此刻的需要，请选择" }));
   fireEvent.press(screen.getByText("整体推进得有点快"));
   fireEvent.press(screen.getByText("先对着镜子说一遍"));
   expect(screen.getByText("这次练习不会录音、不会请求麦克风权限，也不会识别你说了什么。")).toBeTruthy();
@@ -78,6 +82,7 @@ test("runs the respectful deterministic path and returns the user's edited phras
   render(<PresetPracticePage catalog={catalog} onComplete={onComplete} />);
 
   fireEvent.press(screen.getByText("开始情境练习"));
+  fireEvent.press(screen.getByRole("button", { name: "此刻的需要，请选择" }));
   fireEvent.press(screen.getByText("整体推进得有点快"));
   fireEvent.press(screen.getByText("改成我的说法"));
   fireEvent.changeText(screen.getByLabelText("我的表达句"), "请先慢一点。");
@@ -85,6 +90,7 @@ test("runs the respectful deterministic path and returns the user's edited phras
   expect(screen.getByText("一种尊重边界的回应")).toBeTruthy();
   expect(screen.queryByText("停下来以后，此刻的你更想怎样？")).toBeNull();
   fireEvent.press(screen.getByText("继续"));
+  fireEvent.press(screen.getByRole("button", { name: "停下后的需要，请选择" }));
   fireEvent.press(screen.getByText("安静待一会儿"));
   fireEvent.press(screen.getByText("跳过不太理想的回应"));
   fireEvent.press(screen.getByText("继续"));
@@ -142,9 +148,11 @@ test("finishes standalone practice without claiming persistence or awarding an e
   );
 
   fireEvent.press(screen.getByText("开始情境练习"));
+  fireEvent.press(screen.getByRole("button", { name: "此刻的需要，请选择" }));
   fireEvent.press(screen.getByText("整体推进得有点快"));
   fireEvent.press(screen.getByText("就用这句话"));
   fireEvent.press(screen.getByText("继续"));
+  fireEvent.press(screen.getByRole("button", { name: "停下后的需要，请选择" }));
   fireEvent.press(screen.getByText("安静待一会儿"));
   fireEvent.press(screen.getByText("跳过不太理想的回应"));
   fireEvent.press(screen.getByRole("button", { name: "继续" }));
@@ -159,6 +167,7 @@ test("returns safely when mirror practice is skipped from phrase editing", () =>
   render(<PresetPracticePage catalog={catalog} onComplete={jest.fn()} />);
 
   fireEvent.press(screen.getByText("开始情境练习"));
+  fireEvent.press(screen.getByRole("button", { name: "此刻的需要，请选择" }));
   fireEvent.press(screen.getByText("还不知道接下来想怎样"));
   fireEvent.press(screen.getByText("先对着镜子说一遍"));
   fireEvent.press(screen.getByText("暂时跳过"));
@@ -175,6 +184,7 @@ test("returns through phrase editing, mirror practice, and the actual visited st
   );
 
   fireEvent.press(screen.getByText("开始情境练习"));
+  fireEvent.press(screen.getByRole("button", { name: "此刻的需要，请选择" }));
   fireEvent.press(screen.getByText("整体推进得有点快"));
   fireEvent.press(screen.getByText("改成我的说法"));
   expect(screen.getByLabelText("我的表达句")).toBeTruthy();
@@ -200,9 +210,11 @@ test("returns from completion actions to review before the preceding practice st
     </JourneyStepBackHarness>,
   );
   fireEvent.press(screen.getByText("开始情境练习"));
+  fireEvent.press(screen.getByRole("button", { name: "此刻的需要，请选择" }));
   fireEvent.press(screen.getByText("整体推进得有点快"));
   fireEvent.press(screen.getByText("就用这句话"));
   fireEvent.press(screen.getByText("继续"));
+  fireEvent.press(screen.getByRole("button", { name: "停下后的需要，请选择" }));
   fireEvent.press(screen.getByText("安静待一会儿"));
   fireEvent.press(screen.getByText("跳过不太理想的回应"));
   fireEvent.press(screen.getByText("继续"));
@@ -228,9 +240,11 @@ test("starts with the generic scenario without loading or requesting a specific 
 test("asks for fresh consent before substitute hugging", () => {
   render(<PresetPracticePage catalog={catalog} onComplete={jest.fn()} />);
   fireEvent.press(screen.getByText("开始情境练习"));
+  fireEvent.press(screen.getByRole("button", { name: "此刻的需要，请选择" }));
   fireEvent.press(screen.getByText("想换一种亲近方式"));
   fireEvent.press(screen.getByText("就用这句话"));
   fireEvent.press(screen.getByText("继续"));
+  fireEvent.press(screen.getByRole("button", { name: "停下后的需要，请选择" }));
   fireEvent.press(screen.getByText("如果双方都愿意，只抱一会儿"));
 
   expect(screen.getByText("现在可以抱你吗？")).toBeTruthy();
@@ -241,9 +255,11 @@ test("selects and edits an optional disappointed response before final completio
   const onComplete = jest.fn();
   render(<PresetPracticePage catalog={catalog} onComplete={onComplete} />);
   fireEvent.press(screen.getByText("开始情境练习"));
+  fireEvent.press(screen.getByRole("button", { name: "此刻的需要，请选择" }));
   fireEvent.press(screen.getByText("想先暂停，再感受一下"));
   fireEvent.press(screen.getByText("就用这句话"));
   fireEvent.press(screen.getByText("继续"));
+  fireEvent.press(screen.getByRole("button", { name: "停下后的需要，请选择" }));
   fireEvent.press(screen.getByText("保持一点距离"));
   fireEvent.press(screen.getByText("也练习一次不太理想的回应"));
   expect(screen.getByText("可是我们刚刚不是还好好的吗？")).toBeTruthy();
@@ -303,9 +319,11 @@ test("ends ordinary practice at the safety branch and only offers explicit suppo
   />);
 
   fireEvent.press(screen.getByText("开始情境练习"));
+  fireEvent.press(screen.getByRole("button", { name: "此刻的需要，请选择" }));
   fireEvent.press(screen.getByText("不想继续正在发生的事"));
   fireEvent.press(screen.getByText("就用这句话"));
   fireEvent.press(screen.getByText("继续"));
+  fireEvent.press(screen.getByRole("button", { name: "停下后的需要，请选择" }));
   fireEvent.press(screen.getByText("结束这个夜晚的亲密接触"));
   fireEvent.press(screen.getByText("也练习一次不太理想的回应"));
   expect(screen.queryByText("对方仍在说服、继续触碰或阻止离开。")).toBeNull();
@@ -358,6 +376,7 @@ test("uses full-width flexible actions and semantic controls for large text layo
 test("keeps the editable phrase keyboard-friendly and text-scalable", () => {
   render(<PresetPracticePage catalog={catalog} onComplete={jest.fn()} />);
   fireEvent.press(screen.getByText("开始情境练习"));
+  fireEvent.press(screen.getByRole("button", { name: "此刻的需要，请选择" }));
   fireEvent.press(screen.getByText("整体推进得有点快"));
   fireEvent.press(screen.getByText("改成我的说法"));
 
@@ -375,6 +394,7 @@ test("reveals only when the visible practice step changes", async () => {
 
   fireEvent.press(screen.getByText("开始情境练习"));
   await waitFor(() => expect(reveal).toHaveBeenCalledTimes(1));
+  fireEvent.press(screen.getByRole("button", { name: "此刻的需要，请选择" }));
   fireEvent.press(screen.getByText("整体推进得有点快"));
   await waitFor(() => expect(reveal).toHaveBeenCalledTimes(2));
 
@@ -386,4 +406,34 @@ test("reveals only when the visible practice step changes", async () => {
   await waitFor(() => expect(reveal).toHaveBeenCalledTimes(3));
   fireEvent.press(screen.getByText("暂时跳过"));
   await waitFor(() => expect(reveal).toHaveBeenCalledTimes(4));
+});
+
+
+test("cancelling a need selection preserves the stage and choosing keeps the original phrase", () => {
+  const onComplete = jest.fn();
+  render(<PresetPracticePage catalog={catalog} onComplete={onComplete} />);
+  fireEvent.press(screen.getByText("开始情境练习"));
+  const label = "此刻的需要";
+  fireEvent.press(screen.getByRole("button", { name: `${label}，请选择` }));
+  expect(screen.getAllByRole("radio")).toHaveLength(6);
+  fireEvent.press(screen.getByRole("button", { name: `关闭${label}` }));
+  expect(screen.queryByText("把需要说出来")).toBeNull();
+  expect(screen.getByRole("button", { name: `${label}，请选择` })).toBeTruthy();
+  expect(onComplete).not.toHaveBeenCalled();
+  fireEvent.press(screen.getByRole("button", { name: `${label}，请选择` }));
+  fireEvent.press(screen.getByRole("radio", { name: "整体推进得有点快" }));
+  expect(screen.getByText("我感觉现在推进得有点快，我有些不安心。我们可以慢慢来吗？")).toBeTruthy();
+  expect(screen.queryByRole("radio")).toBeNull();
+});
+
+test("standalone practice uses one header back action and keeps help out of the flow", () => {
+  const onExit = jest.fn();
+  render(<PresetPracticePage context="standalone" onExit={onExit} catalog={catalog} onComplete={jest.fn()} />);
+  expect(screen.getAllByRole("button", { name: "返回练习入口" })).toHaveLength(1);
+  fireEvent.press(screen.getByRole("button", { name: "沟通练习，帮助" }));
+  expect(screen.getByText(/这里使用本机预设分支/u)).toBeTruthy();
+  fireEvent.press(screen.getByRole("button", { name: "关闭沟通练习 · 帮助" }));
+  expect(screen.getByText("开始情境练习")).toBeTruthy();
+  fireEvent.press(screen.getByRole("button", { name: "返回练习入口" }));
+  expect(onExit).toHaveBeenCalledTimes(1);
 });

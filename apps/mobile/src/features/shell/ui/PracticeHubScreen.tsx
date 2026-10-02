@@ -6,9 +6,10 @@ import { Card } from "../../../core/ui/Card";
 import { EmptyState } from "../../../core/ui/EmptyState";
 import { ErrorState } from "../../../core/ui/ErrorState";
 import { StatusBanner } from "../../../core/ui/StatusBanner";
+import { ActionRow } from "../../../core/ui/action-row";
+import { HelpText, PageHeader } from "../../../core/ui/page-header";
 import {
   SectionHeading,
-  ShellFrame,
   ShellLoading,
   SupportingText,
   type ShellLoadState,
@@ -29,9 +30,9 @@ type Props = {
 export function PracticeHubScreen({ loadState = "ready", onRetry, onStartPhrase, onStartPractice, onStartScenario, recentPhrase, scenarios }: Props) {
   const theme = useTheme();
   return (
-    <ShellFrame title="练习">
+    <View style={{ gap: theme.space.lg }}>
+      <PageHeader title="练习" help={<HelpText>所有分支都已写在本机内容中，不会生成对话，也不会录音。</HelpText>} />
       <StatusBanner message="预设对话，不使用 AI" variant="info" />
-      <SupportingText>所有分支都已写在本机内容中，不会生成对话，也不会录音。</SupportingText>
       {recentPhrase && onStartPhrase ? (
         <Card accessible={false}>
           <SectionHeading>来自刚完成的旅程</SectionHeading>
@@ -52,16 +53,13 @@ export function PracticeHubScreen({ loadState = "ready", onRetry, onStartPhrase,
         <View style={{ gap: theme.space.md }}>
           <SectionHeading>选择一个情境</SectionHeading>
           {scenarios.length > 0 ? scenarios.map((scenario) => (
-            <Card accessible={false} key={scenario.id}>
-              <SectionHeading>{scenario.title}</SectionHeading>
-              <SupportingText>{scenario.statusLabel}</SupportingText>
-              <Button label={`开始${scenario.title}`} onPress={() => onStartScenario(scenario.id)} />
-            </Card>
+            <ActionRow key={scenario.id} title={scenario.title} subtitle={scenario.statusLabel}
+              accessibilityLabel={`开始${scenario.title}`} onPress={() => onStartScenario(scenario.id)} />
           )) : (
             <EmptyState actionLabel="开始通用预设练习" message="仍可进入通用的本机预设练习。" onAction={onStartPractice} title="没有可用的预设情境" />
           )}
         </View>
       ) : null}
-    </ShellFrame>
+    </View>
   );
 }

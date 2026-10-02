@@ -9,7 +9,7 @@ test("shows a compact brand/account header and seven journey destinations withou
   render(<HomeScreen account={{ displayName: "阿岚", onOpen, status: "ready" }} {...callbacks} />);
   expect(screen.getByText("CAVE 内界")).toBeTruthy();
   expect(screen.getByText("选择一段旅程")).toBeTruthy();
-  expect(screen.getAllByRole("button")).toHaveLength(8);
+  expect(screen.getAllByRole("button")).toHaveLength(9);
   fireEvent.press(screen.getByRole("button", { name: "打开旅程 03，样板" }));
   fireEvent.press(screen.getByRole("button", { name: "体验第一次过夜" }));
   fireEvent.press(screen.getByRole("button", { name: "查看阿岚的账号" }));
@@ -60,4 +60,17 @@ test("renders loading and retryable errors without exposing map nodes", () => {
   expect(screen.queryByText("旅程 01")).toBeNull();
   rerender(<HomeScreen {...callbacks} />);
   expect(screen.getByText("旅程 01")).toBeTruthy();
+});
+
+
+test("map guidance opens and closes without opening or changing a journey", () => {
+  const callbacks = actions();
+  render(<HomeScreen {...callbacks} />);
+  expect(screen.queryByText("没有固定顺序，从此刻想探索的地方开始。")).toBeNull();
+  fireEvent.press(screen.getByRole("button", { name: "选择一段旅程，帮助" }));
+  expect(screen.getByText("没有固定顺序，从此刻想探索的地方开始。")).toBeTruthy();
+  fireEvent.press(screen.getByRole("button", { name: "关闭选择一段旅程 · 帮助" }));
+  expect(screen.getByText("旅程 06")).toBeTruthy();
+  expect(callbacks.onOpenSample).not.toHaveBeenCalled();
+  expect(callbacks.onOpenScenario).not.toHaveBeenCalled();
 });

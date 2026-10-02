@@ -407,7 +407,6 @@ export function OvernightPage({
       ) : null}
 
       <View style={styles.footer}>
-        <Text style={styles.footerNote}>这些感受可以同时被留下，不需要现在整理成一个确定答案。</Text>
         <Pressable
           accessibilityLabel="打开内界官网信息来源"
           accessibilityRole="link"

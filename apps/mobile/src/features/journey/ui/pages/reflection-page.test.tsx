@@ -61,7 +61,10 @@ test("renders exactly five ordered fronts with a full-width final card and no Pa
   expect(screen.getAllByText("尚未记录")).toHaveLength(5);
   for (const title of titles) expect(screen.getByText(title)).toBeTruthy();
   expect(screen.getByText("你准备了多少，不代表你做得好不好。")).toBeTruthy();
-  expect(screen.getByText("答案可以随时改变；这里不会生成分数或准备度结论。")).toBeTruthy();
+  expect(screen.queryByText(/答案可以随时改变；这里不会生成分数或准备度结论/u)).toBeNull();
+  fireEvent.press(screen.getByRole("button", { name: "你准备了多少，不代表你做得好不好。，帮助" }));
+  expect(screen.getByText(/答案可以随时改变；这里不会生成分数或准备度结论/u)).toBeTruthy();
+  fireEvent.press(screen.getByRole("button", { name: "关闭你准备了多少，不代表你做得好不好。 · 帮助" }));
   expect(screen.queryByText("这是你刚才留下的答案")).toBeNull();
   expect(StyleSheet.flatten(screen.getByTestId("reflection-card-front-motivation").props.style).width).toBe("47.5%");
   expect(StyleSheet.flatten(screen.getByTestId("reflection-card-front-journal").props.style).width).toBe("100%");

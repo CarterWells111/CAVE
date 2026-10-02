@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type PropsWithChildren, type RefObject } from "react";
-import { BackHandler, KeyboardAvoidingView, PanResponder, Text, View } from "react-native";
+import { BackHandler, KeyboardAvoidingView, PanResponder, View } from "react-native";
 
 import { useTheme } from "../../../core/design/theme-provider";
-import { Card } from "../../../core/ui/Card";
+import { HelpText, PageHeader } from "../../../core/ui/page-header";
 import { ProgressHeader } from "../../../core/ui/ProgressHeader";
 import { StatusBanner } from "../../../core/ui/StatusBanner";
 import { JOURNEY_PAGE_IDS } from "../application/journey-navigation";
@@ -10,6 +10,14 @@ import type { JourneyPageId } from "../domain/types";
 import type { JourneyAction as JourneyActionCallback } from "./journey-ui-contracts";
 import type { JourneyRuntimeNotice } from "./journey-ui-contracts";
 import { JourneyGuidedScrollScreen } from "./guided-scroll-screen";
+
+const PAGE_HELP: Record<JourneyPageId, string> = {
+  "body-knowledge": "按自己的节奏阅读身体与安全知识。外阴结构图可选，不查看也可以继续。",
+  overnight: "点击卡牌，留下期待与在意，也可以返回修改。这些感受可以同时被留下，不需要现在整理成一个确定答案。",
+  "behavior-map": "点击卡牌，分别选择此刻对每种行为的感受。可以修改或暂不选择；更多具体行为会先征求你的查看意愿。",
+  reflection: "可以按自己的节奏阅读。此刻的感受不构成承诺，之后仍可以改变主意。",
+  "final-preparation": "回顾一下，留下想保存的内容。七段内容排成一列。你可以编辑，也可以暂时删除；删除后的内容会变灰，确认前随时可以恢复。",
+};
 
 export const JOURNEY_PAGE_TITLES: Record<JourneyPageId, string> = {
   "body-knowledge": "身体与安全知识",
@@ -184,15 +192,9 @@ export function JourneyScreenShell({
           testID="journey-scroll"
         >
           {!immersiveContent ? (
-            <Card accessible={false} testID="journey-title-card">
-              <Text
-                accessibilityRole="header"
-                selectable
-                style={{ ...theme.typography.title, color: theme.color.text }}
-              >
-                {JOURNEY_PAGE_TITLES[pageId]}
-              </Text>
-            </Card>
+            <View testID="journey-title-card">
+              <PageHeader title={JOURNEY_PAGE_TITLES[pageId]} help={<HelpText>{PAGE_HELP[pageId]}</HelpText>} />
+            </View>
           ) : null}
           {runtimeNotice && !immersiveContent ? (
             <StatusBanner

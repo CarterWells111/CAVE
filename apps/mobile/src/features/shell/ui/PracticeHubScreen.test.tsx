@@ -10,7 +10,10 @@ test("always identifies local preset practice and opens only user-selected scena
     scenarios={[{ id: "pause", title: "练习说暂停", statusLabel: "本地预设" }]}
   />);
   expect(screen.getByText("预设对话，不使用 AI")).toBeTruthy();
+  expect(screen.queryByText("所有分支都已写在本机内容中，不会生成对话，也不会录音。")).toBeNull();
+  fireEvent.press(screen.getByRole("button", { name: "练习，帮助" }));
   expect(screen.getByText("所有分支都已写在本机内容中，不会生成对话，也不会录音。")).toBeTruthy();
+  fireEvent.press(screen.getByRole("button", { name: "关闭练习 · 帮助" }));
   expect(screen.queryByText(/正在生成|麦克风|输入中/u)).toBeNull();
   fireEvent.press(screen.getByRole("button", { name: "开始练习说暂停" }));
   expect(onStartScenario).toHaveBeenCalledWith("pause");

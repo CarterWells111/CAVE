@@ -4,7 +4,7 @@ import { AccessibilityInfo, Text, View } from "react-native";
 
 import { useTheme } from "../../../../core/design/theme-provider";
 import { Button } from "../../../../core/ui/Button";
-import { SecondaryButton } from "../../../../core/ui/secondary-button";
+import { TextAction } from "../../../../core/ui/text-action";
 import { MAX_STANDALONE_PRACTICE_PHRASE_LENGTH } from "../../application/standalone-practice-route";
 import type { CommunicationSectionId, JourneyDraft, SharingVisibility } from "../../domain/types";
 import { CommunicationDraftGrid, type CommunicationDraftGridSection } from "../components/CommunicationDraftGrid";
@@ -215,7 +215,7 @@ export function FinalPreparationPage({ draft, onDone, onEdit, onFinish, onPracti
           loading={savedAction === "practice"}
           onPress={() => { void runSavedAction("practice"); }}
         />
-        <SecondaryButton
+        <TextAction
           disabled={savedAction !== undefined}
           label="暂时不用，完成旅程"
           loading={savedAction === "done"}
@@ -230,12 +230,6 @@ export function FinalPreparationPage({ draft, onDone, onEdit, onFinish, onPracti
       <View style={{ alignItems: "center", flexDirection: "row", justifyContent: "space-between" }}>
         <Text style={{ ...theme.typography.caption, color: theme.color.textMuted }}>整理草稿</Text>
       </View>
-      <Text accessibilityRole="header" style={{ ...theme.typography.title, color: theme.color.text }}>
-        回顾一下，留下想保存的内容
-      </Text>
-      <Text selectable style={{ ...theme.typography.body, color: theme.color.textSecondary }}>
-        七段内容排成一列。你可以编辑，也可以暂时删除；删除后的内容会变灰，确认前随时可以恢复。
-      </Text>
 
       <CommunicationDraftGrid
         dense
