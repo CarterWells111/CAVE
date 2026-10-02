@@ -29,7 +29,7 @@
 - Journey map source, backend/contracts/content, app.config.ts and pnpm-lock.yaml have no changes against origin/main. Original checkout changes remain preserved.
 - Metro running locally on port 8084 from this integration worktree, using scripts/start-mobile.mjs dev-staging --lan --port 8084 with hotspot host 172.20.10.4. Manifest environment development; status running, manifest and iOS bundle HTTP 200; launchAsset points to 172.20.10.4:8084. Gateway staging, assistant live, acceptance tools disabled.
 - Device reported ATS rejection for previous HTTP address 192.168.192.62. Automatic approval rejected an Expo HTTPS tunnel because it would expose the development bundle through third-party infrastructure. User explicitly chose pure local iPhone hotspot; computer connected and server restarted with updated host. No tunnel started; final phone loading remains pending user confirmation.
-- Keep all work local: no push, PR, OTA publication or native rebuild. Runtime screenshots and native device verification pending user development-build acceptance.
+- Initial delivery stayed local. User subsequently authorized creating a PR and merging remote main after review and CI pass. No OTA publication or native rebuild; runtime screenshots and native device verification remain pending user development-build acceptance.
 
 ## Implementation sessions
 | Area | Thread | Worktree | Branch |
