@@ -1,11 +1,11 @@
 {
   "reviewer": "annie",
   "reviewerRole": "正式内容审核人（用户确认）",
-  "reviewedAt": "2026-10-04T21:58:33Z",
+  "reviewedAt": "2026-10-04T21:15:10Z",
   "reviewedVersion": "main-3130fbc",
   "reviewConclusion": "正式内容审核通过；用户确认审核人及内容与原记录一致",
   "evidenceBasis": "用户在本次会话确认已完成正式内容审核，并确认审核人及内容与原记录一致、审核通过。",
-  "dateMeaning": "reviewedAt 为此次正式审核通过的确认记录时间；未单独提供原始审核完成日期。",
+  "dateMeaning": "reviewedAt 使用 GitHub 服务端 UTC 时间记录此次正式审核通过的确认；未单独提供原始审核完成日期。",
   "contentBaseline": "3130fbcecda6d748266dfb2b2e791a90dea44e2a",
   "previousReviewVersion": "2026-08-28-review-1",
   "scope": "将原先仅内测通过的 36 项审核元数据更新为正式审核通过；内容文本与已审核的其余 56 项记录保持原样。",

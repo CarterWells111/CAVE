@@ -29,7 +29,7 @@ describe("private assistant", () => {
   it("keeps verified journey knowledge references separate from journal record links", async () => {
     const candidate = { status: "ok", message: "你可以暂停或返回。", observations: [{ text: "旅程帮助整理想法。", sourceRecordIds: ["app-journey-process"] }] };
     const journey: AssistantRequest = { mode: "journey", consent: true, records: [], journeyId: "first-overnight", question: "旅程怎么使用？" };
-    expect(await make(candidate)(journey)).toMatchObject({ status: "ok", message: "你可以暂停或返回。", observations: [], sources: [{ id: "app-journey-process" }] });
+    expect(await make(candidate)(journey)).toMatchObject({ status: "ok", message: "你可以暂停或返回。", observations: [], sources: expect.arrayContaining([expect.objectContaining({ id: "app-journey-process" })]) });
     expect(await make(candidate)(input)).toMatchObject({ status: "unavailable" });
     expect(await make({ ...candidate, observations: [{ text: "虚构引用", sourceRecordIds: ["invented"] }] })(journey)).toMatchObject({ status: "unavailable" });
   });
@@ -71,10 +71,12 @@ describe("private assistant", () => {
   });
   it("uses only publishable knowledge and permits server-owned process guidance", async () => {
     const journey: AssistantRequest = { mode: "journey", consent: true, records: [], journeyId: "first-overnight", question: "身体反应意味着同意吗？" };
-    expect(await make() (journey)).toMatchObject({ status: "unavailable" });
     const complete = vi.fn(async () => ({ status: "ok", message: "可以返回或暂停。", observations: [] }));
     const catalog = loadCatalog();
+    catalog.journey.knowledge.forEach(card => { card.reviewStatus = "internal_test_approved"; });
     const service = createAssistantService({ providerMode: "live", catalog, complete });
+    expect(await service(journey)).toMatchObject({ status: "unavailable" });
+    expect(complete).not.toHaveBeenCalled();
     expect(await service({ ...journey, question: "流程怎么使用？" })).toMatchObject({ status: "ok" });
     expect(complete.mock.calls.length).toBe(1);
     for (const question of ["做到一半想暂停，可以吗？", "怎么暂停？"]) {

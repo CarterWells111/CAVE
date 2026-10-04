@@ -41,7 +41,7 @@ describe("reviewed seven-screen journey catalogs", () => {
               reviewStatus: "reviewed",
               reviewer: "annie",
               reviewerRole: "正式内容审核人（用户确认）",
-              reviewedAt: "2026-10-04T21:58:33Z",
+              reviewedAt: "2026-10-04T21:15:10Z",
               reviewedVersion: "main-3130fbc",
               reviewConclusion: "正式内容审核通过；用户确认审核人及内容与原记录一致"
             }
