@@ -50,6 +50,29 @@ export function uploadedVersion(versions, sha) {
   return latest.id;
 }
 
+export function confirmedVersionUpload(result, versions, sha, accountId, workerName) {
+  const uploadedId = uploadedVersion(versions, sha);
+  const ansi = new RegExp(String.fromCharCode(27) + "\\[[0-9;]*m", "g");
+  const stdout = (result.stdout ?? "").replace(ansi, "");
+  const stderr = (result.stderr ?? "").replace(ansi, "");
+  const diagnostics = stdout + "\n" + stderr;
+  const reportedIds = [...stdout.matchAll(/Worker Version ID: ([a-f0-9-]{36})/g)];
+  assert.equal(reportedIds.length, 1, "Upload must report exactly one completed version");
+  assert.equal(reportedIds[0][1], uploadedId, "Reported upload differs from the tagged remote version");
+  assert.ok(stdout.includes("Uploaded " + workerName + " "), "Upload belongs to another Worker");
+  if (result.status !== 0) {
+    // Wrangler 4.126 queries the optional account preview URL after uploading.
+    // A restricted Worker token may reject that read despite a completed upload.
+    assert.equal(result.status, 1, "Interrupted uploads cannot be promoted");
+    assert.equal(result.signal, null, "Interrupted uploads cannot be promoted");
+    assert.match(accountId, /^[a-f0-9]{32}$/);
+    assert.equal((diagnostics.match(/\[ERROR\]/g) ?? []).length, 1, "Unexpected upload diagnostics");
+    assert.ok(diagnostics.includes("(/accounts/" + accountId + "/workers/subdomain) failed."), "Upload failed outside the optional preview lookup");
+    assert.match(diagnostics, /Authentication error \[code:\s*10000\]/, "Unexpected preview lookup failure");
+  }
+  return uploadedId;
+}
+
 export function pendingMigrations(files, query) {
   assert.ok(Array.isArray(query) && query.length === 1 && query[0].success === true);
   assert.ok(Array.isArray(query[0].results));
@@ -117,7 +140,7 @@ async function deploy(environment) {
   const gateway = fileURLToPath(new URL("../apps/gateway/", import.meta.url));
   const wrangler = resolve(gateway, "node_modules/wrangler/bin/wrangler.js");
   const envArgs = ["--env", environment === "staging" ? "staging" : ""];
-  const childEnv = { ...process.env, CLOUDFLARE_ACCOUNT_ID: config.account_id, WRANGLER_SEND_METRICS: "false" };
+  const childEnv = { ...process.env, CLOUDFLARE_ACCOUNT_ID: config.account_id, WRANGLER_SEND_METRICS: "false", WRANGLER_WRITE_LOGS: "false" };
   // Select environments using CLI arguments, without ambient Vite/Builds selectors.
   delete childEnv.CLOUDFLARE_ENV;
   delete childEnv.WRANGLER_ENV;
@@ -155,8 +178,14 @@ async function deploy(environment) {
   }
   // Version promotion preserves existing domains and cron schedules. It can use
   // per-Worker Editor access rather than permission to change zone routing.
-  run(["versions", "upload", "--tag", sha]);
-  const uploadedId = uploadedVersion(run(["versions", "list", "--json"], true), sha);
+  const upload = spawnSync(process.execPath, [wrangler, "versions", "upload", "--tag", sha, ...envArgs], {
+    cwd: gateway, env: childEnv, windowsHide: true, encoding: "utf8", maxBuffer: 2 * 1024 * 1024
+  });
+  const uploadedId = confirmedVersionUpload(upload, run(["versions", "list", "--json"], true), sha, config.account_id, target.name);
+  const candidate = run(["versions", "view", uploadedId, "--json"], true);
+  assert.equal(candidate.id, uploadedId);
+  assert.equal(candidate.annotations?.["workers/tag"], sha, "Uploaded Worker differs from the accepted commit");
+  if (upload.status !== 0) console.warn("Completed upload verified via API; optional account preview URL lookup was denied.");
   run(["versions", "deploy", `${uploadedId}@100%`, "--yes"]);
   const versionId = activeVersion(run(["deployments", "list", "--json"], true));
   assert.equal(versionId, uploadedId);

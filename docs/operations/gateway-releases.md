@@ -48,3 +48,8 @@ main 的工作流不会被后续 push 自动取消，避免中断迁移；排队
 Worker 回退由管理员核对兼容性后，使用 `recovery.json` 的 `previousVersionId`，对指定环境执行 `wrangler rollback <VERSION_ID>`（staging 必须加 `--env staging`）。生产仍指向配置顶层。追加式数据库迁移通常保留；Worker 回退不恢复 D1。
 
 如果需要恢复 D1，先判断恢复点之后的数据损失范围及暂停写入需求，确认后再使用记录的 `databaseBookmark`；不要机械地把代码回退和数据库恢复绑在一起。旧 artifact 过期后不能再直接晋级，需重新部署并验收 staging。
+
+
+## 上传后的预览地址权限错误
+
+Wrangler 4.126 在版本上传成功后会查询账号级 workers/subdomain 以打印可选预览地址。production 的 Worker Editor Token 可以完成上传，但缺少这个账号级读取权限时，CLI 会在已打印完成上传的版本号后以认证错误 10000 退出。发布脚本仅对这个明确路径、单一错误和正常退出码 1 做完成状态核对：CLI 报告的唯一版本、目标 Worker 名称与 versions list 中固定 SHA 的版本必须一致，并在晋级前再次通过 versions view 确认版本及 tag。中断、其他认证路径/错误码、多条错误、缺失上传标识或版本不一致仍会停止；不会绕过生产门禁或环境审批，也不调整域名、路由、cron 或预览设置。`tests/gateway-upload.test.ts` 覆盖成功与这些拒绝条件。Wrangler 诊断文件写入关闭；必要恢复信息仍由现有受控发布 artifact 保存。
