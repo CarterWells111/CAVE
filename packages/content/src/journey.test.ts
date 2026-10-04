@@ -1,19 +1,9 @@
 import { describe, expect, it } from "vitest";
 
 import { loadCatalog } from "./load";
-import { ContentValidationError, validateCatalog } from "./validate";
+import { validateCatalog } from "./validate";
 
-function productionIssueCodes() {
-  try {
-    validateCatalog(loadCatalog(), { mode: "production" });
-    return [];
-  } catch (error) {
-    expect(error).toBeInstanceOf(ContentValidationError);
-    return (error as ContentValidationError).issues.map(({ code }) => code);
-  }
-}
-
-describe("draft seven-screen journey catalogs", () => {
+describe("reviewed seven-screen journey catalogs", () => {
   it("records the approved review evidence for every journey reviewable", () => {
     const { journey } = loadCatalog();
     const reviewables = [
@@ -33,27 +23,27 @@ describe("draft seven-screen journey catalogs", () => {
     const internalTestApproved = reviewables.filter(
       ({ reviewStatus }) => reviewStatus === "internal_test_approved"
     );
-    const internalOnlyContentTypes = new Set(["MED", "EDU", "REVIEW"]);
-    const internalOnlyUxIds = new Set([
+    const formallyReviewedContentTypes = new Set(["MED", "EDU", "REVIEW"]);
+    const formallyReviewedUxIds = new Set([
       "behavior-oral-genital-contact",
       "draft-penetrative-sex"
     ]);
 
     expect(reviewables).toHaveLength(92);
-    expect(reviewed).toHaveLength(56);
-    expect(internalTestApproved).toHaveLength(36);
+    expect(reviewed).toHaveLength(92);
+    expect(internalTestApproved).toHaveLength(0);
     for (const entry of reviewables) {
-      const requiresInternalApproval =
-        internalOnlyContentTypes.has(entry.contentType) || internalOnlyUxIds.has(entry.id);
+      const completedFormalReview =
+        formallyReviewedContentTypes.has(entry.contentType) || formallyReviewedUxIds.has(entry.id);
       expect(entry, entry.id).toMatchObject(
-        requiresInternalApproval
+        completedFormalReview
           ? {
-              reviewStatus: "internal_test_approved",
+              reviewStatus: "reviewed",
               reviewer: "annie",
-              reviewerRole: "内部测试审核人",
-              reviewedAt: "2026-08-28T09:56:30Z",
-              reviewedVersion: "2026-08-28-review-1",
-              reviewConclusion: "仅内测通过；发布前仍需合格专家完成医疗、安全或性教育审核"
+              reviewerRole: "正式内容审核人（用户确认）",
+              reviewedAt: "2026-10-04T21:58:33Z",
+              reviewedVersion: "main-3130fbc",
+              reviewConclusion: "正式内容审核通过；用户确认审核人及内容与原记录一致"
             }
           : {
               reviewStatus: "reviewed",
@@ -103,14 +93,7 @@ describe("draft seven-screen journey catalogs", () => {
     expect(journey.practice.responses.every(({ scripted }) => scripted)).toBe(true);
   });
 
-  it("passes internal validation while production keeps internal-only approvals blocked", () => {
-    expect(() => validateCatalog(loadCatalog(), { mode: "draft" })).not.toThrow();
-    expect(() => validateCatalog(loadCatalog(), { mode: "internal" })).not.toThrow();
-
-    const issueCodes = productionIssueCodes();
-    expect(issueCodes).toHaveLength(36);
-    expect(issueCodes.every((code) => code === "INTERNAL_TEST_APPROVAL_ONLY")).toBe(true);
-    expect(issueCodes).not.toContain("DRAFT_CONTENT");
-    expect(issueCodes).not.toContain("EXPERT_REVIEW_PENDING");
+  it.each(["draft", "internal", "production"] as const)("passes %s validation with completed formal reviews", (mode) => {
+    expect(() => validateCatalog(loadCatalog(), { mode })).not.toThrow();
   });
 });

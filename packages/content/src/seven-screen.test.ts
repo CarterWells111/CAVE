@@ -50,12 +50,12 @@ describe("seven-screen content and source model", () => {
 
     expect(reviewables.every(({ page }) => Number.isInteger(page) && page >= 1 && page <= 7)).toBe(true);
     expect(reviewables.every(({ contentType }) => ["MED", "EDU", "UX", "REVIEW"].includes(contentType))).toBe(true);
-    expect(reviewables.filter(({ reviewStatus }) => reviewStatus === "reviewed")).toHaveLength(56);
+    expect(reviewables.filter(({ reviewStatus }) => reviewStatus === "reviewed")).toHaveLength(92);
     expect(
       reviewables.filter(({ reviewStatus }) => reviewStatus === "internal_test_approved")
-    ).toHaveLength(36);
+    ).toHaveLength(0);
     expect(
-      reviewables.every(({ reviewedAt }) => reviewedAt === "2026-08-28T09:56:30Z")
+      reviewables.every(({ reviewedAt }) => reviewedAt !== undefined && Number.isFinite(Date.parse(reviewedAt)))
     ).toBe(true);
 
     for (const item of reviewables) {
@@ -145,12 +145,14 @@ describe("seven-screen content and source model", () => {
     expect(issuesFor(catalog).filter(({ path }) => path.includes(String(copy.id)))).toEqual([]);
   });
 
-  it("passes draft validation while production blocks all internal-only approvals", () => {
+  it("keeps internal-only approvals blocked independently of source verification", () => {
     const catalog = loadCatalog();
 
     expect(() => validateCatalog(catalog, { mode: "draft" })).not.toThrow();
+    expect(issuesFor(catalog, "production")).toEqual([]);
+    catalog.journey.knowledge[0]!.reviewStatus = "internal_test_approved";
     const productionIssues = issuesFor(catalog, "production");
-    expect(productionIssues).toHaveLength(36);
+    expect(productionIssues).toHaveLength(1);
     expect(new Set(productionIssues.map(({ code }) => code))).toEqual(
       new Set(["INTERNAL_TEST_APPROVAL_ONLY"])
     );
