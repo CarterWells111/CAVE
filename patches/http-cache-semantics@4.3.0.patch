@@ -1,0 +1,26 @@
+diff --git a/index.js b/index.js
+index 56c26025074cbcf218e3ec4d810662da93f8024e..2a6f7071c7af6e2869bc1b23f3fd54d0605d320d 100644
+--- a/index.js
++++ b/index.js
+@@ -400,6 +400,21 @@ module.exports = class CachePolicy {
+             return this._evaluateRequestMissResult(req);
+         }
+ 
++        // Expired entries may allow max-stale; security-zeroed entries may not.
++        // Keep this aligned with the reuse prohibitions in maxAge().
++        if (
++            !this.storable() ||
++            this._rescc['no-cache'] ||
++            (this._isShared && (
++                this._rescc['proxy-revalidate'] ||
++                (this._resHeaders['set-cookie'] &&
++                    !this._rescc.public &&
++                    !this._rescc.immutable)
++            ))
++        ) {
++            return this._evaluateRequestMissResult(req);
++        }
++
+         if (!this._requestMatches(req, false)) {
+             return this._evaluateRequestMissResult(req);
+         }
