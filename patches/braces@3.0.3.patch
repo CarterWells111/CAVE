@@ -1,0 +1,128 @@
+diff --git a/lib/compile.js b/lib/compile.js
+index dce69beb90ece5c3b0ca234a949418f9f34eedbc..3291f6686baaf1a917d95ac97e8e640314d92436 100644
+--- a/lib/compile.js
++++ b/lib/compile.js
+@@ -1,10 +1,13 @@
+ 'use strict';
+ 
++const assertDepth = require('./depth-limit');
++
+ const fill = require('fill-range');
+ const utils = require('./utils');
+ 
+ const compile = (ast, options = {}) => {
+-  const walk = (node, parent = {}) => {
++  const walk = (node, parent = {}, depth = 0) => {
++    if (node.nodes) assertDepth(depth);
+     const invalidBlock = utils.isInvalidBrace(parent);
+     const invalidNode = node.invalid === true && options.escapeInvalid === true;
+     const invalid = invalidBlock === true || invalidNode === true;
+@@ -47,7 +50,7 @@ const compile = (ast, options = {}) => {
+ 
+     if (node.nodes) {
+       for (const child of node.nodes) {
+-        output += walk(child, node);
++        output += walk(child, node, depth + 1);
+       }
+     }
+ 
+diff --git a/lib/depth-limit.js b/lib/depth-limit.js
+new file mode 100644
+index 0000000000000000000000000000000000000000..1c85b39f73d79f1502753e52fbc185fdb0019047
+--- /dev/null
++++ b/lib/depth-limit.js
+@@ -0,0 +1,8 @@
++'use strict';
++
++// Bound both parsed patterns and caller-supplied AST recursion.
++module.exports = depth => {
++  if (depth > 128) {
++    throw new SyntaxError('braces nesting depth exceeds 128');
++  }
++};
+diff --git a/lib/expand.js b/lib/expand.js
+index 35b2c41d6afdb8f0197959e26079f266e48370d3..d7f276a7cb9ae69dc33229cc73d23f70774d0617 100644
+--- a/lib/expand.js
++++ b/lib/expand.js
+@@ -1,5 +1,7 @@
+ 'use strict';
+ 
++const assertDepth = require('./depth-limit');
++
+ const fill = require('fill-range');
+ const stringify = require('./stringify');
+ const utils = require('./utils');
+@@ -33,7 +35,8 @@ const append = (queue = '', stash = '', enclose = false) => {
+ const expand = (ast, options = {}) => {
+   const rangeLimit = options.rangeLimit === undefined ? 1000 : options.rangeLimit;
+ 
+-  const walk = (node, parent = {}) => {
++  const walk = (node, parent = {}, depth = 0) => {
++    if (node.nodes) assertDepth(depth);
+     node.queue = [];
+ 
+     let p = parent;
+@@ -100,7 +103,7 @@ const expand = (ast, options = {}) => {
+       }
+ 
+       if (child.nodes) {
+-        walk(child, node);
++        walk(child, node, depth + 1);
+       }
+     }
+ 
+diff --git a/lib/parse.js b/lib/parse.js
+index 3a6988e629f52aee6609dc5ec290a5e9ff47cecb..1149dc0fef21119f88dce30106228d959977fe80 100644
+--- a/lib/parse.js
++++ b/lib/parse.js
+@@ -1,5 +1,7 @@
+ 'use strict';
+ 
++const assertDepth = require('./depth-limit');
++
+ const stringify = require('./stringify');
+ 
+ /**
+@@ -143,6 +145,7 @@ const parse = (input, options = {}) => {
+      */
+ 
+     if (value === CHAR_LEFT_PARENTHESES) {
++      assertDepth(stack.length);
+       block = push({ type: 'paren', nodes: [] });
+       stack.push(block);
+       push({ type: 'text', value });
+@@ -195,6 +198,7 @@ const parse = (input, options = {}) => {
+      */
+ 
+     if (value === CHAR_LEFT_CURLY_BRACE) {
++      assertDepth(stack.length);
+       depth++;
+ 
+       const dollar = prev.value && prev.value.slice(-1) === '$' || block.dollar === true;
+diff --git a/lib/stringify.js b/lib/stringify.js
+index 8bcf872c31894f81a8c64d9202fd607e4fd7ea2b..8541e76bfc8c4ab6e5fabde503d0be66e7a5c2b3 100644
+--- a/lib/stringify.js
++++ b/lib/stringify.js
+@@ -1,9 +1,12 @@
+ 'use strict';
+ 
++const assertDepth = require('./depth-limit');
++
+ const utils = require('./utils');
+ 
+ module.exports = (ast, options = {}) => {
+-  const stringify = (node, parent = {}) => {
++  const stringify = (node, parent = {}, depth = 0) => {
++    if (node.nodes) assertDepth(depth);
+     const invalidBlock = options.escapeInvalid && utils.isInvalidBrace(parent);
+     const invalidNode = node.invalid === true && options.escapeInvalid === true;
+     let output = '';
+@@ -21,7 +24,7 @@ module.exports = (ast, options = {}) => {
+ 
+     if (node.nodes) {
+       for (const child of node.nodes) {
+-        output += stringify(child);
++        output += stringify(child, undefined, depth + 1);
+       }
+     }
+     return output;

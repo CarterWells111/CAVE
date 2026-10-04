@@ -104,7 +104,7 @@ describe("dedicated bulk audit CLI", () => {
     expect(root.scripts["security:audit"]).toBe("node scripts/security-audit.mjs");
     expect(root.devDependencies.pnpm).toBeUndefined();
     expect(workspace.auditConfig.ignoreGhsas).toEqual([
-      exemptGhsa, "GHSA-5p2g-fcmc-qvqq", "GHSA-86w9-cpqp-85rv",
+      exemptGhsa, "GHSA-5p2g-fcmc-qvqq", "GHSA-86w9-cpqp-85rv", "GHSA-vfj7-8cjw-p6xm",
     ]);
     const manifest = join(repo, "tools/security-audit/package.json");
     expect(existsSync(manifest)).toBe(true);

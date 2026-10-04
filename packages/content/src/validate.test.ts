@@ -151,7 +151,7 @@ describe("versioned content validation", () => {
     expect(allJourneyReviewables(catalog)).toEqual(completedReviewables);
     expect(() => validateCatalog(catalog, { mode: "internal" })).not.toThrow();
     const productionCodes = issueCodes(() => validateCatalog(catalog, { mode: "production" }));
-    expect(productionCodes).toHaveLength(36);
+    expect(productionCodes).toHaveLength(1);
     expect(new Set(productionCodes)).toEqual(new Set(["INTERNAL_TEST_APPROVAL_ONLY"]));
   });
 
@@ -197,7 +197,7 @@ describe("versioned content validation", () => {
     );
   });
 
-  it("keeps seven legacy reviewed entries while rejecting 36 internal-only approvals in production", () => {
+  it("preserves seven legacy reviewed entries and accepts completed journey reviews in production", () => {
     const catalog = loadCatalog();
     const reviewableEntries = [
       ...catalog.courses,
@@ -218,14 +218,7 @@ describe("versioned content validation", () => {
       validateCatalog(catalog, { mode: "production" })
     );
 
-    expect(productionIssues).toHaveLength(36);
-    expect(new Set(productionIssues.map(({ code }) => code))).toEqual(
-      new Set(["INTERNAL_TEST_APPROVAL_ONLY"])
-    );
-    expect(productionIssues.every(({ path }) => path.startsWith("journey."))).toBe(
-      true
-    );
-    expect(productionIssues.some(({ path }) => path.startsWith("journey.sources"))).toBe(false);
+    expect(productionIssues).toEqual([]);
   });
 
   it("rejects draft content in production", () => {

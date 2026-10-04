@@ -39,7 +39,7 @@ main 的工作流不会被后续 push 自动取消，避免中断迁移；排队
 5. 生产发布检查通过后，在环境审批中确认候选 SHA、staging run、验收说明和迁移选择，再批准 production。随后才可读取生产部署 Token。
 6. 发布前保存生产 Worker 版本和 D1 bookmark；未批准迁移却存在待执行文件时拒绝发布。发布与验收使用同一源提交，记录生产 artifact。
 
-当前内容中的 `internal_test_approved` 不能通过正式内容验证。`verify:release` 如因此失败，需完成实际内容审核；不能改为内部检查或跳过正式发布门禁。此流程不会自动创建 EAS Build、推送 OTA 或提交 App Store。
+`internal_test_approved` 条目不能通过正式内容验证。`verify:release` 如因此失败，需完成实际内容审核；不能改为内部检查或跳过正式发布门禁。此流程不会自动创建 EAS Build、推送 OTA 或提交 App Store。
 
 ## 回退和失败处理
 

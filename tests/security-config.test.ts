@@ -63,6 +63,7 @@ describe("repository security configuration", () => {
       "decode-uri-component": "0.5.0",
       postcss: "8.5.26",
       uuid: "11.1.1",
+      "http-cache-semantics": "4.3.0",
     });
     expect(workspace).toContain('image-size@1.2.1: "patches/image-size@1.2.1.patch"');
     expect(workspace).toContain('node-forge@1.4.0: "patches/node-forge@1.4.0.patch"');
@@ -70,7 +71,12 @@ describe("repository security configuration", () => {
       "GHSA-w3rx-r6r6-pgpr",
       "GHSA-5p2g-fcmc-qvqq",
       "GHSA-86w9-cpqp-85rv",
+      "GHSA-vfj7-8cjw-p6xm",
     ]);
+    expect(workspace).toContain('braces@3.0.3: "patches/braces@3.0.3.patch"');
+    expect(readFileSync(new URL("../patches/braces@3.0.3.patch", import.meta.url), "utf8")).toContain("braces nesting depth exceeds 128");
+    expect(workspace).toContain('http-cache-semantics@4.3.0: "patches/http-cache-semantics@4.3.0.patch"');
+    expect(readFileSync(new URL("../patches/http-cache-semantics@4.3.0.patch", import.meta.url), "utf8")).toContain("security-zeroed entries may not");
     expect(workspace).not.toContain("ignoreUnfixable");
     expect(imageSizePatch).toContain("box.size <= 0");
     expect(imageSizePatch).toContain("imageHeader[1] <= 0");

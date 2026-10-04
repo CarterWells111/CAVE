@@ -78,3 +78,8 @@ corepack pnpm verify:internal
 内部入口要求 `.nvmrc` 中的 Node 22，覆盖上述检查、移动端源码策略、Expo Doctor、iOS 导出、包秘密/验收工具隔离扫描及生产依赖审计。每项退出码与提交信息保存在 `outputs/p0-readiness/verification.json`。移动端类型检查会先运行 `routes:generate`，从实际路由重建 `.expo/types/router.d.ts`，不提交生成缓存。
 
 设备操作及两层关闭标准见 [P0 现行验收清单](p0-device-acceptance.md)。生产 `verify` 和 `verify:release` 继续要求专业内容复核，不能用内部通过替代。
+
+
+`GHSA-vfj7-8cjw-p6xm` 涉及 Metro 文件匹配工具链的 `braces@3.0.3`。截至 2026-10-04 上游 npm 最新版仍为 3.0.3，[公告](https://github.com/advisories/GHSA-vfj7-8cjw-p6xm)未提供修复版本。[问题 #70](https://github.com/micromatch/braces/issues/70)中的深嵌套模式在原有 10,000 字符限制以内仍会触发递归栈溢出；仓库已用 9,003 字符样本复现。`patches/braces@3.0.3.patch` 将解析器及 compile / expand / stringify 的 AST 遍历限制在 128 层，以受控 SyntaxError 拒绝过深输入。`tests/release-dependency-security.test.ts` 通过实际 Metro 安装链验证括号、花括号、混合及未闭合模式、直接传入 AST、边界深度与正常 glob 行为。仅对此精确 GHSA 豁免，必须同时保留补丁、锁文件及测试；上游修复后优先升级并删除补丁和豁免。
+
+`http-cache-semantics` 精确升级到 4.3.0，不增加 [GHSA-ch52-4w7c-c8xp](https://github.com/advisories/GHSA-ch52-4w7c-c8xp) 豁免。公告只列出 <=4.2.0，因此 npm 审计在升级后不再报告它，但实测 4.3.0 仍可复现相同问题；不能单凭审计版本范围认定修复。`patches/http-cache-semantics@4.3.0.patch` 在 evaluateRequest 中复用 maxAge 的安全禁止条件，拒绝 no-store / private / no-cache 及共享 Set-Cookie（未明确允许 public 或 immutable）/ proxy-revalidate 响应绕过重新验证。同一测试通过 Astro 的实际安装链验证安全响应不能被请求 max-stale 绕过，普通 public 新鲜和自然过期缓存仍正常工作。上游真正修复后升级并移除本地补丁。
