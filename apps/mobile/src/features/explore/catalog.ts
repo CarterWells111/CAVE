@@ -32,6 +32,10 @@ const BODY_RESPONSE_URL = process.env.NODE_ENV !== "production"
   ? process.env.EXPO_PUBLIC_BODY_RESPONSE_PREVIEW_URL || "https://neijiecave.com/body-response/"
   : "https://neijiecave.com/body-response/";
 
+const VULVOVAGINAL_HEALTH_URL = process.env.NODE_ENV !== "production"
+  ? process.env.EXPO_PUBLIC_VULVOVAGINAL_HEALTH_PREVIEW_URL || "https://neijiecave.com/vulvovaginal-health/"
+  : "https://neijiecave.com/vulvovaginal-health/";
+
 const BODY_JOURNEY: SampleJourney = {
   id: "journey-01",
   title: "旅程 01",
@@ -52,7 +56,7 @@ const BODY_JOURNEY: SampleJourney = {
         title: "外阴与阴道健康",
         organization: "美国妇产科医师学会（ACOG）",
         summary: "这篇医学问答介绍外阴外观的常见差异：阴唇可能长短不同、两侧不完全对称，颜色也因人而异。比起拿示意图寻找统一标准，更重要的是留意自己持续的不适或明显的新变化。",
-        url: "https://www.acog.org/womens-health/faqs/vulvovaginal-health",
+        url: VULVOVAGINAL_HEALTH_URL,
       },
     },
     {

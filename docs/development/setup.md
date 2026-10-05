@@ -86,7 +86,7 @@ Astro 开发服务器包含主页、在线演示、隐私、安全、支持和�
 corepack pnpm build:web
 ```
 
-旅程 01 的 `/body-response/` 是待专业复核的中文译述页，暂不进入 sitemap。若需从手机上的 Expo Go 联调该页，先让 Astro 开发服务器监听同一局域网，再在启动移动端前设置 `EXPO_PUBLIC_BODY_RESPONSE_PREVIEW_URL=http://<电脑局域网地址>:4321/body-response`（Astro 开发路由不带末尾斜杠）。这个覆盖只在非生产构建中使用；生产构建始终指向 `https://neijiecave.com/body-response/`。网页未经专业复核和发布确认前，不要将该链接视为线上可用。
+旅程 01 的 `/body-response/` 中文译述页与 `/vulvovaginal-health/` 中文概述页都待专业复核，暂不进入 sitemap。若需从手机上的 Expo Go 或 development build 联调，先让 Astro 开发服务器监听同一局域网，再在启动移动端前分别设置 `EXPO_PUBLIC_BODY_RESPONSE_PREVIEW_URL=http://<电脑局域网地址>:4321/body-response` 与 `EXPO_PUBLIC_VULVOVAGINAL_HEALTH_PREVIEW_URL=http://<电脑局域网地址>:4321/vulvovaginal-health`（Astro 开发路由不带末尾斜杠）。这些覆盖只在非生产构建中使用；生产构建始终分别指向 `https://neijiecave.com/body-response/` 与 `https://neijiecave.com/vulvovaginal-health/`。网页未经专业复核和发布确认前，不要将这些链接视为线上可用。
 
 ## Gateway
 

@@ -59,6 +59,20 @@ const textContent = (html: string) =>
     .trim();
 
 describe("official site routes", () => {
+  it("builds a noindex Chinese ACOG overview with a link to the original", async () => {
+    const html = await readFile(new URL("../dist/vulvovaginal-health/index.html", import.meta.url), "utf8");
+    const article = html.match(/<article\b[^>]*lang="zh-CN"[^>]*>([\s\S]*?)<\/article>/u)?.[1] ?? "";
+    const hanCharacters = textContent(article).match(/\p{Script=Han}/gu) ?? [];
+    expect(html).toContain('href="https://neijiecave.com/vulvovaginal-health/"');
+    expect(html).toContain('name="robots" content="noindex, nofollow"');
+    expect(hanCharacters.length).toBeGreaterThanOrEqual(100);
+    expect(hanCharacters.length).toBeLessThanOrEqual(500);
+    expect(textContent(article)).toContain("外阴的样子本来就因人而异");
+    expect(html).toContain('href="https://www.acog.org/womens-health/faqs/vulvovaginal-health"');
+    expect(textContent(html)).toContain("不是原文的逐字翻译");
+    expect(html).not.toMatch(/<script\b/iu);
+  });
+
   it("builds a noindex Chinese body-response reading with the English originals at the end", async () => {
     const html = await readFile(new URL("../dist/body-response/index.html", import.meta.url), "utf8");
     const body = textContent(html);

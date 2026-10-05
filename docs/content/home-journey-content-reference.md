@@ -25,14 +25,13 @@
 
 > 外面看得见的生殖器区域叫外阴。阴道在体内，开口是阴道口。外阴上还可以看到阴唇、阴蒂和尿道口。
 
-沿用现有的 `assets/medical/vulva-anatomy-review-current.png`，由用户主动选择查看。图片只标出外部结构，图旁如何补充阴蒂的体内结构仍待确认。该图目前是医学审核稿，专家复核状态见[内容来源台账](source-registry.md)。
-显示时按手机窗口宽高和图片原始比例调整；窄屏保留横向滑动，以便看清图中标注。
+沿用现有的 `assets/medical/vulva-anatomy-review-current.png`。初次进入时显示淡紫色提示卡，用户点“确认点开”后才展示中央解剖图，图下可点“隐藏图片”；1–7 的中文部位名称和中文说明始终可读。图中原有两侧中文标签不显示，2、4 数字圈左侧与 1、3、5、6、7 数字圈右侧多出的连线在界面中遮盖。说明依据 [ACOG 外阴与阴道健康资料](https://www.acog.org/womens-health/faqs/vulvovaginal-health)、[Newcastle Hospitals NHS 外阴自检指南](https://www.newcastle-hospitals.nhs.uk/resources/self-examination-of-the-vulva/)及 [University Hospitals Sussex NHS 外阴资料](https://www.uhsussex.nhs.uk/wp-content/uploads/2022/08/Vulva-cancer-and-vulval-surgery.pdf)编写；肛门在图中用于定位，但不属于外阴。图片及说明仍待专业复核，状态见[内容来源台账](source-registry.md)。图旁如何补充阴蒂的体内结构仍待确认。
 
 ### 每个人的样子都不同
 
 > 阴唇的长短、颜色和左右形状可以不同；乳房的大小和形状也因人而异。示意图用来认位置，不代表每个人都长这样。如果有持续疼痛、瘙痒或明显的新变化，可以咨询医护人员。
 
-正文下方附 ACOG《外阴与阴道健康》的简短中文导读与英文原文链接，作为可选延伸阅读；不是对原文的全文转载。
+正文下方附 ACOG《外阴与阴道健康》的简短中文导读。一个两行链接同时显示“阅读中文简述：外阴与阴道健康”及“参考自美国妇产科医师学会（ACOG）的患者资料”，通往官网 `/vulvovaginal-health/` 中文概述页。该页末尾再提供 ACOG 英文原文链接。官网概述是 CAVE 撰写的简述，不是对原文的全文转载；仍待专业复核，暂不编入生产 sitemap。
 
 ### 身体反应与我的选择
 

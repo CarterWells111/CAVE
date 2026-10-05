@@ -21,7 +21,7 @@ describe("explore catalog", () => {
       "身体反应与我的选择",
     ]);
     expect(body.pages[0].showVulvaDiagram).toBe(true);
-    expect(body.pages[1].article?.url).toBe("https://www.acog.org/womens-health/faqs/vulvovaginal-health");
+    expect(body.pages[1].article?.url).toBe("https://neijiecave.com/vulvovaginal-health/");
     expect(body.pages[2].body).toContain("这些只是你身体的反应，而你心里可能是舒服、好奇、犹豫或不适");
     expect(body.pages[2].webLink?.url).toBe("https://neijiecave.com/body-response/");
 
