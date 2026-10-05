@@ -1,5 +1,5 @@
 import { act, fireEvent, render, screen } from "@testing-library/react-native";
-import { BackHandler, Dimensions, StyleSheet } from "react-native";
+import { BackHandler, Dimensions, Linking, StyleSheet } from "react-native";
 
 import { SAMPLE_JOURNEYS } from "../catalog";
 import { SampleJourneyScreen } from "./sample-journey-screen";
@@ -17,18 +17,58 @@ it("shows the confirmed body content across three pages and keeps the diagram op
   expect(screen.queryByLabelText(/医学图审核稿：阴阜/u)).toBeNull();
   fireEvent.press(screen.getByRole("button", { name: "查看外阴结构图" }));
   expect(screen.getByLabelText(/医学图审核稿：阴阜/u)).toBeTruthy();
-  expect(screen.getByText("医学图审核稿")).toBeTruthy();
+  expect(screen.getByText("医学图审核稿 · 左右滑动查看细节")).toBeTruthy();
   expect(screen.queryByRole("button", { name: "返回上一页" })).toBeNull();
   next();
   expect(screen.getByLabelText("第 2 页，共 3 页")).toBeTruthy();
   expect(screen.getByText(first.pages[1].body)).toHaveProp("selectable", true);
+  expect(screen.getByText("外阴与阴道健康")).toBeTruthy();
   next();
   expect(screen.getByLabelText("第 3 页，共 3 页")).toBeTruthy();
   expect(screen.getByText(first.pages[2].body)).toHaveProp("selectable", true);
+  expect(screen.getByRole("button", { name: "阅读中文译述：身体反应与我的选择" })).toBeTruthy();
   expect(screen.queryByRole("button", { name: "下一页" })).toBeNull();
   expect(exit).not.toHaveBeenCalled();
   fireEvent.press(screen.getByRole("button", { name: "返回地图" }));
   expect(exit).toHaveBeenCalledTimes(1);
+});
+
+it("sizes the diagram from current screen width and height, including after rotation", () => {
+  const original = Dimensions.get("window");
+  act(() => Dimensions.set({ window: { ...original, width: 390, height: 844 } }));
+  const view = render(<SampleJourneyScreen journey={first} onExit={jest.fn()} />);
+  try {
+    fireEvent.press(screen.getByRole("button", { name: "查看外阴结构图" }));
+    const portraitViewport = StyleSheet.flatten(screen.getByTestId("journey-01-diagram-viewport").props.style);
+    const portraitImage = StyleSheet.flatten(screen.getByTestId("journey-01-diagram").props.style);
+    expect(portraitImage.width).toBeGreaterThan(portraitViewport.width);
+    expect(portraitImage.height).toBeGreaterThan(0);
+
+    act(() => Dimensions.set({ window: { ...original, width: 844, height: 390 } }));
+    const landscapeViewport = StyleSheet.flatten(screen.getByTestId("journey-01-diagram-viewport").props.style);
+    const landscapeImage = StyleSheet.flatten(screen.getByTestId("journey-01-diagram").props.style);
+    expect(landscapeViewport.width).toBeGreaterThan(portraitViewport.width);
+    expect(landscapeImage.width).toBeLessThan(portraitImage.width);
+    expect(landscapeImage.height).toBeGreaterThan(0);
+  } finally {
+    view.unmount();
+    act(() => Dimensions.set({ window: original }));
+  }
+});
+
+it("opens the 02 article and 03 Chinese web reading from journey 01", () => {
+  const openUrl = jest.spyOn(Linking, "openURL").mockResolvedValue(true);
+  try {
+    render(<SampleJourneyScreen journey={first} onExit={jest.fn()} />);
+    next();
+    fireEvent.press(screen.getByRole("button", { name: "阅读英文原文" }));
+    expect(openUrl).toHaveBeenCalledWith(first.pages[1].article?.url);
+    next();
+    fireEvent.press(screen.getByRole("button", { name: "阅读中文译述：身体反应与我的选择" }));
+    expect(openUrl).toHaveBeenCalledWith("https://neijiecave.com/body-response/");
+  } finally {
+    openUrl.mockRestore();
+  }
 });
 
 it("keeps 02 as a framework preview without the body diagram", () => {
