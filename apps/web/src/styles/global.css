@@ -394,6 +394,20 @@ main {
   max-width: 55rem;
 }
 
+.body-response-article h2:not(:first-child) {
+  margin-top: clamp(2rem, 5vw, 3.5rem);
+}
+
+.body-response-article h2,
+.body-response-sources h2 {
+  font-size: clamp(1.65rem, 1.35rem + 1vw, 2.4rem);
+}
+
+.body-response-sources ul {
+  display: grid;
+  gap: 0.5rem;
+}
+
 .callout {
   max-width: 58rem;
   padding: clamp(1.5rem, 4vw, 2.5rem);

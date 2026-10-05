@@ -6,6 +6,13 @@ type SamplePage = Readonly<{
   title: string;
   body: string;
   showVulvaDiagram?: boolean;
+  article?: Readonly<{
+    title: string;
+    organization: string;
+    summary: string;
+    url: string;
+  }>;
+  webLink?: Readonly<{ label: string; url: string }>;
 }>;
 
 export type SampleJourney = Readonly<{
@@ -20,6 +27,14 @@ const SAMPLE_ICONS = [
   "compass-outline", "leaf-outline", "water-outline",
   "flower-outline", "planet-outline", "sunny-outline",
 ] as const satisfies readonly SampleJourney["icon"][];
+
+const BODY_RESPONSE_URL = process.env.NODE_ENV !== "production"
+  ? process.env.EXPO_PUBLIC_BODY_RESPONSE_PREVIEW_URL || "https://neijiecave.com/body-response/"
+  : "https://neijiecave.com/body-response/";
+
+const VULVOVAGINAL_HEALTH_URL = process.env.NODE_ENV !== "production"
+  ? process.env.EXPO_PUBLIC_VULVOVAGINAL_HEALTH_PREVIEW_URL || "https://neijiecave.com/vulvovaginal-health/"
+  : "https://neijiecave.com/vulvovaginal-health/";
 
 const BODY_JOURNEY: SampleJourney = {
   id: "journey-01",
@@ -37,11 +52,21 @@ const BODY_JOURNEY: SampleJourney = {
       kind: "content",
       title: "每个人的样子都不同",
       body: "阴唇的长短、颜色和左右形状可以不同；乳房的大小和形状也因人而异。示意图用来认位置，不代表每个人都长这样。如果有持续疼痛、瘙痒或明显的新变化，可以咨询医护人员。",
+      article: {
+        title: "外阴与阴道健康",
+        organization: "美国妇产科医师学会（ACOG）",
+        summary: "这篇医学问答介绍外阴外观的常见差异：阴唇可能长短不同、两侧不完全对称，颜色也因人而异。比起拿示意图寻找统一标准，更重要的是留意自己持续的不适或明显的新变化。",
+        url: VULVOVAGINAL_HEALTH_URL,
+      },
     },
     {
       kind: "end",
       title: "身体反应与我的选择",
       body: "听到情话，或在拥抱、爱抚、亲吻等身体接触时，身体可能变得敏感，阴道口附近可能有分泌物、感觉湿润；也可能没有明显反应。阴道分泌物平时也会出现。这些只是你身体的反应，而你心里可能是舒服、好奇、犹豫或不适。身体反应不能替你决定是否愿意，这个决定也可以改变。",
+      webLink: {
+        label: "阅读中文译述：身体反应与我的选择",
+        url: BODY_RESPONSE_URL,
+      },
     },
   ],
 };

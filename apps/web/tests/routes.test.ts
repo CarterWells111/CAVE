@@ -59,6 +59,34 @@ const textContent = (html: string) =>
     .trim();
 
 describe("official site routes", () => {
+  it("builds a noindex Chinese ACOG overview with a link to the original", async () => {
+    const html = await readFile(new URL("../dist/vulvovaginal-health/index.html", import.meta.url), "utf8");
+    const article = html.match(/<article\b[^>]*lang="zh-CN"[^>]*>([\s\S]*?)<\/article>/u)?.[1] ?? "";
+    const hanCharacters = textContent(article).match(/\p{Script=Han}/gu) ?? [];
+    expect(html).toContain('href="https://neijiecave.com/vulvovaginal-health/"');
+    expect(html).toContain('name="robots" content="noindex, nofollow"');
+    expect(hanCharacters.length).toBeGreaterThanOrEqual(100);
+    expect(hanCharacters.length).toBeLessThanOrEqual(500);
+    expect(textContent(article)).toContain("外阴的样子本来就因人而异");
+    expect(html).toContain('href="https://www.acog.org/womens-health/faqs/vulvovaginal-health"');
+    expect(textContent(html)).toContain("不是原文的逐字翻译");
+    expect(html).not.toMatch(/<script\b/iu);
+  });
+
+  it("builds a noindex Chinese body-response reading with the English originals at the end", async () => {
+    const html = await readFile(new URL("../dist/body-response/index.html", import.meta.url), "utf8");
+    const body = textContent(html);
+    expect(html).toContain('href="https://neijiecave.com/body-response/"');
+    expect(html).toContain('name="robots" content="noindex, nofollow"');
+    expect(body).toContain("唤起、湿润或高潮等不由自主的身体反应不等于同意");
+    expect(body).toContain("中文译述，不是整篇逐字翻译");
+    expect(html).toContain("https://www.sextherapylondon.nhs.uk/sexual-difficulties/our-self-help-booklets/vulval-pain-during-sex/part-2-understanding-arousal");
+    expect(html).toContain("https://www.nhs.uk/symptoms/vaginal-discharge/");
+    expect(html).toContain("https://rainn.org/share-the-facts/consent-101-respect-boundaries-and-building-trust/");
+    expect(body.lastIndexOf("英文原文与补充来源")).toBeGreaterThan(body.lastIndexOf("关于这篇中文内容"));
+    expect(html).not.toMatch(/<script\b/iu);
+  });
+
   it("builds seven complete, distinct, static routes with matching metadata", async () => {
     const htmlDocuments = await Promise.all(routeNames.map(readRoute));
     const titles: string[] = [];

@@ -1,0 +1,68 @@
+---
+import PageHero from "../components/PageHero.astro";
+import BaseLayout from "../layouts/BaseLayout.astro";
+
+const original = {
+  title: "Understanding arousal",
+  organization: "Sex Therapy London · NHS",
+  url: "https://www.sextherapylondon.nhs.uk/sexual-difficulties/our-self-help-booklets/vulval-pain-during-sex/part-2-understanding-arousal"
+} as const;
+
+const supportingSources = [
+  {
+    title: "Vaginal discharge",
+    organization: "NHS",
+    url: "https://www.nhs.uk/symptoms/vaginal-discharge/"
+  },
+  {
+    title: "Consent 101: Respect, Boundaries, & Building Trust",
+    organization: "RAINN",
+    url: "https://rainn.org/share-the-facts/consent-101-respect-boundaries-and-building-trust/"
+  }
+] as const;
+---
+
+<BaseLayout
+  title="身体反应与我的选择｜CAVE 内界"
+  description="以中文了解身体唤起、日常分泌物与意愿的区别；附 NHS 和 RAINN 英文原文。"
+  path="/body-response/"
+  robots="noindex, nofollow"
+>
+  <section class="section page-section" data-journey-body-response>
+    <PageHero
+      eyebrow="旅程 01 · 中文译述"
+      title="身体反应与我的选择"
+      description="身体可能会回应亲密，但它不会替你决定愿不愿意。"
+      notice="医学与性教育内容待专业复核"
+    />
+
+    <article class="prose-block body-response-article" aria-labelledby="body-response-article-title">
+      <h2 id="body-response-article-title">身体可能怎样回应</h2>
+      <p>在性唤起时，心跳、呼吸和肌肉紧张程度可能发生变化，更多血液流向外阴。阴蒂可能变得更敏感，阴唇可能略微肿胀，也可能出现阴道润滑。并不是每个人、每一次都会明显感觉到这些变化。</p>
+
+      <h2>湿润不只有一种原因</h2>
+      <p>阴道平时也会有分泌物，用来保持湿润。分泌物的多少和状态会变化，因此“感觉湿润”本身不能说明此刻是否性唤起，更不能说明是否愿意发生亲密行为。</p>
+
+      <h2>感受和选择需要由你表达</h2>
+      <p>紧张、担心或压力可能影响身体反应。无论身体有没有反应，你都可以留意自己是舒服、好奇、犹豫，还是不适。唤起、湿润或高潮等不由自主的身体反应不等于同意；同意需要针对具体行为持续确认，也可以随时改变。</p>
+      <p>如果亲密时反复疼痛，或出现持续瘙痒、分泌物明显变化等情况，可以咨询合适的医疗专业人员。你不需要为了完成某个亲密步骤而忍受不适。</p>
+    </article>
+
+    <aside class="callout" aria-labelledby="translation-note-title">
+      <h2 id="translation-note-title">关于这篇中文内容</h2>
+      <p>本页是对下列英文资料相关内容的中文译述，不是整篇逐字翻译，也不提供诊断。身体唤起的描述主要参照 NHS；日常分泌物与同意原则分别参照所列补充来源。中文改写仍待医学与性教育专业复核。</p>
+    </aside>
+
+    <section class="prose-block body-response-sources" aria-labelledby="original-sources-title">
+      <h2 id="original-sources-title">英文原文与补充来源</h2>
+      <p>主要英文原文：<a class="text-link" href={original.url} target="_blank" rel="noopener noreferrer">{original.title}（{original.organization}）</a></p>
+      <ul>
+        {supportingSources.map((source) => (
+          <li>
+            <a class="text-link" href={source.url} target="_blank" rel="noopener noreferrer">{source.title}（{source.organization}）</a>
+          </li>
+        ))}
+      </ul>
+    </section>
+  </section>
+</BaseLayout>
