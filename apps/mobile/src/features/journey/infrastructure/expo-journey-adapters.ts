@@ -91,7 +91,8 @@ function isExpoFileNotFoundError(error: unknown): boolean {
   const candidate = error as { code?: unknown; message?: unknown };
   return candidate.code === "ERR_UNABLE_TO_DELETE"
     && typeof candidate.message === "string"
-    && /Unable to delete file or directory: (?:path|uri '[^'\r\n]+') does not exist$/u
+    // iOS appends the Swift throw location to the native exception's reason.
+    && /Unable to delete file or directory: (?:path|uri '[^'\r\n]+') does not exist(?: \(at ExpoFileSystem\/FileSystemPath\.swift:\d+\))?$/u
       .test(candidate.message);
 }
 
