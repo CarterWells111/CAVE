@@ -164,6 +164,34 @@ describe("Expo journey adapters", () => {
     await expect(adapters.files.removeDatabaseFiles("cave.db")).resolves.toBeUndefined();
   });
 
+  test("tolerates the iOS missing-file error with its Swift source location", async () => {
+    const missing = expoFileSystemError(
+      "ERR_UNABLE_TO_DELETE",
+      "FunctionCallException: Calling the 'delete' function has failed (at ExpoModulesCore/SyncFunctionDefinition.swift:94)\n"
+        + "→ Caused by: UnableToDeleteException: Unable to delete file or directory: path does not exist (at ExpoFileSystem/FileSystemPath.swift:41)"
+    );
+    const harness = makeModules({
+      existingFiles: ["cave.db-wal", "cave.db-shm"],
+      deleteErrors: { "cave.db": missing }
+    });
+    const adapters = createExpoJourneyAdapters(harness.dependencies);
+
+    await expect(adapters.files.removeDatabaseFiles("cave.db")).resolves.toBeUndefined();
+    expect(harness.deletedFiles).toEqual(["cave.db-wal", "cave.db-shm"]);
+  });
+
+  test.each([
+    "Unable to delete file or directory: path does not exist (at OtherModule/FileSystemPath.swift:41)",
+    "Unable to delete file or directory: path does not exist (at ExpoFileSystem/FileSystemPath.swift:41) permission denied"
+  ])("propagates an unrecognized missing-file message: %s", async (message) => {
+    const unknown = expoFileSystemError("ERR_UNABLE_TO_DELETE", message);
+    const harness = makeModules({ deleteErrors: { "cave.db": unknown } });
+    const adapters = createExpoJourneyAdapters(harness.dependencies);
+
+    await expect(adapters.files.removeDatabaseFiles("cave.db")).rejects.toBe(unknown);
+    expect(harness.deleteAttempts).toEqual(["cave.db"]);
+  });
+
   test("propagates a permission error even when File.exists is false", async () => {
     const denied = expoFileSystemError(
       "ERR_INVALID_PERMISSION",
