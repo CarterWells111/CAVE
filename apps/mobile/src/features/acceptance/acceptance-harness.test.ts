@@ -144,6 +144,138 @@ test('cipher probe fails on plaintext-capable read and still closes its handle',
   expect(h.connection.closeAsync).toHaveBeenCalledTimes(1);
 });
 
+type CipherProbeKind = 'noKey' | 'wrongKey' | 'correctKey';
+const SYNTHETIC_PROBE_READ = "SELECT count(*) AS count FROM saved_records WHERE id='saved-fixture'";
+
+// These handles model native read outcomes, not encryption. Real SQLCipher still requires a device.
+async function setupCipherProbe(options: {
+  reads?: Partial<Record<CipherProbeKind, { count: number } | null>>;
+  failures?: Partial<Record<CipherProbeKind, Error>>;
+  missingCapability?: { connectionIndex: number; row: unknown };
+} = {}) {
+  const h = setup();
+  await h.harness.createFixture('v11');
+  const expectedKey = h.values.get(ACCEPTANCE_PREFIX + SECRET_NAMES.databaseKey)!;
+  const connections: DatabaseConnection[] = [];
+  const order: string[] = [];
+  h.deps.native.openDatabaseAsync.mockClear();
+  h.deps.native.openDatabaseAsync.mockImplementation(async () => {
+    const index = connections.length;
+    let appliedKey: string | null = null;
+    order.push(`open:${index}`);
+    const connection: DatabaseConnection = {
+      ...h.connection,
+      execAsync: jest.fn(async (sql: string) => {
+        const key = /^PRAGMA key = '([^']+)'$/u.exec(sql)?.[1];
+        if (key !== undefined) appliedKey = key;
+      }),
+      getFirstAsync: jest.fn(async (sql: string) => {
+        if (sql === 'PRAGMA cipher_version') {
+          return (options.missingCapability?.connectionIndex === index
+            ? options.missingCapability.row : { cipher_version: 'TEST-ONLY' }) as never;
+        }
+        if (sql !== SYNTHETIC_PROBE_READ) throw new Error('unexpected synthetic query');
+        const kind: CipherProbeKind = appliedKey === null ? 'noKey'
+          : appliedKey === expectedKey ? 'correctKey' : 'wrongKey';
+        if (options.failures?.[kind]) throw options.failures[kind];
+        if (Object.hasOwn(options.reads ?? {}, kind)) return options.reads![kind] as never;
+        if (kind === 'correctKey') return { count: 1 } as never;
+        throw new Error('synthetic encrypted read denied');
+      }),
+      closeAsync: jest.fn(async () => { order.push(`close:${index}`); }),
+    };
+    connections.push(connection);
+    return connection;
+  });
+  return { ...h, connections, expectedKey, order };
+}
+
+test.each([
+  ['noKey', { count: 0 }, 1],
+  ['noKey', null, 1],
+  ['wrongKey', { count: 1 }, 2],
+  ['wrongKey', { count: 0 }, 2],
+  ['wrongKey', null, 2],
+] as const)('cipher probe rejects a readable %s connection even with result %p', async (kind, row, opened) => {
+  const h = await setupCipherProbe({ reads: { [kind]: row } });
+  await h.harness.probeCipher();
+  expect(h.harness.getSnapshot()).toMatchObject({ status: 'error', error: 'UNKEYED_READ_SUCCEEDED' });
+  expect(h.harness.getSnapshot().checks).toBeUndefined();
+  expect(h.connections).toHaveLength(opened);
+  h.connections.forEach(connection => expect(connection.closeAsync).toHaveBeenCalledTimes(1));
+  expect(h.values.get(ACCEPTANCE_PREFIX + SECRET_NAMES.databaseKey)).toBe(h.expectedKey);
+  expect(h.deps.files.removeDatabaseFiles).not.toHaveBeenCalled();
+});
+
+test.each([{ count: 0 }, null, { count: 2 }])('cipher probe requires exactly the synthetic row with the correct key: %p', async row => {
+  const h = await setupCipherProbe({ reads: { correctKey: row } });
+  await h.harness.probeCipher();
+  expect(h.harness.getSnapshot()).toMatchObject({ status: 'error', error: 'SYNTHETIC_ROW_MISSING' });
+  expect(h.harness.getSnapshot().checks).toBeUndefined();
+  expect(h.connections).toHaveLength(3);
+  h.connections.forEach(connection => expect(connection.closeAsync).toHaveBeenCalledTimes(1));
+});
+
+test('cipher probe rejects a correct-key native read failure without publishing partial checks or native diagnostics', async () => {
+  const privateDiagnostic = 'synthetic-private-native-diagnostic';
+  const h = await setupCipherProbe({ failures: { correctKey: new Error(privateDiagnostic) } });
+  await h.harness.probeCipher();
+  expect(h.harness.getSnapshot()).toMatchObject({ status: 'error', error: 'OPERATION_FAILED' });
+  expect(h.harness.getSnapshot().checks).toBeUndefined();
+  expect(h.connections).toHaveLength(3);
+  h.connections.forEach(connection => expect(connection.closeAsync).toHaveBeenCalledTimes(1));
+  expect(JSON.stringify(h.harness.getSnapshot())).not.toContain(privateDiagnostic);
+  expect(JSON.stringify(h.harness.getSnapshot())).not.toContain(h.expectedKey);
+});
+
+test.each([
+  [0, null],
+  [1, { cipher_version: '   ' }],
+  [2, { cipher_version: 42 }],
+] as const)('cipher probe requires SQLCipher capability on independent connection %s', async (connectionIndex, row) => {
+  const h = await setupCipherProbe({ missingCapability: { connectionIndex, row } });
+  await h.harness.probeCipher();
+  expect(h.harness.getSnapshot()).toMatchObject({ status: 'error', error: 'SQLCIPHER_UNAVAILABLE' });
+  expect(h.harness.getSnapshot().checks).toBeUndefined();
+  expect(h.connections).toHaveLength(connectionIndex + 1);
+  h.connections.forEach(connection => expect(connection.closeAsync).toHaveBeenCalledTimes(1));
+  expect(h.connections[connectionIndex]!.execAsync).not.toHaveBeenCalled();
+  expect(h.connections[connectionIndex]!.getFirstAsync).not.toHaveBeenCalledWith(SYNTHETIC_PROBE_READ);
+});
+
+test('cipher probe retries a failed close before any fresh probe and blocks opens while retry still fails', async () => {
+  const h = await setupCipherProbe();
+  const open = h.deps.native.openDatabaseAsync.getMockImplementation()!;
+  const privateDiagnostic = 'synthetic-close-diagnostic';
+  h.deps.native.openDatabaseAsync.mockImplementation(async name => {
+    const connection = await open(name);
+    if (h.connections.length === 1) {
+      jest.mocked(connection.closeAsync)
+        .mockImplementationOnce(async () => { h.order.push('close-failed'); throw new Error(privateDiagnostic); })
+        .mockImplementationOnce(async () => { h.order.push('retry-failed'); throw new Error(privateDiagnostic); });
+    }
+    return connection;
+  });
+  const snapshots: string[] = [];
+  const unsubscribe = h.harness.subscribe(() => snapshots.push(JSON.stringify(h.harness.getSnapshot())));
+  await h.harness.probeCipher();
+  await h.harness.probeCipher();
+  expect(h.harness.getSnapshot()).toMatchObject({ status: 'error', error: 'OPERATION_FAILED' });
+  expect(h.connections).toHaveLength(1);
+  expect(h.order).toEqual(['open:0', 'close-failed', 'retry-failed']);
+  await h.harness.probeCipher();
+  unsubscribe();
+  expect(h.harness.getSnapshot()).toMatchObject({ status: 'success', checks: { noKey: true, wrongKey: true, correctKey: true, cipherAvailable: true } });
+  expect(h.connections).toHaveLength(4);
+  expect(new Set(h.connections).size).toBe(4);
+  expect(h.order).toEqual(['open:0', 'close-failed', 'retry-failed', 'close:0', 'open:1', 'close:1', 'open:2', 'close:2', 'open:3', 'close:3']);
+  expect(h.connections[0]!.closeAsync).toHaveBeenCalledTimes(3);
+  h.connections.slice(1).forEach(connection => expect(connection.closeAsync).toHaveBeenCalledTimes(1));
+  expect(snapshots.join('\n')).not.toContain(privateDiagnostic);
+  expect(snapshots.join('\n')).not.toContain(h.expectedKey);
+  expect(snapshots.join('\n')).not.toContain('PRAGMA key');
+});
+
 test('retains a failed raw close and retries it before opening another native connection', async () => {
   const h = setup();
   const order: string[] = [];
