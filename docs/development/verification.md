@@ -55,6 +55,19 @@ corepack pnpm security:audit
 
 `decode-uri-component@0.5.0` 与 `uuid@11.1.1` 通过精确 override 消除 `GHSA-vcc3-ghjq-m6fr` 和 `GHSA-w5hq-g745-h8pq`。前者经 Expo Router 进入查询串运行路径；由于安全版改为 ESM 默认导出，而 Expo Router 当前依赖的 `query-string@7.1.3` 和 Jest 29 仍按 CommonJS 加载它，`patches/decode-uri-component@0.5.0.patch` 保持修复算法不变，仅恢复 CommonJS 包装。后者仅经 Expo config-plugins 的 `xcode` 进入 iOS 配置构建链。`tests/dependency-advisory-compatibility.test.ts` 同时验证畸形 URL 有界返回以及 `xcode` 所需的 CommonJS `uuid.v4()` API。
 
+2026-10-07 的四条未豁免公告通过精确 override 修复，覆盖锁文件中的全部调用链：
+
+| 依赖 | 固定版本 | 维护方公告 |
+| --- | --- | --- |
+| shell-quote | 1.11.0 | [GHSA-pqg4-j6r4-53mv](https://github.com/ljharb/shell-quote/security/advisories/GHSA-pqg4-j6r4-53mv) |
+| source-map-js | 1.2.2 | [GHSA-68fv-2mgg-jv7q](https://github.com/advisories/GHSA-68fv-2mgg-jv7q)、[维护方发布说明](https://github.com/7rulnik/source-map-js/releases/tag/v1.2.2) |
+| compression | 1.8.2 | [GHSA-vc2v-76pw-4v95](https://github.com/expressjs/compression/security/advisories/GHSA-vc2v-76pw-4v95) |
+| sharp | 0.35.5 | [GHSA-wq5f-xc86-pv6w](https://github.com/lovell/sharp/security/advisories/GHSA-wq5f-xc86-pv6w) |
+
+Sharp override 同时覆盖 Astro 的生产可选依赖和 Miniflare 的开发依赖，平台二进制使用 0.35.5、libvips 包使用 1.3.4。现有六个本地补丁、四条精确 GHSA 豁免、审计启动器和 high 阈值保持原样。
+
+`tests/production-dependency-compatibility.test.ts` 沿实际调用方解析依赖，验证 React DevTools 所需的普通 editor 参数解析及引用、PostCSS source map 与合法 indexed map、Expo 的 bundle/map gzip 响应与普通路径跳过压缩，以及 Astro 的内存 PNG → WebP 缩放和 Sharp 内置 librsvg 2.63.2。测试使用合成数据和本机 HTTP，不执行 shell 载荷或网络拒绝服务。React DevTools 的发布 bundle 含内嵌解析器，override 更新其声明依赖；这些检查验证安全门禁和当前构建接口兼容，不能据此声称已替换所有内嵌代码或证明生产运行时存在可利用漏洞。
+
 原因见 [pnpm 11 官方发布说明](https://github.com/pnpm/pnpm.io/blob/main/blog/releases/11.0.md)：旧 `audits/quick` 接口已退役，应使用 `advisories/bulk`，不能无限重试旧接口。`tests/security-audit.test.ts` 使用真实审计 CLI 和本机 HTTP 服务，验证 v9 锁文件的直接、传递、可选及 workspace 生产依赖覆盖、开发依赖排除、阈值、精确豁免、错误/超时阻断和文件不被重写。本机合成服务测试不替代对官方 npm 服务执行的真实审计。
 
 审计工具还应用 `patches/pnpm@11.25.0.patch`：上游会跳过非法公告 ID、未知严重度或无效版本范围，可能将坏报告误报为干净结果；此补丁在响应校验处拒绝这些字段，沿用上游的非零错误出口。它不改变合法漏洞匹配、严重度阈值或任何豁免。升级审计工具时必须先复验补丁及上述真实 CLI 测试，不能静默移除校验。
