@@ -108,6 +108,8 @@ corepack pnpm --filter @cave/gateway exec wrangler d1 migrations apply neijie-ca
 
 测试使用注入的邮件适配器，不会发送真实邮件。真实验证码投递和生产密钥轮换见[邮箱身份运维](../operations/email-authentication.md)。普通记录和预设练习不需要模型凭据；真实手记 AI 需在 Gateway 配置 MODEL_MODE=live、MODEL_BASE_URL=https://api.deepseek.com、MODEL_API_KEY 和已选模型的 MODEL_NAME。密钥不可放入移动端或使用 EXPO_PUBLIC_ 前缀。模拟验收无需这些凭据。
 
+旧生成式研究接口 `/v1/practice/turn` 和 `/v1/practice/debrief` 仅在 `MODEL_MODE=mock` 时可用。`live` 组合直接返回 `404`、`PRACTICE_DISABLED` 和 `Cache-Control: no-store`，不读取请求体、不使用练习限流配额，也不调用模型；添加 Authorization 或更换 installationToken 不会开启接口。当前移动端练习仍使用本地预设分支，普通 AI、登录及启用后的共同房间保留各自服务入口。
+
 ## 常用验证
 
 ```bash
