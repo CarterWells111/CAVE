@@ -253,50 +253,63 @@ export function createApp(
 ): Hono {
   const env = parseGatewayEnv(rawEnv);
   const catalog = loadCatalog();
-  const scenarioSource =
-    options.scenarioSource ?? catalogScenarioSource(catalog.scenarios);
-  const knownScenarioIds = new Set(catalog.scenarios.map(({ id }) => id));
-  const provider = createProvider(env, options);
-  const repairer = jsonRepairer(provider);
   const rateLimitStore =
     options.rateLimitStore ??
     createWorkerRateLimitStore(rawEnv as WorkerBindings);
   const logger = options.logger ?? (() => undefined);
   const authService = createBoundAuthService(rawEnv, options);
-  const versions = {
-    promptVersion: env.PROMPT_VERSION,
-    policyVersion: env.POLICY_VERSION
-  };
-  const outputGuard = createOutputGuard({
-    serverOwnedText: [
-      buildSystemPrompt(env.PROMPT_VERSION, env.POLICY_VERSION)
-    ]
-  });
-  const turnService = createTurnService({
-    provider,
-    ...(repairer ? { repairer } : {}),
-    scenarioSource,
-    safety: createTurnSafetyEvaluator(),
-    outputGuard,
-    ...versions
-  });
-  const debriefService = createDebriefService({
-    provider,
-    ...(repairer ? { repairer } : {}),
-    scenarioSource,
-    outputGuard,
-    ...versions
-  });
-
   const app = new Hono();
-  app.use(
-    "/v1/practice/turn",
-    requestMiddleware("turn", knownScenarioIds, rateLimitStore, env, logger)
-  );
-  app.use(
-    "/v1/practice/debrief",
-    requestMiddleware("debrief", knownScenarioIds, rateLimitStore, env, logger)
-  );
+  // Legacy generative practice is available only for local mock research.
+  if (env.MODEL_MODE === "mock") {
+    const scenarioSource =
+      options.scenarioSource ?? catalogScenarioSource(catalog.scenarios);
+    const knownScenarioIds = new Set(catalog.scenarios.map(({ id }) => id));
+    const provider = createProvider(env, options);
+    const repairer = jsonRepairer(provider);
+    const versions = {
+      promptVersion: env.PROMPT_VERSION,
+      policyVersion: env.POLICY_VERSION
+    };
+    const outputGuard = createOutputGuard({
+      serverOwnedText: [
+        buildSystemPrompt(env.PROMPT_VERSION, env.POLICY_VERSION)
+      ]
+    });
+    const turnService = createTurnService({
+      provider,
+      ...(repairer ? { repairer } : {}),
+      scenarioSource,
+      safety: createTurnSafetyEvaluator(),
+      outputGuard,
+      ...versions
+    });
+    const debriefService = createDebriefService({
+      provider,
+      ...(repairer ? { repairer } : {}),
+      scenarioSource,
+      outputGuard,
+      ...versions
+    });
+    app.use(
+      "/v1/practice/turn",
+      requestMiddleware("turn", knownScenarioIds, rateLimitStore, env, logger)
+    );
+    app.use(
+      "/v1/practice/debrief",
+      requestMiddleware("debrief", knownScenarioIds, rateLimitStore, env, logger)
+    );
+    app.route(
+      "/",
+      createPracticeRoutes({ turnService, debriefService })
+    );
+  } else {
+    for (const path of ["/v1/practice/turn", "/v1/practice/debrief"]) {
+      app.all(path, context => {
+        context.header("Cache-Control", "no-store");
+        return context.json({ code: "PRACTICE_DISABLED" }, 404);
+      });
+    }
+  }
   app.route("/", createHealthRoutes());
   const assistantProvider = env.MODEL_MODE === "live" ? new OpenAICompatibleProvider({
     baseUrl: env.MODEL_BASE_URL, apiKey: env.MODEL_API_KEY, modelName: env.MODEL_NAME,
@@ -335,10 +348,6 @@ export function createApp(
       : undefined
   ) : undefined;
   if (roomService) app.route("/", createRoomRoutes({ service: roomService, logger }));
-  app.route(
-    "/",
-    createPracticeRoutes({ turnService, debriefService })
-  );
   return app;
 }
 
