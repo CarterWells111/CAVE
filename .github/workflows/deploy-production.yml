@@ -58,7 +58,7 @@ jobs:
               [{data:'Staging run',header:true},String(run.id)],
               [{data:'Production migrations',header:true},String(context.payload.inputs.apply_migrations)]
             ]).addRaw('\nAcceptance notes: ').addCodeBlock(process.env.ACCEPTANCE_NOTES).write();
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v7
         with:
           name: staging-release-${{ steps.candidate.outputs.sha }}
           path: outputs/accepted-staging
