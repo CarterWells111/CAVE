@@ -66,6 +66,9 @@ function setup(initialServer: AccountPreferences = { ...DEFAULT_ACCOUNT_PREFEREN
     api: {
       requestEmailChallenge: jest.fn(async () => ({ contractVersion: "1" as const, requestId, challengeId, expiresInSeconds: 600, resendAfterSeconds: 60 })),
       verifyEmailChallenge: jest.fn(async () => session),
+      loginEmailChallenge: jest.fn(async () => session),
+      loginWithPassword: jest.fn(async () => session),
+      registerEmailAccount: jest.fn(async () => session),
       refresh: jest.fn(async () => session),
       logout: jest.fn(),
       requestAccountDeletionChallenge: jest.fn(async () => ({ contractVersion: "1" as const, requestId, challengeId, expiresInSeconds: 600, resendAfterSeconds: 60 })),
@@ -175,7 +178,7 @@ test("fresh guest explicitly confirms adulthood, saves 妳 without advancing, th
   expect(h.server()).toMatchObject({ ageConfirmed: true, addressPreference: "妳", revision: 1 });
   expect(h.runtime.service.getSnapshot()).toMatchObject({ ageConfirmed: true, addressPreference: "妳", prefaceRead: false });
   expect(h.route().pathname).toBe("/journey/preface");
-  expect(h.dependencies.api.verifyEmailChallenge).toHaveBeenCalledWith(challengeId, expect.objectContaining({ code: "123456" }));
+  expect(h.dependencies.api.loginEmailChallenge).toHaveBeenCalledWith(challengeId, expect.objectContaining({ code: "123456" }));
 });
 
 test("login before adult confirmation restores server preferences without marking the welcome sheet read", async () => {
@@ -211,9 +214,11 @@ test("settings update the active pronoun and revoke adult access while keeping t
     mockNavigate("/settings");
   });
   const originalId = h.runtime.service.getSnapshot()!.id;
+  fireEvent.press(await screen.findByRole("button", { name: "界面称呼，妳" }));
   fireEvent.press(await screen.findByRole("radio", { name: "你" }));
   await waitFor(() => expect(h.runtimeContext()?.snapshot?.addressPreference).toBe("你"));
   await waitFor(() => expect(h.server().addressPreference).toBe("你"));
+  fireEvent.press(screen.getByRole("button", { name: "成年确认，已确认年满 18 岁" }));
   fireEvent.press(screen.getByRole("button", { name: "撤销成年确认" }));
   await screen.findByTestId("adult-gate");
   await waitFor(() => expect(h.runtimeContext()).toBeNull());

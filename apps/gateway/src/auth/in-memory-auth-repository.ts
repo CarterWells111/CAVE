@@ -13,6 +13,13 @@ function clone<T>(value: T): T {
 }
 
 export class InMemoryAuthRepository implements AuthRepository {
+  private readonly passwords = new Map<string, string>();
+  async getPasswordHash(accountId: string): Promise<string | null> { return this.passwords.get(accountId) ?? null; }
+  async setPasswordIfAbsent(accountId: string, hash: string): Promise<boolean> {
+    if (this.passwords.has(accountId)) return false;
+    this.passwords.set(accountId, hash);
+    return true;
+  }
   private readonly challenges = new Map<string, AuthChallenge>();
   private readonly accounts = new Map<string, AuthAccount>();
   private readonly sessions = new Map<string, AuthSession>();
@@ -182,6 +189,7 @@ export class InMemoryAuthRepository implements AuthRepository {
     const grant = this.deletionGrants.get(input.grantDigest);
     if (grant === undefined || grant.consumedAt !== undefined || grant.expiresAt < input.now) return "invalid";
     grant.consumedAt = input.now;
+    this.passwords.delete(grant.accountId);
     this.deletionReceipts.set(input.idempotencyDigest, {
       grantDigest: input.grantDigest,
       expiresAt: input.receiptExpiresAt,

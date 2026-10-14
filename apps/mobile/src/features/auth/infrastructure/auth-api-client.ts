@@ -1,4 +1,6 @@
 import {
+  type PasswordLoginRequest,
+  type EmailRegistrationRequest,
   AccountPreferencesResponseSchema,
   type UpdateAccountPreferencesRequest,
   AccountDeletionGrantResponseSchema,
@@ -89,6 +91,15 @@ export function createAuthApiClient({ baseUrl, fetch = globalThis.fetch }: Clien
     ),
     verifyEmailChallenge: (challengeId: string, input: EmailChallengeVerifyRequest): Promise<AuthSessionResponse> => (
       post(`/v1/auth/email/challenges/${encodeURIComponent(challengeId)}/verify`, input, AuthSessionResponseSchema)
+    ),
+    loginWithPassword: (input: PasswordLoginRequest): Promise<AuthSessionResponse> => (
+      post("/v1/auth/password/login", input, AuthSessionResponseSchema)
+    ),
+    registerEmailAccount: (challengeId: string, input: EmailRegistrationRequest): Promise<AuthSessionResponse> => (
+      post(`/v1/auth/email/challenges/${encodeURIComponent(challengeId)}/register`, input, AuthSessionResponseSchema)
+    ),
+    loginEmailChallenge: (challengeId: string, input: EmailChallengeVerifyRequest): Promise<AuthSessionResponse> => (
+      post(`/v1/auth/email/challenges/${encodeURIComponent(challengeId)}/login`, input, AuthSessionResponseSchema)
     ),
     refresh: (input: RefreshSessionRequest): Promise<AuthSessionResponse> => (
       post("/v1/auth/sessions/refresh", input, AuthSessionResponseSchema)

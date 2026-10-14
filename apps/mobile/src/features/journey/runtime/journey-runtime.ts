@@ -26,6 +26,8 @@ import {
   InMemoryAppearancePreferencesRepository,
   type AppearancePreferencesRepository,
 } from "../../../core/design/appearance-preferences";
+import type { AssistantHistoryRepository } from "../../assistant/history/assistant-history-repository";
+import { InMemoryAssistantHistoryRepository } from "../../assistant/history/in-memory-assistant-history-repository";
 import { JournalService } from "../../journal/application/journal-service";
 import { InMemoryJournalRepository } from "../../journal/infrastructure/in-memory-journal-repository";
 import type { JournalRepository } from "../../journal/infrastructure/journal-repository";
@@ -67,6 +69,7 @@ export type JourneyRuntime = {
   adultDeclaration: AdultDeclarationRepository;
   appearancePreferences: AppearancePreferencesRepository;
   journal: JournalRepository;
+  assistantHistory: AssistantHistoryRepository;
   createJournalService(ownerAccountId: string): JournalService;
   privacySettings: PrivacySettingsRepository;
   deleteAllData(): Promise<void>;
@@ -90,6 +93,7 @@ type ComposeDependencies = RuntimeDependencies & {
   reviewHistory?: ReviewHistoryRepository<JourneyDraft>;
   appearancePreferences?: AppearancePreferencesRepository;
   journal?: JournalRepository;
+  assistantHistory?: AssistantHistoryRepository;
   privacySettings?: PrivacySettingsRepository;
   deleteStorage?: () => Promise<void>;
   deleteAdditionalStorage?: () => Promise<void>;
@@ -120,6 +124,7 @@ export function composeJourneyRuntime({
   reviewHistory = new InMemoryPayloadReviewHistoryRepository<JourneyDraft>(),
   appearancePreferences = new InMemoryAppearancePreferencesRepository(),
   journal = new InMemoryJournalRepository(),
+  assistantHistory = new InMemoryAssistantHistoryRepository(),
   privacySettings = new InMemoryPrivacySettingsRepository(),
   saveVersionedDraft,
   completeJourney,
@@ -164,6 +169,7 @@ export function composeJourneyRuntime({
     await shellState.clear();
     await reviewHistory.clearAll();
     await journal.clearAll();
+    await assistantHistory.clearAll();
     await appearancePreferences.save("system");
     await privacySettings.resetPrivacySettings();
     await service.resetJourney();
@@ -203,7 +209,7 @@ export function composeJourneyRuntime({
     }
     service.adoptPersistedJourney(draft);
   };
-  return { mode, persistence, journalPersistence, service, controller, drafts: versionedDrafts, cards, shellState, reviewHistory, adultDeclaration, appearancePreferences, journal, createJournalService, privacySettings, deleteAllData, replaceActiveReview, branchFromReview };
+  return { mode, persistence, journalPersistence, service, controller, drafts: versionedDrafts, cards, shellState, reviewHistory, adultDeclaration, appearancePreferences, journal, assistantHistory, createJournalService, privacySettings, deleteAllData, replaceActiveReview, branchFromReview };
 }
 
 export async function createJourneyRuntime({

@@ -40,6 +40,11 @@ export default function EmailAuthRoute() {
       ? entry === "journal" ? "/(tabs)/journal" : "/(tabs)/ai"
       : onboardingHref(preferences.preferences.ageConfirmed ? "/journey/preface" : "/journey/adult-gate", entry));
   }, [adult.status, auth.status, entry, preferences, returnTo, router]);
+  const completeLogin = () => {
+    if (returned.current || roomReturnPath(returnTo) || returnTo === "/(tabs)/profile" || returnTo === "/(tabs)/journal" || returnTo === "/(tabs)/ai" || returnTo === "/journey/adult-gate" || returnTo === "/journey/preface") return;
+    returned.current = true;
+    router.replace(journalReturnDestination(returnTo) ?? "/(tabs)/profile");
+  };
   return <EmailAuthScreen
     adultAuthorized={adult.status === "authorized"}
     onAdultGate={() => router.push(onboardingHref("/journey/adult-gate", entry))}
@@ -47,12 +52,11 @@ export default function EmailAuthRoute() {
     onDeleteAccount={() => router.push("/auth/delete-account")}
     onLogout={async () => { await auth.logout(); router.replace("/settings"); }}
     onRequestEmail={auth.requestEmailChallenge}
+    onPasswordLogin={async (email, password) => { await auth.loginWithPassword(email, password); completeLogin(); }}
+    onRegister={async (challengeId, code, email, password) => { await auth.registerEmailAccount(challengeId, code, email, password); completeLogin(); }}
     onVerifyCode={async (challengeId, code, email) => {
       await auth.verifyEmailChallenge(challengeId, code, email);
-      if (returned.current || roomReturnPath(returnTo) || returnTo === "/(tabs)/profile" || returnTo === "/(tabs)/journal" || returnTo === "/(tabs)/ai" || returnTo === "/journey/adult-gate" || returnTo === "/journey/preface") return;
-      const destination = journalReturnDestination(returnTo);
-      returned.current = true;
-      router.replace(destination ?? "/(tabs)/profile");
+      completeLogin();
     }}
     status={auth.status}
   />;

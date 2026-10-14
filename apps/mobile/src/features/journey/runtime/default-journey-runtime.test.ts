@@ -191,3 +191,16 @@ test("resumes a pending local-data deletion before exposing the native runtime",
   expect(adapters.secrets.clearPendingLocalDataDeletion).toHaveBeenCalledTimes(1);
   expect(adapters.native.openDatabaseAsync).not.toHaveBeenCalled();
 });
+
+
+test("Development Build AI history uses the existing encrypted database manager", async () => {
+  const adapters = nativeAdapters();
+  const runtime = await createComposedJourneyRuntime({
+    executionEnvironment: "standalone", clipboard, createId: () => "unused", now: () => "2026-10-14T12:00:00.000Z", loadNativeAdapters: async () => adapters,
+  });
+  await expect(runtime.assistantHistory.list("account-a")).resolves.toEqual([]);
+  expect(adapters.native.openDatabaseAsync).toHaveBeenCalledWith("cave.db");
+  const database = await adapters.native.openDatabaseAsync("cave.db");
+  expect(database.getFirstAsync).toHaveBeenCalledWith("PRAGMA cipher_version");
+  expect(database.getAllAsync).toHaveBeenCalledWith(expect.stringContaining("FROM assistant_conversations WHERE owner_account_id=?"), "account-a");
+});

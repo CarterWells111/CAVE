@@ -280,3 +280,20 @@ test("archives a v4-era active draft even before the v5 active singleton has bee
     expect.objectContaining({ id: "review:legacy-active:incomplete", status: "incomplete" }),
   ]);
 });
+
+
+test("Expo Go AI history remains memory-only and local data deletion clears every account", async () => {
+  const dependencies = {
+    executionEnvironment: "storeClient", clipboard, createId: () => "unused", now: () => "2026-10-14T12:00:00.000Z",
+    createExpoGoJournalRepository: createFreshExpoGoJournalRepository, createNativeRuntime: jest.fn(),
+  };
+  const runtime = await createJourneyRuntime(dependencies);
+  const conversation = { id: "chat", title: "一次聊天", journeyId: "first-overnight", createdAt: "2026-10-14T12:00:00.000Z", updatedAt: "2026-10-14T12:00:00.000Z", turns: [] };
+  await runtime.assistantHistory.save("account-a", conversation);
+  await runtime.assistantHistory.save("account-b", conversation);
+  const recreated = await createJourneyRuntime(dependencies);
+  await expect(recreated.assistantHistory.list("account-a")).resolves.toEqual([]);
+  await runtime.deleteAllData();
+  await expect(runtime.assistantHistory.list("account-a")).resolves.toEqual([]);
+  await expect(runtime.assistantHistory.list("account-b")).resolves.toEqual([]);
+});

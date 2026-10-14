@@ -11,24 +11,26 @@ const pnpmWorkspace = readFileSync(
 
 describe("Expo SDK baseline", () => {
   it("uses the approved SDK 57 dependency matrix", () => {
-    expect(packageJson.dependencies.expo).toBe("~57.0.27");
+    expect(packageJson.dependencies.expo).toBe("~57.0.29");
     expect(packageJson.dependencies.react).toBe("19.2.3");
     expect(packageJson.dependencies["react-native"]).toBe("0.86.3");
-    expect(packageJson.dependencies["expo-constants"]).toBe("~57.0.21");
-    expect(packageJson.dependencies["expo-router"]).toBe("~57.0.25");
-    expect(packageJson.dependencies["expo-dev-client"]).toBe("~57.0.19");
+    expect(packageJson.dependencies["expo-constants"]).toBe("~57.0.22");
+    expect(packageJson.dependencies["expo-crypto"]).toBe("~57.0.4");
+    expect(packageJson.dependencies["expo-linking"]).toBe("~57.0.13");
+    expect(packageJson.dependencies["expo-router"]).toBe("~57.0.27");
+    expect(packageJson.dependencies["expo-dev-client"]).toBe("~57.0.20");
     expect(
       (packageJson.dependencies as Record<string, string | undefined>)[
         "expo-splash-screen"
       ]
-    ).toBe("~57.0.9");
+    ).toBe("~57.0.10");
     expect(packageJson.dependencies["expo-system-ui"]).toBe("~57.0.4");
     expect(packageJson.dependencies["@expo/vector-icons"]).toBe("^15.1.1");
     expect(
       (packageJson.dependencies as Record<string, string | undefined>)[
         "@expo/metro-runtime"
       ]
-    ).toBe("~57.0.16");
+    ).toBe("~57.0.17");
     expect(packageJson.devDependencies["@expo/router-server"]).toBe(
       "~57.0.9"
     );
@@ -38,7 +40,7 @@ describe("Expo SDK baseline", () => {
         "@types/node"
       ]
     ).toBe("~24.13.3");
-    expect(packageJson.devDependencies["jest-expo"]).toBe("~57.0.5");
+    expect(packageJson.devDependencies["jest-expo"]).toBe("~57.0.6");
     expect(packageJson.scripts.start).toBe("node ../../scripts/start-mobile.mjs go-local");
     expect(packageJson.scripts["start:journal-preview"]).toBe("node ../../scripts/start-mobile.mjs go-local-preview");
     expect(packageJson.scripts["start:dev-client"]).toBe(

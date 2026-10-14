@@ -86,13 +86,13 @@ afterEach(async () => {
   }
 });
 
-test('killed pre-commit migration rolls back on disk; a fresh process preserves fixtures and upgrades to v13', async () => {
+test('killed pre-commit migration rolls back on disk; a fresh process preserves fixtures and upgrades to v14', async () => {
   const directory = createDirectory();
   await killAtPause(directory, 'pause-migration', 'migration-v12-before-commit');
   const result = await recover(directory, 'recover-migration');
   expect(result.before).toMatchObject({ status: 'success', metadata: { version: 11, counts: fixtureCounts } });
   expect(result.ownershipColumnsBefore).toBe(0);
-  expect(result.state).toMatchObject({ status: 'success', metadata: { version: 13, counts: fixtureCounts } });
+  expect(result.state).toMatchObject({ status: 'success', metadata: { version: 14, counts: fixtureCounts } });
 }, 60_000);
 
 test.each(DELETION_STAGES)('fresh startup completes deletion after force-termination at %s', async (stage) => {

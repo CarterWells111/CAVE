@@ -84,12 +84,15 @@ function unavailableAuthService(): AuthService {
   return {
     requestEmailChallenge: unavailable,
     verifyEmailChallenge: unavailable,
+    loginWithPassword: unavailable,
+    registerEmailAccount: unavailable,
+    loginEmailChallenge: unavailable,
     refresh: unavailable,
     logout: unavailable,
     requestAccountDeletionChallenge: unavailable,
     verifyAccountDeletionChallenge: unavailable,
     deleteAccount: unavailable,
-  } as AuthService;
+  };
 }
 
 function createBoundAuthService(rawEnv: unknown, options: GatewayAppOptions): AuthService {

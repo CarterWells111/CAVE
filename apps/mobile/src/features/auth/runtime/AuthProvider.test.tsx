@@ -16,7 +16,7 @@ afterEach(() => { jest.restoreAllMocks(); });
 function dependencies(overrides: Partial<AuthDependencies> = {}): AuthDependencies {
   return {
     api: {
-      requestEmailChallenge: jest.fn(), verifyEmailChallenge: jest.fn(),
+      requestEmailChallenge: jest.fn(), loginEmailChallenge: jest.fn(),
       refresh: jest.fn(async () => ({
         contractVersion: "1" as const,
         requestId: "7cbbc0f9-9d12-4b08-9741-75bbb399e7c6",
@@ -162,7 +162,7 @@ test("an expired-session clear cannot delete a concurrently verified login", asy
     }),
   };
   const deps = dependencies({ sessionStore });
-  jest.mocked(deps.api.verifyEmailChallenge).mockResolvedValueOnce({
+  jest.mocked(deps.api.loginEmailChallenge).mockResolvedValueOnce({
     contractVersion: "1",
     requestId: "7cbbc0f9-9d12-4b08-9741-75bbb399e7c6",
     account: { id: "fb37d589-c1de-4300-8a93-63df012bbfb2" },
@@ -184,7 +184,7 @@ test("an expired-session clear cannot delete a concurrently verified login", asy
       "person@example.com",
     );
   });
-  await waitFor(() => expect(deps.api.verifyEmailChallenge).toHaveBeenCalledTimes(1));
+  await waitFor(() => expect(deps.api.loginEmailChallenge).toHaveBeenCalledTimes(1));
   clearing.resolve(undefined);
   await act(async () => { await loginPromise; });
 
@@ -210,7 +210,7 @@ test("a refresh-401 clear cannot sign out or delete a concurrently verified logi
   jest.mocked(deps.api.refresh).mockRejectedValueOnce(
     new MobileAuthApiError("AUTH_UNAUTHORIZED", 401),
   );
-  jest.mocked(deps.api.verifyEmailChallenge).mockResolvedValueOnce({
+  jest.mocked(deps.api.loginEmailChallenge).mockResolvedValueOnce({
     contractVersion: "1",
     requestId: "7cbbc0f9-9d12-4b08-9741-75bbb399e7c6",
     account: { id: "fb37d589-c1de-4300-8a93-63df012bbfb2" },
@@ -232,7 +232,7 @@ test("a refresh-401 clear cannot sign out or delete a concurrently verified logi
       "person@example.com",
     );
   });
-  await waitFor(() => expect(deps.api.verifyEmailChallenge).toHaveBeenCalledTimes(1));
+  await waitFor(() => expect(deps.api.loginEmailChallenge).toHaveBeenCalledTimes(1));
   clearing.resolve(undefined);
   await act(async () => { await loginPromise; });
 
@@ -344,7 +344,7 @@ test("a new email login supersedes an older startup refresh", async () => {
   const deps = dependencies();
   jest.mocked(deps.api.refresh).mockReturnValueOnce(pendingRefresh);
   const newAccountId = "fb37d589-c1de-4300-8a93-63df012bbfb2";
-  jest.mocked(deps.api.verifyEmailChallenge).mockResolvedValueOnce({
+  jest.mocked(deps.api.loginEmailChallenge).mockResolvedValueOnce({
     contractVersion: "1",
     requestId: "7cbbc0f9-9d12-4b08-9741-75bbb399e7c6",
     account: { id: newAccountId },
@@ -387,4 +387,27 @@ test("a new email login supersedes an older startup refresh", async () => {
     email: "person@example.com",
     refreshToken: `cave_rt_${"m".repeat(43)}`,
   }));
+});
+
+
+test.each(["password", "registration"] as const)("adopts a %s session without persisting credentials", async (method) => {
+  const deps = dependencies();
+  jest.mocked(deps.sessionStore.load).mockResolvedValueOnce(null);
+  const response = { contractVersion: "1" as const, requestId: "7cbbc0f9-9d12-4b08-9741-75bbb399e7c6", account: { id: stored.accountId }, session: {
+    accessToken: `cave_at_${"a".repeat(43)}`, accessExpiresAt: "2026-08-28T17:15:00Z",
+    refreshToken: stored.refreshToken, refreshExpiresAt: stored.refreshExpiresAt,
+  } };
+  deps.api.loginWithPassword = jest.fn(async () => response);
+  deps.api.registerEmailAccount = jest.fn(async () => response);
+  let result: ReturnType<typeof useAuth> | undefined;
+  function Capture() { result = useAuth(); return <Text>{result.status}</Text>; }
+  render(<AuthProvider dependencies={deps}><Capture /></AuthProvider>);
+  await screen.findByText("signedOut");
+  await act(async () => {
+    if (method === "password") await result!.loginWithPassword(" Person@Example.com ", "long password");
+    else await result!.registerEmailAccount(stored.accountId, "123456", " Person@Example.com ", "long password");
+  });
+  expect(result?.status).toBe("signedIn");
+  expect(deps.sessionStore.save).toHaveBeenCalledWith(expect.objectContaining({ email: "person@example.com" }));
+  expect(JSON.stringify(jest.mocked(deps.sessionStore.save).mock.calls)).not.toContain("long password");
 });

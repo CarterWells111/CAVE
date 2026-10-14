@@ -1,11 +1,11 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react-native";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react-native";
 
 import { MobileAuthApiError } from "../infrastructure/auth-api-client";
 import { EmailAuthScreen } from "./EmailAuthScreen";
 import { InMemoryAppearancePreferencesRepository } from "../../../core/design/appearance-preferences";
 import { ThemeProvider } from "../../../core/design/theme-provider";
 import { darkTheme, lightTheme } from "../../../core/design/theme";
-import { ScrollView, StyleSheet } from "react-native";
+import { AppState, ScrollView, StyleSheet, type AppStateStatus } from "react-native";
 
 const challenge = {
   contractVersion: "1" as const,
@@ -191,4 +191,66 @@ test("offers device logout and separate cloud-account deletion when signed in", 
   expect(screen.getByText("已登录（当前离线）")).toBeTruthy();
   expect(screen.getByRole("button", { name: "从这台设备退出登录" })).toBeTruthy();
   expect(screen.getByRole("button", { name: "删除云端账户" })).toBeTruthy();
+});
+
+
+test("centers email and code input text and recalibrates the resend countdown on foreground", async () => {
+  jest.useFakeTimers();
+  const started = Date.parse("2026-10-14T12:00:00Z");
+  jest.setSystemTime(started);
+  let onState: ((state: AppStateStatus) => void) | undefined;
+  const remove = jest.fn();
+  jest.spyOn(AppState, "addEventListener").mockImplementation((_event, callback) => {
+    onState = callback;
+    return { remove };
+  });
+  const requestEmail = jest.fn(async () => challenge);
+  const view = render(<EmailAuthScreen adultAuthorized onBack={jest.fn()} onDeleteAccount={jest.fn()} onLogout={jest.fn()}
+    onRequestEmail={requestEmail} onVerifyCode={jest.fn()} status="signedOut" />);
+  expect(screen.getByLabelText("邮箱地址")).toHaveStyle({ paddingVertical: 0, textAlignVertical: "center", includeFontPadding: false });
+  fireEvent.changeText(screen.getByLabelText("邮箱地址"), "person@example.com");
+  await act(async () => { fireEvent.press(screen.getByRole("button", { name: "发送验证码" })); });
+  expect(screen.getByLabelText("6 位验证码")).toHaveStyle({ paddingVertical: 0, textAlignVertical: "center", includeFontPadding: false });
+  expect(screen.getByText("60 秒后可重新发送。")).toBeTruthy();
+  act(() => jest.advanceTimersByTime(1000));
+  expect(screen.getByText("59 秒后可重新发送。")).toBeTruthy();
+  act(() => { jest.setSystemTime(started + 61_000); onState?.("active"); });
+  expect(screen.getByRole("button", { name: "重新发送验证码" })).toBeTruthy();
+  await act(async () => { fireEvent.press(screen.getByRole("button", { name: "重新发送验证码" })); });
+  expect(requestEmail).toHaveBeenCalledTimes(2);
+  expect(screen.getByText("60 秒后可重新发送。")).toBeTruthy();
+  view.unmount();
+  expect(remove).toHaveBeenCalled();
+  jest.useRealTimers();
+});
+
+test("logs in with a password without requesting an OTP", async () => {
+  const requestEmail = jest.fn();
+  const onPasswordLogin = jest.fn(async () => undefined);
+  render(<EmailAuthScreen adultAuthorized onBack={jest.fn()} onDeleteAccount={jest.fn()} onLogout={jest.fn()}
+    onRequestEmail={requestEmail} onVerifyCode={jest.fn()} onPasswordLogin={onPasswordLogin} status="signedOut" />);
+  fireEvent.press(screen.getByRole("button", { name: "密码登录" }));
+  fireEvent.changeText(screen.getByLabelText("邮箱地址"), " Person@Example.com ");
+  expect(screen.getByLabelText("密码")).toHaveProp("secureTextEntry", true);
+  fireEvent.changeText(screen.getByLabelText("密码"), "exact password ");
+  fireEvent.press(screen.getByRole("button", { name: "登录" }));
+  await waitFor(() => expect(onPasswordLogin).toHaveBeenCalledWith("person@example.com", "exact password "));
+  expect(requestEmail).not.toHaveBeenCalled();
+});
+
+test("requires a password for registration and sends it only with the verification submission", async () => {
+  const onRegister = jest.fn(async () => undefined);
+  const onVerifyCode = jest.fn();
+  render(<EmailAuthScreen adultAuthorized onBack={jest.fn()} onDeleteAccount={jest.fn()} onLogout={jest.fn()}
+    onRequestEmail={jest.fn(async () => challenge)} onVerifyCode={onVerifyCode} onRegister={onRegister} status="signedOut" />);
+  fireEvent.press(screen.getByRole("button", { name: "注册 / 设置初始密码" }));
+  fireEvent.changeText(screen.getByLabelText("邮箱地址"), "person@example.com");
+  expect(screen.getByRole("button", { name: "发送验证码" })).toBeDisabled();
+  fireEvent.changeText(screen.getByLabelText("设置密码"), "long password");
+  fireEvent.press(screen.getByRole("button", { name: "发送验证码" }));
+  await screen.findByLabelText("6 位验证码");
+  fireEvent.changeText(screen.getByLabelText("6 位验证码"), "123456");
+  fireEvent.press(screen.getByRole("button", { name: "注册并登录" }));
+  await waitFor(() => expect(onRegister).toHaveBeenCalledWith(challenge.challengeId, "123456", "person@example.com", "long password"));
+  expect(onVerifyCode).not.toHaveBeenCalled();
 });

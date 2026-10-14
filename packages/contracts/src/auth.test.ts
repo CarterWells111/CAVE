@@ -127,3 +127,14 @@ it("publishes authentication failures without account-enumeration codes", () => 
   }
   expect(() => ApiErrorCodeSchema.parse("ACCOUNT_NOT_FOUND")).toThrow();
 });
+
+
+it("requires bounded registration and login passwords without trimming and keeps legacy OTP requests strict", async () => {
+  const { PasswordLoginRequestSchema, EmailRegistrationRequestSchema } = await import("./auth");
+  const base = { contractVersion: "1", requestId, installationToken: "installation-token" };
+  expect(PasswordLoginRequestSchema.parse({ ...base, email: "person@example.com", password: "long password " }).password).toBe("long password ");
+  for (const password of [undefined, "short", "a".repeat(129)]) {
+    expect(EmailRegistrationRequestSchema.safeParse({ ...base, code: "123456", password }).success).toBe(false);
+  }
+  expect(EmailChallengeVerifyRequestSchema.safeParse({ ...base, code: "123456", password: "long password" }).success).toBe(false);
+});

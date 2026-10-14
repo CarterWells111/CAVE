@@ -1,4 +1,5 @@
 import type { JournalEntry, JournalRecord } from "../domain/journal-record";
+import type { JournalWriteGuard, JournalUpdateGuard, JournalEntryGuard } from "../domain/journal-confirmation";
 
 export class JournalDeletionCleanupRequiredError extends Error {
   readonly code = "JOURNAL_DELETION_CLEANUP_REQUIRED";
@@ -44,12 +45,12 @@ export type JournalRevision = Readonly<{
 export interface JournalRepository {
   ensureDeletionCleanup(ownerAccountId: string): Promise<boolean>;
   claimUnowned(ownerAccountId: string): Promise<void>;
-  createRecord(ownerAccountId: string, record: JournalRecord): Promise<void>;
-  updateRecord(ownerAccountId: string, record: JournalRecord, revision?: JournalRevision): Promise<void>;
+  createRecord(ownerAccountId: string, record: JournalRecord, guard?: JournalWriteGuard): Promise<void>;
+  updateRecord(ownerAccountId: string, record: JournalRecord, revision?: JournalRevision, guard?: JournalUpdateGuard): Promise<void>;
   listRecords(ownerAccountId: string): Promise<readonly JournalRecordSummary[]>;
   loadRecord(ownerAccountId: string, id: string): Promise<JournalRecord | null>;
   deleteRecord(ownerAccountId: string, id: string): Promise<void>;
-  createEntry(ownerAccountId: string, entry: JournalEntry): Promise<void>;
+  createEntry(ownerAccountId: string, entry: JournalEntry, guard?: JournalEntryGuard): Promise<void>;
   updateEntry(ownerAccountId: string, entry: JournalEntry, revision?: JournalRevision): Promise<void>;
   loadEntry(ownerAccountId: string, id: string): Promise<JournalEntry | null>;
   deleteEntry(ownerAccountId: string, id: string): Promise<void>;

@@ -10,6 +10,7 @@ import { createExpoAuthDependencies } from "../src/features/auth/runtime/expo-au
 import { createExpoJourneyRuntime } from "../src/features/journey/runtime/default-journey-runtime";
 import { JourneyRuntimeProvider } from "../src/features/journey/runtime/JourneyRuntimeProvider";
 import { JournalAccessProvider } from "../src/features/journal/runtime/JournalAccessProvider";
+import { AssistantHistoryProvider } from "../src/features/assistant/AssistantHistoryProvider";
 
 function AcceptanceBoundary({ children }: PropsWithChildren) {
   if (__DEV__ && Constants.expoConfig?.extra?.environment === "acceptance" && Constants.expoConfig?.extra?.acceptanceTools === true) {
@@ -27,7 +28,7 @@ function AuthBoundary({ children }: PropsWithChildren) {
       <AccountPreferencesProvider>
         <JourneyRuntimeProvider createRuntime={createExpoJourneyRuntime}>
           <AccountProfileProvider>
-            <JournalAccessProvider>{children}</JournalAccessProvider>
+            <JournalAccessProvider><AssistantHistoryProvider>{children}</AssistantHistoryProvider></JournalAccessProvider>
           </AccountProfileProvider>
         </JourneyRuntimeProvider>
       </AccountPreferencesProvider>

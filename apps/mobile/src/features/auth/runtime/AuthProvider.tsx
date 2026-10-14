@@ -48,6 +48,8 @@ type AuthContextValue = {
   email?: string;
   requestEmailChallenge(email: string): Promise<EmailChallengeAccepted>;
   verifyEmailChallenge(challengeId: string, code: string, email: string): Promise<void>;
+  loginWithPassword(email: string, password: string): Promise<void>;
+  registerEmailAccount(challengeId: string, code: string, email: string, password: string): Promise<void>;
   logout(): Promise<void>;
   clearLocalSession(): Promise<void>;
   requestAccountDeletionChallenge(email: string): Promise<EmailChallengeAccepted>;
@@ -200,7 +202,7 @@ export function AuthProvider({
 
   const verifyEmailChallenge = useCallback(async (challengeId: string, code: string, email: string) => {
     const requestEpoch = sessionEpochRef.current;
-    const response = await dependencies.api.verifyEmailChallenge(challengeId, {
+    const response = await dependencies.api.loginEmailChallenge(challengeId, {
       contractVersion: "1",
       requestId: dependencies.createRequestId(),
       code,
@@ -209,6 +211,25 @@ export function AuthProvider({
     if (sessionEpochRef.current !== requestEpoch) throw new LocalAuthError("AUTH_UNAUTHORIZED");
     const loginEpoch = ++sessionEpochRef.current;
     await adopt(response, loginEpoch, email.trim().toLowerCase());
+  }, [adopt, dependencies]);
+
+  const loginWithPassword = useCallback(async (email: string, password: string) => {
+    const epoch = sessionEpochRef.current;
+    const response = await dependencies.api.loginWithPassword({
+      contractVersion: "1", requestId: dependencies.createRequestId(), email, password,
+      installationToken: await dependencies.getInstallationToken(),
+    });
+    if (sessionEpochRef.current !== epoch) throw new LocalAuthError("AUTH_UNAUTHORIZED");
+    await adopt(response, ++sessionEpochRef.current, email.trim().toLowerCase());
+  }, [adopt, dependencies]);
+  const registerEmailAccount = useCallback(async (challengeId: string, code: string, email: string, password: string) => {
+    const epoch = sessionEpochRef.current;
+    const response = await dependencies.api.registerEmailAccount(challengeId, {
+      contractVersion: "1", requestId: dependencies.createRequestId(), code, password,
+      installationToken: await dependencies.getInstallationToken(),
+    });
+    if (sessionEpochRef.current !== epoch) throw new LocalAuthError("AUTH_UNAUTHORIZED");
+    await adopt(response, ++sessionEpochRef.current, email.trim().toLowerCase());
   }, [adopt, dependencies]);
 
   const ensureAccessToken = useCallback(async (): Promise<string> => {
@@ -313,6 +334,8 @@ export function AuthProvider({
     ),
     requestEmailChallenge,
     verifyEmailChallenge,
+    loginWithPassword,
+    registerEmailAccount,
     logout,
     clearLocalSession,
     requestAccountDeletionChallenge,
@@ -324,7 +347,7 @@ export function AuthProvider({
     getAssistantAccessToken: preferencesToken,
   }), [
     clearLocalSession, createAccountDeletionIdempotencyKey, deleteAccount, logout, requestAccountDeletionChallenge,
-    requestEmailChallenge, status, verifyAccountDeletionChallenge, verifyEmailChallenge,
+    requestEmailChallenge, status, verifyAccountDeletionChallenge, verifyEmailChallenge, loginWithPassword, registerEmailAccount,
     getAccountPreferences, updateAccountPreferences, preferencesToken,
   ]);
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

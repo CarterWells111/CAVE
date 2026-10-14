@@ -1,5 +1,7 @@
 import type {
   ApiErrorCode,
+  PasswordLoginRequest,
+  EmailRegistrationRequest,
   AccountDeletionChallengeRequest,
   AccountDeletionGrantResponse,
   AccountDeletionRequest,
@@ -12,6 +14,8 @@ import type {
 } from "@cave/contracts";
 
 import {
+  hashPassword,
+  verifyPassword,
   createNumericCode,
   createOpaqueToken,
   digestLowEntropySecret,
@@ -93,7 +97,7 @@ export function createAuthService({
   if (otpKeys.some((key) => emailKeyValues.has(key.value))) throw new Error("auth-key-reuse-forbidden");
 
   async function enforceChallengeRateLimit(
-    purpose: "sign_in" | "account_delete",
+    purpose: "sign_in" | "account_delete" | "password_login",
     emailLookup: string,
     installationDigest: string,
   ): Promise<void> {
@@ -143,6 +147,23 @@ export function createAuthService({
   }
 
   return {
+    async loginWithPassword(input: PasswordLoginRequest): Promise<AuthSessionResponse> {
+      const lookups = await Promise.all(emailLookupKeys.map(async (key) => ({ emailKeyVersion: key.version, emailLookup: await digestLowEntropySecret(key.value, normalizeEmail(input.email)) })));
+      await enforceChallengeRateLimit("password_login", lookups[0]!.emailLookup, await digestOpaqueToken(input.installationToken));
+      const account = await repository.findAccountByEmailLookups(lookups);
+      const hash = account === null ? null : await repository.getPasswordHash(account.id);
+      const valid = await verifyPassword(input.password, hash);
+      if (!valid || account === null) throw new AuthServiceError("AUTH_UNAUTHORIZED", 401);
+      const tokens = await createTokens(account, input.requestId);
+      await repository.createSession(tokens.record);
+      return tokens.response;
+    },
+    async registerEmailAccount(challengeId: string, input: EmailRegistrationRequest): Promise<AuthSessionResponse> {
+      return this.verifyEmailChallenge(challengeId, input, input.password);
+    },
+    async loginEmailChallenge(challengeId: string, input: EmailChallengeVerifyRequest): Promise<AuthSessionResponse> {
+      return this.verifyEmailChallenge(challengeId, input, undefined, true);
+    },
     async requestEmailChallenge(input: EmailChallengeRequest): Promise<EmailChallengeAccepted> {
       const createdAtMs = now();
       const createdAt = new Date(createdAtMs).toISOString();
@@ -196,6 +217,8 @@ export function createAuthService({
     async verifyEmailChallenge(
       challengeId: string,
       input: EmailChallengeVerifyRequest,
+      registrationPassword?: string,
+      requireExisting = false,
     ): Promise<AuthSessionResponse> {
       const challenge = await repository.getChallenge(challengeId);
       if (
@@ -229,12 +252,17 @@ export function createAuthService({
           emailLookup: challenge.emailLookup,
           emailKeyVersion: challenge.emailKeyVersion,
         });
+      if (requireExisting && migrated === null) throw new AuthServiceError("AUTH_UNAUTHORIZED", 401);
       const account = migrated ?? await repository.findOrCreateAccount({
           id: createId(),
           emailLookup: challenge.emailLookup,
           emailKeyVersion: challenge.emailKeyVersion,
           createdAt: nowIso,
         });
+      if (registrationPassword !== undefined) {
+        const hash = await hashPassword(registrationPassword);
+        if (!await repository.setPasswordIfAbsent(account.id, hash)) throw new AuthServiceError("AUTH_UNAUTHORIZED", 401);
+      }
       const tokens = await createTokens(account, input.requestId);
       await repository.createSession(tokens.record);
       return tokens.response;

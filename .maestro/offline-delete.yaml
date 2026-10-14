@@ -10,6 +10,12 @@ tags:
 - assertVisible: "设置"
 - scrollUntilVisible:
     element:
+      text: "账号与隐私.*"
+    direction: DOWN
+- tapOn: "账号与隐私.*"
+- assertVisible: "账号与隐私"
+- scrollUntilVisible:
+    element:
       text: "旅程、练习、手记、沟通卡和回顾保存在本机.*"
     direction: DOWN
 - scrollUntilVisible:

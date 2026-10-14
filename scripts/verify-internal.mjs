@@ -1,7 +1,9 @@
+/* global process, console */
 import { spawn, spawnSync } from "node:child_process";
-import { appendFileSync, mkdirSync, writeFileSync } from "node:fs";
+import { appendFileSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import { collectResourceIdentifiers, createRedactedLineWriter } from "./cloud-resource-redaction.mjs";
 
 export const INTERNAL_CHECKS = [
   ["test:ci-config"], ["typecheck"], ["lint"], ["test"],
@@ -30,6 +32,7 @@ async function main() {
   const pnpm = process.env.npm_execpath;
   if (!pnpm) throw new Error("Run this gate using pnpm verify:internal");
   const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
+  const identifiers = collectResourceIdentifiers(JSON.parse(readFileSync(resolve(root, "apps/gateway/wrangler.jsonc"), "utf8")));
   const startedAt = new Date().toISOString();
   const git = (args) => spawnSync("git", args, { cwd: root, encoding: "utf8", windowsHide: true });
   const revision = git(["rev-parse", "HEAD"]).stdout?.trim() || null;
@@ -42,10 +45,18 @@ async function main() {
     const heading = `\nRunning: pnpm ${args.join(" ")}\n`;
     process.stdout.write(heading);
     appendFileSync(log, heading);
-    const child = spawn(process.execPath, [pnpm, ...args], { cwd: root, stdio: ["ignore", "pipe", "pipe"], windowsHide: true });
-    for (const stream of [child.stdout, child.stderr]) stream.on("data", (chunk) => { process.stdout.write(chunk); appendFileSync(log, chunk); });
+    const childEnv = { ...process.env, WRANGLER_WRITE_LOGS: "false", WRANGLER_SEND_METRICS: "false" };
+    delete childEnv.WRANGLER_OUTPUT_FILE_PATH;
+    delete childEnv.WRANGLER_OUTPUT_FILE_DIRECTORY;
+    const child = spawn(process.execPath, [pnpm, ...args], { cwd: root, env: childEnv, stdio: ["ignore", "pipe", "pipe"], windowsHide: true });
+    const writers = [child.stdout, child.stderr].map(stream => {
+      const writer = createRedactedLineWriter(text => { process.stdout.write(text); appendFileSync(log, text); }, identifiers);
+      stream.on("data", chunk => writer.write(chunk));
+      stream.once("end", () => writer.end());
+      return writer;
+    });
     child.once("error", () => fulfill(1));
-    child.once("exit", (code) => fulfill(code ?? 1));
+    child.once("close", (code) => { writers.forEach(writer => writer.end()); fulfill(code ?? 1); });
   }));
   const output = resolve(root, "outputs/p0-readiness/verification.json");
   mkdirSync(dirname(output), { recursive: true });

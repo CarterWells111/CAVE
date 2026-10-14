@@ -26,7 +26,7 @@ describe("CI bootstrap download reuse", () => {
       npm_config_fund: "false",
     });
     expect(workflow.env).toBeUndefined();
-    expect(job.env).toBeUndefined();
+    expect(job.env).toEqual({ WRANGLER_WRITE_LOGS: "false", WRANGLER_SEND_METRICS: "false" });
     for (const step of steps.filter((step: unknown) => step !== bootstrap)) {
       expect(step.env?.npm_config_audit).toBeUndefined();
       expect(step.env?.NPM_CONFIG_AUDIT).toBeUndefined();

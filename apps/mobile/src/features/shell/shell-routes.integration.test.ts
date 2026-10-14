@@ -45,9 +45,12 @@ test("keeps metadata lists in My and avoids repository reads on the map", () => 
 test("keeps settings outside tabs and available before journey completion", () => {
   expect(source("(tabs)/journey.tsx")).toContain('router.push("/settings")');
   expect(source("settings/_layout.tsx")).not.toContain("ShellRouteGate");
-  expect(source("settings/index.tsx")).toContain("useOptionalJourneyRuntime");
+  expect(source("settings/index.tsx")).toContain('router.push("/settings/account-privacy")');
   expect(source("settings/index.tsx")).not.toContain('<Redirect href="/journey/welcome"');
-  expect(source("settings/index.tsx")).toContain("runtime.deleteAllData()");
+  expect(source("settings/index.tsx")).not.toContain("runtime.deleteAllData()");
+  expect(source("settings/account-privacy.tsx")).toContain("useOptionalJourneyRuntime");
+  expect(source("settings/account-privacy.tsx")).not.toContain('<Redirect href="/journey/welcome"');
+  expect(source("settings/account-privacy.tsx")).toContain("runtime.deleteAllData()");
   expect(source("journey/welcome.tsx")).toContain('router.push("/settings")');
   expect(source("../src/features/shell/ui/SettingsScreen.tsx")).toContain("邮箱登录（不含同步）");
   expect(source("../src/features/shell/ui/SettingsScreen.tsx")).toContain("登录不会上传日记、沟通卡、回顾或亲密内容");

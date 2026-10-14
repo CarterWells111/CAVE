@@ -10,6 +10,7 @@ import {
 } from "../domain/journal-record";
 import type { JournalDraft, JournalPeriodReview, JournalRecordSummary, JournalRepository, JournalRevision } from "../infrastructure/journal-repository";
 import { JOURNAL_EDIT_WINDOW_MS } from "../domain/journal-record";
+import { checkJournalUpdateGuard, checkJournalEntryGuard, checkJournalWriteGuard, type JournalWriteGuard, type JournalEntryGuard } from "../domain/journal-confirmation";
 
 export type JournalServiceErrorCode = "journal-item-locked" | "journal-record-not-found" | "journal-entry-not-found";
 
@@ -47,14 +48,14 @@ export class JournalService {
     topics?: readonly JournalTopic[];
     source?: JournalSource;
     cardSnapshot?: JournalRecord["cardSnapshot"];
-  }>): Promise<JournalRecord> {
+  }>, guard?: JournalWriteGuard): Promise<JournalRecord> {
     const record = createJournalRecord({
       id: this.dependencies.createId(),
       createdAt: this.dependencies.now(),
       ...input,
       source: input.source ?? { kind: "freeform" }
     });
-    return this.repository.createRecord(this.ownerAccountId, record).then(() => record);
+    return this.repository.createRecord(this.ownerAccountId, record, guard).then(() => record);
   }
 
   listRecords(): Promise<readonly JournalRecordSummary[]> {
@@ -67,12 +68,14 @@ export class JournalService {
     return { record, entries: await this.repository.listEntries(this.ownerAccountId, id) };
   }
 
-  async updateRecord(id: string, patch: Partial<Pick<JournalRecord, "title" | "occurredAt" | "highlight" | "body" | "topics">>): Promise<JournalRecord> {
+  async updateRecord(id: string, patch: Partial<Pick<JournalRecord, "title" | "occurredAt" | "highlight" | "body" | "topics">>, confirmation?: JournalWriteGuard & Readonly<{ expected: JournalRecord }>): Promise<JournalRecord> {
     const current = await this.requireRecord(id);
+    const guard = confirmation ? { ...confirmation, now: () => this.dependencies.now() } : undefined;
+    if (guard) checkJournalUpdateGuard(current, guard);
     const now = this.dependencies.now();
     const normalized = createJournalRecord({ ...current, ...patch, createdAt: current.createdAt });
     const updated = { ...normalized, editableUntil: current.editableUntil, updatedAt: new Date(now).toISOString() };
-    await this.repository.updateRecord(this.ownerAccountId, updated, { id: this.dependencies.createId(), recordId: id, itemId: id, itemKind: "record", savedAt: now, snapshot: current });
+    await this.repository.updateRecord(this.ownerAccountId, updated, { id: this.dependencies.createId(), recordId: id, itemId: id, itemKind: "record", savedAt: now, snapshot: current }, guard);
     return updated;
   }
 
@@ -81,10 +84,12 @@ export class JournalService {
     occurredAt: string;
     body: string;
     highlight?: JournalHighlight | null;
-  }>): Promise<JournalEntry> {
-    await this.requireRecord(recordId);
+  }>, guard?: JournalEntryGuard): Promise<JournalEntry> {
+    checkJournalWriteGuard(guard);
+    const record = await this.requireRecord(recordId);
+    if (guard) checkJournalEntryGuard(record, guard.expectedEntries ? await this.repository.listEntries(this.ownerAccountId, recordId) : [], guard);
     const entry = createJournalEntry({ id: this.dependencies.createId(), recordId, createdAt: this.dependencies.now(), ...input });
-    await this.repository.createEntry(this.ownerAccountId, entry);
+    await this.repository.createEntry(this.ownerAccountId, entry, guard);
     return entry;
   }
 

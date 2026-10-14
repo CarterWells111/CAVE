@@ -8,6 +8,7 @@ export type AccountJournalDeletion = {
   journalPersistence: JournalPersistence;
   ensureDeletionCleanup(): Promise<boolean>;
   clearCurrentAccount(): Promise<void>;
+  clearCurrentAccountAssistantHistory(): Promise<void>;
 };
 export const AccountJournalDeletionContext = createContext<AccountJournalDeletion | null>(null);
 export const useOptionalAccountJournalDeletion = () => useContext(AccountJournalDeletionContext);

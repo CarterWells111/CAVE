@@ -81,3 +81,10 @@ export type LogoutSessionRequest = z.infer<typeof LogoutSessionRequestSchema>;
 export type AccountDeletionChallengeRequest = z.infer<typeof AccountDeletionChallengeRequestSchema>;
 export type AccountDeletionGrantResponse = z.infer<typeof AccountDeletionGrantResponseSchema>;
 export type AccountDeletionRequest = z.infer<typeof AccountDeletionRequestSchema>;
+
+// Passwords are never trimmed or normalized.
+export const PasswordSchema = z.string().min(10).max(128);
+export const PasswordLoginRequestSchema = EmailChallengeRequestSchema.extend({ password: PasswordSchema }).strict();
+export const EmailRegistrationRequestSchema = EmailChallengeVerifyRequestSchema.extend({ password: PasswordSchema }).strict();
+export type PasswordLoginRequest = z.infer<typeof PasswordLoginRequestSchema>;
+export type EmailRegistrationRequest = z.infer<typeof EmailRegistrationRequestSchema>;

@@ -40,3 +40,16 @@ describe("authentication cryptography", () => {
     expect(secureEqual(first, "short")).toBe(false);
   });
 });
+
+
+it("uses random salts and verifies exact passwords while rejecting malformed or absent credentials", async () => {
+  const { hashPassword, verifyPassword } = await import("../src/auth/crypto");
+  const password = "long exact password ";
+  const first = await hashPassword(password);
+  const second = await hashPassword(password);
+  expect(first).not.toBe(second);
+  expect(await verifyPassword(password, first)).toBe(true);
+  expect(await verifyPassword(password.trim(), first)).toBe(false);
+  expect(await verifyPassword(password, null)).toBe(false);
+  expect(await verifyPassword(password, "pbkdf2-sha256$999999999$bad$bad")).toBe(false);
+});

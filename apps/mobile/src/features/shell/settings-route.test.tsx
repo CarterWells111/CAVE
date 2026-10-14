@@ -3,6 +3,7 @@ import { StyleSheet } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import SettingsRoute from "../../../app/settings/index";
+import AccountPrivacyRoute from "../../../app/settings/account-privacy";
 import WelcomeRoute from "../../../app/journey/welcome";
 
 const mockBack = jest.fn();
@@ -29,6 +30,8 @@ let mockRuntime: {
 } | null = null;
 let mockAdultStatus: "public" | "authorized" = "public";
 const mockClearLocalSession = jest.fn(async () => undefined);
+const mockLogout = jest.fn(async () => undefined);
+let mockAuthStatus = "signedOut";
 const mockSaveDisplayName = jest.fn(async () => undefined);
 const mockChooseAvatar = jest.fn(async () => undefined);
 const mockRemoveAvatar = jest.fn(async () => undefined);
@@ -45,7 +48,7 @@ let mockAccountProfile = {
 };
 
 jest.mock("../auth/runtime/AuthProvider", () => ({
-  useOptionalAuth: () => ({ status: "signedOut", clearLocalSession: mockClearLocalSession }),
+  useOptionalAuth: () => ({ status: mockAuthStatus, clearLocalSession: mockClearLocalSession, logout: mockLogout }),
 }));
 
 jest.mock("../account/runtime/AccountProfileProvider", () => ({
@@ -73,6 +76,7 @@ jest.mock("../journey/runtime/JourneyRuntimeProvider", () => ({
 
 beforeEach(() => {
   jest.clearAllMocks();
+  mockAuthStatus = "signedOut";
   mockRuntime = null;
   mockAdultStatus = "public";
   mockAccountProfile = {
@@ -116,7 +120,7 @@ test("authorized settings navigates to the public tabs as soon as deletion succe
     snapshot: null,
   };
   mockAdultStatus = "authorized";
-  render(<SettingsRoute />);
+  render(<AccountPrivacyRoute />);
 
   expect(await screen.findByRole("switch", { name: "保存私人记录前显示本机提示" })).toHaveProp("value", true);
 
@@ -180,4 +184,12 @@ test("the standalone journey welcome keeps its brand content below the device to
     screen.getByTestId("journey-welcome-scroll").props.contentContainerStyle,
   );
   expect(contentStyle.paddingTop).toBe(47);
+});
+
+
+test("settings opens the separate privacy page without running destructive operations",()=>{
+ render(<SettingsRoute/>);fireEvent.press(screen.getByRole("button",{name:"账号与隐私，账号管理、隐私设置与危险操作"}));expect(mockPush).toHaveBeenCalledWith("/settings/account-privacy");expect(mockDeleteAllData).not.toHaveBeenCalled();expect(mockLogout).not.toHaveBeenCalled();
+});
+test("offline account can cancel logout or open existing deletion verification",async()=>{
+ mockAuthStatus="offline";render(<AccountPrivacyRoute/>);fireEvent.press(screen.getByRole("button",{name:"退出登录"}));fireEvent.press(screen.getByRole("button",{name:"取消退出"}));expect(mockLogout).not.toHaveBeenCalled();fireEvent.press(screen.getByRole("button",{name:"删除账号"}));expect(mockPush).toHaveBeenCalledWith("/auth/delete-account");
 });

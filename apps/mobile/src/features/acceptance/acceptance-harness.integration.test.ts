@@ -33,7 +33,10 @@ test('v12 injected fault rolls back version and ownership schema, then retries r
   expect(db.prepare('SELECT count(*) AS count FROM journal_records').get()).toEqual({ count: 1 });
   h.closeRaw(db);
   await harness.upgrade();
-  expect(harness.getSnapshot()).toMatchObject({ status: 'success', metadata: { version: 13, counts: { journal_records: 1, journal_entries: 1 } } });
+  expect(harness.getSnapshot()).toMatchObject({ status: 'success', metadata: { version: 14, counts: { journal_records: 1, journal_entries: 1 } } });
+  const upgraded = h.openRaw();
+  expect(upgraded.prepare('SELECT count(*) AS count FROM assistant_conversations').get()).toEqual({ count: 0 });
+  h.closeRaw(upgraded);
 });
 test('pause occurs before migration commit: another connection still observes version 11', async () => {
   const { h, harness } = setup();
@@ -47,7 +50,7 @@ test('pause occurs before migration commit: another connection still observes ve
   expect(db.prepare('PRAGMA user_version').get()).toEqual({ user_version: 11 });
   h.closeRaw(db);
   harness.resumePaused(); await upgrading;
-  expect(harness.getSnapshot()).toMatchObject({ status: 'success', metadata: { version: 13 } });
+  expect(harness.getSnapshot()).toMatchObject({ status: 'success', metadata: { version: 14 } });
 });
 test('transient keychain read failure preserves the original file/key and retries without removing files', async () => {
   const { h, harness } = setup();

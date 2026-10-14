@@ -2,6 +2,7 @@
 import { existsSync, writeFileSync } from "node:fs";
 import { createSqliteFileHarness } from "../../test/storage/sqlite-file-harness";
 import { HISTORICAL_DATABASE_FIXTURES } from "../../test/storage/historical-fixtures";
+import { CURRENT_SCHEMA_VERSION } from "./migrations";
 import { SECRET_NAMES } from "./key-store";
 
 const fixtures = HISTORICAL_DATABASE_FIXTURES;
@@ -28,7 +29,7 @@ describe("real SQLite file migration durability (not encryption)", () => {
     const before = snapshot(h);
     const manager = h.manager();
     const connection = await manager.initialize();
-    expect(await connection.getFirstAsync("PRAGMA user_version")).toEqual({ user_version: 13 });
+    expect(await connection.getFirstAsync("PRAGMA user_version")).toEqual({ user_version: CURRENT_SCHEMA_VERSION });
     expect(await connection.getAllAsync("PRAGMA foreign_key_check")).toEqual([]);
     await manager.close();
     const after = snapshot(h);
@@ -72,7 +73,7 @@ describe("real SQLite file migration durability (not encryption)", () => {
     h.closeRaw(db);
     h.setFault();
     const reopened = await h.manager().initialize();
-    expect(await reopened.getFirstAsync("PRAGMA user_version")).toEqual({ user_version: 13 });
+    expect(await reopened.getFirstAsync("PRAGMA user_version")).toEqual({ user_version: CURRENT_SCHEMA_VERSION });
     expect(await reopened.getFirstAsync("SELECT show_save_notice FROM local_journal_preferences")).toEqual({ show_save_notice: 0 });
     await h.manager().close();
   });
@@ -138,4 +139,30 @@ describe("real SQLite file migration durability (not encryption)", () => {
     else expect(existsSync(h.path)).toBe(false);
     expect(h.events.filter((event) => event.includes("CREATE TABLE"))).toEqual([]);
   });
+});
+
+
+test("v14 assistant-history schema rolls back on failure and preserves a v13 account journal on retry", async () => {
+  const h = harness("v12");
+  const manager = h.manager();
+  await manager.initialize();
+  await manager.close();
+  const legacy = h.openRaw();
+  legacy.exec("DROP TABLE assistant_conversations; PRAGMA user_version=13;");
+  const journalBefore = legacy.prepare("SELECT * FROM journal_records").all();
+  h.closeRaw(legacy);
+  h.setFault((operation, sql) => {
+    if (operation === "exec-after" && sql.includes("CREATE TABLE IF NOT EXISTS assistant_conversations")) throw new Error("synthetic-v14-interruption");
+  });
+  await expect(h.manager().initialize()).rejects.toThrow("synthetic-v14-interruption");
+  const interrupted = h.openRaw();
+  expect(interrupted.prepare("PRAGMA user_version").get()).toEqual({ user_version: 13 });
+  expect(interrupted.prepare("SELECT name FROM sqlite_master WHERE name='assistant_conversations'").all()).toEqual([]);
+  expect(interrupted.prepare("SELECT * FROM journal_records").all()).toEqual(journalBefore);
+  h.closeRaw(interrupted);
+  h.setFault();
+  const reopened = await h.manager().initialize();
+  expect(await reopened.getFirstAsync("PRAGMA user_version")).toEqual({ user_version: 14 });
+  expect(await reopened.getAllAsync("SELECT * FROM assistant_conversations")).toEqual([]);
+  expect(await reopened.getAllAsync("SELECT * FROM journal_records")).toEqual(journalBefore);
 });

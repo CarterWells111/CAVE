@@ -1,4 +1,5 @@
 import type { JournalEntry, JournalRecord } from "../domain/journal-record";
+import { checkJournalWriteGuard, checkJournalUpdateGuard, checkJournalEntryGuard, type JournalWriteGuard, type JournalUpdateGuard, type JournalEntryGuard } from "../domain/journal-confirmation";
 import type { JournalDraft, JournalPeriodReview, JournalRecordSummary, JournalRepository, JournalRevision } from "./journal-repository";
 
 function clone<T>(value: T): T {
@@ -25,13 +26,15 @@ export class InMemoryJournalRepository implements JournalRepository {
     }
   }
 
-  async createRecord(ownerAccountId: string, record: JournalRecord): Promise<void> {
+  async createRecord(ownerAccountId: string, record: JournalRecord, guard?: JournalWriteGuard): Promise<void> {
+    checkJournalWriteGuard(guard);
     if (this.records.has(record.id)) throw new Error("journal-record-conflict");
     this.records.set(record.id, { ownerAccountId, record: clone(record) });
   }
 
-  async updateRecord(ownerAccountId: string, record: JournalRecord, revision?: JournalRevision): Promise<void> {
+  async updateRecord(ownerAccountId: string, record: JournalRecord, revision?: JournalRevision, guard?: JournalUpdateGuard): Promise<void> {
     const current = this.records.get(record.id);
+    if (guard) checkJournalUpdateGuard(current?.ownerAccountId === ownerAccountId ? current.record : null, guard);
     if (current?.ownerAccountId !== ownerAccountId) throw new Error("journal-record-not-found");
     this.records.set(record.id, { ownerAccountId, record: clone(record) });
     if (revision) this.revisions.set(revision.id, { owner: ownerAccountId, revision: clone(revision) });
@@ -60,9 +63,12 @@ export class InMemoryJournalRepository implements JournalRepository {
     }
   }
 
-  async createEntry(ownerAccountId: string, entry: JournalEntry): Promise<void> {
-    if (this.records.get(entry.recordId)?.ownerAccountId !== ownerAccountId) throw new Error("journal-record-not-found");
+  async createEntry(ownerAccountId: string, entry: JournalEntry, guard?: JournalEntryGuard): Promise<void> {
+    const current = this.records.get(entry.recordId);
+    if (guard) checkJournalEntryGuard(current?.ownerAccountId === ownerAccountId ? current.record : null, [...this.entries.values()].filter(item => item.recordId === entry.recordId), guard);
+    if (current?.ownerAccountId !== ownerAccountId) throw new Error("journal-record-not-found");
     if (this.entries.has(entry.id)) throw new Error("journal-entry-conflict");
+    checkJournalWriteGuard(guard);
     this.entries.set(entry.id, clone(entry));
   }
 

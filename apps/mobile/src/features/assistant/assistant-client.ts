@@ -42,6 +42,18 @@ export function createAssistantClient(options: {
       if (body.length > 24_000) throw new AssistantClientError("invalid-response");
       const result = AssistantResponseSchema.safeParse(JSON.parse(body));
       if (!result.success) throw new AssistantClientError("invalid-response");
+      const journalDraft = result.data.journalDraft;
+      const journalStage = result.data.journalStage;
+      const request = parsed.data;
+      if (journalStage && request.mode !== "journal-draft") throw new AssistantClientError("invalid-response");
+      if (journalStage === "collecting" && request.journalDraft?.stage !== "interview") throw new AssistantClientError("invalid-response");
+      if (journalDraft && (request.mode !== "journal-draft" || !request.journalDraft
+        || journalDraft.requestId !== request.journalDraft.requestId
+        || journalDraft.occurredAt !== request.journalDraft.occurredAt
+        || (request.journalDraft.operation === "edit" && journalDraft.title !== request.journalDraft.title)
+        || !isChineseProse(journalDraft.body)
+        || (request.journalDraft.operation !== "edit" && !isChineseProse(journalDraft.title)))) throw new AssistantClientError("invalid-response");
+      if (request.mode === "journal-draft" && result.data.status === "ok" && !journalDraft && journalStage !== "collecting") throw new AssistantClientError("invalid-response");
       const ids = new Set(input.records.map(record => record.id));
       if (result.data.observations.some(observation => observation.sourceRecordIds.some(id => !ids.has(id)))) throw new AssistantClientError("invalid-response");
       const prose = [result.data.message, result.data.question, result.data.summary, ...result.data.observations.map(item => item.text)]
@@ -71,8 +83,7 @@ export const previewAssistant: AssistantRequester = async (input, signal) => {
   if (input.mode === "chat") result.message = "这是本机模拟，没有调用真实 AI。今天想聊点什么？我在这里听你说。";
   if (input.mode === "guide") result.question = "当时有没有一个让你舒服或不舒服的细节，想再记一点？也可以暂时说不清。";
   if (input.mode === "summarize" || input.mode === "review") {
-    result.summary = "模拟小结：请用自己的话保留这次最想记住的部分。这里不会推断你的经历或关系。";
-    result.observations = input.records.map(record => ({ text: "这条记录可以作为回顾的起点；模拟模式不分析内容。", sourceRecordIds: [record.id] })).slice(0, 6);
+    result.message = "这是本机模拟，没有调用 DeepSeek，也不会生成可保存的小结。";
   }
   if (input.mode === "journey") result.message += " 旅程支持暂停、返回修改和改变主意，沟通练习使用预设分支。真实问答需要接通服务端。";
   return AssistantResponseSchema.parse(result);
