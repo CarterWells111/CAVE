@@ -11,13 +11,13 @@ const pnpmWorkspace = readFileSync(
 
 describe("Expo SDK baseline", () => {
   it("uses the approved SDK 57 dependency matrix", () => {
-    expect(packageJson.dependencies.expo).toBe("~57.0.29");
+    expect(packageJson.dependencies.expo).toBe("~57.0.30");
     expect(packageJson.dependencies.react).toBe("19.2.3");
     expect(packageJson.dependencies["react-native"]).toBe("0.86.3");
     expect(packageJson.dependencies["expo-constants"]).toBe("~57.0.22");
     expect(packageJson.dependencies["expo-crypto"]).toBe("~57.0.4");
     expect(packageJson.dependencies["expo-linking"]).toBe("~57.0.13");
-    expect(packageJson.dependencies["expo-router"]).toBe("~57.0.27");
+    expect(packageJson.dependencies["expo-router"]).toBe("~57.0.28");
     expect(packageJson.dependencies["expo-dev-client"]).toBe("~57.0.20");
     expect(
       (packageJson.dependencies as Record<string, string | undefined>)[

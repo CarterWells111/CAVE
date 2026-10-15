@@ -20,8 +20,8 @@ function SampleNode({ journey, onOpen }: { journey: SampleJourney; onOpen: (id: 
   return (
     <View style={{ alignItems: "center", gap: theme.space.sm, minWidth: 0, width: "100%" }}>
       <Pressable
-        accessibilityHint={journey.preview ? "打开三页框架预览，不会保存答案" : "阅读身体知识，可选择查看外阴结构图"}
-        accessibilityLabel={journey.preview ? `打开${journey.title}，样板` : `打开${journey.title}，认识身体`}
+        accessibilityHint={journey.preview ? "打开三页框架预览，不会保存答案" : `阅读${journey.subtitle ?? "身体知识"}内容`}
+        accessibilityLabel={`打开${journey.title}，${journey.preview ? "样板" : journey.subtitle ?? "认识身体"}`}
         accessibilityRole="button"
         onBlur={() => setFocused(false)}
         onFocus={() => setFocused(true)}
@@ -47,7 +47,7 @@ function SampleNode({ journey, onOpen }: { journey: SampleJourney; onOpen: (id: 
         {journey.title}
       </Text>
       <Text selectable style={{ ...theme.typography.label, color: theme.color.textSecondary, textAlign: "center" }}>
-        {journey.preview ? "样板" : "认识身体"}
+        {journey.preview ? "样板" : journey.subtitle ?? "认识身体"}
       </Text>
     </View>
   );

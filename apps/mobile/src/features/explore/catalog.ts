@@ -1,11 +1,15 @@
 import type { Ionicons } from "@expo/vector-icons";
 import type { ComponentProps } from "react";
+import { LATER_JOURNEYS } from "./later-journeys";
 
-type SamplePage = Readonly<{
+export type SamplePage = Readonly<{
   kind: "introduction" | "content" | "end";
   title: string;
   body: string;
   showVulvaDiagram?: boolean;
+  cards?: readonly Readonly<{ title: string; body: string; tag?: "可选" | "展开补充"; source?: Readonly<{ label: string; url: string }> }>[];
+  footer?: string;
+  preferenceCard?: boolean;
   article?: Readonly<{
     title: string;
     organization: string;
@@ -18,6 +22,9 @@ type SamplePage = Readonly<{
 export type SampleJourney = Readonly<{
   id: string;
   title: string;
+  subtitle?: string;
+  statusLabel?: string;
+  helpText?: string;
   icon: ComponentProps<typeof Ionicons>["name"];
   preview: boolean;
   pages: readonly [SamplePage, SamplePage, SamplePage];
@@ -71,32 +78,73 @@ const BODY_JOURNEY: SampleJourney = {
   ],
 };
 
-export const SAMPLE_JOURNEYS: readonly SampleJourney[] = [BODY_JOURNEY, ...SAMPLE_ICONS.slice(1).map((icon, index): SampleJourney => {
-  const number = String(index + 2).padStart(2, "0");
-  return {
-    id: `journey-${number}`,
-    title: `旅程 ${number}`,
-    icon,
-    preview: true,
-    pages: [
-      {
-        kind: "introduction",
-        title: "先看看这段旅程",
-        body: "这是一段样板旅程，用来体验页面结构与前进、返回的方式。目前是框架预览，不是正式练习。",
-      },
-      {
-        kind: "content",
-        title: "为内容留一处空间",
-        body: "这里是内容占位页，暂不包含正式内容、建议或需要填写的答案。你可以继续看看结束页，也可以随时返回。",
-      },
-      {
-        kind: "end",
-        title: "这次预览到这里",
-        body: "你已看完这段样板旅程。本次预览不会保存答案，也不会生成回顾记录。返回地图后，可以自由打开任何一段旅程。",
-      },
-    ],
-  };
-})];
+const PLEASURE_JOURNEY: SampleJourney = {
+  id: "journey-02",
+  title: "旅程 02",
+  subtitle: "认识愉悦的方式",
+  statusLabel: "亲密方式 · 待专业复核",
+  helpText: "自由点开想看的知识卡。阅读即可，无需尝试；任何时候都可以返回地图。",
+  icon: SAMPLE_ICONS[1],
+  preview: false,
+  pages: [
+    {
+      kind: "introduction",
+      title: "亲密没有固定顺序",
+      body: "亲密可以是亲吻、拥抱和触碰，也可以包括其他身体接触。没有哪一种方式更“完整”，也不需要按顺序尝试。同一种接触，有人喜欢，有人无感，也有人不舒服；自己的感受也可能改变。接下来可以自由查看知识卡，只需了解，不要求尝试。",
+    },
+    {
+      kind: "content",
+      title: "认识不同的亲密方式",
+      body: "这些方式并列呈现。可以自由点开感兴趣的卡片，不必读完每一张才能继续。",
+      cards: [
+        {
+          title: "亲吻与身体触碰",
+          body: "拥抱、亲吻、抚摸或身体贴近，都可以单独成为亲密方式，不需要通向阴道纳入。有人喜欢其中一些接触，也有人此刻不想被碰。先问对方愿意怎样接触、哪些部位不想被碰。乳房和外阴的具体触碰留在各自的卡片里说明。",
+          source: { label: "来源：ACOG 亲密与性健康资料", url: "https://www.acog.org/womens-health/faqs/your-sexual-health" },
+        },
+        {
+          title: "乳房刺激",
+          body: "乳房或乳头的触碰，对不同人的感受差异很大，可能舒服、无感或疼痛。触碰前先确认对方是否愿意，以及喜欢怎样的接触。任何时候都可以停下，不需要说明理由。",
+        },
+        {
+          title: "手指触碰外阴",
+          body: "用手指触碰外阴，例如阴唇、阴蒂及其周围。不同部位的感受可能不同，也可能没有愉悦感。先确认对方是否愿意、哪些部位可以触碰。接触前保持手部清洁。无论是疼痛、不适、犹豫，还是只是想停，都可以随时停止，不需要说明理由。",
+          source: { label: "来源：NHS 手部接触与卫生资料", url: "https://www.sexualhealthsthelens.nhs.uk/adult-hands" },
+        },
+        {
+          title: "口交",
+          body: "用口唇或舌头接触伴侣的生殖器。有人喜欢，也有人不想要这种接触。先确认双方是否愿意。口交也可能传播性传播感染；屏障方法可以降低风险。",
+          source: { label: "来源：CDC 口交与感染风险资料", url: "https://www.cdc.gov/sti/about/about-sti-risk-and-oral-sex.html" },
+        },
+        {
+          title: "阴道纳入",
+          body: "手指、阴茎或适用的性玩具进入阴道，与触碰外阴是不同的选择。先确认是否愿意。阴茎进入阴道时，需要考虑怀孕和性传播感染风险；频繁或严重疼痛值得咨询医护人员。",
+          source: { label: "来源：ACOG 亲密方式与健康资料", url: "https://www.acog.org/womens-health/faqs/you-and-your-sexuality" },
+        },
+        {
+          title: "独自探索",
+          tag: "可选",
+          body: "独自触碰自己的身体，了解喜欢、不喜欢或没有感觉的部分；也可以完全不做。没有必须达到的结果。接触前保持手和用品清洁。",
+          source: { label: "来源：NHS 亲密关系与独自探索资料", url: "https://www.devonsexualhealth.nhs.uk/your-sexual-health/relationships-and-intimacy/" },
+        },
+        {
+          title: "肛门纳入",
+          tag: "展开补充",
+          body: "手指、阴茎或适用用品进入肛门。它不是其他方式之后的“下一步”。这类接触可能造成微小损伤，也有性传播感染风险；具体保护事项在旅程 04 展开。",
+          source: { label: "来源：ACOG 亲密方式与健康资料", url: "https://www.acog.org/womens-health/faqs/you-and-your-sexuality" },
+        },
+      ],
+      footer: "任何时候、出于任何原因，都可以暂停或停止。",
+    },
+    {
+      kind: "end",
+      title: "选择可以留给自己",
+      body: "了解一种方式，不等于必须尝试；喜欢一种方式，也不等于同意其他方式。可以说出自己的想法，也可以犹豫或改变主意。任何时候、出于任何原因，都可以暂停或停止。下一段旅程再练习如何发出邀请、回应犹豫与拒绝。",
+    },
+  ],
+};
+
+export const SAMPLE_JOURNEYS: readonly SampleJourney[] = [BODY_JOURNEY, PLEASURE_JOURNEY, ...LATER_JOURNEYS];
 
 export const FIRST_OVERNIGHT = { id: "first-overnight", title: "第一次过夜" } as const;
 

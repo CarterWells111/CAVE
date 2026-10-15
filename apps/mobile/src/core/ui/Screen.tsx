@@ -33,6 +33,7 @@ type LockedScrollProp =
 export type ScreenProps = Omit<ScrollViewProps, LockedScrollProp> & {
   contentSafeAreaTop?: boolean;
   fixedHeader?: ReactNode;
+  compactFixedHeader?: boolean;
   scrollResetKey?: string | number | boolean;
 };
 
@@ -87,6 +88,7 @@ export const Screen = forwardRef<ComponentRef<typeof ScrollView>, ScreenProps>(f
     contentContainerStyle,
     contentSafeAreaTop = false,
     fixedHeader,
+    compactFixedHeader = false,
     scrollResetKey,
     style,
     ...props
@@ -163,9 +165,9 @@ export const Screen = forwardRef<ComponentRef<typeof ScrollView>, ScreenProps>(f
             alignSelf: "center",
             backgroundColor: theme.color.background,
             maxWidth: theme.size.readableContentMax,
-            paddingBottom: theme.space.xs,
+            paddingBottom: compactFixedHeader ? 0 : theme.space.xs,
             paddingHorizontal: horizontalPadding,
-            paddingTop: safeAreaTop + fixedHeaderTopGap(Dimensions.get("screen").height),
+            paddingTop: safeAreaTop + (compactFixedHeader ? 0 : fixedHeaderTopGap(Dimensions.get("screen").height)),
             width: "100%",
             zIndex: 1,
           }}

@@ -23,6 +23,7 @@ import { SqlJournalRepository } from "../../journal/infrastructure/sql-journal-r
 import type { AccountProfileRepository } from "../../account/infrastructure/account-profile-repository";
 import { createExpoAccountProfileRepository } from "../../account/infrastructure/expo-account-profile-dependencies";
 import type { JournalRepository } from "../../journal/infrastructure/journal-repository";
+import { SqlPreferenceCardRepository } from "../../explore/sql-preference-card-repository";
 import { createExpoGoJournalRepository as createDefaultExpoGoJournalRepository } from "../../journal/infrastructure/expo-go-journal-repository";
 import {
   composeJourneyRuntime,
@@ -75,6 +76,7 @@ export function createComposedJourneyRuntime({
         journalPersistence: "sqlcipher",
         drafts: new SqlJourneyDraftRepository(database),
         cards: new SqlCommunicationCardRepository(database),
+        preferenceCards: new SqlPreferenceCardRepository(database),
         shellState: new SqlAppShellStateRepository(database),
         reviewHistory: new SqlReviewHistoryRepository<JourneyDraft>(
           database,

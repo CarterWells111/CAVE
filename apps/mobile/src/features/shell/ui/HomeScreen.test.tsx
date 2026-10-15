@@ -10,7 +10,7 @@ test("shows a compact brand/account header and seven journey destinations withou
   expect(screen.getByText("CAVE 内界")).toBeTruthy();
   expect(screen.getByText("选择一段旅程")).toBeTruthy();
   expect(screen.getAllByRole("button")).toHaveLength(9);
-  fireEvent.press(screen.getByRole("button", { name: "打开旅程 03，样板" }));
+  fireEvent.press(screen.getByRole("button", { name: "打开旅程 03，主动与拒绝" }));
   fireEvent.press(screen.getByRole("button", { name: "体验第一次过夜" }));
   fireEvent.press(screen.getByRole("button", { name: "查看阿岚的账号" }));
   expect(callbacks.onOpenSample).toHaveBeenCalledWith("journey-03");
