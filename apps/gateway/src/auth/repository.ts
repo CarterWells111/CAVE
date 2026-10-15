@@ -51,6 +51,8 @@ export type AuthSession = {
 };
 
 export interface AuthRepository {
+  getPasswordHash(accountId: string): Promise<string | null>;
+  setPasswordIfAbsent(accountId: string, hash: string): Promise<boolean>;
   consumeRateLimit(input: {
     scope: string;
     keyDigest: string;

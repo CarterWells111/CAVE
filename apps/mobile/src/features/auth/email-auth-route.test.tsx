@@ -8,6 +8,8 @@ const mockBack = jest.fn();
 const mockPush = jest.fn();
 const mockReplace = jest.fn();
 const mockRequest = jest.fn(async () => ({ challengeId: "challenge-1", expiresInSeconds: 600, resendAfterSeconds: 60 }));
+const mockPasswordLogin = jest.fn(async () => undefined);
+const mockRegister = jest.fn(async () => undefined);
 const mockVerify = jest.fn(async () => undefined);
 let mockReturnTo: string | undefined = "/journal/new";
 let mockEntry: string | undefined;
@@ -24,6 +26,8 @@ jest.mock("./runtime/AuthProvider", () => ({
     status: mockAuthStatus,
     requestEmailChallenge: mockRequest,
     verifyEmailChallenge: mockVerify,
+    loginWithPassword: mockPasswordLogin,
+    registerEmailAccount: mockRegister,
     logout: jest.fn(),
     deleteAccount: jest.fn(),
   }),
@@ -142,4 +146,22 @@ test("restores a pending room invitation after login", async () => {
   mockAuthStatus = "signedIn";
   render(<EmailAuthRoute />);
   await waitFor(() => expect(mockReplace).toHaveBeenCalledWith("/join?invite=opaque_token-1234567890"));
+});
+
+
+test.each(["password", "registration"] as const)("returns to the journal after %s authentication", async (method) => {
+  render(<EmailAuthRoute />);
+  fireEvent.press(screen.getByRole("button", { name: method === "password" ? "密码登录" : "注册 / 设置初始密码" }));
+  fireEvent.changeText(screen.getByLabelText("邮箱地址"), "person@example.com");
+  fireEvent.changeText(screen.getByLabelText(method === "password" ? "密码" : "设置密码"), "long password");
+  if (method === "password") {
+    fireEvent.press(screen.getByRole("button", { name: "登录" }));
+    await waitFor(() => expect(mockPasswordLogin).toHaveBeenCalledWith("person@example.com", "long password"));
+  } else {
+    fireEvent.press(screen.getByRole("button", { name: "发送验证码" }));
+    fireEvent.changeText(await screen.findByLabelText("6 位验证码"), "123456");
+    fireEvent.press(screen.getByRole("button", { name: "注册并登录" }));
+    await waitFor(() => expect(mockRegister).toHaveBeenCalledWith("challenge-1", "123456", "person@example.com", "long password"));
+  }
+  await waitFor(() => expect(mockReplace).toHaveBeenCalledWith({ pathname: "/journal/new" }));
 });

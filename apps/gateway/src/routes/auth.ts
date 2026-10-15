@@ -1,4 +1,6 @@
 import {
+  PasswordLoginRequestSchema,
+  EmailRegistrationRequestSchema,
   AccountDeletionChallengeRequestSchema,
   AccountDeletionRequestSchema,
   EmailChallengeRequestSchema,
@@ -14,7 +16,7 @@ import { bearerAccessToken, boundedJson, errorBody, parse, requestIdFrom, status
 type Dependencies = {
   service: Pick<
     AuthService,
-    "requestEmailChallenge" | "verifyEmailChallenge" | "refresh" | "logout"
+    "loginWithPassword" | "registerEmailAccount" | "loginEmailChallenge" | "requestEmailChallenge" | "verifyEmailChallenge" | "refresh" | "logout"
       | "requestAccountDeletionChallenge" | "verifyAccountDeletionChallenge" | "deleteAccount"
   >;
   logger?: ((line: string) => void) | undefined;
@@ -79,6 +81,16 @@ export function createAuthRoutes({ service, logger = () => undefined }: Dependen
     );
     return Response.json(result);
   }));
+
+  routes.post("/v1/auth/password/login", (context) => execute(context, "password_login", async (body) => (
+    Response.json(await service.loginWithPassword(parse(PasswordLoginRequestSchema, body)))
+  )));
+  routes.post("/v1/auth/email/challenges/:challengeId/register", (context) => execute(context, "email_register", async (body) => (
+    Response.json(await service.registerEmailAccount(context.req.param("challengeId"), parse(EmailRegistrationRequestSchema, body)))
+  )));
+  routes.post("/v1/auth/email/challenges/:challengeId/login", (context) => execute(context, "email_login", async (body) => (
+    Response.json(await service.loginEmailChallenge(context.req.param("challengeId"), parse(EmailChallengeVerifyRequestSchema, body)))
+  )));
 
   routes.post("/v1/auth/sessions/refresh", (context) => execute(context, "session_refresh", async (body) => (
     Response.json(await service.refresh(parse(RefreshSessionRequestSchema, body)))

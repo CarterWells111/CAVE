@@ -95,3 +95,6 @@ export type {
   RoomStatusResponse, RoomListResponse, CreateRoomResponse, RoomReport, RoomReportResponse,
   ReissueRoomInvitationResponse, PublicRoomReport,
 } from "./rooms";
+
+export { PasswordSchema, PasswordLoginRequestSchema, EmailRegistrationRequestSchema } from "./auth";
+export type { PasswordLoginRequest, EmailRegistrationRequest } from "./auth";

@@ -145,7 +145,7 @@ describe("live practice routes through createApp", () => {
         first: async () => db.prepare(sql).get(...params) ?? null,
         run: async () => ({ success: true, meta: { changes: Number(db.prepare(sql).run(...params).changes) } }),
       }; } }; } } as unknown as D1Database;
-      const fetch = completion({ status: "ok", message: "你记录了一次散步。", summary: "和朋友散步", observations: [] });
+      const fetch = completion({ status: "ok", message: "你记录了一次散步。", summary: "我和朋友散步了。", observations: [] });
       const store = new InMemoryRateLimitStore();
       const consume = vi.spyOn(store, "consume");
       const gateway = createApp({ ...liveEnv, AUTH_DB: binding }, { fetch, rateLimitStore: store });
@@ -163,7 +163,7 @@ describe("live practice routes through createApp", () => {
         body: JSON.stringify({ mode: "summarize", consent: true, records: [{ id: "synthetic-record", text: "今天和朋友散步" }] }),
       });
       expect(response.status).toBe(200);
-      await expect(response.json()).resolves.toMatchObject({ status: "ok", providerMode: "live", summary: "和朋友散步" });
+      await expect(response.json()).resolves.toMatchObject({ status: "ok", providerMode: "live", summary: "我和朋友散步了。", message: "这段经历，我想这样记下。" });
       expect(fetch).toHaveBeenCalledTimes(1);
       expect(consume).toHaveBeenCalledTimes(1);
       expect(consume.mock.calls[0]?.[0]).toMatch(/^assistant:/u);

@@ -16,7 +16,7 @@ function request(path: string, body: unknown, headers: Record<string, string> = 
         expiresInSeconds: 600,
         resendAfterSeconds: 60,
       })),
-      verifyEmailChallenge: vi.fn(),
+      loginWithPassword: vi.fn(), registerEmailAccount: vi.fn(), loginEmailChallenge: vi.fn(), verifyEmailChallenge: vi.fn(),
       refresh: vi.fn(),
       logout: vi.fn(async () => undefined),
       requestAccountDeletionChallenge: vi.fn(),
@@ -37,7 +37,7 @@ describe("authentication routes", () => {
       logger: (line) => lines.push(line),
       service: {
         requestEmailChallenge: vi.fn(async () => ({ contractVersion: "1" as const, requestId, challengeId, expiresInSeconds: 600, resendAfterSeconds: 60 })),
-        verifyEmailChallenge: vi.fn(), refresh: vi.fn(), logout: vi.fn(),
+        loginWithPassword: vi.fn(), registerEmailAccount: vi.fn(), loginEmailChallenge: vi.fn(), verifyEmailChallenge: vi.fn(), refresh: vi.fn(), logout: vi.fn(),
         requestAccountDeletionChallenge: vi.fn(), verifyAccountDeletionChallenge: vi.fn(), deleteAccount: vi.fn(),
       },
     });
@@ -67,7 +67,7 @@ describe("authentication routes", () => {
   it("rejects non-json and oversized bodies before service invocation", async () => {
     const routes = createAuthRoutes({
       service: {
-        requestEmailChallenge: vi.fn(), verifyEmailChallenge: vi.fn(), refresh: vi.fn(), logout: vi.fn(),
+        requestEmailChallenge: vi.fn(), loginWithPassword: vi.fn(), registerEmailAccount: vi.fn(), loginEmailChallenge: vi.fn(), verifyEmailChallenge: vi.fn(), refresh: vi.fn(), logout: vi.fn(),
         requestAccountDeletionChallenge: vi.fn(), verifyAccountDeletionChallenge: vi.fn(), deleteAccount: vi.fn(),
       },
     });
@@ -98,7 +98,7 @@ describe("authentication routes", () => {
   it("returns Retry-After for typed authentication rate limits", async () => {
     const service = {
       requestEmailChallenge: vi.fn(async () => { throw new AuthServiceError("RATE_LIMITED", 429, 42); }),
-      verifyEmailChallenge: vi.fn(), refresh: vi.fn(), logout: vi.fn(),
+      loginWithPassword: vi.fn(), registerEmailAccount: vi.fn(), loginEmailChallenge: vi.fn(), verifyEmailChallenge: vi.fn(), refresh: vi.fn(), logout: vi.fn(),
       requestAccountDeletionChallenge: vi.fn(), verifyAccountDeletionChallenge: vi.fn(), deleteAccount: vi.fn(),
     };
     const response = await createAuthRoutes({ service }).request("/v1/auth/email/challenges", {
@@ -141,4 +141,28 @@ describe("authentication routes", () => {
     });
     expect(response.status).toBe(204);
   });
+});
+
+
+it("validates new credentials, uses no-store, and never logs passwords", async () => {
+  const lines: string[] = [];
+  const service = {
+    loginWithPassword: vi.fn(async () => { throw new AuthServiceError("AUTH_UNAUTHORIZED", 401); }),
+    registerEmailAccount: vi.fn(), loginEmailChallenge: vi.fn(), requestEmailChallenge: vi.fn(),
+    verifyEmailChallenge: vi.fn(), refresh: vi.fn(), logout: vi.fn(), requestAccountDeletionChallenge: vi.fn(),
+    verifyAccountDeletionChallenge: vi.fn(), deleteAccount: vi.fn(),
+  };
+  const app = createAuthRoutes({ service, logger: (line) => lines.push(line) });
+  const base = { contractVersion: "1", requestId, installationToken: "installation-token-at-least-sixteen" };
+  const send = (path: string, body: unknown) => app.request(path, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
+  const response = await send("/v1/auth/password/login", { ...base, email: "person@example.com", password: "private password" });
+  expect(response.status).toBe(401);
+  expect(response.headers.get("cache-control")).toBe("no-store");
+  expect(JSON.stringify(lines)).not.toContain("private password");
+  expect((await send(`/v1/auth/email/challenges/${challengeId}/register`, { ...base, code: "123456" })).status).toBe(400);
+  expect(service.registerEmailAccount).not.toHaveBeenCalled();
+  service.registerEmailAccount.mockResolvedValueOnce({ contractVersion: "1", requestId } as never);
+  expect((await send(`/v1/auth/email/challenges/${challengeId}/register`, { ...base, code: "123456", password: "long password" })).status).toBe(200);
+  service.loginEmailChallenge.mockResolvedValueOnce({ contractVersion: "1", requestId } as never);
+  expect((await send(`/v1/auth/email/challenges/${challengeId}/login`, { ...base, code: "123456" })).status).toBe(200);
 });

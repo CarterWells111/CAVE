@@ -27,7 +27,29 @@ export function validateStagingEvidence(evidence, sha, runId, repository) {
   assert.equal(evidence.repository, repository);
   assert.equal(evidence.smokePassed, true);
   assert.equal(evidence.versionTag, sha, "Deployed Worker must match the source commit");
-  assert.match(evidence.versionId, /^[a-f0-9-]{36}$/);
+  assert.equal(evidence.versionVerified, true, "Active Worker version must have been verified");
+}
+
+export function createRecoveryEvidence(input, previousVersionId, databaseBookmark) {
+  assert.match(previousVersionId, /^[a-f0-9-]{36}$/);
+  assert.ok(typeof databaseBookmark === "string" && databaseBookmark.trim().length > 0, "D1 recovery bookmark is required");
+  assert.ok(Number.isFinite(Date.parse(input.recordedAt)), "Invalid recovery timestamp");
+  return {
+    environment: input.environment, sha: input.sha, runId: input.runId, repository: input.repository,
+    previousVersionVerified: true, databaseRecoveryPointVerified: true, recordedAt: input.recordedAt,
+  };
+}
+
+export function createReleaseEvidence(recovery, versionId, versionTag, finishedAt) {
+  assert.match(versionId, /^[a-f0-9-]{36}$/);
+  assert.equal(versionTag, recovery.sha, "Active Worker must match the source commit");
+  assert.ok(Number.isFinite(Date.parse(finishedAt)), "Invalid completion timestamp");
+  return {
+    environment: recovery.environment, sha: recovery.sha, runId: recovery.runId, repository: recovery.repository,
+    previousVersionVerified: recovery.previousVersionVerified,
+    databaseRecoveryPointVerified: recovery.databaseRecoveryPointVerified, recordedAt: recovery.recordedAt,
+    versionVerified: true, versionTag, smokePassed: true, finishedAt,
+  };
 }
 
 export function activeVersion(deployments) {
@@ -123,6 +145,16 @@ async function smoke(origin, vars) {
 }
 
 async function deploy(environment) {
+  let operation = "Release source validation";
+  try {
+    await deployRelease(environment, (name) => { operation = name; });
+  } catch {
+    // Assertion diagnostics and CLI output can contain cloud resource identities.
+    throw new Error(`${operation} failed`);
+  }
+}
+
+async function deployRelease(environment, reportOperation) {
   assert.ok(["staging", "production"].includes(environment), "Unknown environment");
   assert.equal(process.env.GITHUB_ACTIONS, "true", "Use the protected GitHub workflow");
   assert.equal(process.env.GITHUB_REF, "refs/heads/main");
@@ -132,8 +164,10 @@ async function deploy(environment) {
   const head = spawnSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8", windowsHide: true });
   assert.equal(head.status, 0);
   assert.equal(head.stdout.trim(), sha, "Checkout differs from the accepted commit");
+  reportOperation("Deployment credential validation");
   assert.ok(process.env.CLOUDFLARE_API_TOKEN, "Configure the environment's CLOUDFLARE_API_TOKEN Secret");
   // The existing checker validates both production and staging resource identities.
+  reportOperation("Cloud target configuration validation");
   await import("../apps/gateway/scripts/check-staging-config.mjs");
   const config = JSON.parse(readFileSync(new URL("../apps/gateway/wrangler.jsonc", import.meta.url), "utf8"));
   const target = environment === "staging" ? config.env.staging : config;
@@ -144,10 +178,12 @@ async function deploy(environment) {
   // Select environments using CLI arguments, without ambient Vite/Builds selectors.
   delete childEnv.CLOUDFLARE_ENV;
   delete childEnv.WRANGLER_ENV;
+  delete childEnv.WRANGLER_OUTPUT_FILE_PATH;
+  delete childEnv.WRANGLER_OUTPUT_FILE_DIRECTORY;
   function run(args, json = false) {
+    reportOperation(`Wrangler ${args.slice(0, 2).join(" ")}`);
     const result = spawnSync(process.execPath, [wrangler, ...args, ...envArgs], {
-      cwd: gateway, env: childEnv, windowsHide: true,
-      ...(json ? { encoding: "utf8", maxBuffer: 2 * 1024 * 1024 } : { stdio: "inherit" })
+      cwd: gateway, env: childEnv, windowsHide: true, encoding: "utf8", maxBuffer: 2 * 1024 * 1024,
     });
     assert.equal(result.status, 0, `Wrangler ${args.slice(0, 2).join(" ")} failed`);
     return json ? JSON.parse(result.stdout) : undefined;
@@ -162,12 +198,12 @@ async function deploy(environment) {
   assert.equal(typeof bookmark.bookmark, "string", "D1 recovery bookmark is required");
   const output = resolve(root, "outputs/gateway-release");
   mkdirSync(output, { recursive: true });
-  const evidence = {
+  const evidence = createRecoveryEvidence({
     environment, sha, runId: process.env.GITHUB_RUN_ID, repository: process.env.GITHUB_REPOSITORY,
-    previousVersionId, databaseId: target.d1_databases[0].database_id,
-    databaseBookmark: bookmark.bookmark, recordedAt: new Date().toISOString()
-  };
-  // Persist recovery information before changing either the database or Worker.
+    recordedAt: new Date().toISOString()
+  }, previousVersionId, bookmark.bookmark);
+  // Persist only a recovery lookup timestamp, never cloud IDs or bookmarks.
+  reportOperation("Recovery evidence write");
   writeFileSync(resolve(output, "recovery.json"), JSON.stringify(evidence, null, 2) + "\n");
   if (environment === "production" && process.env.APPLY_MIGRATIONS !== "true") {
     const applied = run(["d1", "execute", "AUTH_DB", "--remote", "--json", "--command", "SELECT name FROM d1_migrations"], true);
@@ -178,10 +214,13 @@ async function deploy(environment) {
   }
   // Version promotion preserves existing domains and cron schedules. It can use
   // per-Worker Editor access rather than permission to change zone routing.
+  reportOperation("Wrangler versions upload");
   const upload = spawnSync(process.execPath, [wrangler, "versions", "upload", "--tag", sha, ...envArgs], {
     cwd: gateway, env: childEnv, windowsHide: true, encoding: "utf8", maxBuffer: 2 * 1024 * 1024
   });
-  const uploadedId = confirmedVersionUpload(upload, run(["versions", "list", "--json"], true), sha, config.account_id, target.name);
+  const versions = run(["versions", "list", "--json"], true);
+  reportOperation("Wrangler versions upload verification");
+  const uploadedId = confirmedVersionUpload(upload, versions, sha, config.account_id, target.name);
   const candidate = run(["versions", "view", uploadedId, "--json"], true);
   assert.equal(candidate.id, uploadedId);
   assert.equal(candidate.annotations?.["workers/tag"], sha, "Uploaded Worker differs from the accepted commit");
@@ -192,11 +231,12 @@ async function deploy(environment) {
   const version = run(["versions", "view", versionId, "--json"], true);
   assert.equal(version.id, versionId);
   assert.equal(version.annotations?.["workers/tag"], sha, "Active Worker does not match the accepted commit");
+  reportOperation("Gateway health check");
   await smoke(`https://${target.routes[0].pattern}`, target.vars);
-  writeFileSync(resolve(output, "release.json"), JSON.stringify({
-    ...evidence, versionId, versionTag: sha, smokePassed: true, finishedAt: new Date().toISOString()
-  }, null, 2) + "\n");
-  console.log(`${environment} deployed and checked: ${sha}; version ${versionId}`);
+  reportOperation("Release evidence write");
+  writeFileSync(resolve(output, "release.json"), JSON.stringify(
+    createReleaseEvidence(evidence, versionId, sha, new Date().toISOString()), null, 2) + "\n");
+  console.log(`${environment} deployed and checked: ${sha}`);
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {

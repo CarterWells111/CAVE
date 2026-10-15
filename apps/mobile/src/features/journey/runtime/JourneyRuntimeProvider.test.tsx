@@ -9,6 +9,7 @@ import BehaviorMapRoute from "../../../../app/journey/behavior-map";
 import PrefaceRoute from "../../../../app/journey/preface";
 import WelcomeRoute from "../../../../app/journey/welcome";
 import SettingsRoute from "../../../../app/settings";
+import AccountPrivacyRoute from "../../../../app/settings/account-privacy";
 import HomeRoute from "../../../../app/(tabs)/journal";
 import JourneyRoute from "../../../../app/(tabs)/journey";
 import AiRoute from "../../../../app/(tabs)/ai";
@@ -62,6 +63,7 @@ jest.mock("../../account/runtime/AccountProfileProvider", () => ({
 
 jest.mock("../../journal/runtime/JournalAccessProvider", () => ({
   useJournalAccess: () => ({ status: "locked", journalPersistence: "sqlcipher" }),
+  useOptionalJournalAccess: () => ({ status: "locked", journalPersistence: "sqlcipher" }),
 }));
 
 beforeEach(() => {
@@ -387,7 +389,7 @@ test("maps encrypted database recovery to an explicit confirmed delete path", as
 
   render(
     <JourneyRuntimeProvider createRuntime={async () => appRuntime}>
-      <SettingsRoute />
+      <AccountPrivacyRoute />
     </JourneyRuntimeProvider>
   );
 
@@ -402,7 +404,7 @@ test("maps encrypted database recovery to an explicit confirmed delete path", as
   fireEvent.press(screen.getByRole("button", { name: "确认删除全部本机数据" }));
 
   await waitFor(() => expect(deleteAllData).toHaveBeenCalledTimes(1));
-  expect(await screen.findByRole("header", { name: "设置" })).toBeTruthy();
+  expect(await screen.findByRole("header", { name: "账号与隐私" })).toBeTruthy();
   expect(screen.queryByRole("button", { name: "删除全部本机数据" })).toBeNull();
 });
 
@@ -415,11 +417,11 @@ test("revokes protected runtime access as soon as deletion starts and keeps fail
 
   render(
     <JourneyRuntimeProvider createRuntime={async () => appRuntime}>
-      <SettingsRoute />
+      <AccountPrivacyRoute />
     </JourneyRuntimeProvider>
   );
 
-  expect(await screen.findByRole("header", { name: "设置" })).toBeTruthy();
+  expect(await screen.findByRole("header", { name: "账号与隐私" })).toBeTruthy();
   const deleteButton = await screen.findByRole(
     "button",
     { name: "删除全部本机数据" },
@@ -429,15 +431,15 @@ test("revokes protected runtime access as soon as deletion starts and keeps fail
   fireEvent.press(screen.getByRole("button", { name: "确认删除全部本机数据" }));
 
   expect(await screen.findByText("正在删除本机数据…")).toBeTruthy();
-  expect(screen.queryByText("设置")).toBeNull();
+  expect(screen.queryByRole("header", { name: "账号与隐私" })).toBeNull();
   await act(async () => { firstDeletion.reject(new Error("remove-failed")); });
 
   expect(await screen.findByRole("header", { name: "本机数据删除尚未完成" })).toBeTruthy();
-  expect(screen.queryByText("设置")).toBeNull();
+  expect(screen.queryByRole("header", { name: "账号与隐私" })).toBeNull();
   fireEvent.press(screen.getByRole("button", { name: "重试删除" }));
 
   await waitFor(() => expect(deleteAllData).toHaveBeenCalledTimes(2));
-  expect(await screen.findByRole("header", { name: "设置" })).toBeTruthy();
+  expect(await screen.findByRole("header", { name: "账号与隐私" })).toBeTruthy();
   expect(screen.queryByRole("button", { name: "删除全部本机数据" })).toBeNull();
 });
 
@@ -521,6 +523,7 @@ test("keeps every public tab and settings usable without initializing private st
         <PracticeRoute />
         <ProfileRoute />
         <SettingsRoute />
+        <AccountPrivacyRoute />
       </View>
     </JourneyRuntimeProvider>
   );
@@ -533,6 +536,7 @@ test("keeps every public tab and settings usable without initializing private st
   expect(screen.getByRole("header", { name: "练习" })).toBeTruthy();
   expect(screen.getByRole("header", { name: "我的" })).toBeTruthy();
   expect(screen.getByRole("header", { name: "设置" })).toBeTruthy();
+  expect(screen.getByRole("header", { name: "账号与隐私" })).toBeTruthy();
   expect(screen.getByText("还没有沟通卡")).toBeTruthy();
   expect(screen.getByText("还没有历史回顾")).toBeTruthy();
   fireEvent.press(screen.getByRole("button", { name: "成年声明后开始聊天" }));
@@ -551,11 +555,11 @@ test("does not recreate native storage while returning to the public theme after
 
   render(
     <JourneyRuntimeProvider createRuntime={harness.createRuntime}>
-      <SettingsRoute />
+      <AccountPrivacyRoute />
     </JourneyRuntimeProvider>
   );
 
-  expect(await screen.findByText("设置")).toBeTruthy();
+  expect(await screen.findByRole("header", { name: "账号与隐私" })).toBeTruthy();
   const keyCallsBeforeDelete = jest.mocked(
     harness.adapters.secrets.getOrCreateDatabaseKey
   ).mock.calls.length;
@@ -571,7 +575,7 @@ test("does not recreate native storage while returning to the public theme after
   await waitFor(() => expect(harness.adapters.secrets.clearPendingLocalDataDeletion)
     .toHaveBeenCalledTimes(1));
   await waitFor(() => expect(mockRouter.replace).toHaveBeenCalledWith("/(tabs)"));
-  expect(await screen.findByRole("header", { name: "设置" })).toBeTruthy();
+  expect(await screen.findByRole("header", { name: "账号与隐私" })).toBeTruthy();
   expect(screen.queryByRole("button", { name: "删除全部本机数据" })).toBeNull();
   await act(async () => undefined);
   expect(harness.adapters.secrets.getOrCreateDatabaseKey).toHaveBeenCalledTimes(keyCallsBeforeDelete);
@@ -586,11 +590,11 @@ test("returns to the public gate when deletion partially fails after clearing ad
 
   render(
     <JourneyRuntimeProvider createRuntime={harness.createRuntime}>
-      <SettingsRoute />
+      <AccountPrivacyRoute />
     </JourneyRuntimeProvider>
   );
 
-  expect(await screen.findByText("设置")).toBeTruthy();
+  expect(await screen.findByRole("header", { name: "账号与隐私" })).toBeTruthy();
   fireEvent.press(screen.getByRole("button", { name: "删除全部本机数据" }));
   fireEvent.press(screen.getByRole("button", { name: "确认删除全部本机数据" }));
 
@@ -598,7 +602,7 @@ test("returns to the public gate when deletion partially fails after clearing ad
   expect(mockRedirect).not.toHaveBeenCalledWith({ href: "/journey/welcome" });
   expect(harness.adapters.secrets.clearPendingLocalDataDeletion).not.toHaveBeenCalled();
   fireEvent.press(screen.getByRole("button", { name: "重试删除" }));
-  expect(await screen.findByRole("header", { name: "设置" })).toBeTruthy();
+  expect(await screen.findByRole("header", { name: "账号与隐私" })).toBeTruthy();
   expect(screen.queryByRole("button", { name: "删除全部本机数据" })).toBeNull();
 });
 
@@ -610,11 +614,11 @@ test("returns to the public gate when deletion intent exists but clearing adulth
 
   render(
     <JourneyRuntimeProvider createRuntime={harness.createRuntime}>
-      <SettingsRoute />
+      <AccountPrivacyRoute />
     </JourneyRuntimeProvider>
   );
 
-  expect(await screen.findByText("设置")).toBeTruthy();
+  expect(await screen.findByRole("header", { name: "账号与隐私" })).toBeTruthy();
   fireEvent.press(screen.getByRole("button", { name: "删除全部本机数据" }));
   fireEvent.press(screen.getByRole("button", { name: "确认删除全部本机数据" }));
 
@@ -623,7 +627,7 @@ test("returns to the public gate when deletion intent exists but clearing adulth
   expect(harness.adapters.secrets.recordPendingLocalDataDeletion).toHaveBeenCalledTimes(1);
   expect(harness.adapters.files.removeDatabaseFiles).not.toHaveBeenCalled();
   fireEvent.press(screen.getByRole("button", { name: "重试删除" }));
-  expect(await screen.findByRole("header", { name: "设置" })).toBeTruthy();
+  expect(await screen.findByRole("header", { name: "账号与隐私" })).toBeTruthy();
   expect(screen.queryByRole("button", { name: "删除全部本机数据" })).toBeNull();
 });
 

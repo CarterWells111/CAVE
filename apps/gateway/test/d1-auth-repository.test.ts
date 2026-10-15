@@ -112,3 +112,13 @@ describe("D1 authentication repository", () => {
     expect(harness.statements.map(({ sql }) => sql).join(" ")).not.toContain("DELETE FROM auth_accounts");
   });
 });
+
+
+it("reads absent passwords as null and uses conflict-safe insert without updates", async () => {
+  const h = databaseHarness();
+  const repository = new D1AuthRepository(h.database);
+  expect(await repository.getPasswordHash("test-account")).toBeNull();
+  expect(await repository.setPasswordIfAbsent("test-account", "test-hash")).toBe(true);
+  expect(h.statements[1]?.sql).toContain("ON CONFLICT(account_id) DO NOTHING");
+  expect(h.statements[1]?.params).toEqual(["test-account", "test-hash"]);
+});

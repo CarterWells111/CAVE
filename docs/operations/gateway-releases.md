@@ -23,10 +23,10 @@ Cloudflare Token 限定到现有 CAVE 账号，优先使用 account-owned Token�
 PR 和其他分支只运行验证。main 的 push 在 `foundation`（包括内部验证、官网构建和 staging dry-run）成功后，才运行 `deploy-staging`：
 
 1. 核对账号、Worker、D1、域名、模型模式及 staging/production 隔离。
-2. 检查运行时 Secret 名称，完成 dry-run，记录当前 Worker 版本和 D1 Time Travel bookmark。
+2. 检查运行时 Secret 名称，完成 dry-run，在内存中核验当前 Worker 版本和 D1 Time Travel bookmark；迁移前记录恢复查询时间。
 3. 在 staging D1 上应用尚未应用的迁移，发布带完整提交 SHA tag 的 staging Worker。
 4. 确认正在服务的 Worker 版本 tag 与提交相同；检查 `/health` 和 `/v1/meta` 的状态、模型、prompt/policy 版本。
-5. 保存 `staging-release-<SHA>` artifact，其中 `release.json` 记录部署版本、SHA 和健康检查结果；`recovery.json` 在迁移前写入。
+5. 保存 `staging-release-<SHA>` artifact，其中 `release.json` 仅记录 SHA、版本 tag、来源 run/仓库、版本核验与健康检查结果；`recovery.json` 在迁移前写入 `recordedAt` 和恢复点核验结果。账号 ID、资源 ID、Worker 版本 ID 和 D1 bookmark 不写入日志或 artifact；Wrangler 输出仅在内存中解析，错误只报告操作名。
 
 main 的工作流不会被后续 push 自动取消，避免中断迁移；排队时已过期的提交会在发布前停止。健康检查只证明服务及配置，真实邮件、登录、AI 和改动功能仍需通过连接 staging 的 development 构建验收。preview 和 production 构建目前连接 production API。
 
@@ -37,7 +37,7 @@ main 的工作流不会被后续 push 自动取消，避免中断迁移；排队
 3. 数据库迁移默认不执行。如果本次存在迁移，先审查 SQL 的向后兼容性和恢复方案，再勾选 `apply_migrations`。破坏性迁移应拆成先扩展、后迁移、最后删除的多个发布，不在这条流程直接执行。
 4. 流程核对来源仓库、工作流、main push、foundation/staging 成功及 artifact，并检出 artifact 对应的固定 SHA；同时验证该提交属于 main，执行 `pnpm verify:release`。
 5. 生产发布检查通过后，在环境审批中确认候选 SHA、staging run、验收说明和迁移选择，再批准 production。随后才可读取生产部署 Token。
-6. 发布前保存生产 Worker 版本和 D1 bookmark；未批准迁移却存在待执行文件时拒绝发布。发布与验收使用同一源提交，记录生产 artifact。
+6. 发布前在内存中核验生产 Worker 版本和 D1 bookmark，只保存迁移前的 `recordedAt` 与核验结果；未批准迁移却存在待执行文件时拒绝发布。发布与验收使用同一源提交，记录不含云端标识的生产 artifact。
 
 `internal_test_approved` 条目不能通过正式内容验证。`verify:release` 如因此失败，需完成实际内容审核；不能改为内部检查或跳过正式发布门禁。此流程不会自动创建 EAS Build、推送 OTA 或提交 App Store。
 
@@ -45,11 +45,11 @@ main 的工作流不会被后续 push 自动取消，避免中断迁移；排队
 
 失败时查看该 run 的 artifact 和错误步骤。存在 `recovery.json` 但缺少 `release.json` 表示没有完成发布验收；即使 Worker 已经上传，也不能把该 run 作为生产候选。脚本不会自动恢复数据库或自动回退 Worker，以免与已经执行的迁移不兼容。
 
-Worker 回退由管理员核对兼容性后，使用 `recovery.json` 的 `previousVersionId`，对指定环境执行 `wrangler rollback <VERSION_ID>`（staging 必须加 `--env staging`）。生产仍指向配置顶层。追加式数据库迁移通常保留；Worker 回退不恢复 D1。
+Worker 回退由管理员根据 `recovery.json` 的 `recordedAt`，在已确认账号与环境的 Cloudflare 版本历史中查询当时正在服务的真实版本。核对版本时间、来源提交、流量和迁移兼容性，确认目标与范围后，再对指定环境执行 `wrangler rollback <VERSION_ID>`（staging 必须加 `--env staging`）。查询出的 ID 仅用于当次操作，不复制到发布证据。生产仍指向配置顶层。追加式数据库迁移通常保留；Worker 回退不恢复 D1。
 
-如果需要恢复 D1，先判断恢复点之后的数据损失范围及暂停写入需求，确认后再使用记录的 `databaseBookmark`；不要机械地把代码回退和数据库恢复绑在一起。旧 artifact 过期后不能再直接晋级，需重新部署并验收 staging。
+如果需要恢复 D1，管理员先确认账号、数据库与环境，再按迁移前的 `recordedAt` 在 D1 Time Travel 中查询真实 bookmark 或可恢复时间。核对恢复点、之后的数据损失范围及暂停写入需求，取得恢复确认后再执行；bookmark 仅保留在当次操作内存中。不要机械地把代码回退和数据库恢复绑在一起。旧 artifact 过期后不能再直接晋级，需重新部署并验收 staging。
 
 
 ## 上传后的预览地址权限错误
 
-Wrangler 4.126 在版本上传成功后会查询账号级 workers/subdomain 以打印可选预览地址。production 的 Worker Editor Token 可以完成上传，但缺少这个账号级读取权限时，CLI 会在已打印完成上传的版本号后以认证错误 10000 退出。发布脚本仅对这个明确路径、单一错误和正常退出码 1 做完成状态核对：CLI 报告的唯一版本、目标 Worker 名称与 versions list 中固定 SHA 的版本必须一致，并在晋级前再次通过 versions view 确认版本及 tag。中断、其他认证路径/错误码、多条错误、缺失上传标识或版本不一致仍会停止；不会绕过生产门禁或环境审批，也不调整域名、路由、cron 或预览设置。`tests/gateway-upload.test.ts` 覆盖成功与这些拒绝条件。Wrangler 诊断文件写入关闭；必要恢复信息仍由现有受控发布 artifact 保存。
+Wrangler 4.126 在版本上传成功后会查询账号级 workers/subdomain 以打印可选预览地址。production 的 Worker Editor Token 可以完成上传，但缺少这个账号级读取权限时，CLI 会在已打印完成上传的版本号后以认证错误 10000 退出。发布脚本仅对这个明确路径、单一错误和正常退出码 1 做完成状态核对：CLI 报告的唯一版本、目标 Worker 名称与 versions list 中固定 SHA 的版本必须一致，并在晋级前再次通过 versions view 确认版本及 tag。中断、其他认证路径/错误码、多条错误、缺失上传标识或版本不一致仍会停止；不会绕过生产门禁或环境审批，也不调整域名、路由、cron 或预览设置。`tests/gateway-upload.test.ts` 覆盖成功与这些拒绝条件。Wrangler 原始输出仅在内存中处理，诊断文件写入关闭；受控发布 artifact 只保存恢复查询时间与核验结果，不保存真实云端标识或 bookmark。

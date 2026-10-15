@@ -1,6 +1,6 @@
 import type { EmailChallengeAccepted } from "@cave/contracts";
-import { useRef, useState } from "react";
-import { ScrollView, Text, TextInput, View } from "react-native";
+import { useEffect, useRef, useState } from "react";
+import { AppState, ScrollView, Text, TextInput, View } from "react-native";
 
 import { useTheme } from "../../../core/design/theme-provider";
 import { Button } from "../../../core/ui/Button";
@@ -16,6 +16,8 @@ type Props = {
   onAdultGate?(): void;
   onRequestEmail(email: string): Promise<EmailChallengeAccepted>;
   onVerifyCode(challengeId: string, code: string, email: string): Promise<void>;
+  onPasswordLogin?(email: string, password: string): Promise<void>;
+  onRegister?(challengeId: string, code: string, email: string, password: string): Promise<void>;
   onLogout(): Promise<void>;
   onDeleteAccount(): void;
 };
@@ -23,16 +25,29 @@ type Props = {
 type AcceptedChallenge = {
   accepted: EmailChallengeAccepted;
   email: string;
+  resendAt: number;
 };
 
 export function EmailAuthScreen(props: Props) {
   const theme = useTheme();
   const [email, setEmail] = useState("");
+  const [mode, setMode] = useState<"code" | "password" | "register">("code");
+  const [password, setPassword] = useState("");
+  const [remaining, setRemaining] = useState(0);
   const [code, setCode] = useState("");
   const [challenge, setChallenge] = useState<AcceptedChallenge | null>(null);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const inFlight = useRef(false);
+
+  useEffect(() => {
+    if (challenge === null) return;
+    const update = () => setRemaining(Math.max(0, Math.ceil((challenge.resendAt - Date.now()) / 1000)));
+    update();
+    const timer = setInterval(update, 1000);
+    const subscription = AppState.addEventListener("change", (state) => { if (state === "active") update(); });
+    return () => { clearInterval(timer); subscription.remove(); };
+  }, [challenge]);
 
   const run = async (action: () => Promise<void>) => {
     if (inFlight.current) return;
@@ -41,7 +56,7 @@ export function EmailAuthScreen(props: Props) {
     setError(null);
     try { await action(); } catch (caught) {
       if (__DEV__) console.warn("auth.action.failed");
-      setError(getAuthErrorMessage(caught));
+      setError(getAuthErrorMessage(caught, true));
     } finally {
       inFlight.current = false;
       setPending(false);
@@ -57,7 +72,9 @@ export function EmailAuthScreen(props: Props) {
     color: theme.color.text,
     minHeight: theme.size.primaryActionHeight,
     paddingHorizontal: theme.space.md,
-    paddingVertical: theme.space.compact,
+    paddingVertical: 0,
+    textAlignVertical: "center" as const,
+    includeFontPadding: false,
   };
 
   return (
@@ -83,6 +100,9 @@ export function EmailAuthScreen(props: Props) {
         <Card accessible={false}>
           {challenge === null ? (
             <View style={{ gap: theme.space.md }}>
+              <TextAction label="验证码登录" disabled={pending} onPress={() => { setMode("code"); setPassword(""); setError(null); }} />
+              <TextAction label="密码登录" disabled={pending} onPress={() => { setMode("password"); setPassword(""); setError(null); }} />
+              <TextAction label="注册 / 设置初始密码" disabled={pending} onPress={() => { setMode("register"); setPassword(""); setError(null); }} />
               <TextInput
                 accessibilityLabel="邮箱地址"
                 autoCapitalize="none"
@@ -96,15 +116,29 @@ export function EmailAuthScreen(props: Props) {
                 value={email}
               />
               <Text selectable style={{ ...theme.typography.caption, color: theme.color.textSecondary }}>邮箱仅用于登录和账户安全，不会上传日记、沟通卡、回顾或亲密内容。</Text>
+              {mode !== "code" ? <TextInput
+                accessibilityLabel={mode === "register" ? "设置密码" : "密码"}
+                autoCapitalize="none" autoCorrect={false} secureTextEntry
+                autoComplete={mode === "register" ? "new-password" : "current-password"}
+                placeholder="10–128 位密码" placeholderTextColor={theme.color.textMuted}
+                keyboardAppearance={theme.name} style={inputStyle} value={password} onChangeText={setPassword}
+              /> : null}
+              {mode === "register" ? <Text style={{ ...theme.typography.caption, color: theme.color.textSecondary }}>注册必须设置密码并验证邮箱。已有无密码账户可在此设置初始密码。</Text> : null}
               <Button
-                disabled={!email.includes("@")}
-                label="发送验证码"
+                disabled={!email.includes("@") || (mode !== "code" && (password.length < 10 || password.length > 128))}
+                label={mode === "password" ? "登录" : "发送验证码"}
                 loading={pending}
                 onPress={() => {
                   void run(async () => {
                     const challengeEmail = email.trim().toLowerCase();
+                    if (mode === "password") {
+                      if (!props.onPasswordLogin) throw new Error("password-login-unavailable");
+                      await props.onPasswordLogin(challengeEmail, password);
+                      setPassword("");
+                      return;
+                    }
                     const accepted = await props.onRequestEmail(challengeEmail);
-                    setChallenge({ accepted, email: challengeEmail });
+                    setChallenge({ accepted, email: challengeEmail, resendAt: Date.now() + accepted.resendAfterSeconds * 1000 });
                   });
                 }}
               />
@@ -126,20 +160,29 @@ export function EmailAuthScreen(props: Props) {
               />
               <Button
                 disabled={!/^\d{6}$/u.test(code)}
-                label="登录"
+                label={mode === "register" ? "注册并登录" : "登录"}
                 loading={pending}
                 onPress={() => {
-                  void run(() => props.onVerifyCode(
-                    challenge.accepted.challengeId,
-                    code,
-                    challenge.email,
-                  ));
+                  void run(async () => {
+                    if (mode === "register") {
+                      if (!props.onRegister) throw new Error("registration-unavailable");
+                      await props.onRegister(challenge.accepted.challengeId, code, challenge.email, password);
+                    } else {
+                      await props.onVerifyCode(challenge.accepted.challengeId, code, challenge.email);
+                    }
+                    setPassword("");
+                  });
                 }}
               />
-              <TextAction label="更换邮箱" onPress={() => { setChallenge(null); setCode(""); setError(null); }} />
-              <Text selectable style={{ ...theme.typography.caption, color: theme.color.textSecondary }}>
-                {challenge.accepted.resendAfterSeconds} 秒后可重新发送。
-              </Text>
+              <TextAction label="更换邮箱" disabled={pending} onPress={() => { setChallenge(null); setCode(""); setPassword(""); setError(null); }} />
+              {remaining > 0 ? <Text selectable style={{ ...theme.typography.caption, color: theme.color.textSecondary }}>
+                {remaining} 秒后可重新发送。
+              </Text> : <TextAction label="重新发送验证码" disabled={pending} onPress={() => { void run(async () => {
+                const accepted = await props.onRequestEmail(challenge.email);
+                setCode("");
+                setChallenge({ accepted, email: challenge.email, resendAt: Date.now() + accepted.resendAfterSeconds * 1000 });
+              }); }} />}
+
             </View>
           )}
           {error ? <Text accessibilityRole="alert" selectable style={{ ...theme.typography.body, color: theme.color.error }}>{error}</Text> : null}

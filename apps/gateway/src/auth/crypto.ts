@@ -91,3 +91,22 @@ export function secureEqual(left: string, right: string): boolean {
   }
   return difference === 0;
 }
+
+// Workers Web Crypto caps each PBKDF2 operation at 100,000 iterations.
+async function derivePassword(password: string, salt: Uint8Array<ArrayBuffer>): Promise<string> {
+  const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(password), "PBKDF2", false, ["deriveBits"]);
+  const bits = await crypto.subtle.deriveBits({ name: "PBKDF2", hash: "SHA-256", salt, iterations: 100_000 }, key, 256);
+  return bytesToHex(new Uint8Array(bits));
+}
+export async function hashPassword(password: string): Promise<string> {
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  return `pbkdf2-sha256$100000$${bytesToHex(salt)}$${await derivePassword(password, salt)}`;
+}
+export async function verifyPassword(password: string, encoded: string | null): Promise<boolean> {
+  const match = /^pbkdf2-sha256\$100000\$([a-f0-9]{32})\$([a-f0-9]{64})$/u.exec(encoded ?? "");
+  // Absent credentials still do the same KDF work.
+  const saltHex = match?.[1] ?? "0".repeat(32);
+  const salt = Uint8Array.from(saltHex.match(/../gu) ?? [], (byte) => parseInt(byte, 16));
+  const supplied = await derivePassword(password, salt);
+  return secureEqual(supplied, match?.[2] ?? "0".repeat(64)) && match !== null;
+}

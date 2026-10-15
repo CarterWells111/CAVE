@@ -11,7 +11,7 @@ import { HelpText, PageHelp } from "../../core/ui/page-header";
 import { useOptionalAuth } from "../auth/runtime/AuthProvider";
 import { AssistantClientError, createAssistantClient, previewAssistant, type AssistantRequester } from "./assistant-client";
 
-type Mode = AssistantRequest["mode"];
+type Mode = Exclude<AssistantRequest["mode"], "journal-draft">;
 const labels: Record<Mode, string> = { chat: "聊一聊", guide: "帮我继续写", summarize: "帮我整理", review: "帮我回顾", journey: "问问这一步" };
 const errorMessages: Record<AssistantClientError["code"], string> = {
   "quota-exceeded": "这段时间的聊天额度已用完，休息一会儿再来聊吧。",
@@ -46,7 +46,7 @@ function AssistantSession({ records, modes = ["guide", "summarize"], journeyId, 
 }) {
   const theme = useTheme();
   const [question, setQuestion] = useState("");
-  const [pending, setPending] = useState<AssistantRequest | null>(null);
+  const [pending, setPending] = useState<(AssistantRequest & { mode: Mode }) | null>(null);
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<AssistantResponse | null>(null);
   const [resultInput, setResultInput] = useState("");
@@ -75,7 +75,7 @@ function AssistantSession({ records, modes = ["guide", "summarize"], journeyId, 
       ...(journeyId ? { journeyId } : {}),
     });
     if (!parsed.success) { setError(errorMessages["invalid-input"]); return; }
-    setPending(parsed.data);
+    setPending({ ...parsed.data, mode });
   };
   const cancel = () => {
     epoch.current += 1;

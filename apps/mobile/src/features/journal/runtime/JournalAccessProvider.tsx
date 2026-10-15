@@ -126,9 +126,13 @@ export function JournalAccessProvider({ children }: PropsWithChildren) {
 }
 
 export function useJournalAccess(): JournalAccessContextValue {
-  const value = use(JournalAccessContext);
+  const value = useOptionalJournalAccess();
   if (value === null) throw new Error("JournalAccessProvider is required");
   return value;
+}
+
+export function useOptionalJournalAccess(): JournalAccessContextValue | null {
+  return use(JournalAccessContext);
 }
 
 export function useReadyJournalService(): JournalService {

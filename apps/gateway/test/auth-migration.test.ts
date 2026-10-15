@@ -31,3 +31,19 @@ describe("authentication D1 migration", () => {
     expect(sql).toContain("CHECK (attempts_remaining BETWEEN 0 AND 5)");
   });
 });
+
+
+it("adds opt-in credentials with cascading deletion without changing legacy account rows", async () => {
+  const { DatabaseSync } = await import("node:sqlite");
+  const database = new DatabaseSync(":memory:");
+  database.exec("PRAGMA foreign_keys = ON");
+  database.exec(sql);
+  database.exec("INSERT INTO auth_accounts (id, email_lookup, email_lookup_version, created_at) VALUES ('test-account', 'test-lookup', 1, '2026-10-14')");
+  database.exec(readFileSync(fileURLToPath(new URL("../migrations/0005_password_credentials.sql", import.meta.url)), "utf8"));
+  expect(database.prepare("SELECT COUNT(*) AS n FROM auth_password_credentials").get()).toMatchObject({ n: 0 });
+  database.prepare("INSERT INTO auth_password_credentials VALUES (?, ?)").run("test-account", "test-hash");
+  expect(() => database.prepare("INSERT INTO auth_password_credentials VALUES (?, ?)").run("test-account", "replacement")).toThrow();
+  database.exec("DELETE FROM auth_accounts WHERE id = 'test-account'");
+  expect(database.prepare("SELECT COUNT(*) AS n FROM auth_password_credentials").get()).toMatchObject({ n: 0 });
+  database.close();
+});

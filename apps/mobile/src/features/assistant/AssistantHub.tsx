@@ -1,9 +1,10 @@
 import { useOptionalAuth } from "../auth/runtime/AuthProvider";
-import { useAdultDeclaration } from "../journey/runtime/JourneyRuntimeProvider";
+import { useAdultDeclaration, useOptionalJourneyRuntime } from "../journey/runtime/JourneyRuntimeProvider";
 import { AssistantChat } from "./assistant-chat";
 
 export function AssistantHub({ journeyId = "first-overnight", initialDraft = "" }: { journeyId?: string; initialDraft?: string }) {
   const auth = useOptionalAuth();
   const adult = useAdultDeclaration();
-  return <AssistantChat key={`${auth?.accountId ?? "signed-out"}:${adult.status}:${journeyId}`} journeyId={journeyId} authorized={adult.status === "authorized"} initialDraft={initialDraft} />;
+  const historyRepository = useOptionalJourneyRuntime()?.assistantHistory;
+  return <AssistantChat key={`${auth?.accountId ?? "signed-out"}:${adult.status}:${journeyId}`} journeyId={journeyId} authorized={adult.status === "authorized"} initialDraft={initialDraft} {...(historyRepository ? { historyRepository } : {})} />;
 }

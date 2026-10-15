@@ -67,3 +67,21 @@ test("does not depend on the Node-only AbortSignal.timeout helper", async () => 
     else Object.defineProperty(AbortSignal, "timeout", descriptor);
   }
 });
+
+
+test("uses explicit password, registration, and OTP login endpoints", async () => {
+  const fetch = jest.fn(async () => Response.json({ contractVersion: "1", requestId,
+    account: { id: challengeId }, session: {
+      accessToken: `cave_at_${"a".repeat(43)}`, refreshToken: `cave_rt_${"r".repeat(43)}`,
+      accessExpiresAt: "2026-10-14T12:15:00Z", refreshExpiresAt: "2026-11-14T12:00:00Z",
+    },
+  }));
+  const client = createAuthApiClient({ baseUrl: "https://gateway.example", fetch });
+  const base = { contractVersion: "1" as const, requestId, installationToken: "installation-token-at-least-sixteen" };
+  await client.loginWithPassword({ ...base, email: "person@example.com", password: "exact password " });
+  expect(fetch).toHaveBeenLastCalledWith("https://gateway.example/v1/auth/password/login", expect.objectContaining({ cache: "no-store" }));
+  await client.registerEmailAccount(challengeId, { ...base, code: "123456", password: "long password" });
+  expect(fetch).toHaveBeenLastCalledWith(`https://gateway.example/v1/auth/email/challenges/${challengeId}/register`, expect.anything());
+  await client.loginEmailChallenge(challengeId, { ...base, code: "123456" });
+  expect(fetch).toHaveBeenLastCalledWith(`https://gateway.example/v1/auth/email/challenges/${challengeId}/login`, expect.anything());
+});

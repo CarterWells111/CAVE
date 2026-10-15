@@ -1,11 +1,10 @@
-import { useRef, useState } from "react";
-import { Alert, Modal, Pressable, ScrollView, Switch, Text, TextInput, View } from "react-native";
+import { useState } from "react";
+import { Alert, Modal, ScrollView, Text, TextInput, View } from "react-native";
 
 import { useTheme } from "../../../core/design/theme-provider";
 import type { ResolvedTheme, ThemePreference } from "../../../core/design/theme";
 import { Button } from "../../../core/ui/Button";
 import { Card } from "../../../core/ui/Card";
-import { InfoCard } from "../../../core/ui/info-card";
 import { HelpText, PageHeader } from "../../../core/ui/page-header";
 import { SelectionField } from "../../../core/ui/selection-field";
 import { ActionRow } from "../../../core/ui/action-row";
@@ -13,7 +12,7 @@ import { TextAction } from "../../../core/ui/text-action";
 import { AccountProfileCard } from "../../account/ui/AccountProfileCard";
 import { AccountPreferenceSettings } from "../../account/ui/AccountPreferenceSettings";
 
-type DeleteCapability = {
+export type DeleteCapability = {
   deleteAllData(): Promise<void>;
   onContinue(): void;
 };
@@ -24,14 +23,13 @@ type AccountCapability = {
   profile?: { displayName: string; avatarUri?: string };
   error?: "load" | "save" | "permission" | "picker" | null;
   onSignIn?(): void;
-  onManageAccount?(): void;
   onRetry?(): void;
   chooseAvatar?(): Promise<void>;
   removeAvatar?(): Promise<void>;
   saveDisplayName?(value: string): Promise<void>;
 };
 
-type PrivacySettingsCapability = {
+export type PrivacySettingsCapability = {
   changeJournalSaveNotice(enabled: boolean): Promise<void>;
   retry(): void;
   showLocalJournalSaveNotice: boolean;
@@ -42,100 +40,30 @@ export type SettingsScreenProps = {
   account?: AccountCapability | undefined;
   appearancePreference: ThemePreference;
   appearanceSaving: boolean;
-  deletion?: DeleteCapability | undefined;
-  privacy?: PrivacySettingsCapability | undefined;
+  onOpenAccountPrivacy(): void;
   resolvedTheme: ResolvedTheme;
   onAppearancePreferenceChange(preference: ThemePreference): Promise<void>;
   onBack(): void;
   onAdultRevoked?: (() => void) | undefined;
 };
 
-type DeleteState = "idle" | "confirming" | "deleting" | "error" | "success";
-
-function DestructiveButton({
-  label,
-  loading = false,
-  onPress
-}: {
-  label: string;
-  loading?: boolean;
-  onPress(): void;
-}) {
-  const theme = useTheme();
-  const [focused, setFocused] = useState(false);
-  return (
-    <Pressable
-      accessibilityLabel={label}
-      accessibilityRole="button"
-      accessibilityState={{ busy: loading, disabled: loading }}
-      disabled={loading}
-      onBlur={() => setFocused(false)}
-      onFocus={() => setFocused(true)}
-      onPress={onPress}
-      style={({ pressed }) => ({
-        alignItems: "center",
-        backgroundColor: pressed ? theme.color.surfacePressed : theme.color.dangerSurface,
-        borderColor: theme.color.danger,
-        borderCurve: "continuous",
-        borderRadius: theme.radius.control,
-        borderWidth: loading ? theme.border.selectedWidth : theme.border.width,
-        flexDirection: "row",
-        flexWrap: "wrap",
-        gap: theme.space.sm,
-        justifyContent: "center",
-        minHeight: theme.size.primaryActionHeight,
-        minWidth: theme.size.minimumTouchTarget,
-        outlineColor: theme.color.focus,
-        outlineOffset: theme.border.focusOffset,
-        outlineWidth: focused ? theme.border.focusWidth : 0,
-        paddingHorizontal: theme.space.lg,
-        paddingVertical: theme.space.compact,
-        width: "100%"
-      })}
-    >
-      <Text style={{ ...theme.typography.button, color: theme.color.onDanger, flexShrink: 1, textAlign: "center" }}>
-        {label}
-      </Text>
-      {loading ? <Text style={{ ...theme.typography.caption, color: theme.color.onDanger }}>处理中</Text> : null}
-    </Pressable>
-  );
-}
-
 export function SettingsScreen({
   account,
   appearancePreference,
   appearanceSaving,
-  deletion,
+  onOpenAccountPrivacy,
   onAppearancePreferenceChange,
   onBack,
   onAdultRevoked,
-  privacy,
   resolvedTheme,
 }: SettingsScreenProps) {
   const theme = useTheme();
-  const [deleteState, setDeleteState] = useState<DeleteState>("idle");
   const [appearanceError, setAppearanceError] = useState(false);
   const [nicknameDraft, setNicknameDraft] = useState("");
   const [nicknameEditorOpen, setNicknameEditorOpen] = useState(false);
   const [nicknameError, setNicknameError] = useState<"invalid" | "save" | null>(null);
   const [nicknameSaving, setNicknameSaving] = useState(false);
   const [profileActionError, setProfileActionError] = useState(false);
-  const [privacySaveState, setPrivacySaveState] = useState<"idle" | "saving" | "error">("idle");
-  const deletionInFlight = useRef(false);
-
-  const deleteAll = async () => {
-    if (!deletion || deletionInFlight.current) return;
-    deletionInFlight.current = true;
-    setDeleteState("deleting");
-    try {
-      await deletion.deleteAllData();
-      setDeleteState("success");
-    } catch {
-      setDeleteState("error");
-    } finally {
-      deletionInFlight.current = false;
-    }
-  };
 
   const changeAppearance = async (preference: ThemePreference) => {
     if (appearanceSaving || preference === appearancePreference) return;
@@ -191,17 +119,6 @@ export function SettingsScreen({
     }
   };
 
-  const changeJournalSaveNotice = async (enabled: boolean) => {
-    if (!privacy || privacySaveState === "saving") return;
-    setPrivacySaveState("saving");
-    try {
-      await privacy.changeJournalSaveNotice(enabled);
-      setPrivacySaveState("idle");
-    } catch {
-      setPrivacySaveState("error");
-    }
-  };
-
   return (
     <ScrollView
       contentContainerStyle={{
@@ -222,9 +139,8 @@ export function SettingsScreen({
         <HelpText>管理账户、保存方式、外观与这台设备上的内容。</HelpText>
         <HelpText>旅程、练习、沟通卡和普通回顾无需账户；使用内界手记必须登录。已登录账号离线时仍可使用自己的本机手记。</HelpText>
         <HelpText>本机保存（当前）：手记、卡片、回顾和设置只保存在这台设备上；登录只会把本机手记与账号关联，不会同步私密正文。</HelpText>
-        <HelpText>邮箱登录（不含同步）：登录不会上传日记、沟通卡、回顾或亲密内容。使用 AI 时，会先预览并由你确认发送内容；「帮我批准」仅适用于本次会话的普通公开聊天，可能私密的内容仍需确认。</HelpText>
+        <HelpText>邮箱登录（不含同步）：登录不会上传日记、沟通卡、回顾或亲密内容。普通 AI 聊天发送后直接取得回复；开启「帮我批准」后，会将问题涉及的本账号日记和旅程内容发送至内界服务端，可能由 DeepSeek 生成回复。选择会延续到新对话和页面切换，退出 App 后恢复关闭，也可随时手动关闭。</HelpText>
       </>} />
-      <AccountPreferenceSettings onRevoke={onAdultRevoked ?? (() => undefined)} />
 
       {account ? (
         <>
@@ -257,6 +173,7 @@ export function SettingsScreen({
         </>
       ) : null}
 
+      <AccountPreferenceSettings onRevoke={onAdultRevoked ?? (() => undefined)} />
       <Modal
         animationType="fade"
         onRequestClose={() => { if (!nicknameSaving) setNicknameEditorOpen(false); }}
@@ -321,14 +238,6 @@ export function SettingsScreen({
 
       <Card accessible={false}>
         <Text accessibilityRole="header" selectable style={{ ...theme.typography.heading, color: theme.color.text }}>
-          账户与保存
-        </Text>
-        <Text selectable style={{ ...theme.typography.caption, color: theme.color.textSecondary }}>本机保存（当前） · 邮箱登录不含同步</Text>
-        {account?.status === "ready" && account.onManageAccount ? <ActionRow title="管理邮箱账号" onPress={account.onManageAccount} /> : null}
-      </Card>
-
-      <Card accessible={false}>
-        <Text accessibilityRole="header" selectable style={{ ...theme.typography.heading, color: theme.color.text }}>
           外观
         </Text>
         <SelectionField<ThemePreference> label="外观" value={appearancePreference} disabled={appearanceSaving}
@@ -349,101 +258,7 @@ export function SettingsScreen({
         ) : null}
       </Card>
 
-      <InfoCard title="隐私与本机数据">
-        <Text selectable style={{ ...theme.typography.body, color: theme.color.textSecondary }}>
-          旅程、练习、手记、沟通卡和回顾保存在本机。永久删除后无法恢复；能解锁这台设备的人仍可能看到这些内容，请按自己的情况决定是否保留。
-        </Text>
-        {privacy ? (
-          <>
-            <View style={{ alignItems: "center", flexDirection: "row", gap: theme.space.md, justifyContent: "space-between" }}>
-              <Text selectable style={{ ...theme.typography.body, color: theme.color.text, flex: 1 }}>
-                保存私人记录前显示本机提示
-              </Text>
-              <Switch
-                accessibilityLabel="保存私人记录前显示本机提示"
-                disabled={privacy.status !== "ready" || privacySaveState === "saving"}
-                onValueChange={(enabled) => { void changeJournalSaveNotice(enabled); }}
-                trackColor={{ false: theme.color.disabled, true: theme.color.brandSoft }}
-                value={privacy.showLocalJournalSaveNotice}
-              />
-            </View>
-            {privacy.status === "loading" ? (
-              <Text accessibilityLiveRegion="polite" selectable style={{ ...theme.typography.caption, color: theme.color.textSecondary }}>
-                正在读取本机隐私设置…
-              </Text>
-            ) : null}
-            {privacySaveState === "saving" ? (
-              <Text accessibilityLiveRegion="polite" selectable style={{ ...theme.typography.caption, color: theme.color.textSecondary }}>
-                正在保存设置…
-              </Text>
-            ) : null}
-            {privacy.status === "error" ? (
-              <View style={{ gap: theme.space.sm }}>
-                <Text accessibilityRole="alert" selectable style={{ ...theme.typography.caption, color: theme.color.error }}>
-                  暂时无法读取本机隐私设置；保存提示会保持开启。
-                </Text>
-                <TextAction label="重试读取隐私设置" onPress={privacy.retry} />
-              </View>
-            ) : null}
-            {privacySaveState === "error" ? (
-              <Text accessibilityRole="alert" selectable style={{ ...theme.typography.caption, color: theme.color.error }}>
-                设置尚未保存，请重试。
-              </Text>
-            ) : null}
-          </>
-        ) : null}
-      </InfoCard>
-
-      {deletion ? <Card accessible={false} style={{ borderColor: theme.color.danger }}>
-        <Text accessibilityRole="header" selectable style={{ ...theme.typography.heading, color: theme.color.text }}>
-          删除本机数据
-        </Text>
-        <Text selectable style={{ ...theme.typography.body, color: theme.color.textSecondary }}>
-          删除后，当前旅程、手记、卡片、回顾和本机设置都需要重新开始。
-        </Text>
-
-        {deleteState === "idle" ? (
-          <DestructiveButton label="删除全部本机数据" onPress={() => setDeleteState("confirming")} />
-        ) : null}
-
-        {deleteState === "confirming" ? (
-          <View style={{ gap: theme.space.md }}>
-            <Text accessibilityRole="alert" selectable style={{ ...theme.typography.body, color: theme.color.error }}>
-              请再次确认：全部本机数据会被删除，并且无法恢复。
-            </Text>
-            <DestructiveButton label="确认删除全部本机数据" onPress={() => { void deleteAll(); }} />
-            <TextAction label="取消删除" onPress={() => setDeleteState("idle")} />
-          </View>
-        ) : null}
-
-        {deleteState === "deleting" ? (
-          <View accessibilityLiveRegion="polite" style={{ gap: theme.space.sm }}>
-            <DestructiveButton label="正在删除本机数据…" loading onPress={() => undefined} />
-            <Text selectable style={{ ...theme.typography.caption, color: theme.color.textSecondary }}>
-              完成前请留在这个画面。
-            </Text>
-          </View>
-        ) : null}
-
-        {deleteState === "error" ? (
-          <View style={{ gap: theme.space.md }}>
-            <Text accessibilityRole="alert" selectable style={{ ...theme.typography.body, color: theme.color.error }}>
-              删除尚未完成；部分本机清理步骤可能已经完成。当前画面会保留，请安全重试直到显示完成。
-            </Text>
-            <DestructiveButton label="重试删除" onPress={() => { void deleteAll(); }} />
-            <TextAction label="取消删除" onPress={() => setDeleteState("idle")} />
-          </View>
-        ) : null}
-
-        {deleteState === "success" ? (
-          <View accessibilityLiveRegion="polite" style={{ gap: theme.space.md }}>
-            <Text accessibilityRole="alert" selectable style={{ ...theme.typography.body, color: theme.color.success }}>
-              本机数据已删除。
-            </Text>
-            <Button label="返回首页" onPress={deletion.onContinue} />
-          </View>
-        ) : null}
-      </Card> : null}
+      <Card accessible={false} style={{ borderColor: theme.color.danger }}><ActionRow title="账号与隐私" subtitle="账号管理、隐私设置与危险操作" onPress={onOpenAccountPrivacy} /></Card>
     </ScrollView>
   );
 }

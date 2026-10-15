@@ -59,6 +59,7 @@ function setup(ageConfirmed = true) {
   mockDependencies = {
     api: {
       requestEmailChallenge: jest.fn(async () => ({ contractVersion: "1" as const, requestId, challengeId: requestId, expiresInSeconds: 600, resendAfterSeconds: 60 })),
+      loginWithPassword: jest.fn(async () => session), registerEmailAccount: jest.fn(async () => session), loginEmailChallenge: jest.fn(async () => session),
       verifyEmailChallenge: jest.fn(async () => session), refresh: jest.fn(async () => session), logout: jest.fn(),
       requestAccountDeletionChallenge: jest.fn(), verifyAccountDeletionChallenge: jest.fn(), deleteAccount: jest.fn(),
       getAccountPreferences: jest.fn(async () => ({ contractVersion: "1" as const, requestId, preferences: { ageConfirmed, addressPreference: "妳" as const, updatedAt: now, revision: 1 } })),

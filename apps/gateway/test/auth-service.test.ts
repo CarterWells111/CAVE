@@ -336,3 +336,53 @@ describe("key management", () => {
     })).rejects.toMatchObject({ code: "AUTH_CHALLENGE_INVALID" });
   });
 });
+
+
+describe("password authentication and legacy compatibility", () => {
+  const email = "person@example.com";
+  const base = { contractVersion: "1" as const, requestId, installationToken };
+  const password = "correct horse battery staple";
+  it("registers with verified email, stores a salted hash, and supports password and OTP login without overwriting", async () => {
+    const { service, repository } = harness();
+    const accepted = await service.requestEmailChallenge({ ...base, email });
+    const registered = await service.registerEmailAccount(accepted.challengeId, { ...base, code: "123456", password });
+    const hash = await repository.getPasswordHash(registered.account.id);
+    expect(hash).toMatch(/^pbkdf2-sha256\$100000\$/u);
+    expect(hash).not.toContain(password);
+    expect((await service.loginWithPassword({ ...base, email: " Person@Example.com ", password })).account.id).toBe(registered.account.id);
+    const otp = await service.requestEmailChallenge({ ...base, email });
+    expect((await service.loginEmailChallenge(otp.challengeId, { ...base, code: "123456" })).account.id).toBe(registered.account.id);
+    expect(await repository.getPasswordHash(registered.account.id)).toBe(hash);
+    const repeat = await service.requestEmailChallenge({ ...base, email });
+    await expect(service.registerEmailAccount(repeat.challengeId, { ...base, code: "123456", password: "different password" })).rejects.toMatchObject({ code: "AUTH_UNAUTHORIZED", status: 401 });
+    expect(await repository.getPasswordHash(registered.account.id)).toBe(hash);
+  });
+  it("keeps legacy accounts passwordless and permits OTP login", async () => {
+    const { service, repository } = harness();
+    const accepted = await service.requestEmailChallenge({ ...base, email });
+    const legacy = await service.verifyEmailChallenge(accepted.challengeId, { ...base, code: "123456" });
+    expect(await repository.getPasswordHash(legacy.account.id)).toBeNull();
+    await expect(service.loginWithPassword({ ...base, email, password })).rejects.toMatchObject({ code: "AUTH_UNAUTHORIZED", status: 401 });
+    const next = await service.requestEmailChallenge({ ...base, email });
+    expect((await service.loginEmailChallenge(next.challengeId, { ...base, code: "123456" })).account.id).toBe(legacy.account.id);
+    const setup = await service.requestEmailChallenge({ ...base, email });
+    expect((await service.registerEmailAccount(setup.challengeId, { ...base, code: "123456", password })).account.id).toBe(legacy.account.id);
+  });
+  it("returns the same failure for unknown email and wrong password and rate limits before hashing", async () => {
+    const { service } = harness();
+    const accepted = await service.requestEmailChallenge({ ...base, email });
+    await service.registerEmailAccount(accepted.challengeId, { ...base, code: "123456", password });
+    for (const candidate of [email, "missing@example.com"]) {
+      await expect(service.loginWithPassword({ ...base, email: candidate, password: "wrong-password" })).rejects.toMatchObject({ code: "AUTH_UNAUTHORIZED", status: 401 });
+    }
+    await expect(service.loginWithPassword({ ...base, email, password: "wrong-password" })).rejects.toMatchObject({ status: 401 });
+    await expect(service.loginWithPassword({ ...base, email, password: "wrong-password" })).rejects.toMatchObject({ status: 401 });
+    await expect(service.loginWithPassword({ ...base, email, password })).rejects.toMatchObject({ code: "RATE_LIMITED", status: 429 });
+  });
+  it("requires registration for unknown users on the new OTP endpoint and rejects invalid codes before setting passwords", async () => {
+    const { service } = harness();
+    const accepted = await service.requestEmailChallenge({ ...base, email });
+    await expect(service.registerEmailAccount(accepted.challengeId, { ...base, code: "000000", password })).rejects.toMatchObject({ code: "AUTH_INVALID_CODE" });
+    await expect(service.loginEmailChallenge(accepted.challengeId, { ...base, code: "123456" })).rejects.toMatchObject({ code: "AUTH_UNAUTHORIZED" });
+  });
+});

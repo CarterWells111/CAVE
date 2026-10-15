@@ -84,12 +84,15 @@ describe("Maestro release selectors", () => {
   it("keeps delete-all as a local-state spec and delegates offline setup to external 07B", () => {
     const flow = read(".maestro/offline-delete.yaml");
     const settings = read("apps/mobile/src/features/shell/ui/SettingsScreen.tsx");
+    const privacy = read("apps/mobile/src/features/shell/ui/AccountPrivacyScreen.tsx");
 
     expect(flow).not.toContain("setAirplaneMode");
     expect(flow).toContain("external 07B");
     expect(flow).toContain("name: Local delete-all clears release state");
+    expect(settings).toContain("账号与隐私");
+    expect(flow.indexOf('tapOn: "账号与隐私.*"')).toBeLessThan(flow.indexOf('tapOn: "删除全部本机数据"'));
     for (const label of ["删除全部本机数据", "确认删除全部本机数据", "本机数据已删除。"]) {
-      expect(settings).toContain(label);
+      expect(privacy).toContain(label);
       expect(flow).toContain(label);
     }
   });

@@ -4,6 +4,7 @@ import type {
 } from "../../../core/storage/database";
 import type { JournalEntry, JournalRecord } from "../domain/journal-record";
 import { normalizeJournalDate } from "../domain/journal-date";
+import { checkJournalWriteGuard, checkJournalUpdateGuard, checkJournalEntryGuard, type JournalWriteGuard, type JournalUpdateGuard, type JournalEntryGuard } from "../domain/journal-confirmation";
 import {
   JournalDeletionCleanupRequiredError,
   type JournalPeriodReview,
@@ -118,14 +119,16 @@ export class SqlJournalRepository implements JournalRepository {
     });
   }
 
-  async createRecord(ownerAccountId: string, record: JournalRecord): Promise<void> {
+  async createRecord(ownerAccountId: string, record: JournalRecord, guard?: JournalWriteGuard): Promise<void> {
     const insert = async (db: DatabaseTransactionConnection) => {
+      checkJournalWriteGuard(guard);
       await db.runAsync("INSERT INTO journal_records (id,owner_account_id,title,occurred_at,created_at,updated_at,editable_until,highlight_kind,highlight_text,body,topics_json,source_json,card_snapshot_json) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
         record.id, ownerAccountId, record.title, record.occurredAt, record.createdAt, record.updatedAt, record.editableUntil,
         record.highlight.kind, record.highlight.text, record.body, JSON.stringify(record.topics), JSON.stringify(record.source),
         record.cardSnapshot === null ? null : JSON.stringify(record.cardSnapshot));
+      checkJournalWriteGuard(guard);
     };
-    if (this.database.clearOwnerDeletionMarker === undefined) {
+    if (this.database.clearOwnerDeletionMarker === undefined && guard === undefined) {
       await insert(await this.connection());
     } else {
       await this.database.withTransaction(async (db) => {
@@ -134,11 +137,17 @@ export class SqlJournalRepository implements JournalRepository {
       });
     }
   }
-  async updateRecord(ownerAccountId: string, record: JournalRecord, revision?: JournalRevision): Promise<void> {
+  async updateRecord(ownerAccountId: string, record: JournalRecord, revision?: JournalRevision, guard?: JournalUpdateGuard): Promise<void> {
     await this.database.withTransaction(async (db) => {
+    if (guard) {
+      const row = await db.getFirstAsync<RecordRow>("SELECT * FROM journal_records WHERE id=? AND owner_account_id=?", record.id, ownerAccountId);
+      checkJournalUpdateGuard(row ? mapRecord(row) : null, guard);
+    }
     if (revision) await this.insertRevision(db, ownerAccountId, revision);
+    checkJournalWriteGuard(guard);
     await db.runAsync("UPDATE journal_records SET title=?,occurred_at=?,updated_at=?,highlight_kind=?,highlight_text=?,body=?,topics_json=? WHERE id=? AND owner_account_id=?",
       record.title, record.occurredAt, record.updatedAt, record.highlight.kind, record.highlight.text, record.body, JSON.stringify(record.topics), record.id, ownerAccountId);
+    if (guard) checkJournalUpdateGuard(guard.expected, guard);
     });
   }
   async listRecords(ownerAccountId: string): Promise<readonly JournalRecordSummary[]> {
@@ -162,11 +171,25 @@ export class SqlJournalRepository implements JournalRepository {
       await db.runAsync("DELETE FROM journal_records WHERE id=? AND owner_account_id=?", id, ownerAccountId);
     });
   }
-  async createEntry(ownerAccountId: string, entry: JournalEntry): Promise<void> {
-    const db = await this.connection();
-    await db.runAsync("INSERT INTO journal_entries (id,record_id,kind,occurred_at,created_at,updated_at,editable_until,highlight_json,body) SELECT ?,?,?,?,?,?,?,?,? WHERE EXISTS (SELECT 1 FROM journal_records WHERE id=? AND owner_account_id=?)",
-      entry.id, entry.recordId, entry.kind, entry.occurredAt, entry.createdAt, entry.updatedAt, entry.editableUntil,
-      entry.highlight === null ? null : JSON.stringify(entry.highlight), entry.body, entry.recordId, ownerAccountId);
+  async createEntry(ownerAccountId: string, entry: JournalEntry, guard?: JournalEntryGuard): Promise<void> {
+    const insert = async (db: DatabaseTransactionConnection) => {
+      const verify = async (afterInsert = false) => {
+        if (!guard) return;
+        checkJournalWriteGuard(guard);
+        const row = await db.getFirstAsync<RecordRow>("SELECT * FROM journal_records WHERE id=? AND owner_account_id=?", entry.recordId, ownerAccountId);
+        const entries = guard.expectedEntries ? (await db.getAllAsync<EntryRow>("SELECT journal_entries.* FROM journal_entries JOIN journal_records ON journal_records.id=journal_entries.record_id WHERE journal_entries.record_id=? AND journal_records.owner_account_id=?", entry.recordId, ownerAccountId))
+          .filter(item => !afterInsert || item.id !== entry.id).map(mapEntry) : [];
+        checkJournalEntryGuard(row ? mapRecord(row) : null, entries, guard);
+      };
+      await verify();
+      const result = await db.runAsync("INSERT INTO journal_entries (id,record_id,kind,occurred_at,created_at,updated_at,editable_until,highlight_json,body) SELECT ?,?,?,?,?,?,?,?,? WHERE EXISTS (SELECT 1 FROM journal_records WHERE id=? AND owner_account_id=?)",
+        entry.id, entry.recordId, entry.kind, entry.occurredAt, entry.createdAt, entry.updatedAt, entry.editableUntil,
+        entry.highlight === null ? null : JSON.stringify(entry.highlight), entry.body, entry.recordId, ownerAccountId);
+      if (guard && result.changes !== 1) throw new Error("journal-record-not-found");
+      await verify(true);
+    };
+    if (guard) await this.database.withTransaction(insert);
+    else await insert(await this.connection());
   }
   async updateEntry(ownerAccountId: string, entry: JournalEntry, revision?: JournalRevision): Promise<void> {
     await this.database.withTransaction(async (db) => {

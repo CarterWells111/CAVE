@@ -11,11 +11,11 @@ import { SelectionField } from "../../../core/ui/selection-field";
 import type { JournalService } from "../application/journal-service";
 import type { JournalRecordSummary } from "../infrastructure/journal-repository";
 import { isJournalDateInRange, journalDateFromDate, parseJournalDate } from "../domain/journal-date";
+import { JOURNAL_REVIEW_QUESTIONS } from "../domain/journal-review-prompts";
 
 import { JournalDateField } from "./JournalDateField";
 import { JournalEditorHeader } from "./JournalEditorHeader";
 
-const prompts = ["遇到了什么困难？", "你采取了什么做法？", "什么有帮助，什么没有帮助？", "你怎样理解这些变化？", "下次想提醒自己什么？"];
 const systemNow = () => new Date();
 
 export function JournalPeriodReviewScreen({ service, onSaved, now = systemNow, renderAssistant, onOpen, onBack }: Readonly<{ service: JournalService; onSaved(): void; now?(): Date; onOpen?(id: string): void; onBack?(): void; renderAssistant?(context: { records: Array<{ id: string; text: string }>; onAdopt(text: string): void }): ReactNode }>) {
@@ -81,7 +81,7 @@ export function JournalPeriodReviewScreen({ service, onSaved, now = systemNow, r
     </View> : null}
     <Card accessible={false}>
       <Text accessibilityRole="header" style={{ ...theme.typography.heading, color: theme.color.text }}>我的阶段小结</Text>
-      <View style={{ gap: theme.space.xs }}>{prompts.map((prompt) => <Text key={prompt} style={{ ...theme.typography.body, color: theme.color.textMuted }}>{prompt}</Text>)}</View>
+      <View style={{ gap: theme.space.xs }}>{JOURNAL_REVIEW_QUESTIONS.map((prompt) => <Text key={prompt} style={{ ...theme.typography.body, color: theme.color.textMuted }}>{prompt}</Text>)}</View>
       <TextInput accessibilityLabel="阶段回顾标题" placeholderTextColor={theme.color.textMuted} selectionColor={theme.color.primary} value={title} onChangeText={setTitle} style={field} />
       <TextInput accessibilityLabel="由我确认的阶段小结" multiline placeholder="用自己的话写下想保留的经验和提醒" placeholderTextColor={theme.color.textMuted} selectionColor={theme.color.primary} value={body} onChangeText={setBody} style={[field, { minHeight: 180, textAlignVertical: "top" }]} />
     </Card>

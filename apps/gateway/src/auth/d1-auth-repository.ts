@@ -66,6 +66,15 @@ const SESSION_COLUMNS = "id, account_id, access_digest, access_expires_at, refre
 export class D1AuthRepository implements AuthRepository {
   constructor(private readonly database: D1Database) {}
 
+  async getPasswordHash(accountId: string): Promise<string | null> {
+    const row = await this.database.prepare("SELECT password_hash FROM auth_password_credentials WHERE account_id = ?").bind(accountId).first<{ password_hash: string }>();
+    return row?.password_hash ?? null;
+  }
+  async setPasswordIfAbsent(accountId: string, hash: string): Promise<boolean> {
+    const result = await this.database.prepare("INSERT INTO auth_password_credentials (account_id, password_hash) VALUES (?, ?) ON CONFLICT(account_id) DO NOTHING").bind(accountId, hash).run();
+    return result.meta.changes === 1;
+  }
+
   async consumeRateLimit(input: {
     scope: string; keyDigest: string; windowStartedAt: string; expiresAt: string; limit: number;
   }): Promise<boolean> {

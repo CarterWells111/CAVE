@@ -197,6 +197,9 @@ export function DeleteAccountScreen(props: Props) {
           <Text accessibilityRole="header" selectable style={{ ...theme.typography.heading, color: theme.color.text }}>
             {localJournalDeleted ? "本机手记已删除" : "请选择本机手记的处理方式"}
           </Text>
+          <Text selectable style={{ ...theme.typography.body, color: theme.color.textSecondary }}>
+            删除账户时，会先清除这个账户在本机保存的 AI 对话历史。其他账户的对话不受影响。
+          </Text>
           {!localJournalDeleted ? <Text selectable style={{ ...theme.typography.body, color: theme.color.error }}>
             {props.journalPersistence === "plaintext-sqlite"
               ? "当前是 Expo Go 开发预览；若保留，手记仍在本机明文 SQLite 中，删除云端账户后内容保持锁定。卸载 Expo Go、清除项目数据或主动删除后不可恢复。"

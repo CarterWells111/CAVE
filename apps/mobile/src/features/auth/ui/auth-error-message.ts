@@ -14,7 +14,7 @@ export function isAuthReauthenticationRequired(error: unknown): boolean {
     && reauthenticationCodes.has(error.code);
 }
 
-export function getAuthErrorMessage(error: unknown): string {
+export function getAuthErrorMessage(error: unknown, credentialAction = false): string {
   if (!(error instanceof MobileAuthApiError)) {
     return "操作未完成。请检查网络、邮箱或验证码后重试。";
   }
@@ -40,7 +40,7 @@ export function getAuthErrorMessage(error: unknown): string {
     case "AUTH_SESSION_EXPIRED":
       return "登录已过期。请重新登录后再试。";
     case "AUTH_UNAUTHORIZED":
-      return "登录状态无效。请重新登录后再试。";
+      return credentialAction ? "登录或注册未完成。请检查邮箱、密码，或使用验证码登录已有账户。" : "登录状态无效。请重新登录后再试。";
     case "INVALID_RESPONSE":
       return "认证服务返回异常。请稍后重试。";
     default:
