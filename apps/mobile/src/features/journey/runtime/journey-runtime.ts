@@ -23,6 +23,10 @@ import type { JourneyBranchTransaction, JourneyCompletionTransaction } from "../
 import type { JourneyDraft } from "../domain/types";
 import type { DatabaseSecretRepository } from "../../../core/storage/key-store";
 import {
+  InMemoryPreferenceCardRepository,
+  type PreferenceCardRepository,
+} from "../../explore/preference-card";
+import {
   InMemoryAppearancePreferencesRepository,
   type AppearancePreferencesRepository,
 } from "../../../core/design/appearance-preferences";
@@ -64,6 +68,7 @@ export type JourneyRuntime = {
   controller: JourneyPageController;
   drafts: JourneyDraftRepository;
   cards: CommunicationCardRepository;
+  preferenceCards: PreferenceCardRepository;
   shellState: AppShellStateRepository;
   reviewHistory: ReviewHistoryRepository<JourneyDraft>;
   adultDeclaration: AdultDeclarationRepository;
@@ -89,6 +94,7 @@ type ComposeDependencies = RuntimeDependencies & {
   journalPersistence?: JournalPersistence;
   drafts: JourneyDraftRepository;
   cards: CommunicationCardRepository;
+  preferenceCards?: PreferenceCardRepository;
   shellState?: AppShellStateRepository;
   reviewHistory?: ReviewHistoryRepository<JourneyDraft>;
   appearancePreferences?: AppearancePreferencesRepository;
@@ -120,6 +126,7 @@ export function composeJourneyRuntime({
   journalPersistence = persistence === "sqlcipher-secure-store" ? "sqlcipher" : "memory-only",
   drafts,
   cards,
+  preferenceCards = new InMemoryPreferenceCardRepository(),
   shellState = new InMemoryAppShellStateRepository(),
   reviewHistory = new InMemoryPayloadReviewHistoryRepository<JourneyDraft>(),
   appearancePreferences = new InMemoryAppearancePreferencesRepository(),
@@ -170,6 +177,7 @@ export function composeJourneyRuntime({
     await reviewHistory.clearAll();
     await journal.clearAll();
     await assistantHistory.clearAll();
+    await preferenceCards.clearAll();
     await appearancePreferences.save("system");
     await privacySettings.resetPrivacySettings();
     await service.resetJourney();
@@ -209,7 +217,7 @@ export function composeJourneyRuntime({
     }
     service.adoptPersistedJourney(draft);
   };
-  return { mode, persistence, journalPersistence, service, controller, drafts: versionedDrafts, cards, shellState, reviewHistory, adultDeclaration, appearancePreferences, journal, assistantHistory, createJournalService, privacySettings, deleteAllData, replaceActiveReview, branchFromReview };
+  return { mode, persistence, journalPersistence, service, controller, drafts: versionedDrafts, cards, preferenceCards, shellState, reviewHistory, adultDeclaration, appearancePreferences, journal, assistantHistory, createJournalService, privacySettings, deleteAllData, replaceActiveReview, branchFromReview };
 }
 
 export async function createJourneyRuntime({

@@ -17,13 +17,13 @@ afterEach(() => {
   act(() => Dimensions.set({ window: originalWindow }));
 });
 
-it("provides 01 body content, five sample buttons, and the independent optional scenario", () => {
+it("provides six journeys and the independent optional scenario", () => {
   const actions = callbacks();
   render(<JourneyMap {...actions} />);
 
   expect(screen.getAllByRole("button")).toHaveLength(7);
   for (const journey of SAMPLE_JOURNEYS) {
-    const button = screen.getByRole("button", { name: journey.preview ? `打开${journey.title}，样板` : `打开${journey.title}，认识身体` });
+    const button = screen.getByRole("button", { name: `打开${journey.title}，${journey.preview ? "样板" : journey.subtitle ?? "认识身体"}` });
     expect(button).toBeEnabled();
     const style = StyleSheet.flatten(button.props.style);
     expect(style.width).toBe(style.height);
@@ -43,8 +43,8 @@ it("keeps the scenario beside the second and third samples in the ordinary layou
   render(<JourneyMap {...callbacks()} />);
   const branch = screen.getByTestId("journey-map-scenario-branch");
   expect(branch).toHaveStyle({ flexDirection: "row" });
-  expect(within(branch).getByRole("button", { name: "打开旅程 02，样板" })).toBeTruthy();
-  expect(within(branch).getByRole("button", { name: "打开旅程 03，样板" })).toBeTruthy();
+  expect(within(branch).getByRole("button", { name: "打开旅程 02，认识愉悦的方式" })).toBeTruthy();
+  expect(within(branch).getByRole("button", { name: "打开旅程 03，主动与拒绝" })).toBeTruthy();
   expect(within(branch).getByRole("button", { name: "体验第一次过夜" })).toBeTruthy();
 });
 
@@ -55,7 +55,7 @@ it("only disables the optional scenario while opening it and retains an accessib
   expect(scenario.props.accessibilityState).toEqual({ busy: true, disabled: true });
   fireEvent.press(scenario);
   expect(actions.onOpenScenario).not.toHaveBeenCalled();
-  fireEvent.press(screen.getByRole("button", { name: "打开旅程 06，样板" }));
+  fireEvent.press(screen.getByRole("button", { name: "打开旅程 06，回顾与交流" }));
   expect(actions.onOpenSample).toHaveBeenCalledWith("journey-06");
 
   view.rerender(<JourneyMap {...actions} scenarioError />);

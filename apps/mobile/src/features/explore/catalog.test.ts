@@ -11,7 +11,7 @@ describe("explore catalog", () => {
     expect(new Set(SAMPLE_JOURNEYS.map(({ id }) => id)).size).toBe(6);
   });
 
-  it("publishes the agreed body content in 01 while leaving 02–06 as framework previews", () => {
+  it("publishes all six journeys with the agreed content for 02", () => {
     const body = SAMPLE_JOURNEYS[0]!;
     expect(body.preview).toBe(false);
     expect(body.pages.map(({ kind }) => kind)).toEqual(["introduction", "content", "end"]);
@@ -25,14 +25,27 @@ describe("explore catalog", () => {
     expect(body.pages[2].body).toContain("这些只是你身体的反应，而你心里可能是舒服、好奇、犹豫或不适");
     expect(body.pages[2].webLink?.url).toBe("https://neijiecave.com/body-response/");
 
-    for (const journey of SAMPLE_JOURNEYS.slice(1)) {
-      expect(journey.preview).toBe(true);
+    const second = SAMPLE_JOURNEYS[1]!;
+    expect(second.preview).toBe(false);
+    expect(second.subtitle).toBe("认识愉悦的方式");
+    expect(second.pages.map(({ title }) => title)).toEqual([
+      "亲密没有固定顺序", "认识不同的亲密方式", "选择可以留给自己",
+    ]);
+    expect(second.pages[1].cards?.map(({ title }) => title)).toEqual([
+      "亲吻与身体触碰", "乳房刺激", "手指触碰外阴", "口交", "阴道纳入", "独自探索", "肛门纳入",
+    ]);
+    expect(second.pages[1].cards?.[5]?.tag).toBe("可选");
+    expect(second.pages[1].cards?.[6]?.tag).toBe("展开补充");
+    expect(second.pages[1].footer).toContain("任何时候、出于任何原因");
+    for (const journey of SAMPLE_JOURNEYS.slice(2)) {
+      expect(journey.preview).toBe(false);
       expect(journey.icon).toEqual(expect.any(String));
       expect(journey.pages.map(({ kind }) => kind)).toEqual(["introduction", "content", "end"]);
-      expect(journey.pages[0].body).toContain("框架预览");
-      expect(journey.pages[1].body).toContain("不包含正式内容");
-      expect(journey.pages[2].body).toContain("不会生成回顾记录");
+      expect(journey.pages.every(({ body }) => body.length > 0)).toBe(true);
     }
+    expect(SAMPLE_JOURNEYS[3]!.pages[2].preferenceCard).toBe(true);
+    expect(SAMPLE_JOURNEYS[4]!.pages[1].cards?.map(({ title }) => title)).toEqual(["舒适与清洁", "保护出现意外", "检测与求助"]);
+    expect(SAMPLE_JOURNEYS[5]!.pages[2].preferenceCard).toBe(true);
     expect(new Set(SAMPLE_JOURNEYS.map(({ icon }) => icon)).size).toBe(6);
   });
 

@@ -62,7 +62,7 @@ export function HomeScreen({
         <Text selectable style={{ ...theme.typography.numericLabel, color: theme.color.brandSoft, letterSpacing: 2 }}>跟随自己的节奏</Text>
         <PageHeader title="选择一段旅程" help={<>
           <HelpText>没有固定顺序，从此刻想探索的地方开始。</HelpText>
-          <HelpText>旅程 01 提供身体知识参考内容，02—06 是框架预览，不会保存答案。第一次过夜是可选的独立情景体验。</HelpText>
+          <HelpText>旅程 01—06 均可阅读参考内容；医学与性健康内容仍待专业复核。旅程 04 的个人偏好卡仅保存在本机，不会自动分享。第一次过夜是可选的独立情景体验。</HelpText>
         </>} />
       </View>
       {loadState === "loading" ? <ShellLoading /> : null}

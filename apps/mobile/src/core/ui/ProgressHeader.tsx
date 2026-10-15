@@ -14,6 +14,7 @@ type ProgressHeaderProps = {
   backBusy?: boolean;
   backDisabled?: boolean;
   exitDisabled?: boolean;
+  compact?: boolean;
   testID?: string;
   exitRef?: RefObject<View | null> | undefined;
 };
@@ -78,6 +79,7 @@ export function ProgressHeader({
   backBusy = false,
   backDisabled = false,
   exitDisabled = false,
+  compact = false,
   testID,
   exitRef,
 }: ProgressHeaderProps) {
@@ -119,7 +121,7 @@ export function ProgressHeader({
   ) : null;
 
   return (
-    <View style={{ alignItems: "center", flexDirection: "row", gap: theme.space.sm, minHeight: theme.size.navigationHeight, width: "100%" }} testID={testID}>
+    <View style={{ alignItems: "center", flexDirection: "row", gap: theme.space.sm, minHeight: compact ? theme.size.minimumTouchTarget : theme.size.navigationHeight, width: "100%" }} testID={testID}>
       {leading}{progress}{trailing}
     </View>
   );

@@ -1,5 +1,5 @@
 import { act, fireEvent, render, screen } from "@testing-library/react-native";
-import { BackHandler, Dimensions, Linking, StyleSheet } from "react-native";
+import { BackHandler, Dimensions, Image, Linking, StyleSheet } from "react-native";
 
 import { SAMPLE_JOURNEYS } from "../catalog";
 import { SampleJourneyScreen } from "./sample-journey-screen";
@@ -7,6 +7,21 @@ import { SampleJourneyScreen } from "./sample-journey-screen";
 const first = SAMPLE_JOURNEYS[0]!;
 const second = SAMPLE_JOURNEYS[1]!;
 const next = () => fireEvent.press(screen.getByRole("button", { name: "下一页" }));
+
+it("prefetches the existing diagram before the reader chooses to reveal it", () => {
+  const resolveAsset = jest.spyOn(Image, "resolveAssetSource").mockReturnValue({
+    uri: "https://example.test/diagram.png", width: 1600, height: 900, scale: 1,
+  });
+  const prefetch = jest.spyOn(Image, "prefetch").mockResolvedValue(true);
+  try {
+    render(<SampleJourneyScreen journey={first} onExit={jest.fn()} />);
+    expect(prefetch).toHaveBeenCalledWith("https://example.test/diagram.png");
+    expect(screen.queryByTestId("journey-01-diagram-viewport")).toBeNull();
+  } finally {
+    prefetch.mockRestore();
+    resolveAsset.mockRestore();
+  }
+});
 
 it("offers a gentle reveal for the numbered diagram while keeping Chinese descriptions visible", () => {
   const exit = jest.fn();
@@ -16,14 +31,21 @@ it("offers a gentle reveal for the numbered diagram while keeping Chinese descri
   expect(screen.getByText("身体知识 · 待专业复核")).toBeTruthy();
   expect(screen.getByText("温馨提示｜外阴结构图")).toBeTruthy();
   expect(screen.queryByTestId("journey-01-diagram-viewport")).toBeNull();
+  expect(screen.queryByText("想认识自己的外阴？")).toBeNull();
   expect(screen.getByRole("button", { name: "确认点开" })).toBeTruthy();
   expect(screen.queryByText("可选，不查看也可以继续")).toBeNull();
-  for (const name of ["阴阜", "大阴唇", "阴蒂", "小阴唇", "尿道口", "阴道口", "肛门"]) {
-    expect(screen.getByText(new RegExp(`^[1-7] ${name}$`, "u"))).toBeTruthy();
+  for (const [index, name] of ["阴阜", "大阴唇", "阴蒂", "小阴唇", "尿道口", "阴道口", "肛门"].entries()) {
+    expect(screen.getByLabelText(`${index + 1} ${name}`)).toBeTruthy();
   }
   expect(screen.getByText("通往体内阴道的开口。")).toBeTruthy();
   fireEvent.press(screen.getByRole("button", { name: "确认点开" }));
+  expect(screen.getByText("想认识自己的外阴？")).toBeTruthy();
+  expect(screen.getByRole("button", { name: "查看英文参考：NHS 外阴自我观察指南" })).toBeTruthy();
+  expect(screen.getByText("结构图正在加载…")).toBeTruthy();
   expect(screen.getByLabelText(/外阴结构示意图，数字 1 至 7/u)).toBeTruthy();
+  expect(screen.queryByTestId("journey-01-line-tail-1")).toBeNull();
+  fireEvent(screen.getByTestId("journey-01-diagram"), "load");
+  expect(screen.queryByText("结构图正在加载…")).toBeNull();
   for (const number of [2, 4]) {
     const style = StyleSheet.flatten(screen.getByTestId(`journey-01-line-tail-${number}`).props.style);
     expect(style.left).toBe(0);
@@ -76,6 +98,17 @@ it("keeps the central diagram crop within the screen width after rotation", () =
   }
 });
 
+it("shows a retry action if the diagram cannot load", () => {
+  render(<SampleJourneyScreen journey={first} onExit={jest.fn()} />);
+  fireEvent.press(screen.getByRole("button", { name: "确认点开" }));
+  fireEvent(screen.getByTestId("journey-01-diagram"), "error");
+  expect(screen.getByRole("alert")).toHaveTextContent("图片加载失败，请重试。");
+  fireEvent.press(screen.getByRole("button", { name: "重试加载图片" }));
+  expect(screen.getByText("结构图正在加载…")).toBeTruthy();
+  fireEvent(screen.getByTestId("journey-01-diagram"), "load");
+  expect(screen.getByTestId("journey-01-line-tail-1")).toBeTruthy();
+});
+
 it("opens the 02 Chinese site overview and 03 Chinese site reading from journey 01", () => {
   const openUrl = jest.spyOn(Linking, "openURL").mockResolvedValue(true);
   try {
@@ -93,9 +126,22 @@ it("opens the 02 Chinese site overview and 03 Chinese site reading from journey 
   }
 });
 
-it("keeps 02 as a framework preview without the body diagram", () => {
+it("lets readers open 02 cards independently and continue without opening them all", () => {
   render(<SampleJourneyScreen journey={second} onExit={jest.fn()} />);
-  expect(screen.getByText("样板 · 框架预览")).toBeTruthy();
+  expect(screen.getByText("亲密方式 · 待专业复核")).toBeTruthy();
+  expect(screen.getByText("亲密没有固定顺序")).toBeTruthy();
+  next();
+  expect(screen.getByText("认识不同的亲密方式")).toBeTruthy();
+  expect(screen.getByRole("button", { name: "独自探索，可选，展开" })).toBeTruthy();
+  expect(screen.getByRole("button", { name: "肛门纳入，展开补充，展开" })).toBeTruthy();
+  expect(screen.queryByText(second.pages[1].cards?.[2]?.body ?? "missing")).toBeNull();
+  fireEvent.press(screen.getByRole("button", { name: "手指触碰外阴，展开" }));
+  expect(screen.getByText(second.pages[1].cards?.[2]?.body ?? "missing")).toBeTruthy();
+  fireEvent.press(screen.getByRole("button", { name: "手指触碰外阴，收起" }));
+  expect(screen.queryByText(second.pages[1].cards?.[2]?.body ?? "missing")).toBeNull();
+  expect(screen.getByText("任何时候、出于任何原因，都可以暂停或停止。")).toBeTruthy();
+  next();
+  expect(screen.getByText("选择可以留给自己")).toBeTruthy();
   expect(screen.queryByTestId("journey-01-diagram-viewport")).toBeNull();
 });
 
@@ -184,18 +230,14 @@ it("uses the scrolling core page shell with a visible progress header at large f
 });
 
 
-it("preview help preserves the selected page and keeps educational content visible", () => {
+it("omits the question-mark help on every sample journey page", () => {
   const exit = jest.fn();
   render(<SampleJourneyScreen journey={second} onExit={exit} />);
-  next();
-  const page = second.pages[1]!;
-  expect(screen.queryByText(/这是三页框架预览/u)).toBeNull();
-  fireEvent.press(screen.getByRole("button", { name: `${page.title}，帮助` }));
-  expect(screen.getByText(/这是三页框架预览，不会保存答案/u)).toBeTruthy();
-  fireEvent.press(screen.getByRole("button", { name: `关闭${page.title} · 帮助` }));
-  expect(screen.getByLabelText("第 2 页，共 3 页")).toBeTruthy();
-  expect(screen.getByText(page.body)).toBeTruthy();
+  for (let index = 0; index < second.pages.length; index += 1) {
+    const page = second.pages[index]!;
+    expect(screen.getByText(page.body)).toBeTruthy();
+    expect(screen.queryByRole("button", { name: `${page.title}，帮助` })).toBeNull();
+    if (index < second.pages.length - 1) next();
+  }
   expect(exit).not.toHaveBeenCalled();
-  fireEvent.press(screen.getByRole("button", { name: "返回上一页" }));
-  expect(screen.getByLabelText("第 1 页，共 3 页")).toBeTruthy();
 });

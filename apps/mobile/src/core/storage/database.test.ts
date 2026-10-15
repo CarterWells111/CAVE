@@ -368,7 +368,7 @@ describe("encrypted database lifecycle", () => {
   });
 
   test("registers the private journal schema and account ownership migration", () => {
-    expect(CURRENT_SCHEMA_VERSION).toBe(14);
+    expect(CURRENT_SCHEMA_VERSION).toBe(15);
     expect(DATABASE_MIGRATIONS.find(({ version }) => version === 11)).toMatchObject({ version: 11 });
     expect(DATABASE_MIGRATIONS.find(({ version }) => version === 11)?.schema).toContain("CREATE TABLE IF NOT EXISTS journal_records");
     expect(DATABASE_MIGRATIONS.find(({ version }) => version === 11)?.schema).toContain("owner_account_id");
@@ -379,10 +379,17 @@ describe("encrypted database lifecycle", () => {
     });
   });
   test("adds account-scoped assistant history without modifying existing tables", () => {
-    const migration = DATABASE_MIGRATIONS.at(-1);
+    const migration = DATABASE_MIGRATIONS.find(({ version }) => version === 14);
     expect(migration?.version).toBe(14);
     expect(migration?.schema).toContain("CREATE TABLE IF NOT EXISTS assistant_conversations");
     expect(migration?.schema).toContain("PRIMARY KEY(owner_account_id, id)");
+    expect(migration?.schema).not.toMatch(/DROP|ALTER|DELETE/iu);
+  });
+  test("adds encrypted local preference cards without modifying existing tables", () => {
+    const migration = DATABASE_MIGRATIONS.at(-1);
+    expect(migration?.version).toBe(15);
+    expect(migration?.schema).toContain("CREATE TABLE IF NOT EXISTS journey_preference_cards");
+    expect(migration?.schema).toContain("owner_id TEXT PRIMARY KEY");
     expect(migration?.schema).not.toMatch(/DROP|ALTER|DELETE/iu);
   });
   test("keeps the shared migration registry contiguous through the current version", () => {
@@ -412,7 +419,7 @@ describe("encrypted database lifecycle", () => {
     expect(harness.calls.join("\n")).not.toContain("transcript_history");
   });
 
-  test("migrates a new encrypted database through v1-v14 without replacing tables", async () => {
+  test("migrates a new encrypted database through v1-v15 without replacing tables", async () => {
     const harness = makeHarness();
     const manager = createEncryptedDatabaseManager(
       harness as unknown as Parameters<typeof createEncryptedDatabaseManager>[0]
@@ -438,6 +445,7 @@ describe("encrypted database lifecycle", () => {
     expect(schemaSql).toContain("CREATE TABLE IF NOT EXISTS journal_records");
     expect(schemaSql).toContain("CREATE TABLE IF NOT EXISTS journal_entries");
     expect(schemaSql).toContain("CREATE TABLE IF NOT EXISTS journal_period_reviews");
+    expect(schemaSql).toContain("CREATE TABLE IF NOT EXISTS journey_preference_cards");
     expect(schemaSql).not.toContain("ALTER TABLE privacy_settings");
     expect(harness.calls.filter((call) => call.startsWith("PRAGMA user_version ="))).toEqual([
       "PRAGMA user_version = 1",
@@ -451,11 +459,11 @@ describe("encrypted database lifecycle", () => {
       "PRAGMA user_version = 9",
       "PRAGMA user_version = 10",
       "PRAGMA user_version = 11",
-      "PRAGMA user_version = 12", "PRAGMA user_version = 13", "PRAGMA user_version = 14"
+      "PRAGMA user_version = 12", "PRAGMA user_version = 13", "PRAGMA user_version = 14", "PRAGMA user_version = 15"
     ]);
   });
 
-  test("applies v2 through v14 when opening a v1 database", async () => {
+  test("applies v2 through v15 when opening a v1 database", async () => {
     const harness = makeHarness({ databaseExists: true, key: VALID_DATABASE_KEY, userVersion: 1 });
 
     await createEncryptedDatabaseManager(
@@ -479,7 +487,7 @@ describe("encrypted database lifecycle", () => {
       "PRAGMA user_version = 9",
       "PRAGMA user_version = 10",
       "PRAGMA user_version = 11",
-      "PRAGMA user_version = 12", "PRAGMA user_version = 13", "PRAGMA user_version = 14"
+      "PRAGMA user_version = 12", "PRAGMA user_version = 13", "PRAGMA user_version = 14", "PRAGMA user_version = 15"
     ]);
   });
 
@@ -580,7 +588,7 @@ describe("encrypted database lifecycle", () => {
       .toEqual([
         "PRAGMA user_version = 6", "PRAGMA user_version = 7", "PRAGMA user_version = 8",
         "PRAGMA user_version = 9", "PRAGMA user_version = 10",
-        "PRAGMA user_version = 11", "PRAGMA user_version = 12", "PRAGMA user_version = 13", "PRAGMA user_version = 14"
+        "PRAGMA user_version = 11", "PRAGMA user_version = 12", "PRAGMA user_version = 13", "PRAGMA user_version = 14", "PRAGMA user_version = 15"
       ]);
   });
 
@@ -610,6 +618,7 @@ describe("encrypted database lifecycle", () => {
       "journal_drafts",
       "journal_revisions",
       "assistant_conversations",
+      "journey_preference_cards",
       "journal_entries",
       "journal_period_reviews"
     ]));
@@ -617,7 +626,7 @@ describe("encrypted database lifecycle", () => {
       .toEqual([
         "PRAGMA user_version = 7", "PRAGMA user_version = 8",
         "PRAGMA user_version = 9", "PRAGMA user_version = 10",
-        "PRAGMA user_version = 11", "PRAGMA user_version = 12", "PRAGMA user_version = 13", "PRAGMA user_version = 14"
+        "PRAGMA user_version = 11", "PRAGMA user_version = 12", "PRAGMA user_version = 13", "PRAGMA user_version = 14", "PRAGMA user_version = 15"
       ]);
   });
 
@@ -649,6 +658,7 @@ describe("encrypted database lifecycle", () => {
       "journal_drafts",
       "journal_revisions",
       "assistant_conversations",
+      "journey_preference_cards",
       "journal_entries",
       "journal_period_reviews"
     ]));
@@ -656,7 +666,7 @@ describe("encrypted database lifecycle", () => {
       .toEqual([
         "PRAGMA user_version = 7", "PRAGMA user_version = 8",
         "PRAGMA user_version = 9", "PRAGMA user_version = 10",
-        "PRAGMA user_version = 11", "PRAGMA user_version = 12", "PRAGMA user_version = 13", "PRAGMA user_version = 14"
+        "PRAGMA user_version = 11", "PRAGMA user_version = 12", "PRAGMA user_version = 13", "PRAGMA user_version = 14", "PRAGMA user_version = 15"
       ]);
   });
 
@@ -762,6 +772,7 @@ describe("encrypted database lifecycle", () => {
       "journal_drafts",
       "journal_revisions",
       "assistant_conversations",
+      "journey_preference_cards",
       "journal_entries",
       "journal_period_reviews"
     ]));
@@ -796,12 +807,12 @@ describe("encrypted database lifecycle", () => {
   });
 
   test("rejects a database created by a future app version without mutating it", async () => {
-    const harness = makeHarness({ databaseExists: true, key: VALID_DATABASE_KEY, userVersion: 15 });
+    const harness = makeHarness({ databaseExists: true, key: VALID_DATABASE_KEY, userVersion: 16 });
     const manager = createEncryptedDatabaseManager(
       harness as unknown as Parameters<typeof createEncryptedDatabaseManager>[0]
     );
 
-    await expect(manager.initialize()).rejects.toThrow("Unsupported database version: 15");
+    await expect(manager.initialize()).rejects.toThrow("Unsupported database version: 16");
     expect(harness.calls.join("\n")).not.toContain("CREATE TABLE");
     expect(harness.calls).not.toContain("PRAGMA user_version = 2");
     expect(harness.files.removeDatabaseFiles).not.toHaveBeenCalled();
@@ -812,13 +823,13 @@ describe("encrypted database lifecycle", () => {
       databaseExists: true,
       key: VALID_DATABASE_KEY,
       userVersion: 12,
-      advanceVersionOnBegin: 15
+      advanceVersionOnBegin: 16
     });
     const manager = createEncryptedDatabaseManager(
       harness as unknown as Parameters<typeof createEncryptedDatabaseManager>[0]
     );
 
-    await expect(manager.initialize()).rejects.toThrow("Unsupported database version: 15");
+    await expect(manager.initialize()).rejects.toThrow("Unsupported database version: 16");
     expect(harness.calls).toContain("BEGIN IMMEDIATE");
     expect(harness.calls).toContain("ROLLBACK");
     expect(harness.files.removeDatabaseFiles).not.toHaveBeenCalled();
@@ -950,7 +961,7 @@ describe("encrypted database lifecycle", () => {
     expect(harness.secrets.getOrCreateDatabaseKey).toHaveBeenCalledTimes(1);
     expect(harness.native.openDatabaseAsync).toHaveBeenCalledTimes(1);
     expect(harness.calls.filter((call) => call === "PRAGMA user_version")).toHaveLength(CURRENT_SCHEMA_VERSION + 1);
-    expect(harness.calls.filter((call) => call.includes("CREATE TABLE"))).toHaveLength(13);
+    expect(harness.calls.filter((call) => call.includes("CREATE TABLE"))).toHaveLength(14);
   });
 
   test("shares an initialization failure and allows the next caller to retry", async () => {

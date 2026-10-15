@@ -1,6 +1,6 @@
 # CAVE 医学及教育内容来源台账
 
-> 访问日期：2026-08-27；SRC-014 访问于 2026-08-28；SRC-015 和 SRC-016 访问于 2026-10-01
+> 访问日期：2026-08-27；SRC-014 访问于 2026-08-28；SRC-015 和 SRC-016 访问于 2026-10-01；SRC-017 至 SRC-024 访问于 2026-10-15
 > 说明：“来源已核验”只表示链接、机构和适用内容已核对，不代表 CAVE 中文改写已通过临床或性教育专家复核。
 
 ## 状态定义
@@ -30,6 +30,14 @@
 | SRC-014 | MED | You and Your Sexuality | American College of Obstetricians and Gynecologists | https://www.acog.org/womens-health/faqs/you-and-your-sexuality | 性行为不限于阴道性交；触摸、口腔、阴道和肛门等不同性活动方式 | 页面未列明 | 2026-08-28 | source_verified; expert_review_pending |
 | SRC-015 | MED | Vaginal discharge | NHS | https://www.nhs.uk/symptoms/vaginal-discharge/ | 日常阴道分泌物属于常见现象，量与湿润程度可能变化；新变化或持续不适的求医提示 | 2024-02-15 复核 | 2026-10-01 | source_verified; expert_review_pending |
 | SRC-016 | MED | Understanding arousal | Sex Therapy London, NHS | https://www.sextherapylondon.nhs.uk/sexual-difficulties/our-self-help-booklets/vulval-pain-during-sex/part-2-understanding-arousal | 性唤起可能伴随阴蒂与阴唇敏感、阴道润滑等身体变化，变化也可能没有出现 | 页面未列明 | 2026-10-01 | source_verified; expert_review_pending |
+| SRC-017 | MED | About STI Risk and Oral Sex | Centers for Disease Control and Prevention | https://www.cdc.gov/sti/about/about-sti-risk-and-oral-sex.html | 口交可传播性传播感染；安全套、口交膜等屏障方法降低风险 | 2024-02-06 | 2026-10-15 | source_verified; expert_review_pending |
+| SRC-018 | MED | Hands and Fingers | Sexual Health St Helens, NHS | https://www.sexualhealthsthelens.nhs.uk/adult-hands | 手指触碰与手部清洁提示 | 页面未列明 | 2026-10-15 | source_verified; expert_review_pending |
+| SRC-019 | MED | Relationships and intimacy | Devon Sexual Health, NHS | https://www.devonsexualhealth.nhs.uk/your-sexual-health/relationships-and-intimacy/ | 独自探索与手部、用品清洁提示 | 页面未列明 | 2026-10-15 | source_verified; expert_review_pending |
+| SRC-020 | MED | Self-examination of the vulva | Newcastle Hospitals NHS Foundation Trust | https://www.newcastle-hospitals.nhs.uk/resources/self-examination-of-the-vulva/ | 用镜子辨认外阴部位、留意持续不适或新变化 | 2026-04-07 更新 | 2026-10-15 | source_verified; expert_review_pending |
+| SRC-021 | MED | Condom Use: An Overview | Centers for Disease Control and Prevention | https://www.cdc.gov/condom-use/ | 正确使用安全套可降低怀孕和部分性传播感染风险，但不能消除所有风险 | 2024-01-19 | 2026-10-15 | source_verified; expert_review_pending |
+| SRC-022 | MED | After sex- things you should know | Sexual Health St Helens, NHS | https://www.sexualhealthsthelens.nhs.uk/adult---after-sex | 性接触后温和清洁外部、不冲洗阴道内部以及检测提示 | 页面未列明 | 2026-10-15 | source_verified; expert_review_pending |
+| SRC-023 | MED | Emergency contraception | NHS | https://www.nhs.uk/contraception/emergency-contraception/ | 避孕失败后紧急避孕有时间窗口，尽早咨询与使用通常更有效 | 2024-01-31 复核 | 2026-10-15 | source_verified; expert_review_pending |
+| SRC-024 | MED | Sexually transmitted infections (STIs) | NHS | https://www.nhs.uk/conditions/sexually-transmitted-infections-stis/ | 感染可能没有症状；担心暴露时向性健康服务咨询检测与时间 | 页面未列明 | 2026-10-15 | source_verified; expert_review_pending |
 
 ## 医学图资产登记
 

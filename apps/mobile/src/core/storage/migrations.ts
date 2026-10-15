@@ -1,4 +1,4 @@
-export const CURRENT_SCHEMA_VERSION = 14;
+export const CURRENT_SCHEMA_VERSION = 15;
 
 export type MigrationCallbackConnection = {
   runAsync(sql: string, ...params: unknown[]): Promise<{ changes: number }>;
@@ -210,6 +210,13 @@ CREATE TABLE IF NOT EXISTS assistant_conversations (
 CREATE INDEX IF NOT EXISTS assistant_conversations_owner_order_idx
   ON assistant_conversations(owner_account_id, sort_order, id);`;
 
+export const SCHEMA_V15 = `
+CREATE TABLE IF NOT EXISTS journey_preference_cards (
+  owner_id TEXT PRIMARY KEY NOT NULL,
+  payload_json TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);`;
+
 type TableInfoRow = { name: string };
 
 async function copyLegacyJournalPreference(
@@ -269,5 +276,6 @@ export const DATABASE_MIGRATIONS: readonly DatabaseMigration[] = [
   { version: 11, schema: SCHEMA_V11 },
   { version: 12, schema: SCHEMA_V12, afterSchema: ensureJournalOwnership },
   { version: 13, schema: SCHEMA_V13 },
-  { version: 14, schema: SCHEMA_V14 }
+  { version: 14, schema: SCHEMA_V14 },
+  { version: 15, schema: SCHEMA_V15 }
 ];

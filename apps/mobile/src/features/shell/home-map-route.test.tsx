@@ -52,7 +52,7 @@ test("completed users see map with no active draft", async () => {
 });
 test("opening a sample never replaces or initializes scenario data", async () => {
   const draft = onboarded(); mockRuntime = runtime(draft); render(<HomeRoute />);
-  fireEvent.press(await screen.findByRole("button", { name: "打开旅程 04，样板" }));
+  fireEvent.press(await screen.findByRole("button", { name: "打开旅程 04，边界与选择" }));
   expect(mockRouter.push).toHaveBeenCalledWith({ pathname: "/explore/[journeyId]", params: { journeyId: "journey-04" } });
   expect(mockConfirmAdult).not.toHaveBeenCalled(); expect(mockReplaceReview).not.toHaveBeenCalled(); expect(mockRuntime.snapshot).toBe(draft);
 });

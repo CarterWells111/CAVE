@@ -27,10 +27,12 @@ import type { JourneyRuntime, JourneyRuntimeMode } from "./journey-runtime";
 
 export type JourneyRuntimeContextValue = {
   mode: JourneyRuntimeMode;
+  persistence: JourneyRuntime["persistence"];
   journalPersistence: JourneyRuntime["journalPersistence"];
   snapshot: JourneyDraft | null;
   controller: JourneyRuntime["controller"];
   cards: JourneyRuntime["cards"];
+  preferenceCards: JourneyRuntime["preferenceCards"];
   drafts: JourneyRuntime["drafts"];
   service: JourneyRuntime["service"];
   shellState: JourneyRuntime["shellState"];
@@ -137,10 +139,12 @@ function RuntimeContextProvider({
   );
   const context = useMemo<JourneyRuntimeContextValue>(() => ({
     mode: runtime.mode,
+    persistence: runtime.persistence,
     journalPersistence: runtime.journalPersistence,
     snapshot,
     controller: runtime.controller,
     cards: runtime.cards,
+    preferenceCards: runtime.preferenceCards,
     drafts: runtime.drafts,
     service: runtime.service,
     shellState: runtime.shellState,

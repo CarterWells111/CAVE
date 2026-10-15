@@ -162,7 +162,7 @@ test("v14 assistant-history schema rolls back on failure and preserves a v13 acc
   h.closeRaw(interrupted);
   h.setFault();
   const reopened = await h.manager().initialize();
-  expect(await reopened.getFirstAsync("PRAGMA user_version")).toEqual({ user_version: 14 });
+  expect(await reopened.getFirstAsync("PRAGMA user_version")).toEqual({ user_version: CURRENT_SCHEMA_VERSION });
   expect(await reopened.getAllAsync("SELECT * FROM assistant_conversations")).toEqual([]);
   expect(await reopened.getAllAsync("SELECT * FROM journal_records")).toEqual(journalBefore);
 });

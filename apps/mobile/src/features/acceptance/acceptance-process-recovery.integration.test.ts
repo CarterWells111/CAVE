@@ -5,6 +5,7 @@ import { fork, type ChildProcess } from 'node:child_process';
 import { mkdtempSync, realpathSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { basename, dirname, join } from 'node:path';
+import { CURRENT_SCHEMA_VERSION } from '../../core/storage/migrations';
 import { DELETION_STAGES, type AcceptanceState } from './acceptance-harness';
 
 type WorkerMessage = {
@@ -86,13 +87,13 @@ afterEach(async () => {
   }
 });
 
-test('killed pre-commit migration rolls back on disk; a fresh process preserves fixtures and upgrades to v14', async () => {
+test('killed pre-commit migration rolls back on disk; a fresh process preserves fixtures and upgrades to the current schema', async () => {
   const directory = createDirectory();
   await killAtPause(directory, 'pause-migration', 'migration-v12-before-commit');
   const result = await recover(directory, 'recover-migration');
   expect(result.before).toMatchObject({ status: 'success', metadata: { version: 11, counts: fixtureCounts } });
   expect(result.ownershipColumnsBefore).toBe(0);
-  expect(result.state).toMatchObject({ status: 'success', metadata: { version: 14, counts: fixtureCounts } });
+  expect(result.state).toMatchObject({ status: 'success', metadata: { version: CURRENT_SCHEMA_VERSION, counts: fixtureCounts } });
 }, 60_000);
 
 test.each(DELETION_STAGES)('fresh startup completes deletion after force-termination at %s', async (stage) => {
