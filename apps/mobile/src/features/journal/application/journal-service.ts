@@ -114,7 +114,8 @@ export class JournalService {
 
   async savePeriodReview(input: Readonly<{
     periodStart: string; periodEnd: string; title: string; body: string; sourceRecordIds: readonly string[];
-  }>): Promise<JournalPeriodReview> {
+  }>, guard?: JournalWriteGuard): Promise<JournalPeriodReview> {
+    checkJournalWriteGuard(guard);
     const sourceRecordIds = [...new Set(input.sourceRecordIds)];
     if (sourceRecordIds.length === 0 || !Number.isFinite(Date.parse(input.periodStart)) || !Number.isFinite(Date.parse(input.periodEnd)) || Date.parse(input.periodStart) > Date.parse(input.periodEnd)) throw new Error("journal-period-invalid");
     for (const id of sourceRecordIds) await this.requireRecord(id);
@@ -126,7 +127,7 @@ export class JournalService {
       title: input.title.trim(), body: input.body.trim(), sourceRecordIds
     };
     if (!review.title || !review.body) throw new Error("journal-period-review-required");
-    await this.repository.savePeriodReview(this.ownerAccountId, review);
+    await this.repository.savePeriodReview(this.ownerAccountId, review, guard);
     return review;
   }
 

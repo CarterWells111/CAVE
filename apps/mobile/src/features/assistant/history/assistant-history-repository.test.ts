@@ -3,6 +3,7 @@ import type { AssistantConversation, AssistantHistoryRepository } from "./assist
 import { InMemoryAssistantHistoryRepository } from "./in-memory-assistant-history-repository";
 import { SqlAssistantHistoryRepository } from "./sql-assistant-history-repository";
 import { createSqliteFileHarness } from "../../../test/storage/sqlite-file-harness";
+import { SqlJournalRepository } from "../../journal/infrastructure/sql-journal-repository";
 
 type Harness = ReturnType<typeof createSqliteFileHarness>;
 const active: Harness[] = [];
@@ -150,4 +151,50 @@ test.each(["clearOwner", "clearAll"] as const)("SQL %s failure does not notify s
   if (operation === "clearOwner") await repository.clearOwner("account-a");
   else await repository.clearAll();
   expect(notified).toHaveBeenCalledTimes(1);
+});
+
+test("SQL initial history loading waits for concurrent journal ownership setup", async () => {
+  const harness = createSqliteFileHarness(); active.push(harness);
+  const manager = harness.manager();
+  const history = new SqlAssistantHistoryRepository(manager);
+  const journal = new SqlJournalRepository(manager);
+  const loading = history.list("account-a");
+  const ownership = journal.claimUnowned("account-a");
+  await expect(Promise.all([loading, ownership])).resolves.toEqual([[], undefined]);
+});
+
+test.each(["commit", "rollback"] as const)("SQL history loading waits for an overlapping %s and reads only settled data", async outcome => {
+  const harness = createSqliteFileHarness(); active.push(harness);
+  const manager = harness.manager();
+  const history = new SqlAssistantHistoryRepository(manager);
+  const original = conversation("existing");
+  await history.save("account-a", original);
+  const changed = { ...original, title: "Synthetic uncommitted title" };
+  let release!: () => void;
+  const gate = new Promise<void>(resolve => { release = resolve; });
+  let started!: () => void;
+  const transactionStarted = new Promise<void>(resolve => { started = resolve; });
+
+  const rollback = new Error("synthetic-transaction-rollback");
+  const transaction = manager.withTransaction(async connection => {
+    await connection.runAsync("UPDATE assistant_conversations SET payload_json=? WHERE owner_account_id=? AND id=?", JSON.stringify(changed), "account-a", original.id);
+    started();
+    await gate;
+    if (outcome === "rollback") throw rollback;
+  }).then(() => null, error => error as unknown);
+  await transactionStarted;
+  let loaded = false;
+  const loading = history.list("account-a").then(
+    value => { loaded = true; return { value }; },
+    error => { loaded = true; return { error }; },
+  );
+  await new Promise<void>(resolve => setImmediate(resolve));
+  try {
+    expect(loaded).toBe(false);
+  } finally {
+    release();
+    await transaction;
+  }
+  expect(await transaction).toBe(outcome === "rollback" ? rollback : null);
+  expect(await loading).toEqual({ value: [outcome === "rollback" ? original : changed] });
 });

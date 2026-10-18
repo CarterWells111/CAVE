@@ -79,20 +79,21 @@ test("uses a themed surface and a calendar control instead of an ISO text field"
 });
 
  test("restores a sentence draft and clears it only after saving", async () => {
-  const draft = { title: "", occurredAt: "2026-09-07", highlight: { kind: "feeling", text: "" }, body: "只想安静一会儿", topics: [] };
+  const draft = { title: "", occurredAt: "2026-09-07", highlight: { kind: "feeling", text: "旧草稿里已保留的重点" }, body: "只想安静一会儿", topics: [] };
   const clearDraft = jest.fn(async () => undefined);
   const createRecord = jest.fn(async () => ({ id: "saved" }));
   const onSaved = jest.fn();
   render(<JournalEditorScreen service={{ loadDraft: async () => draft, saveDraft: async () => undefined, clearDraft, createRecord, listRecords: async () => [] } as never} onSaved={onSaved} />);
   await waitFor(() => expect(screen.getByLabelText("事件正文")).toHaveProp("value", draft.body));
-  fireEvent.press(screen.getByRole("button", { name: "试试引导写作（可跳过）" }));
+  expect(screen.queryByLabelText("重点提要")).toBeNull();
+  expect(screen.getByText("日期与标题")).toBeTruthy();
   expect(screen.getByText("今天有什么想记下的？")).toBeTruthy();
   expect(screen.queryByText("当时你注意到了什么感受？")).toBeNull();
-  fireEvent.press(screen.getByRole("button", { name: "下一题 / 跳过这题" }));
+  fireEvent.press(screen.getByRole("button", { name: "换一个引导" }));
   expect(screen.getByText("当时你注意到了什么感受？")).toBeTruthy();
   fireEvent.press(screen.getByRole("button", { name: "保存到本机" }));
   await waitFor(() => expect(onSaved).toHaveBeenCalledWith("saved"));
-  expect(createRecord).toHaveBeenCalledWith(expect.objectContaining({ title: "", body: draft.body }));
+  expect(createRecord).toHaveBeenCalledWith(expect.objectContaining({ title: "", body: draft.body, highlight: draft.highlight }));
   expect(clearDraft).toHaveBeenCalledWith("new:freeform");
  });
 
@@ -119,14 +120,58 @@ test("adds a custom topic to the saved record", async () => {
   expect(createRecord).toHaveBeenCalledWith(expect.objectContaining({ topics: ["custom:友情"] }));
 });
 
-test("keeps writing guidance in help while leaving the active prompt and draft status inline", async () => {
+test("shows writing guidance on arrival without mode switches while keeping help and draft status", async () => {
   render(<JournalEditorScreen service={{ loadDraft: async () => null, saveDraft: async () => undefined, listRecords: async () => [] } as never} onSaved={jest.fn()} />);
   await screen.findByText("草稿已保存在本机");
+  expect(screen.getByText("今天有什么想记下的？")).toBeTruthy();
+  expect(screen.queryByRole("button", { name: "试试引导写作（可跳过）" })).toBeNull();
+  expect(screen.queryByRole("button", { name: "自由写" })).toBeNull();
   expect(screen.queryByText(/一句话也可以，不需要先想好标题/u)).toBeNull();
   fireEvent.press(screen.getByRole("button", { name: "记下一件事，帮助" }));
   expect(screen.getByText(/一句话也可以，不需要先想好标题/u)).toBeTruthy();
   fireEvent.press(screen.getByRole("button", { name: "关闭记下一件事 · 帮助" }));
   expect(screen.queryByText(/一句话也可以，不需要先想好标题/u)).toBeNull();
-  fireEvent.press(screen.getByRole("button", { name: "试试引导写作（可跳过）" }));
   expect(screen.getByText("今天有什么想记下的？")).toBeTruthy();
+});
+
+test("shows the AI journal shortcut between the title and writing field when supplied", async () => {
+  const onStartAiJournal = jest.fn();
+  render(<JournalEditorScreen onStartAiJournal={onStartAiJournal} onSaved={jest.fn()} service={{
+    loadDraft: async () => null, saveDraft: async () => undefined, listRecords: async () => [],
+  } as never} />);
+  await waitFor(() => expect(screen.getByLabelText("事件正文")).toHaveProp("editable", true));
+  const title = screen.getByText("记下一件事");
+  const shortcut = screen.getByRole("button", { name: "AI陪我记录" });
+  const body = screen.getByLabelText("事件正文");
+  const guidance = screen.getByText("今天有什么想记下的？");
+  const changeGuidance = screen.getByRole("button", { name: "换一个引导" });
+  const expectedOrder = [title, shortcut, body, guidance, changeGuidance];
+  expect(screen.getByTestId("journal-editor-screen").findAll((node) => expectedOrder.includes(node))).toEqual(expectedOrder);
+  fireEvent.press(shortcut);
+  expect(onStartAiJournal).toHaveBeenCalledTimes(1);
+});
+
+test("cycles always visible writing guidance beyond one round without losing the writing or draft", async () => {
+  const prompts = [
+    "今天有什么想记下的？", "当时你注意到了什么感受？", "有没有一个让你松口气或不舒服的瞬间？",
+    "当时有什么没说出口的希望？", "哪个细节让你觉得被尊重？", "现在想法和当时有什么不同？", "现在有什么想留给自己的话？",
+  ];
+  const saveDraft = jest.fn(async () => undefined);
+  render(<JournalEditorScreen onSaved={jest.fn()} service={{
+    loadDraft: async () => null, saveDraft, listRecords: async () => [],
+  } as never} />);
+  await waitFor(() => expect(screen.getByLabelText("事件正文")).toHaveProp("editable", true));
+  expect(screen.queryByRole("button", { name: "AI陪我记录" })).toBeNull();
+  fireEvent.changeText(screen.getByLabelText("事件正文"), "今天我想慢慢写，不急着回答所有问题。");
+  for (const prompt of [...prompts, ...prompts]) {
+    expect(screen.getByText(prompt)).toBeTruthy();
+    expect(screen.getByLabelText("事件正文")).toHaveProp("value", "今天我想慢慢写，不急着回答所有问题。");
+    expect(screen.queryByRole("button", { name: "结束引导" })).toBeNull();
+    fireEvent.press(screen.getByRole("button", { name: "换一个引导" }));
+  }
+  expect(screen.getByText(prompts[0]!)).toBeTruthy();
+  expect(screen.queryByRole("button", { name: "试试引导写作（可跳过）" })).toBeNull();
+  expect(screen.queryByRole("button", { name: "自由写" })).toBeNull();
+  expect(screen.getByLabelText("事件正文")).toHaveProp("value", "今天我想慢慢写，不急着回答所有问题。");
+  await waitFor(() => expect(saveDraft).toHaveBeenCalledWith("new:freeform", expect.objectContaining({ body: "今天我想慢慢写，不急着回答所有问题。" })));
 });

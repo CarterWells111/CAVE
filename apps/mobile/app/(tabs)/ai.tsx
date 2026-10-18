@@ -1,6 +1,7 @@
 import { useFocusEffect, useLocalSearchParams } from "expo-router";
 import { useCallback, useState } from "react";
 import { AssistantHub } from "../../src/features/assistant/AssistantHub";
+import { takeJournalAssistantEntry, type JournalAssistantEntry } from "../../src/features/assistant/journal-assistant-entry";
 import { useOptionalAuth } from "../../src/features/auth/runtime/AuthProvider";
 import { takeReportHandoff, type ReportHandoff } from "../../src/features/rooms/application/report-handoff";
 
@@ -13,10 +14,22 @@ export default function AiTabRoute() {
 
 function AccountAiTabRoute({ accountId, journeyId }: { accountId: string | undefined; journeyId: string | undefined }) {
   const [handoff, setHandoff] = useState<ReportHandoff | null>(null);
+  const [journalEntry, setJournalEntry] = useState<JournalAssistantEntry | null>(null);
   useFocusEffect(useCallback(() => {
+    const nextJournal = takeJournalAssistantEntry(accountId);
     const next = takeReportHandoff("ai", accountId);
-    if (next) setHandoff(next);
+    if (nextJournal) {
+      setJournalEntry(nextJournal);
+      setHandoff(null);
+    } else if (next) {
+      setJournalEntry(null);
+      setHandoff(next);
+    }
   }, [accountId]));
+  const onJournalEntryApplied = useCallback((id: number) => {
+    setJournalEntry(current => current?.id === id ? null : current);
+  }, []);
   const currentHandoff = handoff?.accountId === accountId ? handoff : null;
-  return <AssistantHub key={currentHandoff?.id ?? "default"} {...(currentHandoff ? { initialDraft: currentHandoff.text } : {})} {...(typeof journeyId === "string" ? { journeyId } : {})} />;
+  const currentJournalEntry = journalEntry?.accountId === accountId ? journalEntry : null;
+  return <AssistantHub key={currentHandoff?.id ?? "default"} {...(currentJournalEntry ? { journalEntry: currentJournalEntry, onJournalEntryApplied } : {})} {...(currentHandoff ? { initialDraft: currentHandoff.text } : {})} {...(typeof journeyId === "string" ? { journeyId } : {})} />;
 }

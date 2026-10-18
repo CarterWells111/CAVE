@@ -206,9 +206,10 @@ export class SqlJournalRepository implements JournalRepository {
     });
   }
   async listEntries(ownerAccountId: string, recordId: string): Promise<readonly JournalEntry[]> { const db = await this.connection(); return (await db.getAllAsync<EntryRow>("SELECT journal_entries.* FROM journal_entries JOIN journal_records ON journal_records.id=journal_entries.record_id WHERE journal_entries.record_id=? AND journal_records.owner_account_id=? ORDER BY journal_entries.occurred_at, journal_entries.created_at", recordId, ownerAccountId)).map(mapEntry).sort((left, right) => left.occurredAt.localeCompare(right.occurredAt) || left.createdAt.localeCompare(right.createdAt)); }
-  async savePeriodReview(ownerAccountId: string, review: JournalPeriodReview): Promise<void> {
-    const db = await this.connection();
-    const result = await db.runAsync(`INSERT INTO journal_period_reviews (id,owner_account_id,period_start,period_end,created_at,updated_at,editable_until,title,body,source_record_ids_json)
+  async savePeriodReview(ownerAccountId: string, review: JournalPeriodReview, guard?: JournalWriteGuard): Promise<void> {
+    const save = async (db: DatabaseTransactionConnection) => {
+      checkJournalWriteGuard(guard);
+      const result = await db.runAsync(`INSERT INTO journal_period_reviews (id,owner_account_id,period_start,period_end,created_at,updated_at,editable_until,title,body,source_record_ids_json)
 VALUES (?,?,?,?,?,?,?,?,?,?)
 ON CONFLICT(id) DO UPDATE SET
   period_start=excluded.period_start,
@@ -219,10 +220,14 @@ ON CONFLICT(id) DO UPDATE SET
   body=excluded.body,
   source_record_ids_json=excluded.source_record_ids_json
 WHERE journal_period_reviews.owner_account_id=excluded.owner_account_id`,
-      review.id, ownerAccountId, review.periodStart, review.periodEnd, review.createdAt, review.updatedAt, review.editableUntil, review.title, review.body, JSON.stringify(review.sourceRecordIds));
-    if (result.changes !== 1) {
-      throw new Error("journal-period-review-owner-conflict");
-    }
+        review.id, ownerAccountId, review.periodStart, review.periodEnd, review.createdAt, review.updatedAt, review.editableUntil, review.title, review.body, JSON.stringify(review.sourceRecordIds));
+      if (result.changes !== 1) {
+        throw new Error("journal-period-review-owner-conflict");
+      }
+      checkJournalWriteGuard(guard);
+    };
+    if (guard) await this.database.withTransaction(save);
+    else await save(await this.connection());
   }
   async listPeriodReviews(ownerAccountId: string): Promise<readonly JournalPeriodReview[]> { const db = await this.connection(); return (await db.getAllAsync<ReviewRow>("SELECT * FROM journal_period_reviews WHERE owner_account_id=? ORDER BY created_at DESC", ownerAccountId)).map(mapReview); }
   async clearOwner(ownerAccountId: string): Promise<void> {

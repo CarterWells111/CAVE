@@ -1,16 +1,19 @@
 import type { JournalService } from "../journal/application/journal-service";
-import { localJournalToday, journalDateFromDate, parseJournalDate } from "../journal/domain/journal-date";
+import { isJournalDateInRange, localJournalToday, journalDateFromDate, parseJournalDate } from "../journal/domain/journal-date";
 import { canEditJournalItem, type JournalRecord, type JournalEntry } from "../journal/domain/journal-record";
-import type { JournalRecordSummary } from "../journal/infrastructure/journal-repository";
+import type { JournalPeriodReview, JournalRecordSummary } from "../journal/infrastructure/journal-repository";
+import { createJournalPeriodReviewRequest } from "./assistant-journal-period-review";
 
 export const JOURNAL_DRAFT_PROTOCOL = "cave-journal-draft-v1";
 export type AssistantJournalAccess = Readonly<{ status: string; accountId?: string; service?: JournalService }>;
 export type JournalDraftFields = Readonly<{ title: string; occurredAt: string; body: string }>;
-export type AssistantJournalDraft = JournalDraftFields & Readonly<{
-  mode: "new" | "edit" | "review";
-  requestId: string;
-  original?: Readonly<{ record: JournalRecord; entries: readonly JournalEntry[] }>;
+export type JournalPeriodReviewContext = Readonly<{
+  startDate: string; endDate: string; title: string; body: string; sourceRecordIds: readonly string[];
 }>;
+export type AssistantJournalDraft = JournalDraftFields & Readonly<{ requestId: string }> & (
+  | Readonly<{ mode: "new" | "edit" | "review"; original?: Readonly<{ record: JournalRecord; entries: readonly JournalEntry[] }>; period?: undefined }>
+  | Readonly<{ mode: "period-review"; period: Readonly<{ startDate: string; endDate: string }>; original?: undefined }>
+);
 export type AssistantJournalState = Readonly<{
   choices: readonly JournalRecordSummary[];
   selectedIds: readonly string[];
@@ -21,6 +24,13 @@ export type AssistantJournalState = Readonly<{
 
 const copy = <T,>(value: T): T => JSON.parse(JSON.stringify(value)) as T;
 let sequence = 0;
+const periodRequestId = () => `period-review-${Date.now()}-${++sequence}`;
+function validPeriod(startDate: string, endDate: string) {
+  try { parseJournalDate(startDate); parseJournalDate(endDate); }
+  catch { throw new Error("journal-period-invalid"); }
+  if (startDate > endDate) throw new Error("journal-period-invalid");
+  return { startDate, endDate };
+}
 function validFields(value: unknown): JournalDraftFields {
   if (!value || typeof value !== "object") throw new Error("journal-draft-invalid");
   const item = value as Record<string, unknown>;
@@ -79,26 +89,45 @@ export class AssistantJournalController {
     return this.run(async (service, epoch) => {
       const choices = await service.listRecords();
       this.requireAccess(epoch);
-      this.publish({ choices: copy(choices), selectedIds: this.state.selectedIds.filter(id => choices.some(item => item.id === id)) });
+      const draft = this.state.draft;
+      const selectedIds = this.state.selectedIds.filter(id => choices.some(item => item.id === id
+        && (draft?.mode !== "period-review" || isJournalDateInRange(item.occurredAt, draft.period.startDate, draft.period.endDate))));
+      this.publish({ choices: copy(choices), selectedIds,
+        ...(draft?.mode === "period-review" && selectedIds.length !== this.state.selectedIds.length
+          ? { draft: { ...draft, requestId: periodRequestId() } } : {}) });
     });
   }
   toggleSelection(id: string) {
     this.requireAccess();
     if (this.state.busy) throw new Error("journal-operation-pending");
-    if (!this.state.choices.some(item => item.id === id)) throw new Error("journal-record-not-found");
+    const draft = this.state.draft;
+    if (!this.state.choices.some(item => item.id === id
+      && (draft?.mode !== "period-review" || isJournalDateInRange(item.occurredAt, draft.period.startDate, draft.period.endDate)))) throw new Error("journal-record-not-found");
+    if (draft?.mode === "period-review") {
+      const selectedIds = this.state.selectedIds.includes(id) ? this.state.selectedIds.filter(value => value !== id) : [...this.state.selectedIds, id];
+      if (!this.state.selectedIds.includes(id) && selectedIds.length > 8) throw new Error("journal-selection-limit");
+      this.publish({ selectedIds, draft: { ...draft, requestId: periodRequestId() }, error: null });
+      return;
+    }
     const selectedIds = this.state.selectedIds.includes(id) ? [] : [id];
     this.publish({ selectedIds, draft: null, error: null });
   }
   private async payload(service: JournalService, epoch: number) {
     const records: { id: string; text: string }[] = [];
+    const draft = this.state.draft;
+    if (draft?.mode === "period-review" && this.state.selectedIds.length === 0) throw new Error("journal-record-not-selected");
+    if (draft?.mode === "period-review" && this.state.selectedIds.length > 8) throw new Error("journal-selection-limit");
     let length = 0;
     for (const id of this.state.selectedIds) {
       const loaded = await service.loadRecord(id);
       this.requireAccess(epoch);
       if (!loaded) throw new Error("journal-record-not-found");
       const { record, entries } = loaded;
+      if (draft?.mode === "period-review" && !isJournalDateInRange(record.occurredAt, draft.period.startDate, draft.period.endDate)) throw new Error("journal-record-not-found");
+      const includedEntries = draft?.mode === "period-review"
+        ? entries.filter(entry => isJournalDateInRange(entry.occurredAt, draft.period.startDate, draft.period.endDate)) : entries;
       const text = JSON.stringify({ title: record.title, occurredAt: record.occurredAt, highlight: record.highlight, topics: record.topics,
-        body: record.body, entries: entries.map(({ kind, occurredAt, body, highlight }) => ({ kind, occurredAt, body, highlight })) });
+        body: record.body, entries: includedEntries.map(({ kind, occurredAt, body, highlight }) => ({ kind, occurredAt, body, highlight })) });
       // Reject, never silently cut original text or lose the meaning of additions.
       length += text.length;
       if (text.length > 4000 || length > 12000) throw new Error("journal-context-too-large");
@@ -135,18 +164,41 @@ export class AssistantJournalController {
         title: original.record.title, occurredAt: journalDateFromDate(new Date(this.now())), body: "", original: copy(original) }, error: null });
     });
   }
+  beginPeriodReview(context: JournalPeriodReviewContext) {
+    return this.run(async (service, epoch) => {
+      const period = validPeriod(context.startDate, context.endDate);
+      const sourceRecordIds = [...new Set(context.sourceRecordIds)];
+      if (typeof context.title !== "string" || context.title.length > 200 || typeof context.body !== "string" || context.body.length > 12000) throw new Error("journal-draft-invalid");
+      this.publish({ choices: [], selectedIds: [], draft: { mode: "period-review",
+        requestId: periodRequestId(), title: context.title, body: context.body, occurredAt: period.endDate, period }, error: null });
+      const choices = await service.listRecords();
+      this.requireAccess(epoch);
+      const selectedIds = sourceRecordIds.filter(id => choices.some(item => item.id === id && isJournalDateInRange(item.occurredAt, period.startDate, period.endDate)));
+      this.publish({ choices: copy(choices), selectedIds,
+        error: selectedIds.length === sourceRecordIds.length ? null : "journal-record-not-found" });
+    });
+  }
+  setPeriodDates(startDate: string, endDate: string) {
+    this.requireAccess();
+    if (this.state.busy) throw new Error("journal-operation-pending");
+    const draft = this.state.draft;
+    if (draft?.mode !== "period-review") throw new Error("journal-draft-required");
+    const period = validPeriod(startDate, endDate);
+    this.publish({ selectedIds: [], draft: { ...draft, period, occurredAt: endDate, requestId: periodRequestId() }, error: null });
+  }
   editDraft(patch: Partial<JournalDraftFields>) {
     this.requireAccess();
     if (this.state.busy) throw new Error("journal-operation-pending");
     const draft = this.state.draft;
     if (!draft) throw new Error("journal-draft-required");
     // Permit incomplete input while typing; validate all fields on confirmation.
-    this.publish({ draft: { ...draft, title: draft.mode === "review" ? draft.title : patch.title ?? draft.title, body: patch.body ?? draft.body, occurredAt: draft.mode === "review" ? draft.occurredAt : patch.occurredAt ?? draft.occurredAt }, error: null });
+    this.publish({ draft: { ...draft, title: draft.mode === "review" ? draft.title : patch.title ?? draft.title, body: patch.body ?? draft.body, occurredAt: draft.mode === "review" || draft.mode === "period-review" ? draft.occurredAt : patch.occurredAt ?? draft.occurredAt }, error: null });
   }
   generationRequest(instruction: string) {
     return this.run(async (service, epoch) => {
       const draft = this.state.draft;
       if (!draft) throw new Error("journal-draft-required");
+      if (draft.mode === "period-review") return createJournalPeriodReviewRequest({ question: instruction, records: await this.payload(service, epoch), draft });
       if (draft.mode !== "new" && !this.state.selectedIds.includes(draft.original!.record.id)) throw new Error("journal-record-not-selected");
       const question = `请${draft.mode === "edit" ? "优化原手记正文的表达，保留事实、标题、日期，不合并或改写补充记录" : draft.mode === "review" ? "回顾原手记和补充，整理新的理解，保留原标题和本次日期，确认后只追加后续、不改原文" : "根据用户叙述生成新手记，不编造事实"}。仅返回一个JSON对象，不加Markdown或解释，字段必须且只能为protocol、requestId、title、occurredAt、body。protocol="${JOURNAL_DRAFT_PROTOCOL}"，requestId="${draft.requestId}"，occurredAt="${draft.occurredAt}"。${draft.mode !== "new" ? `title=${JSON.stringify(draft.original!.record.title)}。` : "title简短。"}正文不超过1200字。这只是待用户确认的草稿，禁止声称已经保存。用户要求：${instruction.trim()}`;
       if (!instruction.trim() || question.length > 1000) throw new Error("journal-instruction-invalid");
@@ -167,7 +219,8 @@ export class AssistantJournalController {
       || item.protocol !== JOURNAL_DRAFT_PROTOCOL || item.requestId !== draft.requestId) throw new Error("journal-draft-invalid");
     const fields = validFields(item);
     if (fields.body.length > 1200 || fields.occurredAt !== draft.occurredAt) throw new Error("journal-draft-invalid");
-    if (draft.mode !== "new" && fields.title !== draft.original!.record.title) throw new Error("journal-draft-invalid");
+    if (draft.mode === "period-review" && fields.title !== draft.title) throw new Error("journal-draft-invalid");
+    if (draft.mode !== "new" && draft.mode !== "period-review" && fields.title !== draft.original!.record.title) throw new Error("journal-draft-invalid");
     if (draft.mode === "edit" && fields.occurredAt !== draft.original!.record.occurredAt) throw new Error("journal-draft-invalid");
     this.publish({ draft: { ...draft, ...fields }, error: null });
   }
@@ -177,8 +230,19 @@ export class AssistantJournalController {
       if (!draft) throw new Error("journal-draft-required");
       const fields = validFields(draft);
       const canCommit = () => this.active(epoch);
-      let saved: JournalRecord;
-      if (draft.mode === "review") {
+      let saved: JournalRecord | JournalPeriodReview;
+      if (draft.mode === "period-review") {
+        if (this.state.selectedIds.length === 0) throw new Error("journal-record-not-selected");
+        if (this.state.selectedIds.length > 8) throw new Error("journal-selection-limit");
+        for (const id of this.state.selectedIds) {
+          const item = await service.loadRecord(id);
+          this.requireAccess(epoch);
+          if (!item || !isJournalDateInRange(item.record.occurredAt, draft.period.startDate, draft.period.endDate)) throw new Error("journal-record-not-found");
+        }
+        saved = await service.savePeriodReview({ title: fields.title, body: fields.body,
+          periodStart: `${draft.period.startDate}T00:00:00.000Z`, periodEnd: `${draft.period.endDate}T00:00:00.000Z`,
+          sourceRecordIds: [...this.state.selectedIds] }, { canCommit });
+      } else if (draft.mode === "review") {
         if (fields.title !== draft.original!.record.title) throw new Error("journal-draft-invalid");
         await service.addEntry(draft.original!.record.id, { kind: "insight", occurredAt: fields.occurredAt, body: fields.body },
           { expected: draft.original!.record, expectedEntries: draft.original!.entries, canCommit });
