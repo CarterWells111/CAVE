@@ -1,5 +1,7 @@
-import { useLayoutEffect, useRef, useState } from "react";
+import { useCallback, useLayoutEffect, useRef, useState } from "react";
 import { AssistantRequestSchema, type AssistantRequest, type AssistantResponse } from "@cave/contracts";
+import type { JournalPeriodReviewContext } from "./assistant-journal";
+import { adaptJournalPeriodReviewResponse, createJournalPeriodReviewRequest } from "./assistant-journal-period-review";
 import { useAssistantJournal } from "./use-assistant-journal";
 import { createAttachmentChatRequest } from "./assistant-attachment-request";
 import { adaptJournalReviewResponse, createJournalReviewRequest } from "./assistant-journal-review";
@@ -16,20 +18,37 @@ export function useChatAttachments(scope: string, turns: { question: string; res
   const [historicalDraft, setHistoricalDraft] = useState<{ scope: string; value: GeneratedDraft } | null>(null);
   const lastGenerated = useRef<GeneratedDraft | null>(null);
   const pendingNew = useRef<string | null>(null);
+  const pendingPeriod = useRef<{ scope: string; context: JournalPeriodReviewContext } | null>(null);
+  const periodActivation = useRef(0);
+  const openPeriodPickerAfter = useCallback((operation: Promise<void>, activation: number) => {
+    const isCurrent = () => periodActivation.current === activation && journal.controller.getSnapshot().draft?.mode === "period-review";
+    void operation.then(() => {
+      const state = journal.controller.getSnapshot();
+      if (isCurrent() && (state.selectedIds.length === 0 || state.selectedIds.length > 8 || state.error)) setSheet("journal");
+    }, () => { if (isCurrent()) setSheet("journal"); });
+  }, [journal.controller]);
   const reviewStart = useRef<{ requestId: string; turnIndex: number } | null>(null);
   const current = selection.scope === scope ? selection : { scope, kind: null };
   useLayoutEffect(() => {
+    const activation = ++periodActivation.current;
     journal.controller.clear(); setSheet(null);
     reviewStart.current = null;
     lastGenerated.current = null; setHistoricalDraft(null);
+    const period = pendingPeriod.current?.scope === scope ? pendingPeriod.current.context : null;
+    if (!period) pendingPeriod.current = null;
     const resumeNew = pendingNew.current === scope;
     if (!resumeNew) pendingNew.current = null;
-    setSelection({ scope, kind: resumeNew ? "journal" : null });
+    setSelection({ scope, kind: resumeNew || period ? "journal" : null });
+    if (period && journal.available) {
+      pendingPeriod.current = null;
+      openPeriodPickerAfter(journal.controller.beginPeriodReview(period), activation);
+    }
     if (resumeNew && journal.available) { journal.controller.beginNew(); pendingNew.current = null; }
-  }, [scope, journal.controller, journal.available]);
+    return () => { periodActivation.current += 1; };
+  }, [scope, journal.controller, journal.available, openPeriodPickerAfter]);
   useLayoutEffect(() => {
     const draft = journal.draft;
-    if (draft?.mode !== "review") { reviewStart.current = null; return; }
+    if (draft?.mode !== "review" && draft?.mode !== "period-review") { reviewStart.current = null; return; }
     if (reviewStart.current?.requestId !== draft.requestId) reviewStart.current = { requestId: draft.requestId, turnIndex: turns.length };
   }, [journal.draft, turns.length]);
 
@@ -38,21 +57,39 @@ export function useChatAttachments(scope: string, turns: { question: string; res
     setSheet(kind);
   };
   const clear = () => {
+    periodActivation.current += 1;
     journal.controller.clear(); setSelection({ scope, kind: null }); setSheet(null);
-    pendingNew.current = null; lastGenerated.current = null; setHistoricalDraft(null);
+    pendingNew.current = null; pendingPeriod.current = null; lastGenerated.current = null; setHistoricalDraft(null);
   };
   const startNewJournal = () => {
+    periodActivation.current += 1;
+    pendingPeriod.current = null;
     journal.controller.clear(); lastGenerated.current = null; setHistoricalDraft(null);
     setSelection({ scope, kind: "journal" }); setSheet(null);
     pendingNew.current = scope;
     if (journal.available) { journal.controller.beginNew(); pendingNew.current = null; }
   };
-  const privateKind = current.kind === "journal" && (journal.selectedIds.length > 0 || !!journal.draft?.body.trim()) ? "journal" : null;
+  const startPeriodReview = (context: JournalPeriodReviewContext) => {
+    const activation = ++periodActivation.current;
+    journal.controller.clear(); lastGenerated.current = null; setHistoricalDraft(null);
+    pendingNew.current = null; pendingPeriod.current = { scope, context };
+    setSelection({ scope, kind: "journal" }); setSheet(null);
+    if (journal.available) {
+      pendingPeriod.current = null;
+      openPeriodPickerAfter(journal.controller.beginPeriodReview(context), activation);
+    }
+  };
+  const privateKind = current.kind === "journal" && (journal.draft?.mode === "period-review" || journal.selectedIds.length > 0 || !!journal.draft?.body.trim()) ? "journal" : null;
 
   const prepare = async (question: string): Promise<AssistantRequest> => {
     if (current.kind === "journal") {
       const records = await journal.controller.getRecordPayload();
       const draft = journal.controller.getSnapshot().draft;
+      if (draft?.mode === "period-review") {
+        const start = reviewStart.current;
+        return createJournalPeriodReviewRequest({ question, records, draft,
+          turns: start?.requestId === draft.requestId ? turns.slice(start.turnIndex) : [] });
+      }
       if (draft?.mode === "review") {
         const start = reviewStart.current;
         return createJournalReviewRequest({ question, records, draft,
@@ -76,8 +113,8 @@ export function useChatAttachments(scope: string, turns: { question: string; res
   const accept = (payload: AssistantRequest, response: AssistantResponse) => {
     if (payload.mode === "review") {
       const draft = journal.controller.getSnapshot().draft;
-      if (draft?.mode !== "review") throw new Error("journal-draft-required");
-      const adapted = adaptJournalReviewResponse(response, draft);
+      if (draft?.mode !== "review" && draft?.mode !== "period-review") throw new Error("journal-draft-required");
+      const adapted = draft.mode === "period-review" ? adaptJournalPeriodReviewResponse(response, draft, journal.controller.getSnapshot().selectedIds) : adaptJournalReviewResponse(response, draft);
       if (adapted.journalDraft) {
         journal.controller.acceptGeneration(JSON.stringify(adapted.journalDraft));
         lastGenerated.current = adapted.journalDraft;
@@ -100,7 +137,7 @@ export function useChatAttachments(scope: string, turns: { question: string; res
     setSheet("draft");
   };
   const copyHistoricalDraft = () => {
-    if (!historicalDraft || historicalDraft.scope !== scope || !journal.available) return;
+    if (!historicalDraft || historicalDraft.scope !== scope || !journal.available || historicalDraft.value.requestId.startsWith("period-review-")) return;
     const value = historicalDraft.value;
     startNewJournal();
     journal.controller.editDraft({ title: value.title, occurredAt: value.occurredAt, body: value.body });
@@ -108,7 +145,7 @@ export function useChatAttachments(scope: string, turns: { question: string; res
   };
   return {
     journal, kind: current.kind, sheet, setSheet, choose, clear, privateKind, prepare, accept, scope,
-    startNewJournal, openDraft, copyHistoricalDraft,
+    startNewJournal, startPeriodReview, openDraft, copyHistoricalDraft,
     historicalDraft: historicalDraft?.scope === scope ? historicalDraft.value : null,
   };
 }

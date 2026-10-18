@@ -55,7 +55,7 @@ export interface JournalRepository {
   loadEntry(ownerAccountId: string, id: string): Promise<JournalEntry | null>;
   deleteEntry(ownerAccountId: string, id: string): Promise<void>;
   listEntries(ownerAccountId: string, recordId: string): Promise<readonly JournalEntry[]>;
-  savePeriodReview(ownerAccountId: string, review: JournalPeriodReview): Promise<void>;
+  savePeriodReview(ownerAccountId: string, review: JournalPeriodReview, guard?: JournalWriteGuard): Promise<void>;
   listPeriodReviews(ownerAccountId: string): Promise<readonly JournalPeriodReview[]>;
   clearOwner(ownerAccountId: string): Promise<void>;
   clearAll(): Promise<void>;

@@ -1,11 +1,14 @@
 import { fireEvent, render, screen } from "@testing-library/react-native";
 import { Profiler } from "react";
+import { AssistantHistoryProvider } from "./AssistantHistoryProvider";
 import { AssistantComposerInput } from "./AssistantComposerInput";
 import AiTabRoute from "../../../app/(tabs)/ai";
 import { stageReportHandoff, takeReportHandoff } from "../rooms/application/report-handoff";
+import { JOURNAL_ASSISTANT_STARTER, stageJournalAssistantEntry, takeJournalAssistantEntry } from "./journal-assistant-entry";
 
 let mockAccountId: string | undefined = "synthetic-account-a";
 let mockAdultStatus = "authorized";
+let mockJourneyId: string | undefined;
 let mockFocused = true;
 const report = "合成测试报告：A 与伙伴约定暂停";
 const accountTransitions = [
@@ -15,7 +18,7 @@ const accountTransitions = [
 ] as const;
 
 jest.mock("expo-router", () => ({
-  useLocalSearchParams: () => ({}),
+  useLocalSearchParams: () => ({ journeyId: mockJourneyId }),
   useRouter: () => ({ push: jest.fn() }),
   useFocusEffect: (callback: () => void | (() => void)) => {
     const React = jest.requireActual<typeof import("react")>("react");
@@ -34,6 +37,7 @@ jest.mock("../journey/runtime/JourneyRuntimeProvider", () => ({
 beforeEach(() => {
   mockAccountId = "synthetic-account-a";
   mockAdultStatus = "authorized";
+  mockJourneyId = undefined;
   mockFocused = true;
   process.env.EXPO_PUBLIC_ASSISTANT_MODE = "mock";
   takeReportHandoff("ai", undefined);
@@ -138,3 +142,46 @@ test("another account cannot consume a staged report", () => {
 });
 
 function composerDraft() { return screen.UNSAFE_getByType(AssistantComposerInput).props.initialValue as string; }
+
+test("journal entry is applied once on focus and a second entry starts fresh", () => {
+  stageJournalAssistantEntry(mockAccountId!);
+  const route = mountRoute();
+  expect(composerDraft()).toBe(JOURNAL_ASSISTANT_STARTER);
+  expect(screen.getByRole("button", { name: "重新选择" })).toBeTruthy();
+  const edited = JOURNAL_ASSISTANT_STARTER + "今天有一件小事";
+  fireEvent.changeText(screen.getByLabelText("聊天消息"), edited);
+  mockFocused = false; route.rerender();
+  mockFocused = true; route.rerender();
+  expect(composerDraft()).toBe(edited);
+  mockFocused = false; route.rerender();
+  stageJournalAssistantEntry(mockAccountId!);
+  mockFocused = true; route.rerender();
+  expect(composerDraft()).toBe(JOURNAL_ASSISTANT_STARTER);
+  expect(takeJournalAssistantEntry(mockAccountId)).toBeNull();
+});
+
+test.each(accountTransitions)("journal entry is cleared at account boundary: %s", (_name, accounts) => {
+  stageJournalAssistantEntry(mockAccountId!);
+  const route = mountRoute();
+  expect(composerDraft()).toBe(JOURNAL_ASSISTANT_STARTER);
+  route.committedDrafts.length = 0;
+  for (const accountId of accounts) {
+    mockAccountId = accountId;
+    mockAdultStatus = accountId ? "authorized" : "public";
+    route.rerender();
+    expectEmptyDraft(route.committedDrafts);
+    expect(screen.queryByRole("button", { name: "重新选择" })).toBeNull();
+  }
+});
+
+test("an applied journal entry cannot replay when another journey remounts the chat", () => {
+  stageJournalAssistantEntry(mockAccountId!);
+  const tree = () => <AssistantHistoryProvider><AiTabRoute /></AssistantHistoryProvider>;
+  const view = render(tree());
+  expect(composerDraft()).toBe(JOURNAL_ASSISTANT_STARTER);
+  const edited = JOURNAL_ASSISTANT_STARTER + "我已经补充了自己的描述";
+  fireEvent.changeText(screen.getByLabelText("聊天消息"), edited);
+  mockJourneyId = "body-knowledge";
+  view.rerender(tree());
+  expect(composerDraft()).toBe(edited);
+});

@@ -6,7 +6,7 @@ import { useJourneyRuntime } from "../../src/features/journey/runtime/JourneyRun
 import { useReadyJournalService } from "../../src/features/journal/runtime/JournalAccessProvider";
 import type { JournalHighlight, JournalRecord, JournalSource } from "../../src/features/journal/domain/journal-record";
 import { JournalEditorScreen } from "../../src/features/journal/ui/JournalEditorScreen";
-import { AssistantPanel } from "../../src/features/assistant/AssistantPanel";
+import { stageJournalAssistantEntry } from "../../src/features/assistant/journal-assistant-entry";
 import { JournalLoadingScreen } from "../../src/features/journal/ui/JournalLoadingScreen";
 import { buildRetainedLocalDraftSections } from "../../src/features/shell/application/saved-card-edit";
 import { backOrHome } from "../../src/features/shell/ui/safe-navigation";
@@ -48,5 +48,9 @@ export default function NewJournalRoute() {
     return () => { active = false; };
   }, [cardId, reviewId, runtime.cards, runtime.reviewHistory]);
   if (initial === null) return <JournalLoadingScreen message="正在从本机整理可编辑框架…" />;
-  return <JournalEditorScreen initial={initial} service={journalService} {...(reportHandoff ? { draftKeyOverride: reportJournalDraftKey(reportHandoff.roomId, reportHandoff.text) } : {})} renderAssistant={(context) => <AssistantPanel {...context} />} onBack={() => backOrHome(router)} onSaved={(id) => router.replace({ pathname: "/journal/[id]", params: { id } })} />;
+  return <JournalEditorScreen initial={initial} service={journalService} onStartAiJournal={() => {
+    if (!accountId) return;
+    stageJournalAssistantEntry(accountId);
+    router.navigate("/(tabs)/ai");
+  }} {...(reportHandoff ? { draftKeyOverride: reportJournalDraftKey(reportHandoff.roomId, reportHandoff.text) } : {})} onBack={() => backOrHome(router)} onSaved={(id) => router.replace({ pathname: "/journal/[id]", params: { id } })} />;
 }

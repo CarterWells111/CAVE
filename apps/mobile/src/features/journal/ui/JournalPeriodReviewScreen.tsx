@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Pressable, Text, TextInput, View } from "react-native";
 import { useTheme } from "../../../core/design/theme-provider";
 import { Button } from "../../../core/ui/Button";
@@ -8,17 +8,20 @@ import { Screen } from "../../../core/ui/Screen";
 import { ActionRow } from "../../../core/ui/action-row";
 import { HelpText } from "../../../core/ui/page-header";
 import { SelectionField } from "../../../core/ui/selection-field";
+import { TextAction } from "../../../core/ui/text-action";
 import type { JournalService } from "../application/journal-service";
 import type { JournalRecordSummary } from "../infrastructure/journal-repository";
-import { isJournalDateInRange, journalDateFromDate, parseJournalDate } from "../domain/journal-date";
+import { isJournalDateInRange, journalDateFromDate } from "../domain/journal-date";
 import { JOURNAL_REVIEW_QUESTIONS } from "../domain/journal-review-prompts";
+
+import type { JournalPeriodReviewContext } from "../../assistant/assistant-journal";
 
 import { JournalDateField } from "./JournalDateField";
 import { JournalEditorHeader } from "./JournalEditorHeader";
 
 const systemNow = () => new Date();
 
-export function JournalPeriodReviewScreen({ service, onSaved, now = systemNow, renderAssistant, onOpen, onBack }: Readonly<{ service: JournalService; onSaved(): void; now?(): Date; onOpen?(id: string): void; onBack?(): void; renderAssistant?(context: { records: Array<{ id: string; text: string }>; onAdopt(text: string): void }): ReactNode }>) {
+export function JournalPeriodReviewScreen({ service, onSaved, now = systemNow, onStartAiReview, onOpen, onBack }: Readonly<{ service: JournalService; onSaved(): void; now?(): Date; onOpen?(id: string): void; onBack?(): void; onStartAiReview?(context: JournalPeriodReviewContext): void }>) {
   const theme = useTheme(); const [records, setRecords] = useState<readonly JournalRecordSummary[]>([]);
   const [selected, setSelected] = useState<string[]>([]); const [title, setTitle] = useState("最近 30 天的回顾"); const [body, setBody] = useState(""); const [error, setError] = useState<string | null>(null);
   const today = useMemo(now, [now]);
@@ -26,7 +29,7 @@ export function JournalPeriodReviewScreen({ service, onSaved, now = systemNow, r
   const [startDate, setStartDate] = useState(journalDateFromDate(new Date(today.getFullYear(), today.getMonth(), today.getDate() - 29)));
   const [endDate, setEndDate] = useState(journalDateFromDate(today));
   const [saving, setSaving] = useState(false);
-  const [assistantRecords, setAssistantRecords] = useState<Array<{ id: string; text: string }>>([]);
+  const [question, setQuestion] = useState(0);
   const [loaded, setLoaded] = useState(false);
   const choosePeriod = (value: 7 | 30) => {
     setDays(value); setStartDate(journalDateFromDate(new Date(today.getFullYear(), today.getMonth(), today.getDate() - value + 1)));
@@ -39,28 +42,19 @@ export function JournalPeriodReviewScreen({ service, onSaved, now = systemNow, r
     return () => { active = false; };
   }, [service]);
   const visible = records.filter((record) => isJournalDateInRange(record.occurredAt, startDate, endDate));
-  useEffect(() => {
-    let active = true;
-    setAssistantRecords([]);
-    if (selected.length === 0) return () => { active = false; };
-    void Promise.all(selected.map((id) => service.loadRecord(id))).then((items) => {
-      if (items.some((item) => item === null)) throw new Error("journal-source-missing");
-      if (active) setAssistantRecords(items.flatMap((item) => item ? [{ id: item.record.id, text: [item.record.title, item.record.occurredAt, item.record.highlight.text, item.record.body, ...item.entries.map((entry) => `${entry.occurredAt} 后来：${entry.highlight?.text ?? ""} ${entry.body}`)].join("\n") }] : []));
-    }).catch(() => { if (active) setError("引用记录读取失败，请重新选择。"); });
-    return () => { active = false; };
-  }, [selected, service]);
   const field = { backgroundColor: theme.color.surface, borderColor: theme.color.border, borderRadius: theme.radius.md, borderWidth: 1, color: theme.color.text, padding: theme.space.md } as const;
   const save = async () => {
     if (saving) return;
     setSaving(true); setError(null);
     try {
       if (startDate > endDate || selected.length === 0) throw new Error("journal-period-invalid");
-      await service.savePeriodReview({ periodStart: parseJournalDate(startDate).toISOString(), periodEnd: parseJournalDate(endDate).toISOString(), title, body, sourceRecordIds: selected }); onSaved();
+      await service.savePeriodReview({ periodStart: `${startDate}T00:00:00.000Z`, periodEnd: `${endDate}T00:00:00.000Z`, title, body, sourceRecordIds: selected }); onSaved();
     } catch { setError("请选择有效日期范围和记录，并写下自己的小结。"); setSaving(false); }
   };
   return <Screen testID="journal-period-review-screen">
     <JournalEditorHeader title="回顾一段时间" onBack={onBack} saving={saving}
       help={<HelpText>选择日期范围与想引用的记录，用自己的话保留经验和提醒。系统提供问题，不替你判断关系或给成长打分。AI 仅在你主动使用并确认后发送所选内容。</HelpText>} />
+    {onStartAiReview ? <Button label="AI陪我回顾" disabled={saving || startDate > endDate} onPress={() => onStartAiReview({ startDate, endDate, title, body, sourceRecordIds: selected })} /> : null}
     <View style={{ gap: theme.space.sm }}>
       <SelectionField<"7" | "30" | "custom"> label="回顾范围" value={days === null ? "custom" : days === 7 ? "7" : "30"}
         options={[{ value: "7", label: "最近一周" }, { value: "30", label: "最近一个月" }, { value: "custom", label: "自选日期" }]}
@@ -81,11 +75,13 @@ export function JournalPeriodReviewScreen({ service, onSaved, now = systemNow, r
     </View> : null}
     <Card accessible={false}>
       <Text accessibilityRole="header" style={{ ...theme.typography.heading, color: theme.color.text }}>我的阶段小结</Text>
-      <View style={{ gap: theme.space.xs }}>{JOURNAL_REVIEW_QUESTIONS.map((prompt) => <Text key={prompt} style={{ ...theme.typography.body, color: theme.color.textMuted }}>{prompt}</Text>)}</View>
+      <View style={{ gap: theme.space.xs }}>
+        <Text style={{ ...theme.typography.body, color: theme.color.textMuted }}>{JOURNAL_REVIEW_QUESTIONS[question]}</Text>
+        <TextAction label="换一个引导" onPress={() => setQuestion((current) => (current + 1) % JOURNAL_REVIEW_QUESTIONS.length)} />
+      </View>
       <TextInput accessibilityLabel="阶段回顾标题" placeholderTextColor={theme.color.textMuted} selectionColor={theme.color.primary} value={title} onChangeText={setTitle} style={field} />
       <TextInput accessibilityLabel="由我确认的阶段小结" multiline placeholder="用自己的话写下想保留的经验和提醒" placeholderTextColor={theme.color.textMuted} selectionColor={theme.color.primary} value={body} onChangeText={setBody} style={[field, { minHeight: 180, textAlignVertical: "top" }]} />
     </Card>
-    {assistantRecords.length === selected.length && selected.length > 0 ? renderAssistant?.({ records: assistantRecords, onAdopt: setBody }) : null}
     {error ? <Text accessibilityRole="alert" style={{ color: theme.color.danger }}>{error}</Text> : null}
     <Button disabled={saving || selected.length === 0 || startDate > endDate} label="保存我的阶段回顾" onPress={() => { void save(); }} />
   </Screen>;

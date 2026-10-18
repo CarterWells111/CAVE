@@ -23,7 +23,7 @@ function database() {
       catch (error) { db.exec("ROLLBACK"); throw error; }
     },
   };
-  return { db, connection, repository: new SqlJournalRepository(manager) };
+  return { db, connection, manager, repository: new SqlJournalRepository(manager) };
 }
 
 test("SQL guarded confirmation commits record and original revision atomically", async () => {
@@ -127,5 +127,51 @@ test("SQL append guard rejects foreign owners and deleted or changed read entrie
     await repository.deleteEntry("synthetic-owner", existing.id);
     await expect(repository.createEntry("synthetic-owner", insight, guard)).rejects.toThrow("journal-record-conflict");
     expect(await repository.listEntries("synthetic-owner", original.id)).toEqual([]);
+  } finally { db.close(); }
+});
+
+const periodReview = {
+  id: "synthetic-period-review", periodStart: "2026-10-01T00:00:00.000Z", periodEnd: now,
+  createdAt: now, updatedAt: now, editableUntil: "2026-10-15T10:00:00.000Z",
+  title: "合成阶段回顾", body: "合成小结", sourceRecordIds: [original.id],
+};
+
+test("SQL period review does not write after its guard is revoked while queued", async () => {
+  const { db, connection, manager } = database();
+  let release!: () => void;
+  const queue = new Promise<void>((resolve) => { release = resolve; });
+  let active = true;
+  const repository = new SqlJournalRepository({
+    ...manager,
+    withTransaction: async (operation) => {
+      await queue;
+      return manager.withTransaction(operation);
+    },
+  });
+  try {
+    const saving = repository.savePeriodReview("synthetic-owner", periodReview, { canCommit: () => active });
+    active = false;
+    release();
+    await expect(saving).rejects.toThrow("journal-session-changed");
+    expect(connection.runAsync).not.toHaveBeenCalled();
+    expect(await repository.listPeriodReviews("synthetic-owner")).toEqual([]);
+  } finally { db.close(); }
+});
+
+test.each(["create", "update"] as const)("SQL period review %s rolls back when its guard is revoked after the write", async (operation) => {
+  const { db, connection, repository } = database();
+  try {
+    await repository.savePeriodReview("synthetic-owner", periodReview, { canCommit: () => true });
+    let active = true;
+    const run = connection.runAsync;
+    connection.runAsync = async (sql, ...args) => {
+      const result = await run(sql, ...args);
+      if (sql.startsWith("INSERT INTO journal_period_reviews")) active = false;
+      return result;
+    };
+    const pendingReview = { ...periodReview, id: operation === "create" ? "synthetic-new-review" : periodReview.id, body: "取消后不应落盘的小结" };
+    await expect(repository.savePeriodReview("synthetic-owner", pendingReview, { canCommit: () => active }))
+      .rejects.toThrow("journal-session-changed");
+    expect(await repository.listPeriodReviews("synthetic-owner")).toEqual([periodReview]);
   } finally { db.close(); }
 });

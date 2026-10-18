@@ -1,4 +1,6 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react-native";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react-native";
+import { ROOM_QUESTIONS, ROOM_SCENARIOS } from "../domain/room";
+import { ROOM_ANSWER_GUIDES } from "../domain/room-answer-guides";
 import { createFakeRoomServer } from "../infrastructure/fake-room-api";
 import { RoomApiError } from "../infrastructure/room-api-client";
 import { MyRoomsPage, RoomDetailPage, RoomListPage, RoomNewPage } from "./room-pages";
@@ -71,7 +73,8 @@ test("room permits skipped questions and waits for explicit report consent", asy
   const room = await api.create("pause");
   render(<RoomDetailPage api={api} roomId={room.id} />);
   expect(await screen.findByText("说出暂停")).toBeTruthy();
-  expect(screen.getAllByText(/可跳过/u)).toHaveLength(4);
+  expect(screen.queryByText(/（可跳过）/u)).toBeNull();
+  expect(screen.queryByRole("button", { name: "清空这题" })).toBeNull();
   expect(screen.getByRole("button", { name: "完成我的回答" })).toBeDisabled();
   fireEvent.press(screen.getByRole("checkbox"));
   fireEvent.press(screen.getByRole("button", { name: "完成我的回答" }));
@@ -119,4 +122,50 @@ test("shared report shows three sections and offers explicit export, AI and jour
   expect(screen.getByLabelText("期待的回答").props.value).toBe("希望慢一点");
   expect(screen.getByLabelText("期待的回答").props.editable).toBe(false);
   expect(screen.queryByRole("button", { name: "保存这题到云端" })).toBeNull();
+});
+
+test.each(ROOM_SCENARIOS)("$title offers five independent cycling examples per question without changing or uploading answers", async ({ id: scenarioId }) => {
+  const api = createFakeRoomServer().forAccount("synthetic-room-guide-owner");
+  const room = await api.create(scenarioId);
+  const saveAnswer = jest.fn(api.saveAnswer);
+  render(<RoomDetailPage api={{ ...api, saveAnswer }} roomId={room.id} />);
+  await screen.findByLabelText("期待的回答");
+  expect(screen.queryByText(/（可跳过）/u)).toBeNull();
+  expect(screen.queryByRole("button", { name: "清空这题" })).toBeNull();
+  fireEvent.changeText(screen.getByLabelText("期待的回答"), "我已经写好的合成回答");
+  for (const question of ROOM_QUESTIONS[scenarioId]) {
+    const card = within(screen.getByTestId(`room-question-${question.id}`));
+    const examples = ROOM_ANSWER_GUIDES[scenarioId][question.id];
+    expect(examples).toHaveLength(5);
+    expect(new Set(examples).size).toBe(5);
+    expect(card.getByText(question.prompt)).toBeTruthy();
+    for (const example of [...examples, ...examples]) {
+      expect(card.getByText(`示例回答：${example}`)).toBeTruthy();
+      for (const other of examples.filter(value => value !== example)) expect(card.queryByText(`示例回答：${other}`)).toBeNull();
+      fireEvent.press(card.getByRole("button", { name: `${question.title}：下一个引导` }));
+      expect(screen.getByLabelText("期待的回答")).toHaveProp("value", "我已经写好的合成回答");
+      expect(saveAnswer).not.toHaveBeenCalled();
+    }
+    expect(card.getByText(`示例回答：${examples[0]}`)).toBeTruthy();
+    const otherQuestion = ROOM_QUESTIONS[scenarioId].find(other => other.id !== question.id)!;
+    expect(within(screen.getByTestId(`room-question-${otherQuestion.id}`)).getByText(`示例回答：${ROOM_ANSWER_GUIDES[scenarioId][otherQuestion.id][0]}`)).toBeTruthy();
+  }
+  expect((await api.get(room.id)).myAnswers).toEqual({});
+  for (const title of ["担忧", "边界", "回应与下一步"]) expect(screen.getByLabelText(`${title}的回答`)).toHaveProp("value", "");
+});
+
+test("manually deleting a saved answer still needs explicit saving and never offers a clear action", async () => {
+  const api = createFakeRoomServer().forAccount("synthetic-room-guide-owner");
+  const room = await api.create("pause");
+  await api.saveAnswer(room.id, "expectation", "此前保存的合成回答");
+  const saveAnswer = jest.fn(api.saveAnswer);
+  render(<RoomDetailPage api={{ ...api, saveAnswer }} roomId={room.id} />);
+  const answer = await screen.findByLabelText("期待的回答");
+  fireEvent.changeText(answer, "");
+  expect(screen.queryByRole("button", { name: "清空这题" })).toBeNull();
+  expect(saveAnswer).not.toHaveBeenCalled();
+  expect((await api.get(room.id)).myAnswers.expectation).toBe("此前保存的合成回答");
+  await act(async () => { fireEvent.press(screen.getByRole("button", { name: "保存这题到云端" })); });
+  expect(saveAnswer).toHaveBeenCalledWith(room.id, "expectation", "");
+  expect((await api.get(room.id)).myAnswers.expectation).toBe("");
 });

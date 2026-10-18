@@ -12,6 +12,7 @@ import { HelpText, PageHeader } from "../../../core/ui/page-header";
 import { SelectionField } from "../../../core/ui/selection-field";
 import { TextAction } from "../../../core/ui/text-action";
 import { ROOM_QUESTIONS, ROOM_SCENARIOS, ROOM_QUESTION_IDS, mayGenerateReport, normalizeInviteToken, type Room, type RoomApi, type RoomQuestionId, type RoomReport, type RoomScenarioId } from "../domain/room";
+import { ROOM_ANSWER_GUIDES } from "../domain/room-answer-guides";
 import { formatRoomReport, REPORT_ROLE_NOTE, roomReportAiDraft } from "../domain/report-text";
 import { RoomApiError } from "../infrastructure/room-api-client";
 
@@ -173,14 +174,20 @@ export function RoomJoinPage({ api, initialToken }: { api: RoomApi; initialToken
 function Question({ api, question, room, onUpdate }: { api: RoomApi; question: { id: RoomQuestionId; title: string; prompt: string }; room: Room; onUpdate(room: Room): void }) {
   const theme = useTheme();
   const [draft, setDraft] = useState(room.myAnswers[question.id] ?? "");
+  const [guideIndex, setGuideIndex] = useState(0);
+  const guides = ROOM_ANSWER_GUIDES[room.scenarioId][question.id];
   const operation = useOperation();
   const canEdit = !room.myCompleted || room.report?.status === "insufficient";
   useEffect(() => { setDraft(room.myAnswers[question.id] ?? ""); }, [question.id, room.myAnswers[question.id]]);
-  return <View style={{ gap: theme.space.sm, padding: theme.space.md, borderWidth: 1, borderColor: theme.color.border, borderRadius: theme.radius.feature }}>
+  return <View testID={`room-question-${question.id}`} style={{ gap: theme.space.sm, padding: theme.space.md, borderWidth: 1, borderColor: theme.color.border, borderRadius: theme.radius.feature }}>
     <Text selectable style={{ ...theme.typography.cardTitle, color: theme.color.text }}>{question.title}</Text>
-    <Text selectable style={{ ...theme.typography.body, color: theme.color.textSecondary }}>{question.prompt}（可跳过）</Text>
+    <Text selectable style={{ ...theme.typography.body, color: theme.color.textSecondary }}>{question.prompt}</Text>
     <TextInput accessibilityLabel={`${question.title}的回答`} editable={canEdit && room.status !== "ended"} maxLength={2000} multiline onChangeText={setDraft} placeholder="写下你的想法" style={{ borderColor: theme.color.border, borderWidth: 1, borderRadius: theme.radius.control, color: theme.color.text, minHeight: 100, padding: theme.space.md, textAlignVertical: "top" }} value={draft} />
-    {canEdit && room.status !== "ended" ? <TextAction disabled={draft === (room.myAnswers[question.id] ?? "")} label={draft.trim() ? "保存这题到云端" : "清空这题"} loading={operation.busy} onPress={() => { void operation.run(async () => onUpdate(await api.saveAnswer(room.id, question.id, draft.trim()))); }} /> : null}
+    {canEdit && room.status !== "ended" ? <View style={{ gap: theme.space.xs }}>
+      <Text selectable style={{ ...theme.typography.body, color: theme.color.textSecondary }}>示例回答：{guides[guideIndex]}</Text>
+      <TextAction label="下一个引导" accessibilityLabel={question.title + "：下一个引导"} onPress={() => setGuideIndex((current) => (current + 1) % guides.length)} />
+    </View> : null}
+    {canEdit && room.status !== "ended" && (draft.trim() || room.myAnswers[question.id]?.trim()) ? <TextAction disabled={draft === (room.myAnswers[question.id] ?? "")} label="保存这题到云端" loading={operation.busy} onPress={() => { void operation.run(async () => onUpdate(await api.saveAnswer(room.id, question.id, draft.trim()))); }} /> : null}
     <Feedback message={operation.error} />
   </View>;
 }
@@ -267,7 +274,7 @@ export function RoomDetailPage({ api, roomId, onExport, onDiscuss, onRecord }: {
           {!room.myCompleted || room.report?.status === "insufficient" || answersOpen ? <>
             <Text accessibilityRole="header" style={{ ...theme.typography.cardTitle, color: theme.color.text }}>我的回答</Text>
             <Text selectable style={{ ...theme.typography.body, color: theme.color.textSecondary }}>每题需点击保存才会上传到云端，原文只给你查看。不要填写不希望上传的内容。</Text>
-            {ROOM_QUESTIONS[room.scenarioId].map((question) => <Question api={api} key={question.id} onUpdate={setRoom} question={question} room={room} />)}
+            {ROOM_QUESTIONS[room.scenarioId].map((question) => <Question api={api} key={`${room.id}:${room.scenarioId}:${question.id}`} onUpdate={setRoom} question={question} room={room} />)}
           </> : null}
           {!room.myCompleted ? <>
             <Pressable accessibilityRole="checkbox" accessibilityState={{ checked: reportConsent }} onPress={() => setReportConsent((value) => !value)} style={{ flexDirection: "row", gap: theme.space.sm, paddingVertical: theme.space.sm }}>

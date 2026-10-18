@@ -14,6 +14,7 @@ export function AssistantAttachmentTray({ attachments, disabled, onReview }: { a
   const close = () => attachments.setSheet(null);
   return <>
     {attachments.kind ? <View style={{ gap: 6 }}>
+      {journal.draft?.mode === "period-review" && journal.draft.period ? <Text style={{ ...theme.typography.caption, color: theme.color.textMuted }}>阶段回顾 · {journal.draft.period.startDate} — {journal.draft.period.endDate} · 已选 {journal.selectedIds.length} 篇</Text> : null}
       <TextAction label="重新选择" disabled={disabled} onPress={() => attachments.setSheet("journal")} />
     </View> : null}
     <BottomSheet visible={attachments.sheet !== null} title={attachments.sheet === "journal" ? "内界手记附件" : attachments.sheet === "draft" ? "手记预览" : "添加附件"} onClose={close}>
@@ -25,7 +26,9 @@ export function AssistantAttachmentTray({ attachments, disabled, onReview }: { a
         <Text accessibilityRole="header" style={{ ...theme.typography.heading, color: theme.color.text }}>{attachments.historicalDraft.title}</Text>
         <Text style={{ ...theme.typography.caption, color: theme.color.textSecondary }}>{attachments.historicalDraft.occurredAt}</Text>
         <Text selectable style={{ ...theme.typography.body, color: theme.color.text }}>{attachments.historicalDraft.body}</Text>
-        <Button label="另存为新手记" disabled={disabled || !journal.available} onPress={attachments.copyHistoricalDraft} />
+        {attachments.historicalDraft.requestId.startsWith("period-review-")
+          ? <Text style={{ color: theme.color.textMuted }}>这份阶段回顾的引用范围已结束。可以回到「回顾一段时间」，重新选择手记继续整理。</Text>
+          : <Button label="另存为新手记" disabled={disabled || !journal.available} onPress={attachments.copyHistoricalDraft} />}
       </> : <AssistantJournalDraftPreview journal={journal} onCancel={close} onSaved={close} /> : null}
     </BottomSheet>
   </>;

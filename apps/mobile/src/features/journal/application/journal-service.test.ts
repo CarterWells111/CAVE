@@ -115,3 +115,20 @@ describe("JournalService", () => {
   expect(await a.loadDraft("new:freeform")).toBeNull();
   expect(await b.loadDraft("new:freeform")).toEqual(draft);
  });
+
+test("does not save a period review when its guard is revoked while loading the source record", async () => {
+  const repository = new InMemoryJournalRepository();
+  let nextId = 0;
+  const service = new JournalService(repository, {
+    now: () => "2026-10-14T10:00:00.000Z", createId: () => `synthetic-${++nextId}`,
+  }, "synthetic-owner");
+  const record = await service.createRecord({ occurredAt: "2026-10-13", body: "合成原记录" });
+  let active = true;
+  const saving = service.savePeriodReview({
+    periodStart: "2026-10-01T00:00:00.000Z", periodEnd: "2026-10-14T10:00:00.000Z",
+    title: "合成阶段回顾", body: "取消后不应落盘的小结", sourceRecordIds: [record.id],
+  }, { canCommit: () => active });
+  active = false;
+  await expect(saving).rejects.toThrow("journal-session-changed");
+  expect(await service.listPeriodReviews()).toEqual([]);
+});

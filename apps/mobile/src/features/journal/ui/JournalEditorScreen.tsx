@@ -17,8 +17,8 @@ const topicOptions: Array<{ value: JournalTopic; label: string }> = [
   { value: "intimate-relationship", label: "亲密关系" }, { value: "self-boundaries", label: "自我边界" }, { value: "sexual-health", label: "健康性生活" }
 ];
 
-export function JournalEditorScreen({ service, onSaved, initial, onBack, renderAssistant, draftKeyOverride }: Readonly<{
-  service: JournalService; onSaved(id: string): void; onBack?(): void;
+export function JournalEditorScreen({ service, onSaved, initial, onBack, onStartAiJournal, renderAssistant, draftKeyOverride }: Readonly<{
+  service: JournalService; onSaved(id: string): void; onBack?(): void; onStartAiJournal?(): void;
   renderAssistant?(context: { records: Array<{ id: string; text: string }>; onAdopt(text: string): void }): ReactNode;
   draftKeyOverride?: string;
   initial?: Readonly<{ id?: string; title?: string; occurredAt?: string; highlight?: JournalHighlight; body?: string; topics?: readonly JournalTopic[]; source?: JournalSource; cardSnapshot?: JournalRecord["cardSnapshot"] }>;
@@ -35,7 +35,6 @@ export function JournalEditorScreen({ service, onSaved, initial, onBack, renderA
   const draftKey = draftKeyOverride ?? (initial?.id ? `record:${initial.id}` : `new:${initial?.source?.kind === "journey" ? `${initial.source.journeyId}:${initial.source.cardId ?? ""}:${initial.source.reviewId ?? ""}` : "freeform"}`);
   const [ready, setReady] = useState(false);
   const [draftStatus, setDraftStatus] = useState("");
-  const [guided, setGuided] = useState(false);
   const [question, setQuestion] = useState(0);
   const prompts = ["今天有什么想记下的？", "当时你注意到了什么感受？", "有没有一个让你松口气或不舒服的瞬间？", "当时有什么没说出口的希望？", "哪个细节让你觉得被尊重？", "现在想法和当时有什么不同？", "现在有什么想留给自己的话？"];
   const writeQueue = useRef(Promise.resolve());
@@ -108,21 +107,21 @@ export function JournalEditorScreen({ service, onSaved, initial, onBack, renderA
   };
   return <Screen testID="journal-editor-screen">
     <JournalEditorHeader title={initial?.id ? "修改这条记录" : "记下一件事"} onBack={onBack} saving={saving}
-      help={<><HelpText>一句话也可以，不需要先想好标题或重点。引导写作可以随时跳过，专题由你决定。</HelpText><HelpText>在允许修改的时间内，旧版本会保留在修改历史中。也可以增加一个“后来”，记录变化或更正，原记录不会被覆盖。内容默认保存在本机。</HelpText></>} />
+      help={<><HelpText>一句话也可以，不需要先想好标题。引导写作可以随时跳过，专题由你决定。</HelpText><HelpText>在允许修改的时间内，旧版本会保留在修改历史中。也可以增加一个“后来”，记录变化或更正，原记录不会被覆盖。内容默认保存在本机。</HelpText></>} />
+    {onStartAiJournal ? <Button disabled={saving || !ready} label="AI陪我记录" onPress={onStartAiJournal} /> : null}
     <View style={{ gap: theme.space.sm }}>
-      <TextAction label={guided ? "自由写" : "试试引导写作（可跳过）"} onPress={() => setGuided(!guided)} />
-      {guided ? <View style={{ gap: theme.space.sm }}>
-        <Text style={{ ...theme.typography.body, color: theme.color.text }}>{prompts[question]}</Text>
-        <TextAction label={question < prompts.length - 1 ? "下一题 / 跳过这题" : "结束引导"} onPress={() => question < prompts.length - 1 ? setQuestion(question + 1) : setGuided(false)} />
-      </View> : null}
       <TextInput editable={ready && !saving} accessibilityLabel="事件正文" multiline placeholder="此刻想记下什么？" placeholderTextColor={theme.color.textMuted} selectionColor={theme.color.primary} value={body} onChangeText={setBody} style={[field, { minHeight: 180, textAlignVertical: "top" }]} />
       <Text accessibilityLiveRegion="polite" style={{ ...theme.typography.caption, color: theme.color.textMuted }}>{draftStatus || "正在读取本机草稿…"}</Text>
+      <View style={{ gap: theme.space.sm }}>
+        <Text style={{ ...theme.typography.body, color: theme.color.text }}>{prompts[question]}</Text>
+        <TextAction label="换一个引导" onPress={() => setQuestion((current) => (current + 1) % prompts.length)} />
+      </View>
     </View>
     <Card accessible={false}>
-      <Text accessibilityRole="header" style={{ ...theme.typography.heading, color: theme.color.text }}>日期与摘要</Text>
+      <Text accessibilityRole="header" style={{ ...theme.typography.heading, color: theme.color.text }}>{initial?.id ? "日期与摘要" : "日期与标题"}</Text>
       <JournalDateField label="事件日期" onChange={setOccurredAt} value={occurredAt} />
       <TextInput editable={ready && !saving} accessibilityLabel="关键事件标题" placeholder="标题（选填）" placeholderTextColor={theme.color.textMuted} selectionColor={theme.color.primary} value={title} onChangeText={setTitle} style={field} />
-      <TextInput editable={ready && !saving} accessibilityLabel="重点提要" placeholder="想单独保留的重点（选填）" placeholderTextColor={theme.color.textMuted} selectionColor={theme.color.primary} value={highlight} onChangeText={setHighlight} style={field} />
+      {initial?.id ? <TextInput editable={ready && !saving} accessibilityLabel="重点提要" placeholder="想单独保留的重点（选填）" placeholderTextColor={theme.color.textMuted} selectionColor={theme.color.primary} value={highlight} onChangeText={setHighlight} style={field} /> : null}
     </Card>
     {renderAssistant?.({ records: [{ id: initial?.id ?? "current-draft", text: [title, occurredAt, highlight, body].filter(Boolean).join("\n") }], onAdopt: (text) => setBody((current) => current ? `${current}\n\n${text}` : text) })}
     <Card accessible={false}>

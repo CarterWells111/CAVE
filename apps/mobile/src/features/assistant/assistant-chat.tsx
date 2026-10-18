@@ -24,8 +24,9 @@ import { AssistantAttachmentTray } from "./AssistantAttachmentTray";
 import { journalAssistantError } from "./AssistantJournalPicker";
 import { Button } from "../../core/ui/Button";
 import { AssistantComposerInput, type AssistantComposerInputHandle } from "./AssistantComposerInput";
+import { JOURNAL_ASSISTANT_STARTER, JOURNAL_PERIOD_REVIEW_STARTER, type JournalAssistantEntry } from "./journal-assistant-entry";
 
-type AssistantChatProps = { journeyId: string; authorized: boolean; request?: AssistantRequester; initialDraft?: string; historyRepository?: AssistantHistoryRepository };
+type AssistantChatProps = { journeyId: string; authorized: boolean; request?: AssistantRequester; initialDraft?: string; journalEntry?: JournalAssistantEntry; onJournalEntryApplied?(id: number): void; historyRepository?: AssistantHistoryRepository };
 
 export function AssistantChat(props: AssistantChatProps) {
   const sharedHistory = useOptionalAssistantHistory();
@@ -47,7 +48,7 @@ function LocalAssistantChat(props: AssistantChatProps & { contextAccess: Assista
   return <AssistantChatView {...props} history={history} />;
 }
 
-function AssistantChatView({ journeyId, authorized, request, initialDraft = "", history, contextAccess, shared = false }: AssistantChatProps & { history: AssistantHistoryState; contextAccess: AssistantContextAccess; shared?: boolean }) {
+function AssistantChatView({ journeyId, authorized, request, initialDraft = "", journalEntry, onJournalEntryApplied, history, contextAccess, shared = false }: AssistantChatProps & { history: AssistantHistoryState; contextAccess: AssistantContextAccess; shared?: boolean }) {
   const theme = useTheme();
   const router = useRouter();
   const auth = useOptionalAuth();
@@ -75,13 +76,15 @@ function AssistantChatView({ journeyId, authorized, request, initialDraft = "", 
   const preview = isAssistantPreview();
   useEffect(() => () => { epoch.current += 1; controller.current?.abort(); }, []);
   const entryApplied = useRef(false);
+  const appliedJournalEntry = useRef<number | null>(null);
+  const pendingJournalRevision = useRef<number | null>(null);
   useEffect(() => {
-    if (entryApplied.current) return;
+    if (entryApplied.current || journalEntry) return;
     entryApplied.current = true;
     if (shared && (initialDraft || (!history.activeId && !history.draft && history.journeyId !== journeyId))) {
       history.newConversation(journeyId, initialDraft);
     }
-  }, [shared, history, initialDraft, journeyId]);
+  }, [shared, history, initialDraft, journeyId, journalEntry]);
   const title = history.journeyId === "first-overnight" ? "第一次过夜" : history.journeyId;
   const textStyle = { ...theme.typography.body, color: theme.color.text };
   const caption = { ...theme.typography.caption, color: theme.color.textSecondary };
@@ -92,13 +95,16 @@ function AssistantChatView({ journeyId, authorized, request, initialDraft = "", 
   ];
   const begin = () => {
     const question = (input.current?.getText() ?? draft).trim();
-    if (!question || sending !== null) return;
+    if (!question || sending !== null || attachments.journal.busy) return;
     if (!authorized) { router.push({ pathname: "/journey/adult-gate", params: { entry: "ai" } }); return; }
     if (!preview && !request && !auth?.accountId) { router.push({ pathname: "/auth/email", params: { returnTo: "/(tabs)/ai" } }); return; }
     let payload: AssistantRequest;
     try { payload = createAttachmentChatRequest({ question, turns }); }
     catch { setError("请输入 1–1000 字的消息。"); return; }
     Keyboard.dismiss(); setError(null);
+    if (attachments.journal.draft?.mode === "period-review" && attachments.journal.selectedIds.length === 0) {
+      attachments.setSheet("journal"); setError("请先选择这段时间想回顾的手记。"); return;
+    }
     if (!preview && attachments.privateKind === "journal" && !contextAccess.allowed) {
       pendingAttachment.current = payload;
       setAttachmentPermission(attachments.privateKind);
@@ -170,15 +176,44 @@ function AssistantChatView({ journeyId, authorized, request, initialDraft = "", 
     previousConversation.current = history.conversationRevision;
     cancelPending();
   }, [history.conversationRevision, cancelPending]);
-  useEffect(() => history.subscribeToClear(leaveConversation), [history.subscribeToClear, leaveConversation]);
+  const discardPendingJournalEntry = useCallback(() => {
+    if (!journalEntry || (appliedJournalEntry.current === journalEntry.id && pendingJournalRevision.current === null)) return;
+    appliedJournalEntry.current = journalEntry.id;
+    pendingJournalRevision.current = null;
+    entryApplied.current = true;
+    onJournalEntryApplied?.(journalEntry.id);
+  }, [journalEntry, onJournalEntryApplied]);
+  const abandonConversation = useCallback(() => {
+    discardPendingJournalEntry(); leaveConversation();
+  }, [discardPendingJournalEntry, leaveConversation]);
+  useEffect(() => history.subscribeToClear(abandonConversation), [history.subscribeToClear, abandonConversation]);
+  useEffect(() => {
+    if (!journalEntry || journalEntry.accountId !== auth?.accountId || history.loading
+      || appliedJournalEntry.current === journalEntry.id) return;
+    appliedJournalEntry.current = journalEntry.id;
+    entryApplied.current = true;
+    pendingJournalRevision.current = history.conversationRevision + 1;
+    leaveConversation();
+    history.newConversation(journeyId, journalEntry.periodReview ? JOURNAL_PERIOD_REVIEW_STARTER : JOURNAL_ASSISTANT_STARTER);
+  }, [journalEntry, auth?.accountId, history, journeyId, leaveConversation]);
+  useEffect(() => {
+    if (!journalEntry || pendingJournalRevision.current === null || history.conversationRevision < pendingJournalRevision.current
+      || journalEntry.accountId !== auth?.accountId) return;
+    // Conversation changes clear attachments in a layout effect; select the new journal afterward.
+    pendingJournalRevision.current = null;
+    if (journalEntry.periodReview) attachmentsRef.current.startPeriodReview(journalEntry.periodReview);
+    else attachmentsRef.current.startNewJournal();
+    input.current?.replaceText(journalEntry.periodReview ? JOURNAL_PERIOD_REVIEW_STARTER : JOURNAL_ASSISTANT_STARTER, { focus: !journalEntry.periodReview || journalEntry.periodReview.sourceRecordIds.length > 0 });
+    onJournalEntryApplied?.(journalEntry.id);
+  }, [history.conversationRevision, journalEntry, auth?.accountId, onJournalEntryApplied]);
   return <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={{ flex: 1, backgroundColor: theme.color.background, paddingTop: insets?.top ?? 0 }}>
     <View style={{ flex: 1, width: "100%", maxWidth: 760, alignSelf: "center" }}>
       <View style={{ paddingHorizontal: 24, paddingVertical: 16, flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
         <PageTitle>内界 AI</PageTitle>
         <View style={{ flexDirection: "row", alignItems: "center", flexShrink: 0, gap: theme.space.sm }}>
           {preview ? <Text style={caption}>本机模拟</Text> : null}
-          <IconTextAction icon="add-outline" iconOnly label="新对话" onPress={() => { Keyboard.dismiss(); leaveConversation(); history.newConversation(); }} />
-          <IconTextAction icon="time-outline" iconOnly label="对话历史" onPress={() => { Keyboard.dismiss(); leaveConversation(); router.push("/assistant-history"); }} />
+          <IconTextAction icon="add-outline" iconOnly label="新对话" onPress={() => { Keyboard.dismiss(); abandonConversation(); history.newConversation(); }} />
+          <IconTextAction icon="time-outline" iconOnly label="对话历史" onPress={() => { Keyboard.dismiss(); abandonConversation(); router.push("/assistant-history"); }} />
           <PageHelp title="内界 AI">
             <HelpText>一句感受、一段记录，或旅程中的一个疑问，不必想好怎么说。</HelpText>
             <HelpText>点选建议后会填入输入框，修改好再发送。额度仪表在输入框旁，可以查看重置时间。</HelpText>
@@ -188,6 +223,7 @@ function AssistantChatView({ journeyId, authorized, request, initialDraft = "", 
             <HelpText>点右上角加号直接开始新对话，点时钟查看历史，点击继续聊天，长按删除或调整顺序。</HelpText>
             <HelpText>输入框旁的加号可以选择一篇手记，或新建草稿；「带我写一次日记」会同时选中新建手记。AI 先通过提问了解事情，再整理和优化表达；你也可以随时说「现在生成」。</HelpText>
             <HelpText>选好手记后可点「重新选择」调整。生成后点击回答下方的「预览/保存手记」，只有确认保存才写入我的手记。</HelpText>
+            <HelpText>从「回顾一段时间」进入，可以选择多篇手记一起回顾，生成后预览并确认保存为阶段回顾。</HelpText>
             <HelpText>「优化内容」修改手记正文；「回顾记忆」沿用「回顾一段时间」的问题，整理后来的变化，确认后追加为所选手记的后续。新对话会清空附件。</HelpText>
           </PageHelp>
         </View>
@@ -208,7 +244,7 @@ function AssistantChatView({ journeyId, authorized, request, initialDraft = "", 
           <View style={{ gap: 10 }}><Text style={{ ...caption, color: theme.color.primary }}>{turn.response.providerMode === "mock" ? "内界 AI · 模拟回复" : "内界 AI"}</Text>
             <Text selectable style={textStyle}>{[turn.response.message, turn.response.question, turn.response.summary, ...turn.response.observations.map(item => item.text)].filter(Boolean).join("\n\n")}</Text>
             {turn.response.journalDraft ? <View style={{ alignSelf: "flex-start", width: 240, maxWidth: "100%" }}>
-              <Button label="预览/保存手记" disabled={sending !== null} onPress={() => attachments.openDraft(turn.response.journalDraft!)} />
+              <Button label={turn.response.journalDraft.requestId.startsWith("period-review-") ? "预览/保存阶段回顾" : "预览/保存手记"} disabled={sending !== null} onPress={() => attachments.openDraft(turn.response.journalDraft!)} />
             </View> : null}
             {turn.response.sources.map(source => <Text key={source.id} selectable style={caption}>依据：{source.title}{source.url ? `\n${source.url}` : ""}</Text>)}
           </View>

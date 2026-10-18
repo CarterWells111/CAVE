@@ -21,11 +21,10 @@ export class SqlAssistantHistoryRepository implements AssistantHistoryRepository
 
   async list(ownerAccountId: string): Promise<AssistantConversation[]> {
     validateAssistantHistoryIdentifier(ownerAccountId);
-    const connection = await this.database.initialize();
-    const rows = await connection.getAllAsync<ConversationRow>(
+    const rows = await this.database.withTransaction(connection => connection.getAllAsync<ConversationRow>(
       "SELECT payload_json FROM assistant_conversations WHERE owner_account_id=? ORDER BY sort_order ASC, id ASC",
       ownerAccountId,
-    );
+    ));
     return rows.map(row => {
       try { return validateAssistantConversation(JSON.parse(row.payload_json) as unknown); }
       catch { throw new Error("assistant-history-invalid-conversation"); }

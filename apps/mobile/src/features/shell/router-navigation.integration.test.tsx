@@ -1,5 +1,7 @@
 import { resolve } from "node:path";
 import { Text } from "react-native";
+import { waitFor } from "@testing-library/react-native";
+import { takeJournalAssistantEntry } from "../assistant/journal-assistant-entry";
 import * as Linking from "expo-linking";
 import { Stack, router } from "expo-router";
 import { act, fireEvent, getMockContext, renderRouter, screen } from "expo-router/testing-library";
@@ -11,13 +13,14 @@ const mockLoadEntry = jest.fn<Promise<JournalEntry | null>, [string]>(async () =
 const mockJournalService = { loadDraft: jest.fn(async () => null), saveDraft: jest.fn(async () => undefined), listRecords: jest.fn(async () => []), listRevisions: jest.fn(async () => []), loadRecord: mockLoadRecord, loadEntry: mockLoadEntry };
 let mockAuthorized = false;
 let mockJournalStatus = "locked";
+let mockAccountId: string | undefined;
 jest.mock("../journey/runtime/JourneyRuntimeProvider", () => ({
   useJourneyRuntime: () => ({ cards: {}, reviewHistory: {} }),
   useOptionalJourneyRuntime: () => mockAuthorized ? { shellState: { load: mockShellLoad } } : null,
   useAdultDeclaration: () => ({ status: mockAuthorized ? "authorized" : "public" }),
 }));
 jest.mock("../auth/runtime/AuthProvider", () => ({
-  useOptionalAuth: () => ({ status: "signedOut" }),
+  useOptionalAuth: () => ({ status: mockAccountId ? "signedIn" : "signedOut", accountId: mockAccountId }),
   useAuth: () => ({
     status: "signedOut",
     requestEmailChallenge: async () => ({ challengeId: "fixture-login", expiresInSeconds: 600, resendAfterSeconds: 60 }),
@@ -63,6 +66,8 @@ function open(initialUrl: string) {
 beforeEach(() => {
   mockAuthorized = false;
   mockJournalStatus = "locked";
+  mockAccountId = undefined;
+  takeJournalAssistantEntry(undefined);
   jest.clearAllMocks();
   mockLoadRecord.mockReset().mockResolvedValue(null);
   mockLoadEntry.mockReset().mockResolvedValue(null);
@@ -204,4 +209,39 @@ test("an incoming URL event navigates a running app through Expo linking", async
     await act(async () => { receive!({ url: "cave:///journal" }); });
     expect(result.getPathname()).toBe("/journal");
   } finally { subscription.mockRestore(); }
+});
+
+test("new journal AI button opens the AI tab with an account-scoped new-journal entry", async () => {
+  mockAuthorized = true;
+  mockJournalStatus = "ready";
+  mockAccountId = "synthetic-journal-owner";
+  const result = open("/journal/new");
+  const button = await screen.findByRole("button", { name: "AI陪我记录" });
+  await waitFor(() => expect(button).not.toBeDisabled());
+  expect(screen.queryByText("可选的 AI 辅助")).toBeNull();
+  expect(screen.queryByLabelText("重点提要")).toBeNull();
+  fireEvent.changeText(screen.getByLabelText("事件正文"), "本机尚未完成的草稿");
+  fireEvent.press(button);
+  expect(result.getPathname()).toBe("/ai");
+  expect(takeJournalAssistantEntry(mockAccountId)).toEqual(expect.objectContaining({ accountId: mockAccountId }));
+  expect(takeJournalAssistantEntry(mockAccountId)).toBeNull();
+  await waitFor(() => expect(mockJournalService.saveDraft).toHaveBeenCalledWith(
+    "new:freeform", expect.objectContaining({ body: "本机尚未完成的草稿" }),
+  ));
+});
+
+
+test("period review starts AI chat with the current range and summary even before selecting records", async () => {
+  mockAuthorized = true; mockJournalStatus = "ready"; mockAccountId = "synthetic-journal-owner";
+  const result = open("/journal/review");
+  const entry = await screen.findByRole("button", { name: "AI陪我回顾" });
+  fireEvent.changeText(screen.getByLabelText("阶段回顾标题"), "我的合成阶段回顾");
+  fireEvent.changeText(screen.getByLabelText("由我确认的阶段小结"), "我想接着整理的合成小结");
+  fireEvent.press(entry);
+  await screen.findByText("公开入口");
+  expect(result.getPathname()).toBe("/ai");
+  expect(takeJournalAssistantEntry(mockAccountId)).toMatchObject({ accountId: mockAccountId, periodReview: {
+    title: "我的合成阶段回顾", body: "我想接着整理的合成小结", startDate: expect.any(String), endDate: expect.any(String), sourceRecordIds: []
+  } });
+  expect(takeJournalAssistantEntry(mockAccountId)).toBeNull();
 });

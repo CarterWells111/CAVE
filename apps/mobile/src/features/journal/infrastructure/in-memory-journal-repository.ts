@@ -99,7 +99,8 @@ export class InMemoryJournalRepository implements JournalRepository {
       .map(clone);
   }
 
-  async savePeriodReview(ownerAccountId: string, review: JournalPeriodReview): Promise<void> {
+  async savePeriodReview(ownerAccountId: string, review: JournalPeriodReview, guard?: JournalWriteGuard): Promise<void> {
+    checkJournalWriteGuard(guard);
     this.reviews.set(review.id, { ownerAccountId, review: clone(review) });
   }
 

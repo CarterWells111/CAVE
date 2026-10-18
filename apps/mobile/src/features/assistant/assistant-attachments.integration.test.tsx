@@ -373,3 +373,167 @@ test("changing conversation aborts review and cannot attach a late follow-up to 
   expect(composerDraft()).toBe("");
   expect((await service.loadRecord(original.id))?.entries).toEqual([]);
 });
+
+test("journal entry starts fresh from an existing conversation and sends only on demand", async () => {
+  const starter = "我有一些想记下来的事，我描述给你，你帮我梳理记录一下：";
+  const request = jest.fn<Promise<AssistantResponse>, [AssistantRequest, AbortSignal]>(async payload =>
+    payload.mode === "journal-draft" ? { ...reply, journalStage: "collecting", message: "可以，请继续描述。" } : reply);
+  const tree = (id?: number) => <AssistantHistoryProvider><AssistantChat authorized journeyId="pause" request={request}
+    {...(id === undefined ? {} : { journalEntry: { id, accountId: owner } })} /></AssistantHistoryProvider>;
+  const view = render(tree());
+  await act(async () => undefined);
+  send("合成旧对话");
+  await screen.findByText(reply.message);
+  fireEvent.changeText(screen.getByLabelText("聊天消息"), "旧对话中未发送的草稿");
+  view.rerender(tree(1));
+  await waitFor(() => expect(composerDraft()).toBe(starter));
+  expect(screen.queryByText(reply.message)).toBeNull();
+  expect(screen.getByRole("button", { name: "重新选择" })).toBeTruthy();
+  expect(request).toHaveBeenCalledTimes(1);
+  await waitFor(async () => expect((await mockHistory.list(owner))[0]?.draft).toBe("旧对话中未发送的草稿"));
+  fireEvent.changeText(screen.getByLabelText("聊天消息"), starter + "我想先说一点");
+  view.rerender(tree(1));
+  expect(composerDraft()).toBe(starter + "我想先说一点");
+  view.rerender(tree(2));
+  await waitFor(() => expect(composerDraft()).toBe(starter));
+  expect(request).toHaveBeenCalledTimes(1);
+  fireEvent.press(screen.getByRole("button", { name: "发送消息" }));
+  await screen.findByText("可以，请继续描述。");
+  expect(request.mock.calls[1]![0]).toMatchObject({
+    mode: "journal-draft", question: starter, records: [],
+    journalDraft: { operation: "new", stage: "interview", body: "" },
+  });
+  expect(await mockAccess.service!.listRecords()).toEqual([]);
+});
+
+test("journal entry waits for shared history hydration", async () => {
+  let release!: () => void;
+  const pending = new Promise<void>(resolve => { release = resolve; });
+  const list = mockHistory.list.bind(mockHistory);
+  jest.spyOn(mockHistory, "list").mockImplementationOnce(async account => { await pending; return list(account); });
+  const request = jest.fn(async () => reply);
+  render(<AssistantHistoryProvider><AssistantChat authorized journeyId="pause" request={request}
+    journalEntry={{ id: 3, accountId: owner }} /></AssistantHistoryProvider>);
+  expect(composerDraft()).toBe("");
+  await act(async () => { release(); });
+  await waitFor(() => expect(composerDraft()).toBe("我有一些想记下来的事，我描述给你，你帮我梳理记录一下："));
+  expect(screen.getByRole("button", { name: "重新选择" })).toBeTruthy();
+  expect(request).not.toHaveBeenCalled();
+});
+
+test("period review opens a multi-select in AI, asks permission and saves only a confirmed period review", async () => {
+  const service = mockAccess.service!;
+  const first = await service.createRecord({ title: "合成阶段记录一", occurredAt: "2026-10-12", body: "我试着在工作后休息。" });
+  const second = await service.createRecord({ title: "合成阶段记录二", occurredAt: "2026-10-13", body: "我和朋友聊了聊。" });
+  await service.createRecord({ title: "合成范围外记录", occurredAt: "2026-09-01", body: "不发送的更早记录。" });
+  await service.addEntry(first.id, { kind: "event-change", occurredAt: "2026-10-14", body: "范围内的散步让我放松。" });
+  await service.addEntry(first.id, { kind: "event-change", occurredAt: "2026-10-20", body: "范围外的补充不可发送。" });
+  const create = jest.spyOn(service, "createRecord"); const append = jest.spyOn(service, "addEntry"); const save = jest.spyOn(service, "savePeriodReview");
+  const request = jest.fn<Promise<AssistantResponse>, [AssistantRequest, AbortSignal]>(async () => ({ ...reply, message: "我整理了这段经历。", summary: "这段时间，我发现休息和交流让我放松。" }));
+  const context = { startDate: "2026-10-01", endDate: "2026-10-18", title: "我的合成阶段小结", body: "我已经写下的一点想法", sourceRecordIds: [] };
+  render(<AssistantHistoryProvider><AssistantChat authorized journeyId="pause" request={request} journalEntry={{ id: 201, accountId: owner, periodReview: context }} /></AssistantHistoryProvider>);
+  await screen.findByText("选择阶段回顾的手记");
+  expect(screen.queryByRole("checkbox", { name: "选择手记：合成范围外记录" })).toBeNull();
+  expect(screen.queryByRole("button", { name: "新建手记草稿" })).toBeNull();
+  expect(request).not.toHaveBeenCalled();
+  fireEvent.press(await screen.findByRole("checkbox", { name: `选择手记：${first.title}` }));
+  fireEvent.press(screen.getByRole("checkbox", { name: `选择手记：${second.title}` }));
+  expect(screen.getByRole("checkbox", { name: `选择手记：${first.title}` })).toHaveProp("accessibilityState", expect.objectContaining({ checked: true }));
+  fireEvent.press(screen.getByRole("button", { name: "使用所选手记（2）" }));
+  expect(composerDraft()).toContain("帮我梳理阶段小结");
+  fireEvent.press(screen.getByRole("button", { name: "发送消息" }));
+  expect(screen.getByText(journalPermission)).toBeTruthy(); expect(request).not.toHaveBeenCalled();
+  fireEvent.press(screen.getByRole("button", { name: "允许" }));
+  const preview = await screen.findByRole("button", { name: "预览/保存阶段回顾" });
+  const payload = request.mock.calls[0]![0];
+  expect(payload.mode).toBe("review"); expect(payload.journalDraft).toBeUndefined();
+  expect(payload.records.map(record => record.id)).toEqual(expect.arrayContaining([first.id, second.id]));
+  const sentText = JSON.stringify(payload.records);
+  expect(sentText).toContain("我已经写下的一点想法");
+  expect(sentText).toContain("范围内的散步让我放松");
+  expect(sentText).not.toContain("范围外的补充不可发送");
+  expect(sentText).not.toContain("不发送的更早记录");
+  expect(save).not.toHaveBeenCalled(); expect(create).not.toHaveBeenCalled(); expect(append).not.toHaveBeenCalled();
+  fireEvent.press(preview);
+  expect(screen.getByLabelText("手记标题")).toHaveProp("value", context.title);
+  fireEvent.changeText(screen.getByLabelText("手记正文"), "我确认保留休息和交流带来的帮助。");
+  fireEvent.press(screen.getByRole("button", { name: "确认保存阶段回顾" }));
+  await waitFor(() => expect(save).toHaveBeenCalledTimes(1));
+  const reviews = await service.listPeriodReviews(); expect(reviews).toHaveLength(1);
+  expect(reviews[0]).toMatchObject({ title: context.title, body: "我确认保留休息和交流带来的帮助。", sourceRecordIds: [first.id, second.id] });
+  expect(reviews[0]!.periodStart).toContain("2026-10-01"); expect(reviews[0]!.periodEnd).toContain("2026-10-18");
+  expect(create).not.toHaveBeenCalled(); expect(append).not.toHaveBeenCalled();
+  expect((await service.loadRecord(first.id))?.record.body).toBe("我试着在工作后休息。");
+});
+
+test("a preselected period continues chatting and old period drafts cannot become single journals", async () => {
+  const service = mockAccess.service!;
+  const record = await service.createRecord({ title: "合成预选记录", occurredAt: "2026-10-12", body: "我想回顾的一件事。" });
+  const context = { startDate: "2026-10-01", endDate: "2026-10-18", title: "合成多轮阶段小结", body: "", sourceRecordIds: [record.id] };
+  const request = jest.fn<Promise<AssistantResponse>, [AssistantRequest, AbortSignal]>()
+    .mockResolvedValueOnce({ ...reply, message: "这段时间，有哪次尝试对你有帮助？", question: "可以从一件小事说起。" })
+    .mockResolvedValueOnce({ ...reply, message: "我整理了第一版。", summary: "我发现停下来休息很有帮助。" })
+    .mockResolvedValueOnce({ ...reply, message: "我整理了第二版。", summary: "我发现休息和陪伴都很有帮助。" });
+  render(<AssistantHistoryProvider><AssistantChat authorized journeyId="pause" request={request} journalEntry={{ id: 202, accountId: owner, periodReview: context }} /></AssistantHistoryProvider>);
+  await screen.findByText(/阶段回顾 · 2026-10-01/u);
+  expect(screen.queryByText("选择阶段回顾的手记")).toBeNull(); expect(request).not.toHaveBeenCalled();
+  allowContext(); send("陪我回顾这段时间");
+  await screen.findByText(/这段时间，有哪次尝试对你有帮助/u);
+  expect(screen.queryByRole("button", { name: "预览/保存阶段回顾" })).toBeNull();
+  send("我试着休息，现在整理一下");
+  await screen.findByRole("button", { name: "预览/保存阶段回顾" });
+  expect(JSON.stringify(request.mock.calls[1]![0].records)).toContain("这段时间，有哪次尝试对你有帮助");
+  send("还有朋友的陪伴，帮我更新");
+  await waitFor(() => expect(screen.getAllByRole("button", { name: "预览/保存阶段回顾" })).toHaveLength(2));
+  fireEvent.press(screen.getAllByRole("button", { name: "预览/保存阶段回顾" })[0]!);
+  expect(screen.getByText(/这份阶段回顾的引用范围已结束/u)).toBeTruthy();
+  expect(screen.queryByRole("button", { name: "另存为新手记" })).toBeNull();
+  expect(screen.queryByRole("button", { name: "确认保存阶段回顾" })).toBeNull();
+  expect(await service.listPeriodReviews()).toHaveLength(0);
+});
+
+test("a period selection still loading cannot reopen attachments after starting a new conversation", async () => {
+  const service = mockAccess.service!;
+  let resolve!: (records: Awaited<ReturnType<JournalService["listRecords"]>>) => void;
+  const pending = new Promise<Awaited<ReturnType<JournalService["listRecords"]>>>(done => { resolve = done; });
+  const list = jest.spyOn(service, "listRecords").mockImplementationOnce(() => pending);
+  const context = { startDate: "2026-10-01", endDate: "2026-10-18", title: "合成延迟回顾", body: "留在旧会话的合成小结", sourceRecordIds: [] };
+  const request = jest.fn(async () => reply);
+  render(<AssistantHistoryProvider><AssistantChat authorized journeyId="pause" request={request} journalEntry={{ id: 203, accountId: owner, periodReview: context }} /></AssistantHistoryProvider>);
+  await waitFor(() => expect(list).toHaveBeenCalled());
+  fireEvent.press(screen.getByRole("button", { name: "新对话" }));
+  await act(async () => { resolve([]); await pending; });
+  expect(composerDraft()).toBe("");
+  expect(screen.queryByText("选择阶段回顾的手记")).toBeNull();
+  expect(screen.queryByText("选择内界手记")).toBeNull();
+  expect(screen.queryByRole("button", { name: "重新选择" })).toBeNull();
+  expect(request).not.toHaveBeenCalled();
+});
+
+test.each([
+  ["new journal", "new", false], ["period review", "new", true],
+  ["new journal", "history", false], ["period review", "history", true],
+  ["new journal", "clear", false], ["period review", "clear", true],
+] as const)("a pending %s entry is discarded by %s navigation while history is loading", async (_name, action, period) => {
+  let release!: () => void;
+  const pending = new Promise<void>(resolve => { release = resolve; });
+  const list = mockHistory.list.bind(mockHistory);
+  jest.spyOn(mockHistory, "list").mockImplementationOnce(async account => { await pending; return list(account); });
+  const request = jest.fn(async () => reply);
+  const onJournalEntryApplied = jest.fn();
+  const journalEntry = { id: 204, accountId: owner, ...(period ? { periodReview: {
+    startDate: "2026-10-01", endDate: "2026-10-18", title: "合成待接续阶段小结", body: "旧入口的合成小结", sourceRecordIds: []
+  } } : {}) };
+  render(<AssistantHistoryProvider><AssistantChat authorized journeyId="pause" request={request} journalEntry={journalEntry} onJournalEntryApplied={onJournalEntryApplied} /></AssistantHistoryProvider>);
+  expect(composerDraft()).toBe("");
+  if (action === "clear") await act(async () => { await mockHistory.clearOwner(owner); });
+  else fireEvent.press(screen.getByRole("button", { name: action === "new" ? "新对话" : "对话历史" }));
+  fireEvent.changeText(screen.getByLabelText("聊天消息"), "我在新选择里写下的合成草稿");
+  await act(async () => { release(); await pending; });
+  expect(composerDraft()).toBe("我在新选择里写下的合成草稿");
+  expect(screen.queryByRole("button", { name: "重新选择" })).toBeNull();
+  expect(screen.queryByText("选择阶段回顾的手记")).toBeNull();
+  expect(onJournalEntryApplied).toHaveBeenCalledTimes(1);
+  expect(onJournalEntryApplied).toHaveBeenCalledWith(journalEntry.id);
+  expect(request).not.toHaveBeenCalled();
+});
