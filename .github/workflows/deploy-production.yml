@@ -37,7 +37,7 @@ jobs:
           persist-credentials: false
       - name: Resolve the accepted staging deployment
         id: candidate
-        uses: actions/github-script@v8
+        uses: actions/github-script@v9
         env:
           STAGING_RUN_ID: ${{ inputs.staging_run_id }}
           ACCEPTANCE_NOTES: ${{ inputs.acceptance_notes }}
