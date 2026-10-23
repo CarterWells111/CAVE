@@ -3,16 +3,24 @@ name: Journey restoration after process restart
 tags:
   - pending-device
 ---
-- runFlow: core-flow.yaml
+# Prerequisite: run core-flow, then sign in to a dedicated synthetic test account.
+# Keep that signed-in state and a recent completed local journey; do not clear state here.
+- launchApp
 - stopApp
 - launchApp
 - tapOn: "我的"
 - scrollUntilVisible:
     element:
-      id: "profile-review-open"
+      text: "打开关键事件与阶段回顾"
+    direction: DOWN
+- tapOn: "打开关键事件与阶段回顾"
+- assertVisible: "回顾区间.*"
+- scrollUntilVisible:
+    element:
+      text: "完成旅程回顾.*"
     direction: DOWN
 - tapOn:
-    id: "profile-review-open"
+    text: "完成旅程回顾.*"
     index: 0
 - scrollUntilVisible:
     element:
