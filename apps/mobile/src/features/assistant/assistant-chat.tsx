@@ -24,9 +24,13 @@ import { AssistantAttachmentTray } from "./AssistantAttachmentTray";
 import { journalAssistantError } from "./AssistantJournalPicker";
 import { Button } from "../../core/ui/Button";
 import { AssistantComposerInput, type AssistantComposerInputHandle } from "./AssistantComposerInput";
+import { GROWTH_REVIEW_STARTER, growthReviewStarter, type GrowthReviewEntry } from "./growth-review-entry";
+import { collectGrowthReviewContext, GROWTH_REVIEW_INSTRUCTION, resolveGrowthReviewPeriod, type GrowthReviewPeriod } from "./growth-review-context";
+import { useOptionalJourneyRuntime } from "../journey/runtime/JourneyRuntimeProvider";
+import { normalizeGrowthReviewResponse } from "./growth-review-output";
 import { JOURNAL_ASSISTANT_STARTER, JOURNAL_PERIOD_REVIEW_STARTER, type JournalAssistantEntry } from "./journal-assistant-entry";
 
-type AssistantChatProps = { journeyId: string; authorized: boolean; request?: AssistantRequester; initialDraft?: string; journalEntry?: JournalAssistantEntry; onJournalEntryApplied?(id: number): void; historyRepository?: AssistantHistoryRepository };
+type AssistantChatProps = { journeyId: string; authorized: boolean; request?: AssistantRequester; initialDraft?: string; growthEntry?: GrowthReviewEntry; onGrowthEntryApplied?(id: number): void; journalEntry?: JournalAssistantEntry; onJournalEntryApplied?(id: number): void; historyRepository?: AssistantHistoryRepository };
 
 export function AssistantChat(props: AssistantChatProps) {
   const sharedHistory = useOptionalAssistantHistory();
@@ -48,11 +52,20 @@ function LocalAssistantChat(props: AssistantChatProps & { contextAccess: Assista
   return <AssistantChatView {...props} history={history} />;
 }
 
-function AssistantChatView({ journeyId, authorized, request, initialDraft = "", journalEntry, onJournalEntryApplied, history, contextAccess, shared = false }: AssistantChatProps & { history: AssistantHistoryState; contextAccess: AssistantContextAccess; shared?: boolean }) {
+function AssistantChatView({ journeyId, authorized, request, initialDraft = "", journalEntry, onJournalEntryApplied, growthEntry, onGrowthEntryApplied, historyRepository, history, contextAccess, shared = false }: AssistantChatProps & { history: AssistantHistoryState; contextAccess: AssistantContextAccess; shared?: boolean }) {
   const theme = useTheme();
   const router = useRouter();
   const auth = useOptionalAuth();
   const journalAccess = useOptionalJournalAccess();
+  const runtime = useOptionalJourneyRuntime();
+  const currentAccount = useRef(auth?.accountId);
+  currentAccount.current = auth?.accountId;
+  const [growthReview, setGrowthReview] = useState(false);
+  const [growthConsent, setGrowthConsent] = useState(false);
+  const [growthRoomConsent, setGrowthRoomConsent] = useState(false);
+  const [growthPermission, setGrowthPermission] = useState(false);
+  const pendingGrowth = useRef<AssistantRequest | null>(null);
+  const growthPeriod = useRef<GrowthReviewPeriod | null>(null);
   const insets = useContext(SafeAreaInsetsContext);
   const [sending, setSending] = useState<string | null>(null);
   const [autoApprovalPrompt, setAutoApprovalPrompt] = useState(false);
@@ -78,13 +91,15 @@ function AssistantChatView({ journeyId, authorized, request, initialDraft = "", 
   const entryApplied = useRef(false);
   const appliedJournalEntry = useRef<number | null>(null);
   const pendingJournalRevision = useRef<number | null>(null);
+  const appliedGrowthEntry = useRef<number | null>(null);
+  const pendingGrowthRevision = useRef<number | null>(null);
   useEffect(() => {
-    if (entryApplied.current || journalEntry) return;
+    if (entryApplied.current || journalEntry || growthEntry) return;
     entryApplied.current = true;
     if (shared && (initialDraft || (!history.activeId && !history.draft && history.journeyId !== journeyId))) {
       history.newConversation(journeyId, initialDraft);
     }
-  }, [shared, history, initialDraft, journeyId, journalEntry]);
+  }, [shared, history, initialDraft, journeyId, journalEntry, growthEntry]);
   const title = history.journeyId === "first-overnight" ? "第一次过夜" : history.journeyId;
   const textStyle = { ...theme.typography.body, color: theme.color.text };
   const caption = { ...theme.typography.caption, color: theme.color.textSecondary };
@@ -105,6 +120,12 @@ function AssistantChatView({ journeyId, authorized, request, initialDraft = "", 
     if (attachments.journal.draft?.mode === "period-review" && attachments.journal.selectedIds.length === 0) {
       attachments.setSheet("journal"); setError("请先选择这段时间想回顾的手记。"); return;
     }
+    if (growthReview && !preview && !attachments.kind) {
+      if (!resolveGrowthReviewPeriod(question, turns.length > 0 ? growthPeriod.current : null)) {
+        setError("请在问题中写明回顾范围，例如最近一周、一个月、半年、所有，或最近 10 天。"); return;
+      }
+      if (!growthConsent || !growthRoomConsent) { pendingGrowth.current = payload; setGrowthPermission(true); return; }
+    }
     if (!preview && attachments.privateKind === "journal" && !contextAccess.allowed) {
       pendingAttachment.current = payload;
       setAttachmentPermission(attachments.privateKind);
@@ -116,17 +137,34 @@ function AssistantChatView({ journeyId, authorized, request, initialDraft = "", 
     epoch.current += 1; controller.current?.abort(); controller.current = null; setSending(null); setUsageRevision(value => value + 1);
     setError("已停止等待，草稿已保留。已经发送的内容无法撤回。");
   };
-  const send = async (approved: AssistantRequest, allowJournal = false) => {
+  const send = async (approved: AssistantRequest, allowJournal = false, allowGrowth = false) => {
     if (controller.current) return;
+    const withGrowth = growthReview && !preview && !attachments.kind;
+    if (withGrowth && (!contextAllowed.current || ((!growthConsent || !growthRoomConsent) && !allowGrowth))) return;
     if (attachments.privateKind === "journal" && !contextAccess.allowed && !allowJournal) return;
     let payload = approved;
     const current = ++epoch.current;
     const abort = new AbortController(); controller.current = abort;
-    const withContext = contextAccess.allowed && !preview && !attachments.kind;
-    let loadingContext = withContext || !!attachments.kind;
+    const withContext = contextAccess.allowed && !preview && !attachments.kind && !withGrowth;
+    let loadingContext = withContext || withGrowth || !!attachments.kind;
+    const ownerAccountId = auth?.accountId;
     setSending(payload.question!); setError(null);
     try {
-      if (attachments.kind) {
+      if (withGrowth) {
+        if (!ownerAccountId) throw new Error("growth-review-account-required");
+        const context = await collectGrowthReviewContext({
+          question: payload.question!, ownerAccountId, signal: abort.signal,
+          ...(growthPeriod.current ? { period: growthPeriod.current } : {}),
+          ...(journalAccess?.status === "ready" && journalAccess.accountId === ownerAccountId && journalAccess.service ? { journal: journalAccess.service } : {}),
+          ...((historyRepository ?? runtime?.assistantHistory) ? { assistantHistory: historyRepository ?? runtime!.assistantHistory } : {}),
+          ...(runtime?.reviewHistory ? { reviewHistory: runtime.reviewHistory } : {}),
+          ...(runtime?.roomHistory ? { roomHistory: runtime.roomHistory } : {}),
+          excludeConversationId: history.activeId,
+        });
+        if (epoch.current !== current || !contextAllowed.current || currentAccount.current !== ownerAccountId || abort.signal.aborted) return;
+        growthPeriod.current = context.period;
+        payload = createAttachmentChatRequest({ question: payload.question!, turns, records: context.records, instruction: GROWTH_REVIEW_INSTRUCTION });
+      } else if (attachments.kind) {
         payload = await attachments.prepare(payload.question!);
         if (epoch.current !== current || abort.signal.aborted) return;
         if (attachments.privateKind === "journal" && !contextAllowed.current) return;
@@ -155,8 +193,8 @@ function AssistantChatView({ journeyId, authorized, request, initialDraft = "", 
         },
       }));
       const response = await requester(payload, abort.signal);
-      if (epoch.current !== current) return;
-      const displayed = attachments.accept(payload, response);
+      if (epoch.current !== current || currentAccount.current !== ownerAccountId) return;
+      const displayed = attachments.accept(payload, withGrowth ? normalizeGrowthReviewResponse(response) : response);
       history.appendTurn(approved.question!, displayed);
       input.current?.clear({ emitChange: false });
     } catch (caught) {
@@ -166,10 +204,20 @@ function AssistantChatView({ journeyId, authorized, request, initialDraft = "", 
   };
   const cancelPending = useCallback(() => {
     epoch.current += 1; controller.current?.abort(); controller.current = null;
-    pendingAttachment.current = null;
+    pendingAttachment.current = null; pendingGrowth.current = null; setGrowthPermission(false);
     setSending(null); setAutoApprovalPrompt(false); setAttachmentPermission(null); setError(null);
   }, []);
-  const leaveConversation = useCallback(() => { cancelPending(); attachmentsRef.current.clear(); }, [cancelPending]);
+  useEffect(() => {
+    const ownerAccountId = auth?.accountId;
+    if (!ownerAccountId || !growthReview) return;
+    return runtime?.roomHistory?.subscribeToOwnerClear?.(ownerAccountId, () => {
+      if (!controller.current && !pendingGrowth.current) return;
+      cancelPending(); setError("房间历史已清除，已停止本次回顾，草稿已保留。已经发送的内容无法撤回。");
+    });
+  }, [auth?.accountId, runtime?.roomHistory, growthReview, cancelPending]);
+  const leaveConversation = useCallback(() => {
+    cancelPending(); attachmentsRef.current.clear(); setGrowthReview(false); setGrowthConsent(false); setGrowthRoomConsent(false); growthPeriod.current = null;
+  }, [cancelPending]);
   const previousConversation = useRef(history.conversationRevision);
   useLayoutEffect(() => {
     if (previousConversation.current === history.conversationRevision) return;
@@ -184,8 +232,10 @@ function AssistantChatView({ journeyId, authorized, request, initialDraft = "", 
     onJournalEntryApplied?.(journalEntry.id);
   }, [journalEntry, onJournalEntryApplied]);
   const abandonConversation = useCallback(() => {
-    discardPendingJournalEntry(); leaveConversation();
-  }, [discardPendingJournalEntry, leaveConversation]);
+    discardPendingJournalEntry();
+    if (growthEntry && pendingGrowthRevision.current !== null) { pendingGrowthRevision.current = null; onGrowthEntryApplied?.(growthEntry.id); }
+    leaveConversation();
+  }, [discardPendingJournalEntry, growthEntry, onGrowthEntryApplied, leaveConversation]);
   useEffect(() => history.subscribeToClear(abandonConversation), [history.subscribeToClear, abandonConversation]);
   useEffect(() => {
     if (!journalEntry || journalEntry.accountId !== auth?.accountId || history.loading
@@ -206,6 +256,18 @@ function AssistantChatView({ journeyId, authorized, request, initialDraft = "", 
     input.current?.replaceText(journalEntry.periodReview ? JOURNAL_PERIOD_REVIEW_STARTER : JOURNAL_ASSISTANT_STARTER, { focus: !journalEntry.periodReview || journalEntry.periodReview.sourceRecordIds.length > 0 });
     onJournalEntryApplied?.(journalEntry.id);
   }, [history.conversationRevision, journalEntry, auth?.accountId, onJournalEntryApplied]);
+  useEffect(() => {
+    if (!growthEntry || growthEntry.accountId !== auth?.accountId || history.loading || appliedGrowthEntry.current === growthEntry.id) return;
+    appliedGrowthEntry.current = growthEntry.id; entryApplied.current = true;
+    pendingGrowthRevision.current = history.conversationRevision + 1;
+    leaveConversation(); history.newConversation(journeyId, growthEntry.starter ?? (growthEntry.range ? growthReviewStarter(growthEntry.range) : GROWTH_REVIEW_STARTER));
+  }, [growthEntry, auth?.accountId, history, journeyId, leaveConversation]);
+  useEffect(() => {
+    if (!growthEntry || pendingGrowthRevision.current === null || history.conversationRevision < pendingGrowthRevision.current || growthEntry.accountId !== auth?.accountId) return;
+    pendingGrowthRevision.current = null; setGrowthReview(true);
+    input.current?.replaceText(growthEntry.starter ?? (growthEntry.range ? growthReviewStarter(growthEntry.range) : GROWTH_REVIEW_STARTER), { focus: true });
+    onGrowthEntryApplied?.(growthEntry.id);
+  }, [growthEntry, history.conversationRevision, auth?.accountId, onGrowthEntryApplied]);
   return <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={{ flex: 1, backgroundColor: theme.color.background, paddingTop: insets?.top ?? 0 }}>
     <View style={{ flex: 1, width: "100%", maxWidth: 760, alignSelf: "center" }}>
       <View style={{ paddingHorizontal: 24, paddingVertical: 16, flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
@@ -223,6 +285,7 @@ function AssistantChatView({ journeyId, authorized, request, initialDraft = "", 
             <HelpText>点右上角加号直接开始新对话，点时钟查看历史，点击继续聊天，长按删除或调整顺序。</HelpText>
             <HelpText>输入框旁的加号可以选择一篇手记，或新建草稿；「带我写一次日记」会同时选中新建手记。AI 先通过提问了解事情，再整理和优化表达；你也可以随时说「现在生成」。</HelpText>
             <HelpText>选好手记后可点「重新选择」调整。生成后点击回答下方的「预览/保存手记」，只有确认保存才写入我的手记。</HelpText>
+            <HelpText>从成长记录进入会预填所选区间的可修改问题，点击发送并允许后才读取本账号手记、留存 AI 对话、本机房间活动与本人回答、已可见的共同报告和已完成旅程回顾摘要。房间只覆盖本机已留存的历史；首次看到旧房间的时间不代表创建或完成时间，未留存或已删除的旧记录无法补回。旧 AI 对话可能没有逐条时间，资料过多时会说明筛选和截短。</HelpText>
             <HelpText>从「回顾一段时间」进入，可以选择多篇手记一起回顾，生成后预览并确认保存为阶段回顾。</HelpText>
             <HelpText>「优化内容」修改手记正文；「回顾记忆」沿用「回顾一段时间」的问题，整理后来的变化，确认后追加为所选手记的后续。新对话会清空附件。</HelpText>
           </PageHelp>
@@ -260,10 +323,11 @@ function AssistantChatView({ journeyId, authorized, request, initialDraft = "", 
             if (!input.current?.getText().trim()) input.current?.replaceText("我想回顾这篇手记之后的变化，请先问我一个简单的问题，帮我整理一条后续补充。", { focus: true });
             else input.current?.focus();
           }} />
+          {growthReview ? <Text style={caption}>成长回顾 · 可修改问题中的时间范围</Text> : null}
           <AssistantComposerInput ref={input} accessibilityLabel="聊天消息" initialValue={draft} replacement={{ revision: inputRevision, text: draft }} onChangeText={value => { setDraft(value); setError(null); }} editable={sending === null} multiline maxLength={1000} placeholder="说说你想聊的事…" placeholderTextColor={theme.color.textSecondary} style={{ ...textStyle, minHeight: 56, maxHeight: 160, textAlignVertical: "top", padding: 4 }} />
           <View style={{ flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: 8 }}>
             <IconTextAction icon="add-outline" iconOnly label="添加聊天附件" disabled={sending !== null} onPress={() => { Keyboard.dismiss(); attachments.setSheet("menu"); }} />
-            {!preview ? <Pressable accessibilityRole="switch" accessibilityLabel="帮我批准" accessibilityState={{ checked: contextAccess.allowed }} accessibilityHint="允许访问问题涉及的日记和旅程内容；选择保留到退出 App，可随时关闭。" onPress={() => { if (contextAccess.allowed) { contextAccess.setAllowed(false); cancelPending(); } else { Keyboard.dismiss(); setAutoApprovalPrompt(true); } }} style={({ pressed }) => ({ minHeight: 44, paddingHorizontal: 12, borderRadius: 16, flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: pressed ? theme.color.surfacePressed : contextAccess.allowed ? theme.color.surfaceAccent : theme.color.surface, borderWidth: 1, borderColor: contextAccess.allowed ? theme.color.primary : theme.color.border })}>
+            {!preview ? <Pressable accessibilityRole="switch" accessibilityLabel="帮我批准" accessibilityState={{ checked: contextAccess.allowed }} accessibilityHint="允许访问问题涉及的日记和旅程内容；选择保留到退出 App，可随时关闭。" onPress={() => { if (contextAccess.allowed) { contextAccess.setAllowed(false); setGrowthConsent(false); setGrowthRoomConsent(false); cancelPending(); } else { Keyboard.dismiss(); setAutoApprovalPrompt(true); } }} style={({ pressed }) => ({ minHeight: 44, paddingHorizontal: 12, borderRadius: 16, flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: pressed ? theme.color.surfacePressed : contextAccess.allowed ? theme.color.surfaceAccent : theme.color.surface, borderWidth: 1, borderColor: contextAccess.allowed ? theme.color.primary : theme.color.border })}>
               <Feather name={contextAccess.allowed ? "check-circle" : "book-open"} size={16} color={contextAccess.allowed ? theme.color.primary : theme.color.textSecondary} />
               <Text style={{ ...caption, color: contextAccess.allowed ? theme.color.primary : theme.color.textSecondary }}>帮我批准</Text>
             </Pressable> : null}
@@ -274,9 +338,19 @@ function AssistantChatView({ journeyId, authorized, request, initialDraft = "", 
     </View>
     <AssistantPermissionDialog
       visible={autoApprovalPrompt}
-      message="允许在本次使用期间访问问题涉及的日记和旅程内容吗？"
-      onAllow={() => { contextAccess.setAllowed(true); setAutoApprovalPrompt(false); }}
+      message={growthReview ? "允许 AI 使用所选时间范围内的本账号手记、留存 AI 对话、本机房间活动及本人回答、已可见的共同报告和已完成旅程回顾摘要吗？" : "允许在本次使用期间访问问题涉及的日记和旅程内容吗？"}
+      onAllow={() => { contextAccess.setAllowed(true); if (growthReview) { setGrowthConsent(true); setGrowthRoomConsent(true); } setAutoApprovalPrompt(false); }}
       onCancel={() => setAutoApprovalPrompt(false)}
+    />
+    <AssistantPermissionDialog
+      visible={growthPermission}
+      message="允许 AI 使用所选时间范围内的本账号手记、留存 AI 对话、本机房间活动及本人回答、已可见的共同报告和已完成旅程回顾摘要吗？"
+      onAllow={() => {
+        const approved = pendingGrowth.current; pendingGrowth.current = null; setGrowthPermission(false);
+        contextAllowed.current = true; contextAccess.setAllowed(true); setGrowthConsent(true); setGrowthRoomConsent(true);
+        if (approved) void send(approved, false, true);
+      }}
+      onCancel={() => { pendingGrowth.current = null; setGrowthPermission(false); }}
     />
     <AssistantPermissionDialog
       visible={attachmentPermission !== null}

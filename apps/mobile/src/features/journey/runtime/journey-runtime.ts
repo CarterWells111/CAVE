@@ -33,6 +33,8 @@ import {
 import type { AssistantHistoryRepository } from "../../assistant/history/assistant-history-repository";
 import { InMemoryAssistantHistoryRepository } from "../../assistant/history/in-memory-assistant-history-repository";
 import { JournalService } from "../../journal/application/journal-service";
+import type { RoomHistoryRepository } from "../../rooms/history/room-history-repository";
+import { InMemoryRoomHistoryRepository } from "../../rooms/history/in-memory-room-history-repository";
 import { InMemoryJournalRepository } from "../../journal/infrastructure/in-memory-journal-repository";
 import type { JournalRepository } from "../../journal/infrastructure/journal-repository";
 import {
@@ -75,6 +77,7 @@ export type JourneyRuntime = {
   appearancePreferences: AppearancePreferencesRepository;
   journal: JournalRepository;
   assistantHistory: AssistantHistoryRepository;
+  roomHistory: RoomHistoryRepository;
   createJournalService(ownerAccountId: string): JournalService;
   privacySettings: PrivacySettingsRepository;
   deleteAllData(): Promise<void>;
@@ -100,6 +103,7 @@ type ComposeDependencies = RuntimeDependencies & {
   appearancePreferences?: AppearancePreferencesRepository;
   journal?: JournalRepository;
   assistantHistory?: AssistantHistoryRepository;
+  roomHistory?: RoomHistoryRepository;
   privacySettings?: PrivacySettingsRepository;
   deleteStorage?: () => Promise<void>;
   deleteAdditionalStorage?: () => Promise<void>;
@@ -132,6 +136,7 @@ export function composeJourneyRuntime({
   appearancePreferences = new InMemoryAppearancePreferencesRepository(),
   journal = new InMemoryJournalRepository(),
   assistantHistory = new InMemoryAssistantHistoryRepository(),
+  roomHistory = new InMemoryRoomHistoryRepository(),
   privacySettings = new InMemoryPrivacySettingsRepository(),
   saveVersionedDraft,
   completeJourney,
@@ -167,10 +172,12 @@ export function composeJourneyRuntime({
   );
   const deleteAllData = async () => {
     if (deleteStorage !== undefined) {
-      await deleteStorage();
+      if (roomHistory.withStorageDeletion) await roomHistory.withStorageDeletion(deleteStorage);
+      else { await roomHistory.clearAll(); await deleteStorage(); }
       service.adoptCompletedJourney();
       return;
     }
+    await roomHistory.clearAll();
     const savedCards = await cards.listMetadata();
     await Promise.all(savedCards.map(({ id }) => cards.delete(id)));
     await shellState.clear();
@@ -217,7 +224,7 @@ export function composeJourneyRuntime({
     }
     service.adoptPersistedJourney(draft);
   };
-  return { mode, persistence, journalPersistence, service, controller, drafts: versionedDrafts, cards, preferenceCards, shellState, reviewHistory, adultDeclaration, appearancePreferences, journal, assistantHistory, createJournalService, privacySettings, deleteAllData, replaceActiveReview, branchFromReview };
+  return { mode, persistence, journalPersistence, service, controller, drafts: versionedDrafts, cards, preferenceCards, shellState, reviewHistory, adultDeclaration, appearancePreferences, journal, assistantHistory, roomHistory, createJournalService, privacySettings, deleteAllData, replaceActiveReview, branchFromReview };
 }
 
 export async function createJourneyRuntime({

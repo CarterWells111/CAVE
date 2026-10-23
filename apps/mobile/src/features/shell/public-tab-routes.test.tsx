@@ -14,6 +14,10 @@ let mockRuntime: unknown | null = null;
 
 jest.mock("expo-router", () => ({
   useLocalSearchParams: () => ({}),
+  useFocusEffect: (callback: () => void | (() => void)) => {
+    const { useEffect } = jest.requireActual<typeof import("react")>("react");
+    useEffect(callback, [callback]);
+  },
   Redirect: ({ href }: { href: string }) => <MockText>{href}</MockText>,
   useRouter: () => ({ push: mockPush }),
 }));
@@ -45,11 +49,13 @@ test("legacy reviews redirects to journal without reading private shell state", 
   expect(mockShellStateLoad).not.toHaveBeenCalled();
 });
 
-test("shows truthful public profile empty states without archive reads", () => {
+test("shows signed-out growth entry without archive reads", () => {
   render(<ProfileRoute />);
 
-  expect(screen.getByText("还没有沟通卡")).toBeTruthy();
-  expect(screen.getByText("还没有历史回顾")).toBeTruthy();
+  expect(screen.getByText("登录后，在这里查看我的成长记录。")).toBeTruthy();
+  expect(screen.getByRole("button", { name: "打开关键事件与阶段回顾" })).toBeTruthy();
+  expect(screen.queryByText("还没有沟通卡")).toBeNull();
+  expect(screen.queryByText("还没有历史回顾")).toBeNull();
   expect(mockCardsListMetadata).not.toHaveBeenCalled();
   expect(mockReviewsListMetadata).not.toHaveBeenCalled();
 

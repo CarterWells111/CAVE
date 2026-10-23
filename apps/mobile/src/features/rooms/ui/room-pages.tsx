@@ -79,9 +79,10 @@ export function MyRoomsPage({ api }: { api: RoomApi }) {
   useFocusEffect(useCallback(() => { void load(); }, [load]));
   return <Screen contentSafeAreaTop>
     <View style={{ gap: theme.space.md }}>
-      <RoomHeader title="我的房间" help={<HelpText>这里保留已加入的房间。打开房间可继续作答、等待对方或查看共同报告；刷新可读取最新状态。</HelpText>} />
+      <RoomHeader title="我的房间" help={<HelpText>这里只显示当前仍可打开的房间。打开可继续作答、等待对方或查看共同报告，刷新可读取最新状态。自己的房间活动与已保存回答会留在本机历史中，供授权后的 AI 成长回顾使用；终止房间不会自动清除这些本机历史。</HelpText>} />
       <Button label="新建房间" onPress={() => router.push("/rooms/new")} />
       <Feedback message={error} />
+      <Feedback message={api.historyWarning ?? null} />
       {!loading && !error && rooms.length === 0 ? <Text selectable style={{ ...theme.typography.body, color: theme.color.textSecondary }}>还没有房间。可以新建一个，先独立作答，再邀请伴侣加入。</Text> : null}
       {rooms.map((room) => <ActionRow key={room.id} title={ROOM_SCENARIOS.find((scenario) => scenario.id === room.scenarioId)?.title ?? "房间"} subtitle={room.status === "ended" ? "已终止" : room.status === "reported" ? "查看报告" : room.status === "ready" ? "待生成报告" : room.participantCount < 2 ? "待加入" : room.myCompleted ? "等待对方完成" : "继续作答"} onPress={() => router.push({ pathname: "/rooms/[roomId]", params: { roomId: room.id } })} />)}
       <Text accessibilityRole="header" style={{ ...theme.typography.cardTitle, color: theme.color.text }}>房间工具</Text>
@@ -234,8 +235,10 @@ export function RoomDetailPage({ api, roomId, onExport, onDiscuss, onRecord }: {
       <RoomHeader title={scenario?.title ?? "双人房间"} help={<>
         <HelpText>你们分别作答，原文只给本人查看。每题可跳过，双方完成并分别同意后才可生成共同报告。</HelpText>
         <HelpText>房间工具可刷新状态、邀请对方或终止房间。报告下方的工具可导出图片、带入 AI 草稿或手记草稿。</HelpText>
+        <HelpText>自己的操作、已保存回答及获授权可见的报告会保留在本机房间历史中，终止房间后仍可用于成长回顾。AI 读取前需要你的授权；清除本机数据或删除账号会清除这些历史。较早房间的首次查看时间不代表原填写时间。</HelpText>
       </>} />
       <Feedback message={loadError} />
+      <Feedback message={api.historyWarning ?? null} />
       {!room ? <TextAction label="刷新状态" loading={loading} onPress={() => { void load(); }} /> : null}
       {room ? <>
         <Text selectable style={{ ...theme.typography.body, color: theme.color.textSecondary }}>我的进度：{room.myCompleted ? "已完成" : `${ROOM_QUESTION_IDS.filter((id) => room.myAnswers[id]?.trim()).length}/4 题已保存`} · 对方：{room.participantCount < 2 ? "未加入" : room.partnerCompleted ? "已完成" : "进行中"}</Text>

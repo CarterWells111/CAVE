@@ -20,6 +20,7 @@ export default function DeleteAccountRoute() {
     onDeleteAccount={async (deletionGrant, idempotencyKey) => {
       if (accountDeletion === null || accountDeletion.accountId !== auth.accountId) throw new Error("assistant-history-deletion-unavailable");
       await accountDeletion.clearCurrentAccountAssistantHistory();
+      await accountDeletion.clearCurrentAccountRoomHistory();
       await auth.deleteAccount(deletionGrant, idempotencyKey);
     }}
     onRequestChallenge={auth.requestAccountDeletionChallenge}

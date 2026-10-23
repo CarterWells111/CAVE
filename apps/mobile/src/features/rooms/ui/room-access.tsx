@@ -1,5 +1,5 @@
 import { useRouter } from "expo-router";
-import { type PropsWithChildren, useMemo, useState } from "react";
+import { type PropsWithChildren, useEffect, useMemo, useRef, useState } from "react";
 import { Text, View } from "react-native";
 
 import { useTheme } from "../../../core/design/theme-provider";
@@ -8,16 +8,32 @@ import { Screen } from "../../../core/ui/Screen";
 import { HelpText, PageHeader } from "../../../core/ui/page-header";
 import { useAuth } from "../../auth/runtime/AuthProvider";
 import { getGatewayUrl } from "../../../config/gateway";
+import { createRecordedRoomApi } from "../infrastructure/recorded-room-api";
+import { useOptionalJourneyRuntime } from "../../journey/runtime/JourneyRuntimeProvider";
 import { useAdultDeclaration } from "../../journey/runtime/JourneyRuntimeProvider";
 import type { RoomApi } from "../domain/room";
 import { createRoomApiClient } from "../infrastructure/room-api-client";
 
 export function useRoomApi(): RoomApi | null {
   const auth = useAuth();
+  const runtime = useOptionalJourneyRuntime();
   const accountId = auth.accountId;
-  return useMemo(() => accountId && auth.status === "signedIn"
-    ? createRoomApiClient({ baseUrl: getGatewayUrl(), getAccessToken: () => auth.getAssistantAccessToken(accountId) })
-    : null, [accountId, auth]);
+  const authRef = useRef(auth);
+  authRef.current = auth;
+  const capture = useMemo(() => {
+    if (!accountId || auth.status !== "signedIn") return null;
+    const api = createRoomApiClient({
+      baseUrl: getGatewayUrl(),
+      getAccessToken: () => authRef.current.getAssistantAccessToken(accountId),
+    });
+    if (!runtime?.roomHistory) return { api, dispose() {} };
+    return createRecordedRoomApi({
+      api, repository: runtime.roomHistory, ownerAccountId: accountId,
+      isCurrentAccount: () => authRef.current.accountId === accountId && authRef.current.status === "signedIn",
+    });
+  }, [accountId, auth.status, runtime?.roomHistory]);
+  useEffect(() => () => capture?.dispose(), [capture]);
+  return capture?.api ?? null;
 }
 
 export function RoomAccess({ children, returnTo }: PropsWithChildren<{ returnTo: string }>) {

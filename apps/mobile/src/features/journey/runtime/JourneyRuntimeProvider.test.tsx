@@ -537,8 +537,8 @@ test("keeps every public tab and settings usable without initializing private st
   expect(screen.getByRole("header", { name: "我的" })).toBeTruthy();
   expect(screen.getByRole("header", { name: "设置" })).toBeTruthy();
   expect(screen.getByRole("header", { name: "账号与隐私" })).toBeTruthy();
-  expect(screen.getByText("还没有沟通卡")).toBeTruthy();
-  expect(screen.getByText("还没有历史回顾")).toBeTruthy();
+  expect(screen.getByRole("button", { name: "打开关键事件与阶段回顾" })).toBeTruthy();
+  expect(screen.queryByRole("header", { name: "我的卡片" })).toBeNull();
   fireEvent.press(screen.getByRole("button", { name: "成年声明后开始聊天" }));
   expect(mockRouter.push).toHaveBeenCalledWith({ pathname: "/journey/adult-gate", params: { entry: "ai" } });
   fireEvent.press(screen.getByRole("button", { name: "外观，跟随系统" }));

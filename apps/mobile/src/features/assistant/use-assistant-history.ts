@@ -120,7 +120,7 @@ export function useAssistantHistory({ repository, ownerAccountId, journeyId, ini
       journeyId: previous?.journeyId ?? freshJourneyId,
       createdAt: previous?.createdAt ?? now,
       updatedAt: now,
-      turns: [...(previous?.turns ?? []), { question, response }],
+      turns: [...(previous?.turns ?? []), { question, response, createdAt: now }],
       draft: "",
     };
     publish(previous ? records.current.map(item => item.id === conversation.id ? conversation : item) : [conversation, ...records.current]);

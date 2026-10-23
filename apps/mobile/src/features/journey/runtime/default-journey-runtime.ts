@@ -19,6 +19,7 @@ import { SqlLocalDataRepository } from "../../../core/storage/local-data-reposit
 import type { JourneyDraft } from "../domain/types";
 import { SqlJourneyTransactionRepository } from "../infrastructure/sql-journey-transaction-repository";
 import { SqlAssistantHistoryRepository } from "../../assistant/history/sql-assistant-history-repository";
+import { SqlRoomHistoryRepository } from "../../rooms/history/sql-room-history-repository";
 import { SqlJournalRepository } from "../../journal/infrastructure/sql-journal-repository";
 import type { AccountProfileRepository } from "../../account/infrastructure/account-profile-repository";
 import { createExpoAccountProfileRepository } from "../../account/infrastructure/expo-account-profile-dependencies";
@@ -86,6 +87,7 @@ export function createComposedJourneyRuntime({
         appearancePreferences: new SqlAppearancePreferencesRepository(database),
         journal: new SqlJournalRepository(database),
         assistantHistory: new SqlAssistantHistoryRepository(database),
+        roomHistory: new SqlRoomHistoryRepository(database),
         privacySettings: new SqlLocalDataRepository(database),
         saveVersionedDraft: (draft, active) => transactions.saveActive(draft, active),
         completeJourney: (transaction) => transactions.complete(transaction),

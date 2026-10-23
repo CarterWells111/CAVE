@@ -33,10 +33,13 @@ test("keeps session-only routes public and protects only private detail routes",
   expect(existsSync(resolve(__dirname, "../../../app/journal/index.tsx"))).toBe(false);
 });
 
-test("keeps metadata lists in My and avoids repository reads on the map", () => {
+test("loads growth metadata in My and avoids archive reads on the map", () => {
   expect(source("(tabs)/journey.tsx")).not.toContain("cards.listMetadata()");
-  expect(source("(tabs)/profile.tsx")).toContain("cards.listMetadata()");
-  expect(source("(tabs)/profile.tsx")).toContain("reviewHistory.listMetadata()");
+  expect(source("(tabs)/profile.tsx")).toContain("useGrowthRecords()");
+  const growth = source("../src/features/growth/use-growth-records.ts");
+  expect(growth).toContain("reviewHistory.listMetadata()");
+  expect(growth).not.toContain("reviewHistory.loadDetail(");
+  expect(source("(tabs)/profile.tsx")).not.toContain("cards.listMetadata()");
   expect(source("(tabs)/journey.tsx")).not.toContain("cards.list()");
   expect(source("(tabs)/profile.tsx")).not.toContain("cards.list()");
   expect(source("(tabs)/reviews.tsx")).not.toContain("reviewHistory.listMetadata()");
@@ -84,7 +87,7 @@ test("opens standalone practice and saved-card details without journey prerequis
   expect(source("practice/session.tsx")).toContain("openJourneySources");
   expect(source("(tabs)/journey.tsx")).toContain('router.push("/reviews/topic/body")');
   expect(source("reviews/topic/[id].tsx")).toContain('storageMode="session-only"');
-  expect(source("(tabs)/profile.tsx")).toContain("`/cards/${id}`");
+  expect(source("(tabs)/profile.tsx")).toContain('router.push("/growth")');
   expect(source("cards/[id].tsx")).toContain("runtime.cards.load(id)");
   expect(source("cards/[id].tsx")).toContain('router.replace("/(tabs)/profile")');
   expect(source("reviews/[id].tsx")).toContain('router.replace("/(tabs)/profile")');

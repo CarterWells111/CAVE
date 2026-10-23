@@ -268,3 +268,19 @@ test("history opens its own route with usage help and returns to the current dra
 });
 
 function composerDraft() { return screen.UNSAFE_getByType(AssistantComposerInput).props.initialValue as string; }
+
+test("a newly completed AI turn persists its own timestamp", async () => {
+  const request = jest.fn(async () => reply("已记录这次交流"));
+  const before = Date.now();
+  render(<HistoryHarness request={request} />);
+  await waitFor(() => expect(screen.getByLabelText("聊天消息")).toBeTruthy());
+  await sendMessage("今天想慢一点", "已记录这次交流");
+  await waitFor(async () => {
+    const saved = await mockHistoryRepository.list(mockAccountId);
+    expect(saved[0]?.turns[0]?.createdAt).toBeDefined();
+  });
+  const saved = await mockHistoryRepository.list(mockAccountId);
+  const createdAt = saved[0]!.turns[0]!.createdAt!;
+  expect(Date.parse(createdAt)).toBeGreaterThanOrEqual(before);
+  expect(Date.parse(createdAt)).toBeLessThanOrEqual(Date.now());
+});

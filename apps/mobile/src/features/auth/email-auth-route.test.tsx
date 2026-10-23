@@ -165,3 +165,10 @@ test.each(["password", "registration"] as const)("returns to the journal after %
   }
   await waitFor(() => expect(mockReplace).toHaveBeenCalledWith({ pathname: "/journal/new" }));
 });
+
+test("returns to the growth summary when sign in finishes", async () => {
+  mockReturnTo = "/growth";
+  mockAuthStatus = "signedIn";
+  render(<ThemeProvider repository={new InMemoryAppearancePreferencesRepository()}><EmailAuthRoute /></ThemeProvider>);
+  await waitFor(() => expect(mockReplace).toHaveBeenCalledWith("/growth"));
+});

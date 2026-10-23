@@ -7,7 +7,7 @@ import { getGatewayUrl } from "../../config/gateway";
 import { useOptionalAuth } from "../auth/runtime/AuthProvider";
 import { fetchAssistantUsage } from "./assistant-client";
 
-export const usagePercent = (used: number, limit: number | null) => limit === null ? null : Math.min(100, Math.round(used / limit * 100));
+export const remainingUsagePercent = (used: number, limit: number | null) => limit === null ? null : Math.max(0, Math.min(100, Math.round((limit - used) / limit * 100)));
 export function AssistantUsageMeter({ revision, preview, loadUsage }: { revision: number; preview: boolean; loadUsage?: (signal: AbortSignal) => Promise<AssistantUsage> }) {
   const theme = useTheme();
   const auth = useOptionalAuth();
@@ -35,16 +35,16 @@ export function AssistantUsageMeter({ revision, preview, loadUsage }: { revision
     const timer = setInterval(reload, 60000);
     return () => { subscription.remove(); clearInterval(timer); };
   }, [preview, accountId, reload]);
-  const percentages = usage ? [usagePercent(usage.hour.used, usage.hour.limit), usagePercent(usage.day.used, usage.day.limit)].filter((value): value is number => value !== null) : [];
-  const percent = percentages.length ? Math.max(...percentages) : null;
-  const color = percent === null ? theme.color.textSecondary : percent >= 100 ? theme.color.danger : theme.color.primary;
-  const subtitle = preview ? "模拟模式，不消耗云端额度" : !accountId && !loadUsage ? "登录后查看用量" : loading ? "正在更新用量" : failed ? "暂时无法获取用量" : percent === null ? "额度待设置" : `已使用 ${percent}%`;
+  const percentages = usage ? [remainingUsagePercent(usage.hour.used, usage.hour.limit), remainingUsagePercent(usage.day.used, usage.day.limit)].filter((value): value is number => value !== null) : [];
+  const percent = percentages.length ? Math.min(...percentages) : null;
+  const color = percent === null ? theme.color.textSecondary : percent === 0 ? theme.color.danger : theme.color.primary;
+  const subtitle = preview ? "模拟模式，不消耗云端额度" : !accountId && !loadUsage ? "登录后查看用量" : loading ? "正在更新用量" : failed ? "暂时无法获取用量" : percent === null ? "额度待设置" : `剩余 ${percent}%`;
   return <>
     <Pressable accessibilityRole="button" accessibilityLabel={`查看 AI 用量，${subtitle}`} onPress={() => { setOpen(true); reload(); }} style={{ minWidth: 44, minHeight: 44, justifyContent: "center", alignItems: "center" }}>
       <View testID="usage-gauge" style={{ width: 32, height: 19, borderTopLeftRadius: 20, borderTopRightRadius: 20, borderWidth: 3, borderBottomWidth: 0, borderColor: color, overflow: "hidden" }}>
         <View style={{ position: "absolute", bottom: -12, left: 12, height: 26, width: 2, transform: [{ rotate: `${-85 + (percent ?? 0) * 1.7}deg` }] }}><View style={{ height: 14, width: 2, backgroundColor: color }} /></View>
       </View>
-      <Text style={{ fontSize: 10, lineHeight: 14, color }}>{percent === null ? "—" : `${percent}%`}</Text>
+      <Text style={{ fontSize: 10, lineHeight: 14, color }}>{percent === null ? "—" : `剩余 ${percent}%`}</Text>
     </Pressable>
     <Modal transparent visible={open} animationType="fade" onRequestClose={() => setOpen(false)}>
       <View style={{ flex: 1, justifyContent: "center", padding: 24, backgroundColor: "#00000099" }}>
@@ -53,14 +53,14 @@ export function AssistantUsageMeter({ revision, preview, loadUsage }: { revision
           <ScrollView contentContainerStyle={{ gap: 20 }}>
             <Text accessibilityLiveRegion="polite" style={{ ...theme.typography.caption, color: theme.color.textSecondary }}>{subtitle}</Text>
             {usage && (["hour", "day"] as const).map(key => {
-              const window = usage[key]; const value = usagePercent(window.used, window.limit);
+              const window = usage[key]; const value = remainingUsagePercent(window.used, window.limit);
               return <View key={key} style={{ gap: 8 }}>
-                <Text style={{ ...theme.typography.body, color: theme.color.text }}>{key === "hour" ? "每小时" : "每天"} · {value === null ? "额度待设置" : `${value}%`}</Text>
-                <View style={{ height: 6, borderRadius: 3, backgroundColor: theme.color.border }}><View style={{ height: 6, width: `${value ?? 0}%`, borderRadius: 3, backgroundColor: value === 100 ? theme.color.danger : theme.color.primary }} /></View>
-                <Text style={{ ...theme.typography.caption, color: theme.color.textSecondary }}>已用 {window.used} 次{window.limit === null ? "" : ` / ${window.limit} 次`} · {new Date(window.resetsAt).toLocaleString()} 重置</Text>
+                <Text style={{ ...theme.typography.body, color: theme.color.text }}>{key === "hour" ? "每小时" : "每天"} · {value === null ? "额度待设置" : `剩余 ${value}%`}</Text>
+                <View style={{ height: 6, borderRadius: 3, backgroundColor: theme.color.border }}><View style={{ height: 6, width: `${value ?? 0}%`, borderRadius: 3, backgroundColor: value === 0 ? theme.color.danger : theme.color.primary }} /></View>
+                <Text style={{ ...theme.typography.caption, color: theme.color.textSecondary }}>{window.limit === null ? `已用 ${window.used} 次` : `剩余 ${Math.max(0, window.limit - window.used)} 次 / ${window.limit} 次`} · {new Date(window.resetsAt).toLocaleString()} 重置</Text>
               </View>;
             })}
-            <Text style={{ ...theme.typography.caption, color: theme.color.textSecondary }}>按账号统计，多个设备共用。每次确认后进入云端 AI 处理计 1 次；处理开始后的失败或停止等待也会计入。取消发送和本机模拟不计入。按 UTC 整点与零点重置，上方时间显示为你的本地时间。</Text>
+            <Text style={{ ...theme.typography.caption, color: theme.color.textSecondary }}>表盘显示小时与每日额度中较低的剩余比例。按账号统计，多个设备共用。每次确认后进入云端 AI 处理计 1 次；处理开始后的失败或停止等待也会计入。取消发送和本机模拟不计入。按 UTC 整点与零点重置，上方时间显示为你的本地时间。</Text>
           </ScrollView>
           {failed ? <SecondaryButton label="重新获取用量" onPress={reload} /> : null}
           <SecondaryButton label="知道了，继续聊" onPress={() => setOpen(false)} />

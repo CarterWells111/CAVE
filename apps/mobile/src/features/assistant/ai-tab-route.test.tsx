@@ -4,6 +4,7 @@ import { AssistantHistoryProvider } from "./AssistantHistoryProvider";
 import { AssistantComposerInput } from "./AssistantComposerInput";
 import AiTabRoute from "../../../app/(tabs)/ai";
 import { stageReportHandoff, takeReportHandoff } from "../rooms/application/report-handoff";
+import { GROWTH_REVIEW_STARTER, growthReviewStarter, stageGrowthReviewEntry, takeGrowthReviewEntry } from "./growth-review-entry";
 import { JOURNAL_ASSISTANT_STARTER, stageJournalAssistantEntry, takeJournalAssistantEntry } from "./journal-assistant-entry";
 
 let mockAccountId: string | undefined = "synthetic-account-a";
@@ -41,6 +42,7 @@ beforeEach(() => {
   mockFocused = true;
   process.env.EXPO_PUBLIC_ASSISTANT_MODE = "mock";
   takeReportHandoff("ai", undefined);
+  takeGrowthReviewEntry(undefined);
 });
 afterEach(() => {
   delete process.env.EXPO_PUBLIC_ASSISTANT_MODE;
@@ -184,4 +186,38 @@ test("an applied journal entry cannot replay when another journey remounts the c
   mockJourneyId = "body-knowledge";
   view.rerender(tree());
   expect(composerDraft()).toBe(edited);
+});
+
+test("growth entry is consumed once and preserves an edited range on later focus", () => {
+  stageGrowthReviewEntry(mockAccountId!);
+  const route = mountRoute();
+  expect(composerDraft()).toBe(GROWTH_REVIEW_STARTER);
+  expect(takeGrowthReviewEntry(mockAccountId)).toBeNull();
+  const edited = "查看我最近一周的旅程、手记和AI记录，回顾成长。";
+  fireEvent.changeText(screen.getByLabelText("聊天消息"), edited);
+  mockFocused = false; route.rerender();
+  mockFocused = true; route.rerender();
+  expect(composerDraft()).toBe(edited);
+  expect(screen.queryByRole("button", { name: "允许" })).toBeNull();
+});
+
+test.each(accountTransitions)("growth entry and consent do not survive an account boundary: %s", (_name, accounts) => {
+  stageGrowthReviewEntry(mockAccountId!);
+  const route = mountRoute();
+  expect(composerDraft()).toBe(GROWTH_REVIEW_STARTER);
+  route.committedDrafts.length = 0;
+  for (const accountId of accounts) {
+    mockAccountId = accountId; mockAdultStatus = accountId ? "authorized" : "public";
+    route.rerender();
+    expectEmptyDraft(route.committedDrafts);
+    expect(screen.queryByText("成长回顾 · 可修改问题中的时间范围")).toBeNull();
+  }
+});
+
+test.each(["week", "month", "halfYear", "all"] as const)("selected %s range is visible in the AI composer before any send", range => {
+  stageGrowthReviewEntry(mockAccountId!, range);
+  mountRoute();
+  expect(composerDraft()).toBe(growthReviewStarter(range));
+  expect(screen.queryByRole("button", { name: "允许" })).toBeNull();
+  expect(takeGrowthReviewEntry(mockAccountId)).toBeNull();
 });
