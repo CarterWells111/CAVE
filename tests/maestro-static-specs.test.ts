@@ -44,13 +44,21 @@ describe("Maestro release selectors", () => {
     }
   });
 
-  it("locks the history action to its current accessible label", () => {
-    const flow = read(".maestro/back-edit.yaml");
-    const screen = read("apps/mobile/src/features/shell/ui/ProfileScreen.tsx");
-
-    expect(screen).toContain('testID="profile-review-open"');
-    expect(flow).toContain('id: "profile-review-open"');
-    expect(flow).not.toContain('tapOn: "回顾"');
+  it("opens retained journey reviews through the growth summary without clearing signed-in setup", () => {
+    const profile = read("apps/mobile/src/features/shell/ui/ProfileScreen.tsx");
+    const records = read("apps/mobile/src/features/growth/growth-records.ts");
+    expect(profile).toContain('accessibilityLabel="打开关键事件与阶段回顾"');
+    expect(records).toContain('title: "完成旅程回顾"');
+    for (const path of [".maestro/back-edit.yaml", ".maestro/restart-recovery.yaml"]) {
+      const flow = read(path);
+      expect(flow).toContain('tapOn: "打开关键事件与阶段回顾"');
+      expect(flow).toContain('text: "完成旅程回顾.*"');
+      expect(flow).toContain('assertVisible: "回顾区间.*"');
+      expect(flow).toContain("sign in to a dedicated synthetic test account");
+      expect(flow).not.toContain("clearState: true");
+      expect(flow).not.toContain("runFlow: core-flow.yaml");
+      expect(flow).not.toContain("profile-review-open");
+    }
   });
 
   it("locks the five-page completion flow and practice handoff to the four-tab main shell", () => {

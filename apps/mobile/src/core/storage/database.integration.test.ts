@@ -166,3 +166,22 @@ test("v14 assistant-history schema rolls back on failure and preserves a v13 acc
   expect(await reopened.getAllAsync("SELECT * FROM assistant_conversations")).toEqual([]);
   expect(await reopened.getAllAsync("SELECT * FROM journal_records")).toEqual(journalBefore);
 });
+
+test("schema16 upgrades legacy files without fabricating room events and rolls back an interrupted room table migration", async () => {
+  const h = harness("v12");
+  const before = snapshot(h);
+  h.setFault((operation, sql) => {
+    if (operation === "exec-after" && sql.includes("CREATE TABLE IF NOT EXISTS room_history")) throw new Error("synthetic-v16-interruption");
+  });
+  await expect(h.manager().initialize()).rejects.toThrow("synthetic-v16-interruption");
+  const interrupted = h.openRaw();
+  expect(interrupted.prepare("PRAGMA user_version").get()).toEqual({ user_version: 15 });
+  expect(interrupted.prepare("SELECT name FROM sqlite_master WHERE name='room_history'").all()).toEqual([]);
+  h.closeRaw(interrupted);
+  const afterFailure = snapshot(h);
+  for (const [table, rows] of Object.entries(before)) expect(afterFailure[table]).toEqual(rows);
+  h.setFault();
+  const reopened = await h.manager().initialize();
+  expect(await reopened.getFirstAsync("PRAGMA user_version")).toEqual({ user_version: CURRENT_SCHEMA_VERSION });
+  expect(await reopened.getAllAsync("SELECT * FROM room_history")).toEqual([]);
+});

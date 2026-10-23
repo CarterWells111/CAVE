@@ -54,6 +54,7 @@ export type RoomReport = Readonly<
 >;
 
 export interface RoomApi {
+  readonly historyWarning?: string | undefined;
   list(): Promise<readonly Room[]>;
   create(scenarioId: RoomScenarioId): Promise<Room>;
   issueInvite(roomId: string): Promise<string>;

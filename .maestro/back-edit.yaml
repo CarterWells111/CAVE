@@ -3,7 +3,9 @@ name: Back edit, branch history, and delete one review
 tags:
   - release-static-spec
 ---
-- runFlow: core-flow.yaml
+# Prerequisite: run core-flow, then sign in to a dedicated synthetic test account.
+# Keep that signed-in state and a recent completed local journey; do not clear state here.
+- launchApp
 - tapOn: "我的"
 - assertVisible: "旅程"
 - assertVisible: "内界手记"
@@ -11,10 +13,16 @@ tags:
 - assertVisible: "我的"
 - scrollUntilVisible:
     element:
-      id: "profile-review-open"
+      text: "打开关键事件与阶段回顾"
+    direction: DOWN
+- tapOn: "打开关键事件与阶段回顾"
+- assertVisible: "回顾区间.*"
+- scrollUntilVisible:
+    element:
+      text: "完成旅程回顾.*"
     direction: DOWN
 - tapOn:
-    id: "profile-review-open"
+    text: "完成旅程回顾.*"
     index: 0
 - scrollUntilVisible:
     element:
@@ -54,10 +62,16 @@ tags:
 - tapOn: "我的"
 - scrollUntilVisible:
     element:
-      id: "profile-review-open"
+      text: "打开关键事件与阶段回顾"
+    direction: DOWN
+- tapOn: "打开关键事件与阶段回顾"
+- assertVisible: "回顾区间.*"
+- scrollUntilVisible:
+    element:
+      text: "完成旅程回顾.*"
     direction: DOWN
 - tapOn:
-    id: "profile-review-open"
+    text: "完成旅程回顾.*"
     index: 0
 - scrollUntilVisible:
     element:
@@ -68,8 +82,9 @@ tags:
 - tapOn: "确认删除这条回顾"
 - assertVisible: "这条回顾已删除。"
 - tapOn: "返回我的回顾"
+- assertVisible: "我的"
 - scrollUntilVisible:
     element:
-      text: "我的回顾"
+      text: "打开关键事件与阶段回顾"
     direction: DOWN
-- assertVisible: "我的回顾"
+- assertVisible: "打开关键事件与阶段回顾"

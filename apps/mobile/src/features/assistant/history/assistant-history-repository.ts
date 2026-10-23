@@ -1,7 +1,7 @@
 import { AssistantResponseSchema, type AssistantResponse } from "@cave/contracts";
 import { z } from "zod";
 
-export type AssistantChatTurn = { question: string; response: AssistantResponse };
+export type AssistantChatTurn = { question: string; response: AssistantResponse; createdAt?: string };
 export type AssistantConversation = {
   id: string;
   title: string;
@@ -29,7 +29,7 @@ const ConversationSchema = z.object({
   journeyId: Identifier,
   createdAt: z.string().datetime({ offset: true }),
   updatedAt: z.string().datetime({ offset: true }),
-  turns: z.array(z.object({ question: z.string().trim().min(1).max(1000), response: AssistantResponseSchema }).strict()),
+  turns: z.array(z.object({ question: z.string().trim().min(1).max(1000), response: AssistantResponseSchema, createdAt: z.string().datetime({ offset: true }).optional() }).strict()),
   draft: z.string().max(1000).optional(),
 }).strict();
 
@@ -42,8 +42,12 @@ export function validateAssistantHistoryIdentifier(value: string): string {
 export function validateAssistantConversation(value: unknown): AssistantConversation {
   const parsed = ConversationSchema.safeParse(value);
   if (!parsed.success) throw new Error("assistant-history-invalid-conversation");
-  const { draft, ...conversation } = parsed.data;
-  return { ...conversation, ...(draft === undefined ? {} : { draft }) };
+  const { draft, turns, ...conversation } = parsed.data;
+  return {
+    ...conversation,
+    turns: turns.map(({ createdAt, ...turn }) => ({ ...turn, ...(createdAt === undefined ? {} : { createdAt }) })),
+    ...(draft === undefined ? {} : { draft }),
+  };
 }
 
 export function validateAssistantHistoryOrder(currentIds: readonly string[], ids: readonly string[]): void {

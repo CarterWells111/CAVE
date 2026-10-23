@@ -297,3 +297,39 @@ test("Expo Go AI history remains memory-only and local data deletion clears ever
   await expect(runtime.assistantHistory.list("account-a")).resolves.toEqual([]);
   await expect(runtime.assistantHistory.list("account-b")).resolves.toEqual([]);
 });
+
+test("Expo Go room history is memory-only and deleting local data clears every account", async () => {
+  const dependencies = {
+    executionEnvironment: "storeClient", clipboard, createId: () => "unused", now: () => "2026-10-23T12:00:00.000Z",
+    createExpoGoJournalRepository: createFreshExpoGoJournalRepository, createNativeRuntime: jest.fn(),
+  };
+  const runtime = await createJourneyRuntime(dependencies);
+  const record = { id: "room-event", roomId: "synthetic-room", scenarioId: "pause" as const,
+    occurredAt: "2026-10-23T12:00:00.000Z", action: "created" as const, timeKind: "action" as const, myAnswers: {} };
+  await runtime.roomHistory.save("account-a", record);
+  await runtime.roomHistory.save("account-b", record);
+  const recreated = await createJourneyRuntime(dependencies);
+  await expect(recreated.roomHistory.list("account-a")).resolves.toEqual([]);
+  const cleared = jest.fn();
+  runtime.roomHistory.subscribeToOwnerClear("account-a", cleared);
+  await runtime.deleteAllData();
+  expect(cleared).toHaveBeenCalledTimes(1);
+  await expect(runtime.roomHistory.list("account-a")).resolves.toEqual([]);
+  await expect(runtime.roomHistory.list("account-b")).resolves.toEqual([]);
+});
+
+test("native deleteStorage is reached only after room history clearing and notification", async () => {
+  const events: string[] = [];
+  const runtime = composeJourneyRuntime({
+    mode: "native-secure", persistence: "sqlcipher-secure-store",
+    drafts: new InMemoryJourneyDraftRepository(), cards: new InMemoryCommunicationCardRepository(),
+    clipboard, createId: () => "unused", now: () => "2026-10-23T12:00:00.000Z",
+    deleteStorage: async () => { events.push("delete-storage"); },
+  });
+  await runtime.roomHistory.save("account-a", { id: "room-event", roomId: "synthetic-room", scenarioId: "pause",
+    occurredAt: "2026-10-23T12:00:00.000Z", action: "created", timeKind: "action", myAnswers: {} });
+  runtime.roomHistory.subscribeToOwnerClear("account-a", () => { events.push("room-cleared"); });
+  await runtime.deleteAllData();
+  expect(events).toEqual(["room-cleared", "delete-storage"]);
+  await expect(runtime.roomHistory.list("account-a")).resolves.toEqual([]);
+});

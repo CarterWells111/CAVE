@@ -20,7 +20,8 @@ test("wires history detail, branching, deletion, and one active replacement", ()
   const profile = source("../../../app/(tabs)/profile.tsx");
   const hub = source("../../../app/(tabs)/reviews.tsx");
   const detail = source("../../../app/reviews/[id].tsx");
-  expect(profile).toContain("reviewHistory.listMetadata()");
+  expect(profile).toContain("useGrowthRecords()");
+  expect(source("../growth/use-growth-records.ts")).toContain("reviewHistory.listMetadata()");
   expect(hub).not.toContain("reviewHistory.listMetadata()");
   expect(hub).not.toContain("replaceActiveReview()");
   expect(hub).toContain('<Redirect href="/(tabs)/journal"');

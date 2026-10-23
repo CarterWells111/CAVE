@@ -198,3 +198,16 @@ test.each(["commit", "rollback"] as const)("SQL history loading waits for an ove
   expect(await transaction).toBe(outcome === "rollback" ? rollback : null);
   expect(await loading).toEqual({ value: [outcome === "rollback" ? original : changed] });
 });
+
+test.each(factories)("preserves new turn timestamps and accepts legacy turns in %s storage", async (_name, createRepository) => {
+  const repository = createRepository();
+  const dated = conversation("dated");
+  dated.turns[0]!.createdAt = "2026-10-23T12:34:56.000Z";
+  await repository.save("account-a", conversation("legacy"));
+  await repository.save("account-a", dated);
+  const saved = await repository.list("account-a");
+  expect(saved.find(item => item.id === "dated")!.turns[0]!.createdAt).toBe("2026-10-23T12:34:56.000Z");
+  expect(saved.find(item => item.id === "legacy")!.turns[0]!.createdAt).toBeUndefined();
+  await expect(repository.save("account-a", { ...dated, turns: [{ ...dated.turns[0]!, createdAt: "invalid" }] }))
+    .rejects.toThrow("assistant-history-invalid-conversation");
+});

@@ -26,7 +26,7 @@ export default function EmailAuthRoute() {
       router.replace(roomPath as Href);
       return;
     }
-    if (returnTo === "/(tabs)/profile" || returnTo === "/(tabs)/journal" || returnTo === "/(tabs)/ai") {
+    if (returnTo === "/(tabs)/profile" || returnTo === "/(tabs)/journal" || returnTo === "/(tabs)/ai" || returnTo === "/growth") {
       returned.current = true;
       router.replace(returnTo);
       return;
@@ -41,7 +41,7 @@ export default function EmailAuthRoute() {
       : onboardingHref(preferences.preferences.ageConfirmed ? "/journey/preface" : "/journey/adult-gate", entry));
   }, [adult.status, auth.status, entry, preferences, returnTo, router]);
   const completeLogin = () => {
-    if (returned.current || roomReturnPath(returnTo) || returnTo === "/(tabs)/profile" || returnTo === "/(tabs)/journal" || returnTo === "/(tabs)/ai" || returnTo === "/journey/adult-gate" || returnTo === "/journey/preface") return;
+    if (returned.current || roomReturnPath(returnTo) || returnTo === "/(tabs)/profile" || returnTo === "/(tabs)/journal" || returnTo === "/(tabs)/ai" || returnTo === "/growth" || returnTo === "/journey/adult-gate" || returnTo === "/journey/preface") return;
     returned.current = true;
     router.replace(journalReturnDestination(returnTo) ?? "/(tabs)/profile");
   };

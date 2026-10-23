@@ -39,6 +39,7 @@ export type JourneyRuntimeContextValue = {
   reviewHistory: JourneyRuntime["reviewHistory"];
   createJournalService: JourneyRuntime["createJournalService"];
   assistantHistory: JourneyRuntime["assistantHistory"];
+  roomHistory: JourneyRuntime["roomHistory"];
   privacySettings: JourneyRuntime["privacySettings"];
   deleteAllData(): Promise<void>;
   runAndRefresh<T>(action: () => Promise<T>): Promise<T>;
@@ -151,6 +152,7 @@ function RuntimeContextProvider({
     reviewHistory: runtime.reviewHistory,
     createJournalService: runtime.createJournalService,
     assistantHistory: runtime.assistantHistory,
+    roomHistory: runtime.roomHistory,
     privacySettings: runtime.privacySettings,
     deleteAllData,
     runAndRefresh,
@@ -369,6 +371,7 @@ export function JourneyRuntimeProvider({
       ensureDeletionCleanup: async () => { guard(); return await service.ensureDeletionCleanup(); },
       clearCurrentAccount: async () => { guard(); await service.clearCurrentAccount(); },
       clearCurrentAccountAssistantHistory: async () => { guard(); await preferenceRuntime.assistantHistory.clearOwner(deletionAccountId); },
+      clearCurrentAccountRoomHistory: async () => { guard(); await preferenceRuntime.roomHistory.clearOwner(deletionAccountId); },
     };
   }, [deletionAccountId, deletionAuthenticated, preferenceRuntime]);
   const preferenceReady = preferences?.ready;

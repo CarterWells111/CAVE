@@ -9,6 +9,7 @@ export type AccountJournalDeletion = {
   ensureDeletionCleanup(): Promise<boolean>;
   clearCurrentAccount(): Promise<void>;
   clearCurrentAccountAssistantHistory(): Promise<void>;
+  clearCurrentAccountRoomHistory(): Promise<void>;
 };
 export const AccountJournalDeletionContext = createContext<AccountJournalDeletion | null>(null);
 export const useOptionalAccountJournalDeletion = () => useContext(AccountJournalDeletionContext);

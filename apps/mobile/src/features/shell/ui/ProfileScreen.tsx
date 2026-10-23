@@ -1,19 +1,14 @@
 import { View } from "react-native";
 
 import { useTheme } from "../../../core/design/theme-provider";
-import { EmptyState } from "../../../core/ui/EmptyState";
 import { ErrorState } from "../../../core/ui/ErrorState";
 import { IconTextAction } from "../../../core/ui/icon-text-action";
 import { ActionRow } from "../../../core/ui/action-row";
 import { HelpText, PageHeader } from "../../../core/ui/page-header";
 import { AccountProfileCard } from "../../account/ui/AccountProfileCard";
-import {
-  MetadataCard,
-  SectionHeading,
-  ShellLoading,
-  type ShellLoadState,
-  type ShellMetadataItem,
-} from "./shell-ui-components";
+import { GrowthChart } from "../../growth/growth-chart";
+import type { GrowthData } from "../../growth/growth-records";
+import { ShellLoading, SupportingText } from "./shell-ui-components";
 
 export type ProfileScreenProps = Readonly<{
   account?: {
@@ -23,102 +18,39 @@ export type ProfileScreenProps = Readonly<{
     onSignIn?(): void;
     onRetry?(): void;
   };
-  cards: ReadonlyArray<ShellMetadataItem>;
-  cardsLoadState?: ShellLoadState;
-  onOpenCard?: (id: string) => void;
-  onOpenReview?: (id: string) => void;
-  onOpenSettings: () => void;
-  onOpenJournal?: () => void;
-  onRetryCards?: () => void;
-  onRetryReviews?: () => void;
-  reviews: ReadonlyArray<ShellMetadataItem>;
-  reviewsLoadState?: ShellLoadState;
+  growth: GrowthData;
+  growthState: "loading" | "ready" | "error" | "locked";
+  onOpenGrowth(): void;
+  onRetryGrowth(): void;
+  onOpenSettings(): void;
 }>;
 
-export function ProfileScreen({
-  account,
-  cards,
-  cardsLoadState = "ready",
-  onOpenCard,
-  onOpenReview,
-  onOpenSettings,
-  onOpenJournal,
-  onRetryCards,
-  onRetryReviews,
-  reviews,
-  reviewsLoadState = "ready",
-}: ProfileScreenProps) {
+export function ProfileScreen({ account, growth, growthState, onOpenGrowth, onRetryGrowth, onOpenSettings }: ProfileScreenProps) {
   const theme = useTheme();
-  return (
-    <View style={{ flexGrow: 1, gap: theme.space.xl, minWidth: 0, width: "100%" }}>
-      <PageHeader title="我的" actions={<IconTextAction icon="settings-outline" iconOnly label="设置" onPress={onOpenSettings} />}
-        help={<HelpText>在这里查看账户资料、沟通卡和历史回顾。卡片与回顾按日期显示，保存在这台设备上；账户与隐私选项可在设置中调整。</HelpText>} />
-
-      {account ? (
-        <AccountProfileCard
-          {...(account.profile?.avatarUri === undefined ? {} : { avatarUri: account.profile.avatarUri })}
-          {...(account.profile?.displayName === undefined ? {} : { displayName: account.profile.displayName })}
-          {...(account.email === undefined ? {} : { email: account.email })}
-          {...(account.onSignIn === undefined ? {} : { onSignIn: account.onSignIn })}
-          {...(account.onRetry === undefined ? {} : { onRetry: account.onRetry })}
-          readOnly
-          status={account.status}
-        />
-      ) : null}
-
-      {onOpenJournal ? (
-        <View style={{ gap: theme.space.md }}>
-          <SectionHeading>内界手记</SectionHeading>
-          <ActionRow title="关键事件与阶段回顾" accessibilityLabel="打开关键事件与阶段回顾" onPress={onOpenJournal} />
-        </View>
-      ) : null}
-
-      <View style={{ gap: theme.space.md }}>
-        <SectionHeading>我的卡片</SectionHeading>
-        {cardsLoadState === "loading" ? <ShellLoading /> : null}
-        {cardsLoadState === "error" ? (
-          <ErrorState
-            actionLabel="重试读取卡片"
-            message="暂时无法读取本机沟通卡。"
-            title="卡片读取失败"
-            {...(onRetryCards ? { onAction: onRetryCards } : {})}
-          />
-        ) : null}
-        {cardsLoadState === "ready" ? (
-          cards.length > 0 ? cards.map((card) => (
-            <MetadataCard
-              actionLabel={`打开${card.title}，${card.dateLabel}，${card.statusLabel}`}
-              item={card}
-              key={card.id}
-              onAction={onOpenCard}
-            />
-          )) : <EmptyState message="完成并保存沟通卡后，会按日期显示在这里。" title="还没有沟通卡" />
-        ) : null}
-      </View>
-
-      <View style={{ gap: theme.space.md }}>
-        <SectionHeading>我的回顾</SectionHeading>
-        {reviewsLoadState === "loading" ? <ShellLoading /> : null}
-        {reviewsLoadState === "error" ? (
-          <ErrorState
-            actionLabel="重试读取回顾"
-            message="暂时无法读取本机历史回顾。"
-            title="回顾读取失败"
-            {...(onRetryReviews ? { onAction: onRetryReviews } : {})}
-          />
-        ) : null}
-        {reviewsLoadState === "ready" ? (
-          reviews.length > 0 ? reviews.map((review) => (
-            <MetadataCard
-              actionLabel={`打开${review.title}，${review.dateLabel}，${review.statusLabel}`}
-              testID="profile-review-open"
-              item={review}
-              key={review.id}
-              onAction={onOpenReview}
-            />
-          )) : <EmptyState message="完成回顾后，会按日期显示在这里。" title="还没有历史回顾" />
-        ) : null}
-      </View>
+  return <View style={{ flexGrow: 1, gap: theme.space.xl, minWidth: 0, width: "100%" }}>
+    <PageHeader title="我的" actions={<IconTextAction icon="settings-outline" iconOnly label="设置" onPress={onOpenSettings} />}
+      help={<>
+        <HelpText>成长记录显示手记、阶段回顾、学习旅程和 AI 交流随时间的变化，可选择 1 周、一个月、半年或所有记录。</HelpText>
+        <HelpText>每个时间段内统计当前保留的记录次数，不是成长评分。点击“查看时间明细”可以查看各时间段的具体次数。</HelpText>
+        <HelpText>关键事件与阶段回顾中可以选择时间范围，查看汇总与最近记录，再邀请 AI 一起整理成长与接下来的方向。</HelpText>
+        {growth.notes.map(note => <HelpText key={note}>{note}</HelpText>)}
+      </>} />
+    {account ? <AccountProfileCard
+      {...(account.profile?.avatarUri === undefined ? {} : { avatarUri: account.profile.avatarUri })}
+      {...(account.profile?.displayName === undefined ? {} : { displayName: account.profile.displayName })}
+      {...(account.email === undefined ? {} : { email: account.email })}
+      {...(account.onSignIn === undefined ? {} : { onSignIn: account.onSignIn })}
+      {...(account.onRetry === undefined ? {} : { onRetry: account.onRetry })}
+      readOnly status={account.status}
+    /> : null}
+    <View style={{ gap: theme.space.md }}>
+      {growthState === "loading" ? <ShellLoading /> : null}
+      {growthState === "error" ? <ErrorState title="成长记录暂时无法读取" message="请稍后重试，原来的记录仍然保留。"
+        actionLabel="重试读取成长记录" onAction={onRetryGrowth} /> : null}
+      {growthState === "locked" ? <SupportingText>登录后，在这里查看我的成长记录。</SupportingText> : null}
+      {growthState === "ready" ? <GrowthChart data={growth} /> : null}
+      <ActionRow title="关键事件与阶段回顾"
+        accessibilityLabel="打开关键事件与阶段回顾" onPress={onOpenGrowth} />
     </View>
-  );
+  </View>;
 }

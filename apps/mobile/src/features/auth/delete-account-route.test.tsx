@@ -4,6 +4,7 @@ import DeleteAccountRoute from "../../../app/auth/delete-account";
 
 const mockClearCurrentAccount = jest.fn(async () => undefined);
 const mockClearAssistantHistory = jest.fn(async () => undefined);
+const mockClearRoomHistory = jest.fn(async () => undefined);
 const mockEnsureDeletionCleanup = jest.fn(async () => false);
 const mockAuth = {
   status: "signedIn",
@@ -15,7 +16,7 @@ const mockAuth = {
 };
 let mockDeletionAccountId = "account-a";
 jest.mock("../account/runtime/account-journal-deletion-context", () => ({
-  useOptionalAccountJournalDeletion: () => ({ accountId: mockDeletionAccountId, clearCurrentAccountAssistantHistory: mockClearAssistantHistory }),
+  useOptionalAccountJournalDeletion: () => ({ accountId: mockDeletionAccountId, clearCurrentAccountAssistantHistory: mockClearAssistantHistory, clearCurrentAccountRoomHistory: mockClearRoomHistory }),
 }));
 let capturedProps: Record<string, unknown> | undefined;
 
@@ -47,6 +48,7 @@ beforeEach(() => {
   capturedProps = undefined;
   mockDeletionAccountId = "account-a";
   mockClearAssistantHistory.mockResolvedValue(undefined);
+  mockClearRoomHistory.mockResolvedValue(undefined);
   jest.clearAllMocks();
 });
 
@@ -62,10 +64,11 @@ test("将当前账户的本机手记删除能力与持久化模式传给账户�
 test("clears only the deleting account's AI history before submitting account deletion", async () => {
   const events: string[] = [];
   mockClearAssistantHistory.mockImplementationOnce(async () => { events.push("local-history"); });
+  mockClearRoomHistory.mockImplementationOnce(async () => { events.push("room-history"); });
   mockAuth.deleteAccount.mockImplementationOnce(async () => { events.push("cloud-account"); });
   render(<DeleteAccountRoute />);
   await act(async () => { await (capturedProps?.onDeleteAccount as (grant: string, key: string) => Promise<void>)("grant", "key"); });
-  expect(events).toEqual(["local-history", "cloud-account"]);
+  expect(events).toEqual(["local-history", "room-history", "cloud-account"]);
   expect(mockAuth.deleteAccount).toHaveBeenCalledWith("grant", "key");
 });
 
@@ -87,4 +90,16 @@ test("refuses a stale account deletion capability before clearing history", asyn
     .rejects.toThrow("assistant-history-deletion-unavailable");
   expect(mockClearAssistantHistory).not.toHaveBeenCalled();
   expect(mockAuth.deleteAccount).not.toHaveBeenCalled();
+});
+
+test("room history cleanup failure blocks account deletion and permits retry", async () => {
+  const failure = new Error("synthetic-room-cleanup");
+  mockClearRoomHistory.mockRejectedValueOnce(failure);
+  render(<DeleteAccountRoute />);
+  const remove = capturedProps?.onDeleteAccount as (grant: string, key: string) => Promise<void>;
+  await expect(remove("grant", "key")).rejects.toBe(failure);
+  expect(mockAuth.deleteAccount).not.toHaveBeenCalled();
+  await remove("grant", "key");
+  expect(mockClearRoomHistory).toHaveBeenCalledTimes(2);
+  expect(mockAuth.deleteAccount).toHaveBeenCalledTimes(1);
 });
